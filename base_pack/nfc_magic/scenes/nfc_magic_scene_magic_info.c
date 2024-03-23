@@ -35,6 +35,7 @@ void nfc_magic_scene_magic_info_on_enter(void* context) {
         widget, GuiButtonTypeLeft, "Retry", nfc_magic_scene_magic_info_widget_callback, instance);
     widget_add_button_element(
         widget, GuiButtonTypeRight, "More", nfc_magic_scene_magic_info_widget_callback, instance);
+    furi_string_free(message);
 
     view_dispatcher_switch_to_view(instance->view_dispatcher, NfcMagicAppViewWidget);
 }
