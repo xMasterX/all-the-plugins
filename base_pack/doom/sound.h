@@ -28,7 +28,7 @@ typedef struct {
 typedef struct {
     MusicPlayerModel* model;
     MusicPlayerWorker* worker;
-    FuriMutex** model_mutex;
+    FuriMutex* model_mutex;
 } MusicPlayer;
 
 #endif

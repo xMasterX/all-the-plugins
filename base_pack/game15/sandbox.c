@@ -3,7 +3,7 @@
 #include "sandbox.h"
 
 FuriMessageQueue* sandbox_event_queue;
-FuriMutex** sandbox_mutex;
+FuriMutex* sandbox_mutex;
 ViewPort* sandbox_view_port;
 Gui* sandbox_gui;
 FuriTimer* sandbox_timer;

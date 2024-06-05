@@ -62,7 +62,7 @@ typedef struct {
     FuriMessageQueue* input_queue;
     ViewPort* view_port;
     Gui* gui;
-    FuriMutex** mutex;
+    FuriMutex* mutex;
     NotificationApp* notify;
     const char* alphabet;
     char password[PASSGEN_MAX_LENGTH + 1];

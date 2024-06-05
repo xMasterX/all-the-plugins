@@ -59,7 +59,7 @@ typedef struct {
     Gui* gui;
     ViewPort* view_port;
 
-    FuriMutex** mutex;
+    FuriMutex* mutex;
     FuriString* message;
     QRCode* qrcode;
     uint8_t min_mode;

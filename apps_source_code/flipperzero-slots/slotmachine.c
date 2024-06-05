@@ -24,7 +24,7 @@ typedef struct {
     Gui* gui; // container gui
     ViewPort* view_port; // current viewport
     FuriMessageQueue* input_queue; // Input Events queue
-    FuriMutex** model_mutex; // mutex for safe threads
+    FuriMutex* model_mutex; // mutex for safe threads
     uint16_t bet;
     double money, winamount;
     SlotColumn* columns[4];

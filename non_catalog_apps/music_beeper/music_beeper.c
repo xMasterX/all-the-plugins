@@ -28,7 +28,7 @@ typedef struct {
 
 typedef struct {
     MusicBeeperModel* model;
-    FuriMutex** model_mutex;
+    FuriMutex* model_mutex;
 
     FuriMessageQueue* input_queue;
 

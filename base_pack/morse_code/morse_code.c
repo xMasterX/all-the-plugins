@@ -17,7 +17,7 @@ typedef struct {
 
 typedef struct {
     MorseCodeModel* model;
-    FuriMutex** model_mutex;
+    FuriMutex* model_mutex;
 
     FuriMessageQueue* input_queue;
 

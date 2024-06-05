@@ -38,7 +38,7 @@ typedef struct {
 } PokerPlayer_card;
 
 typedef struct {
-    FuriMutex** model_mutex;
+    FuriMutex* model_mutex;
     FuriMessageQueue* event_queue;
     ViewPort* view_port;
     Gui* gui;

@@ -26,7 +26,7 @@ typedef struct {
     ViewPort* view_port;
     Gui* gui;
     NotificationApp* notification;
-    FuriMutex** mutex;
+    FuriMutex* mutex;
 
     bool togglelight;
     int count;
