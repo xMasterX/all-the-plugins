@@ -83,8 +83,9 @@ static void render_callback(Canvas* const canvas, void* cb_ctx) {
     furi_mutex_release(app->mutex);
 }
 
-static void input_callback(InputEvent* input_event, FuriMessageQueue* event_queue) {
-    furi_assert(event_queue);
+static void input_callback(InputEvent* input_event, void* ctx) {
+    furi_assert(ctx);
+    FuriMessageQueue* event_queue = ctx;
 
     /* better skip than sorry */
     if(furi_message_queue_get_count(event_queue) < QUEUE_SIZE) {

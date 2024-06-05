@@ -106,9 +106,10 @@ static void input_callback(InputEvent* input_event, void* ctx) {
     furi_message_queue_put(event_queue, &event, FuriWaitForever);
 }
 
-static void timer_callback(FuriMessageQueue* event_queue) {
+static void timer_callback(void* ctx) {
     // Проверяем, что контекст не нулевой
-    furi_assert(event_queue);
+    furi_assert(ctx);
+    FuriMessageQueue* event_queue = ctx;
 
     ZeitrafferEvent event = {.type = EventTypeTick};
     furi_message_queue_put(event_queue, &event, 0);

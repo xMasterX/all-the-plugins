@@ -355,15 +355,17 @@ static void arkanoid_draw_callback(Canvas* const canvas, void* ctx) {
     furi_mutex_release(arkanoid_state->mutex);
 }
 
-static void arkanoid_input_callback(InputEvent* input_event, FuriMessageQueue* event_queue) {
-    furi_assert(event_queue);
+static void arkanoid_input_callback(InputEvent* input_event, void* ctx) {
+    furi_assert(ctx);
+    FuriMessageQueue* event_queue = ctx;
 
     GameEvent event = {.type = EventTypeKey, .input = *input_event};
     furi_message_queue_put(event_queue, &event, FuriWaitForever);
 }
 
-static void arkanoid_update_timer_callback(FuriMessageQueue* event_queue) {
-    furi_assert(event_queue);
+static void arkanoid_update_timer_callback(void* ctx) {
+    furi_assert(ctx);
+    FuriMessageQueue* event_queue = ctx;
 
     GameEvent event = {.type = EventTypeTick};
     furi_message_queue_put(event_queue, &event, 0);

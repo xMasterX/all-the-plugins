@@ -44,9 +44,10 @@
 // OS Callback : Timer tick
 // We register this function to be called when the OS signals a timer 'tick' event
 //
-static void cbTimer(FuriMessageQueue* queue) {
+static void cbTimer(void* ctx) {
     ENTER;
-    furi_assert(queue);
+    furi_assert(ctx);
+    FuriMessageQueue* queue = ctx;
 
     eventMsg_t message = {.id = EVID_TICK};
     furi_message_queue_put(queue, &message, 0);
@@ -59,10 +60,11 @@ static void cbTimer(FuriMessageQueue* queue) {
 // OS Callback : Keypress
 // We register this function to be called when the OS detects a keypress
 //
-static void cbInput(InputEvent* event, FuriMessageQueue* queue) {
+static void cbInput(InputEvent* event, void* ctx) {
     ENTER;
-    furi_assert(queue);
+    furi_assert(ctx);
     furi_assert(event);
+    FuriMessageQueue* queue = ctx;
 
     // Put an "input" event message on the message queue
     eventMsg_t message = {.id = EVID_KEY, .input = *event};

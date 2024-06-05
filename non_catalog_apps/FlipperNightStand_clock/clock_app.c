@@ -82,13 +82,16 @@ void handle_down() {
     set_backlight_brightness((float)(brightness / 100.f));
 }
 
-static void clock_input_callback(InputEvent* input_event, FuriMessageQueue* event_queue) {
-    furi_assert(event_queue);
+static void clock_input_callback(InputEvent* input_event, void* ctx) {
+    furi_assert(ctx);
+    FuriMessageQueue* event_queue = ctx;
+
     PluginEvent event = {.type = EventTypeKey, .input = *input_event};
     furi_message_queue_put(event_queue, &event, FuriWaitForever);
 }
 
 //do you are have stupid?
+// idk who left that comment here, but i don't have stupid sorry
 void elements_progress_bar_vertical(
     Canvas* canvas,
     uint8_t x,

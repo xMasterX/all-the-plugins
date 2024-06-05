@@ -434,14 +434,18 @@ void init_start(GameState *game_state) {
 }
 
 
-static void input_callback(InputEvent *input_event, FuriMessageQueue *event_queue) {
-    furi_assert(event_queue);
+static void input_callback(InputEvent *input_event, void* ctx) {
+    furi_assert(ctx);
+    FuriMessageQueue* event_queue = ctx;
+
     AppEvent event = {.type = EventTypeKey, .input = *input_event};
     furi_message_queue_put(event_queue, &event, FuriWaitForever);
 }
 
-static void update_timer_callback(FuriMessageQueue *event_queue) {
-    furi_assert(event_queue);
+static void update_timer_callback(void* ctx) {
+    furi_assert(ctx);
+    FuriMessageQueue* event_queue = ctx;
+
     AppEvent event = {.type = EventTypeTick};
     furi_message_queue_put(event_queue, &event, 0);
 }
@@ -449,8 +453,8 @@ static void update_timer_callback(FuriMessageQueue *event_queue) {
 int32_t solitaire_app(void *p) {
     UNUSED(p);
     int32_t return_code = 0;
-    FuriMessageQueue *event_queue = furi_message_queue_alloc(8, sizeof(AppEvent));
-    GameState *game_state = malloc(sizeof(GameState));
+    FuriMessageQueue* event_queue = furi_message_queue_alloc(8, sizeof(AppEvent));
+    GameState* game_state = malloc(sizeof(GameState));
     init_start(game_state);
     set_card_graphics(&I_card_graphics);
 
