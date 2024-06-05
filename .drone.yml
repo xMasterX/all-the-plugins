@@ -143,4 +143,4 @@ trigger:
     - tag
 
 node:
-  typ: dev1
+  typ: dev2
