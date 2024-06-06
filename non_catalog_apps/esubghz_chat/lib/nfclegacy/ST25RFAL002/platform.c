@@ -48,7 +48,7 @@ void platformSetIrqCallback(PlatformIrqCallback callback) {
 
     if(!rfal_platform.thread) {
         rfal_platform.thread =
-            furi_thread_alloc_service("RfalIrqDriver", 1024, rfal_platform_irq_thread, NULL);
+            furi_thread_alloc_ex("RfalIrqDriver", 1024, rfal_platform_irq_thread, NULL);
         furi_thread_set_priority(rfal_platform.thread, FuriThreadPriorityIsr);
         furi_thread_start(rfal_platform.thread);
     }
