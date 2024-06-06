@@ -10,13 +10,11 @@ void nfc_playlist_confirm_delete_menu_callback(GuiButtonType result, InputType t
 void nfc_playlist_confirm_delete_scene_on_enter(void* context) {
     NfcPlaylist* nfc_playlist = context;
 
-    FuriString* temp_str = furi_string_alloc();
-    char* file_path = (char*)furi_string_get_cstr(nfc_playlist->settings.playlist_path);
-    furi_string_printf(
-        temp_str,
-        "\e#Delete %s?\e#",
-        strchr(file_path, '/') != NULL ? &strrchr(file_path, '/')[1] : file_path);
-    furi_string_replace(temp_str, ".txt", "");
+    FuriString* file_name = furi_string_alloc();
+    path_extract_filename_no_ext(
+        furi_string_get_cstr(nfc_playlist->settings.playlist_path), file_name);
+    FuriString* temp_str =
+        furi_string_alloc_printf("\e#Delete %s?\e#", furi_string_get_cstr(file_name));
 
     widget_add_text_box_element(
         nfc_playlist->widget,
@@ -42,6 +40,7 @@ void nfc_playlist_confirm_delete_scene_on_enter(void* context) {
         nfc_playlist);
 
     furi_string_free(temp_str);
+    furi_string_free(file_name);
 
     view_dispatcher_switch_to_view(nfc_playlist->view_dispatcher, NfcPlaylistView_Widget);
 }
@@ -53,14 +52,15 @@ bool nfc_playlist_confirm_delete_scene_on_event(void* context, SceneManagerEvent
         switch(event.event) {
         case GuiButtonTypeRight:
             Storage* storage = furi_record_open(RECORD_STORAGE);
-            storage_simply_remove(
-                storage, furi_string_get_cstr(nfc_playlist->settings.playlist_path));
-            nfc_playlist->settings.playlist_selected = false;
-            furi_string_reset(nfc_playlist->settings.playlist_path);
+            if(storage_simply_remove(
+                   storage, furi_string_get_cstr(nfc_playlist->settings.playlist_path))) {
+                nfc_playlist->settings.playlist_selected = false;
+                furi_string_reset(nfc_playlist->settings.playlist_path);
+            }
             furi_record_close(RECORD_STORAGE);
-            consumed = true;
             scene_manager_search_and_switch_to_previous_scene(
                 nfc_playlist->scene_manager, NfcPlaylistScene_MainMenu);
+            consumed = true;
             break;
         default:
             scene_manager_previous_scene(nfc_playlist->scene_manager);

@@ -23,10 +23,15 @@
 
 #include <toolbox/stream/stream.h>
 #include <toolbox/stream/file_stream.h>
+#include <toolbox/path.h>
 
-#include "lib/worker/nfc_playlist_worker.h"
+#include "lib/emulation_worker/nfc_playlist_emulation_worker.h"
 
 #include "scenes/nfc_playlist_scene.h"
+
+#define PLAYLIST_LOCATION "/ext/apps_data/nfc_playlist/"
+#define PLAYLIST_DIR "/ext/apps_data/nfc_playlist"
+#define MAX_PLAYLIST_NAME_LEN 50
 
 typedef enum {
     NfcPlaylistView_Submenu,
@@ -60,8 +65,7 @@ typedef struct {
     char* text_input_output;
     NotificationApp* notification;
     FuriThread* thread;
-    FuriString* temp_furi_string;
-    NfcPlaylistWorker* nfc_playlist_worker;
+    NfcPlaylistEmulationWorker* nfc_playlist_emulation_worker;
     NfcPlaylistSettings settings;
 } NfcPlaylist;
 
@@ -71,9 +75,6 @@ static const int options_emulate_delay[] = {0, 1, 2, 3, 4, 5, 6};
 static const int default_emulate_delay = 0;
 static const bool default_emulate_led_indicator = true;
 static const bool default_skip_error = false;
-
-#define PLAYLIST_LOCATION "/ext/apps_data/nfc_playlist/"
-#define PLAYLIST_DIR "/ext/apps_data/nfc_playlist"
 
 typedef enum NfcPlaylistLedState {
     NfcPlaylistLedState_Normal,

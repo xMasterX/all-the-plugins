@@ -1,13 +1,6 @@
 #include "../nfc_playlist.h"
 
 typedef enum {
-    NfcPlaylistEvent_ShowEmulation,
-    NfcPlaylistEvent_ShowPlaylistSelect,
-    NfcPlaylistEvent_ShowFileEdit,
-    NfcPlaylistEvent_ShowSettings
-} NfcPlaylistMainMenuEvent;
-
-typedef enum {
     NfcPlaylistMenuSelection_Start,
     NfcPlaylistMenuSelection_PlaylistSelect,
     NfcPlaylistMenuSelection_FileEdit,
@@ -27,10 +20,9 @@ void nfc_playlist_main_menu_scene_on_enter(void* context) {
         return;
     }
 
-    FuriString* tmp_str = furi_string_alloc();
-    furi_string_printf(tmp_str, "NFC Playlist v%s", FAP_VERSION);
-    submenu_set_header(nfc_playlist->submenu, furi_string_get_cstr(tmp_str));
-    furi_string_free(tmp_str);
+    FuriString* header = furi_string_alloc_printf("NFC Playlist v%s", FAP_VERSION);
+    submenu_set_header(nfc_playlist->submenu, furi_string_get_cstr(header));
+    furi_string_free(header);
 
     submenu_add_lockable_item(
         nfc_playlist->submenu,
@@ -70,19 +62,19 @@ bool nfc_playlist_main_menu_scene_on_event(void* context, SceneManagerEvent even
     bool consumed = false;
     if(event.type == SceneManagerEventTypeCustom) {
         switch(event.event) {
-        case NfcPlaylistEvent_ShowEmulation:
+        case NfcPlaylistMenuSelection_Start:
             scene_manager_next_scene(nfc_playlist->scene_manager, NfcPlaylistScene_Emulation);
             consumed = true;
             break;
-        case NfcPlaylistEvent_ShowPlaylistSelect:
+        case NfcPlaylistMenuSelection_PlaylistSelect:
             scene_manager_next_scene(nfc_playlist->scene_manager, NfcPlaylistScene_PlaylistSelect);
             consumed = true;
             break;
-        case NfcPlaylistEvent_ShowFileEdit:
+        case NfcPlaylistMenuSelection_FileEdit:
             scene_manager_next_scene(nfc_playlist->scene_manager, NfcPlaylistScene_PlaylistEdit);
             consumed = true;
             break;
-        case NfcPlaylistEvent_ShowSettings:
+        case NfcPlaylistMenuSelection_Settings:
             scene_manager_next_scene(nfc_playlist->scene_manager, NfcPlaylistScene_Settings);
             consumed = true;
             break;

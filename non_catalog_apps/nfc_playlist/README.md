@@ -29,10 +29,5 @@ As i know these firmwares are supported and working if you know any more please 
 - Add NFC Item (Adds the selected nfc item to the currently selected playlist)
 - Remove NFC Item (Opens a menu allowing you to select a line to remove from the playlist)
 - View playlist content (Allows you to view the contents of the playlist)
-## Development plans/ideas:
-Things i would like to add:
-- Ability to remove cards from the playlist
-
-These features are not guaranteed to be added but are being looked at as features to add
 
 Any feedback is welcome and would be very much appreciated

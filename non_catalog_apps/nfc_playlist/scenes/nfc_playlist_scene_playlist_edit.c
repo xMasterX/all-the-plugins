@@ -19,6 +19,8 @@ void nfc_playlist_playlist_edit_scene_on_enter(void* context) {
 
     submenu_set_header(nfc_playlist->submenu, "Edit Playlist");
 
+    bool playlist_path_empty = furi_string_empty(nfc_playlist->settings.playlist_path);
+
     submenu_add_item(
         nfc_playlist->submenu,
         "Create Playlist",
@@ -32,7 +34,7 @@ void nfc_playlist_playlist_edit_scene_on_enter(void* context) {
         NfcPlaylistMenuSelection_DeletePlaylist,
         nfc_playlist_playlist_edit_menu_callback,
         nfc_playlist,
-        furi_string_empty(nfc_playlist->settings.playlist_path),
+        playlist_path_empty,
         "No\nplaylist\nselected");
 
     submenu_add_lockable_item(
@@ -41,7 +43,7 @@ void nfc_playlist_playlist_edit_scene_on_enter(void* context) {
         NfcPlaylistMenuSelection_RenamePlaylist,
         nfc_playlist_playlist_edit_menu_callback,
         nfc_playlist,
-        furi_string_empty(nfc_playlist->settings.playlist_path),
+        playlist_path_empty,
         "No\nplaylist\nselected");
 
     submenu_add_lockable_item(
@@ -50,7 +52,7 @@ void nfc_playlist_playlist_edit_scene_on_enter(void* context) {
         NfcPlaylistMenuSelection_AddNfcItem,
         nfc_playlist_playlist_edit_menu_callback,
         nfc_playlist,
-        furi_string_empty(nfc_playlist->settings.playlist_path),
+        playlist_path_empty,
         "No\nplaylist\nselected");
 
     submenu_add_lockable_item(
@@ -59,7 +61,7 @@ void nfc_playlist_playlist_edit_scene_on_enter(void* context) {
         NfcPlaylistMenuSelection_RemoveNfcItem,
         nfc_playlist_playlist_edit_menu_callback,
         nfc_playlist,
-        furi_string_empty(nfc_playlist->settings.playlist_path),
+        playlist_path_empty,
         "No\nplaylist\nselected");
 
     submenu_add_lockable_item(
@@ -68,7 +70,7 @@ void nfc_playlist_playlist_edit_scene_on_enter(void* context) {
         NfcPlaylistMenuSelection_ViewPlaylistContent,
         nfc_playlist_playlist_edit_menu_callback,
         nfc_playlist,
-        furi_string_empty(nfc_playlist->settings.playlist_path),
+        playlist_path_empty,
         "No\nplaylist\nselected");
 
     view_dispatcher_switch_to_view(nfc_playlist->view_dispatcher, NfcPlaylistView_Submenu);
