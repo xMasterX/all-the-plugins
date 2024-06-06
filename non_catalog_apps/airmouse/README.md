@@ -1,4 +1,7 @@
-# Flipper Air Mouse
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/ginkage)
+[![paypal](https://www.paypalobjects.com/en_GB/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=LF9S5WAF6E4VA)
+
+# BMI Air Mouse
 
 ## Brief
 
@@ -24,9 +27,23 @@ Using it is really simple:
 
 See early prototype [in action](https://www.youtube.com/watch?v=DdxAmmsYfMA).
 
+## How?
+
+ * Clone this repository with `git clone --recurse-submodules` to include the driver implementations.
+ * Build the project using `ufbt`
+
 ## Hardware
 
 The custom module is using Bosch BMI160 accelerometer/gyroscope chip connected via I2C.
+
+Note: in fact, some other IMU chips are also supported.
+It's detected via the first found I2C Address.
+
+|   Chip   | Expected I2C Address |
+|:--------:|:--------------------:|
+|  BMI160  |         0x69         |
+| LSM6DS3  |         0x6A         |
+| LSM6DSO  |         0x6B         |
 
 Take a look into the [schematic](https://github.com/ginkage/FlippAirMouse/tree/main/schematic) folder for Gerber, BOM and CPL files, so you can order directly from JLCPCB.
 
@@ -45,15 +62,6 @@ Reality:
 ## Software
 
 The code is based on the original Bosch [driver](https://github.com/BoschSensortec/BMI160_driver/) and an orientation tracking implementation from the Google [Cardboard](https://github.com/googlevr/cardboard/tree/master/sdk/sensors) project
-
-If you're familiar with Flipper applications, start in the [firmware](https://github.com/flipperdevices/flipperzero-firmware) checkout folder and do the following:
-```
-cd applications/plugins
-git clone https://github.com/ginkage/FlippAirMouse
-cd ../..
-./fbt fap_air_mouse
-```
-If you're not familiar with those, just grab a `fap` file from Releases.
 
 ## License
 
