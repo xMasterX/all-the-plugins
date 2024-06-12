@@ -6,9 +6,7 @@
 #include <dialogs/dialogs.h>
 
 #include "./furi_hal_nfc.h"
-#include "helpers/mf_classic_dict.h"
 #include "protocols/mifare_ultralight.h"
-#include "protocols/mifare_classic.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,11 +45,6 @@ typedef struct {
     uint16_t size;
 } NfcReaderRequestData;
 
-typedef struct {
-    MfClassicDict* dict;
-    uint8_t current_sector;
-} NfcMfClassicDictAttackData;
-
 typedef enum {
     NfcReadModeAuto,
     NfcReadModeMfClassic,
@@ -67,12 +60,10 @@ typedef struct {
     NfcReadMode read_mode;
     union {
         NfcReaderRequestData reader_data;
-        NfcMfClassicDictAttackData mf_classic_dict_attack_data;
         MfUltralightAuth mf_ul_auth;
     };
     union {
         MfUltralightData mf_ul_data;
-        MfClassicData mf_classic_data;
     };
     FuriString* parsed_data;
 } NfcDeviceData;

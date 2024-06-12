@@ -8,9 +8,7 @@
 #include "protocols/nfc_util.h"
 #include "protocols/mifare_common.h"
 #include "protocols/mifare_ultralight.h"
-#include "protocols/mifare_classic.h"
 #include "protocols/nfca.h"
-#include "helpers/reader_analyzer.h"
 
 struct NfcWorker {
     FuriThread* thread;
@@ -23,8 +21,6 @@ struct NfcWorker {
     void* context;
 
     NfcWorkerState state;
-
-    ReaderAnalyzer* reader_analyzer;
 };
 
 void nfc_worker_change_state(NfcWorker* nfc_worker, NfcWorkerState state);
