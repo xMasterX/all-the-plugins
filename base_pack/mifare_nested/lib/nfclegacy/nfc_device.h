@@ -7,7 +7,6 @@
 
 #include "./furi_hal_nfc.h"
 #include "helpers/mf_classic_dict.h"
-#include "protocols/mifare_ultralight.h"
 #include "protocols/mifare_classic.h"
 
 #ifdef __cplusplus
@@ -26,20 +25,12 @@ typedef void (*NfcLoadingCallback)(void* context, bool state);
 
 typedef enum {
     NfcDeviceProtocolUnknown,
-    NfcDeviceProtocolEMV,
-    NfcDeviceProtocolMifareUl,
     NfcDeviceProtocolMifareClassic,
-    NfcDeviceProtocolMifareDesfire,
-    NfcDeviceProtocolNfcV
 } NfcProtocol;
 
 typedef enum {
     NfcDeviceSaveFormatUid,
-    NfcDeviceSaveFormatBankCard,
-    NfcDeviceSaveFormatMifareUl,
     NfcDeviceSaveFormatMifareClassic,
-    NfcDeviceSaveFormatMifareDesfire,
-    NfcDeviceSaveFormatNfcV,
 } NfcDeviceSaveFormat;
 
 typedef struct {
@@ -55,9 +46,6 @@ typedef struct {
 typedef enum {
     NfcReadModeAuto,
     NfcReadModeMfClassic,
-    NfcReadModeMfUltralight,
-    NfcReadModeMfDesfire,
-    NfcReadModeEMV,
     NfcReadModeNFCA,
 } NfcReadMode;
 
@@ -68,10 +56,8 @@ typedef struct {
     union {
         NfcReaderRequestData reader_data;
         NfcMfClassicDictAttackData mf_classic_dict_attack_data;
-        MfUltralightAuth mf_ul_auth;
     };
     union {
-        MfUltralightData mf_ul_data;
         MfClassicData mf_classic_data;
     };
     FuriString* parsed_data;
