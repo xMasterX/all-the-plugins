@@ -3,7 +3,6 @@
 #include "barcode_app_icons.h"
 #include <notification/notification.h>
 #include <notification/notification_messages.h>
-#include <notification/notification_app.h>
 
 /**
  * Opens a file browser dialog and returns the filepath of the selected file
