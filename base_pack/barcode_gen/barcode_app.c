@@ -13,7 +13,14 @@
  * @returns true if a file is selected
 */
 
-NotificationApp* notifications = 0;
+static NotificationApp* barcode_notifications;
+
+const NotificationSequence sequence_display_backlight_barcode = {
+    &message_force_display_brightness_setting_1f,
+    &message_display_backlight_on,
+    &message_do_not_reset,
+    NULL,
+};
 
 static bool select_file(const char* folder, FuriString* file_path) {
     DialogsApp* dialogs = furi_record_open(RECORD_DIALOGS);
@@ -145,6 +152,8 @@ void select_barcode_item(BarcodeApp* app) {
                 }
             },
             true);
+
+        notification_message(barcode_notifications, &sequence_display_backlight_barcode);
 
         view_dispatcher_switch_to_view(app->view_dispatcher, BarcodeView);
     }
@@ -301,11 +310,11 @@ void free_app(BarcodeApp* app) {
     free(app);
 }
 
-void set_backlight_brightness(float brightness) {
-    NotificationApp* notifications = furi_record_open(RECORD_NOTIFICATION);
-    notifications->settings.display_brightness = brightness;
-    notification_message(notifications, &sequence_display_backlight_on);
-}
+/*void set_backlight_brightness(float brightness) {
+    NotificationApp* barcode_notifications = furi_record_open(RECORD_NOTIFICATION);
+    barcode_notifications->settings.display_brightness = brightness;
+    notification_message(barcode_notifications, &sequence_display_backlight_on);
+}*/
 
 int32_t barcode_main(void* p) {
     UNUSED(p);
@@ -327,12 +336,12 @@ int32_t barcode_main(void* p) {
 
     submenu_add_item(app->main_menu, "Edit Barcode", EditBarcodeItem, submenu_callback, app);
 
-    NotificationApp* notifications = furi_record_open(RECORD_NOTIFICATION);
+    barcode_notifications = furi_record_open(RECORD_NOTIFICATION);
     // Save original brightness
-    float originalBrightness = notifications->settings.display_brightness;
+    //float originalBrightness = barcode_notifications->settings.display_brightness;
     // force backlight and increase brightness
-    notification_message_block(notifications, &sequence_display_backlight_enforce_on);
-    set_backlight_brightness(10); // set to highest
+    //notification_message(barcode_notifications, &sequence_display_backlight_enforce_on);
+    //set_backlight_brightness(10); // set to highest
 
     /*****************************
      * Creating Text Input View
@@ -439,8 +448,8 @@ int32_t barcode_main(void* p) {
     view_dispatcher_run(app->view_dispatcher);
 
     free_app(app);
-    notification_message_block(notifications, &sequence_display_backlight_enforce_auto);
-    set_backlight_brightness(originalBrightness);
+    notification_message_block(barcode_notifications, &sequence_display_backlight_enforce_auto);
+    //set_backlight_brightness(originalBrightness);
 
     return 0;
 }

@@ -6,6 +6,7 @@
 
 #include <notification/notification.h>
 #include <notification/notification_messages.h>
+#include <notification/notification_app.h>
 
 #include "clock_app.h"
 
