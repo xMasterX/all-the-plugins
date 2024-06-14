@@ -450,6 +450,7 @@ int32_t barcode_main(void* p) {
     free_app(app);
     notification_message_block(barcode_notifications, &sequence_display_backlight_enforce_auto);
     //set_backlight_brightness(originalBrightness);
+    furi_record_close(RECORD_NOTIFICATION);
 
     return 0;
 }
