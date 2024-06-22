@@ -532,7 +532,7 @@ void mfkey(ProgramState* program_state) {
     //FURI_LOG_I(TAG, "Free heap before alloc(): %zub", memmgr_get_free_heap());
     Storage* storage = furi_record_open(RECORD_STORAGE);
     FlipperApplication* app = flipper_application_alloc(storage, firmware_api_interface);
-    flipper_application_preload(app, APP_DATA_PATH("plugins/mfkey_init_plugin.fal"));
+    flipper_application_preload(app, APP_ASSETS_PATH("plugins/mfkey_init_plugin.fal"));
     flipper_application_map_to_memory(app);
     const FlipperAppPluginDescriptor* app_descriptor =
         flipper_application_plugin_get_descriptor(app);
