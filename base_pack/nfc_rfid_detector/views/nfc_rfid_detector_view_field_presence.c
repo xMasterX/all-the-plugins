@@ -73,12 +73,12 @@ void nfc_rfid_detector_view_field_presence_draw(
                 17,
                 NfcRfidDetectorFieldPresenceIcons[NfcRfidDetectorTypeFieldPresenceNfc]);
             canvas_set_font(canvas, FontSecondary);
-            canvas_draw_str(canvas, 9, 62, "13,56 MHz");
+            canvas_draw_str(canvas, 9, 62, "13.56 MHz");
         }
 
         if(model->rfid_field) {
             char str[16];
-            snprintf(str, sizeof(str), "%.02f KHz", (double)model->rfid_frequency / 1000);
+            snprintf(str, sizeof(str), "%.02f kHz", (double)model->rfid_frequency / 1000);
             canvas_set_font(canvas, FontPrimary);
             canvas_draw_str(canvas, 76, 10, "LF RFID");
             canvas_draw_icon(
