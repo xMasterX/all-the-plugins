@@ -174,7 +174,7 @@ void wav_player_view_set_bits(WavPlayerView* wav_view, uint16_t bit) {
         wav_view->view, WavPlayerViewModel * model, { model->bits_per_sample = bit; }, true);
 }
 
-void wav_player_view_set_data(WavPlayerView* wav_view, uint16_t* data, size_t data_count) {
+void wav_player_view_set_data(WavPlayerView* wav_view, uint8_t* data, size_t data_count) {
     furi_assert(wav_view);
     with_view_model(
         wav_view->view,

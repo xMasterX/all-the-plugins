@@ -50,7 +50,7 @@ typedef struct {
     Storage* storage;
     Stream* stream;
     WavParser* parser;
-    uint16_t* sample_buffer;
+    uint8_t* sample_buffer;
     uint8_t* tmp_buffer;
 
     uint32_t sample_rate;
