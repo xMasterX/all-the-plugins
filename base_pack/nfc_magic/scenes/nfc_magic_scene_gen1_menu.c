@@ -3,6 +3,7 @@
 enum SubmenuIndex {
     SubmenuIndexWrite,
     SubmenuIndexWipe,
+    SubmenuIndexDump,
 };
 
 void nfc_magic_scene_gen1_menu_submenu_callback(void* context, uint32_t index) {
@@ -19,6 +20,8 @@ void nfc_magic_scene_gen1_menu_on_enter(void* context) {
         submenu, "Write", SubmenuIndexWrite, nfc_magic_scene_gen1_menu_submenu_callback, instance);
     submenu_add_item(
         submenu, "Wipe", SubmenuIndexWipe, nfc_magic_scene_gen1_menu_submenu_callback, instance);
+    submenu_add_item(
+        submenu, "Dump", SubmenuIndexDump, nfc_magic_scene_gen1_menu_submenu_callback, instance);
 
     submenu_set_selected_item(
         submenu, scene_manager_get_scene_state(instance->scene_manager, NfcMagicSceneGen1Menu));
@@ -35,6 +38,9 @@ bool nfc_magic_scene_gen1_menu_on_event(void* context, SceneManagerEvent event) 
             consumed = true;
         } else if(event.event == SubmenuIndexWipe) {
             scene_manager_next_scene(instance->scene_manager, NfcMagicSceneWipe);
+            consumed = true;
+        } else if(event.event == SubmenuIndexDump) {
+            scene_manager_next_scene(instance->scene_manager, NfcMagicSceneDump);
             consumed = true;
         }
         scene_manager_set_scene_state(instance->scene_manager, NfcMagicSceneGen1Menu, event.event);

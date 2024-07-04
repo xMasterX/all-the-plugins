@@ -3,6 +3,8 @@
 
 #include <furi/furi.h>
 
+#define TAG "GEN1A_POLLER"
+
 static Gen1aPollerError gen1a_poller_process_nfc_error(NfcError error) {
     Gen1aPollerError ret = Gen1aPollerErrorNone;
 
@@ -126,6 +128,40 @@ Gen1aPollerError gen1a_poller_write_block(
             ret = Gen1aPollerErrorProtocol;
             break;
         }
+    } while(false);
+
+    return ret;
+}
+
+Gen1aPollerError
+    gen1a_poller_read_block(Gen1aPoller* instance, uint8_t block_num, MfClassicBlock* block) {
+    furi_assert(instance);
+    furi_assert(block);
+
+    Gen1aPollerError ret = Gen1aPollerErrorNone;
+    bit_buffer_reset(instance->tx_buffer);
+
+    do {
+        bit_buffer_reset(instance->tx_buffer);
+        bit_buffer_reset(instance->rx_buffer);
+        bit_buffer_append_byte(instance->tx_buffer, 0x30);
+        bit_buffer_append_byte(instance->tx_buffer, block_num);
+        iso14443_crc_append(Iso14443CrcTypeA, instance->tx_buffer);
+
+        NfcError error = nfc_poller_trx(
+            instance->nfc, instance->tx_buffer, instance->rx_buffer, GEN1A_POLLER_MAX_FWT);
+
+        if(error != NfcErrorNone) {
+            ret = gen1a_poller_process_nfc_error(error);
+            break;
+        }
+        if(bit_buffer_get_size(instance->rx_buffer) != 18 * 8) { // 18 bytes
+            ret = Gen1aPollerErrorProtocol;
+            FURI_LOG_D(TAG, "Expected 18 bytes, got %d", bit_buffer_get_size(instance->rx_buffer));
+            break;
+        }
+
+        memcpy(block->data, bit_buffer_get_data(instance->rx_buffer), 16);
     } while(false);
 
     return ret;

@@ -12,6 +12,7 @@ typedef enum {
     Gen1aPollerEventTypeDetected,
     Gen1aPollerEventTypeRequestMode,
     Gen1aPollerEventTypeRequestDataToWrite,
+    Gen1aPollerEventTypeRequestDataToDump,
 
     Gen1aPollerEventTypeSuccess,
     Gen1aPollerEventTypeFail,
@@ -19,6 +20,7 @@ typedef enum {
 
 typedef enum {
     Gen1aPollerModeWipe,
+    Gen1aPollerModeDump,
     Gen1aPollerModeWrite,
 } Gen1aPollerMode;
 
@@ -30,9 +32,14 @@ typedef struct {
     const MfClassicData* mfc_data;
 } Gen1aPollerEventDataRequestDataToWrite;
 
+typedef struct {
+    MfClassicData* mfc_data;
+} Gen1aPollerEventDataRequestDataToDump;
+
 typedef union {
     Gen1aPollerEventDataRequestMode request_mode;
     Gen1aPollerEventDataRequestDataToWrite data_to_write;
+    Gen1aPollerEventDataRequestDataToDump data_to_dump;
 } Gen1aPollerEventData;
 
 typedef struct {

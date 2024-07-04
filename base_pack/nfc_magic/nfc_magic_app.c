@@ -49,15 +49,18 @@ NfcMagicApp* nfc_magic_app_alloc() {
     view_dispatcher_set_tick_event_callback(
         instance->view_dispatcher, nfc_magic_app_tick_event_callback, 100);
 
-    // NFC source device (file)
+    // NFC source device
     instance->source_dev = nfc_device_alloc();
     nfc_device_set_loading_callback(
         instance->source_dev, nfc_magic_app_show_loading_popup, instance);
     instance->file_path = furi_string_alloc_set(NFC_APP_FOLDER);
     instance->file_name = furi_string_alloc();
 
-    // NFC target device (tag)
+    // NFC target device
     instance->target_dev = nfc_device_alloc();
+
+    // NFC dump data
+    instance->dump_data = mf_classic_alloc();
 
     // Open GUI record
     instance->gui = furi_record_open(RECORD_GUI);
@@ -139,6 +142,9 @@ void nfc_magic_app_free(NfcMagicApp* instance) {
 
     // Nfc target device
     nfc_device_free(instance->target_dev);
+
+    // Nfc dump data
+    mf_classic_free(instance->dump_data);
 
     // Submenu
     view_dispatcher_remove_view(instance->view_dispatcher, NfcMagicAppViewMenu);

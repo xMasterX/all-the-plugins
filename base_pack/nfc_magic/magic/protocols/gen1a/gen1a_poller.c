@@ -17,6 +17,24 @@ typedef struct {
     bool detected;
 } Gen1aPollerDetectContext;
 
+Gen1aPollerError gen1a_poller_parse_block0(MfClassicBlock* block, MfClassicData* mf_data) {
+    furi_assert(mf_data);
+    furi_assert(block);
+
+    Gen1aPollerError ret = Gen1aPollerErrorNone;
+
+    // Get UID, SAK, and ATQA from block 0
+    memcpy(mf_data->iso14443_3a_data->uid, block->data, 4);
+    mf_data->iso14443_3a_data->uid_len = 4;
+    mf_data->iso14443_3a_data->sak = block->data[5];
+    memcpy(mf_data->iso14443_3a_data->atqa, &block->data[6], 2);
+
+    // Gen1 tags are always 1k
+    mf_data->type = MfClassicType1k;
+
+    return ret;
+}
+
 Gen1aPoller* gen1a_poller_alloc(Nfc* nfc) {
     furi_assert(nfc);
 
@@ -133,6 +151,8 @@ NfcCommand gen1a_poller_request_mode_handler(Gen1aPoller* instance) {
     command = instance->callback(instance->gen1a_event, instance->context);
     if(instance->gen1a_event_data.request_mode.mode == Gen1aPollerModeWipe) {
         instance->state = Gen1aPollerStateWipe;
+    } else if(instance->gen1a_event_data.request_mode.mode == Gen1aPollerModeDump) {
+        instance->state = Gen1aPollerStateDumpDataRequest;
     } else {
         instance->state = Gen1aPollerStateWriteDataRequest;
     }
@@ -213,6 +233,66 @@ NfcCommand gen1a_poller_write_handler(Gen1aPoller* instance) {
     return command;
 }
 
+NfcCommand gen1a_poller_dump_data_request_handler(Gen1aPoller* instance) {
+    NfcCommand command = NfcCommandContinue;
+
+    instance->gen1a_event.type = Gen1aPollerEventTypeRequestDataToDump;
+    command = instance->callback(instance->gen1a_event, instance->context);
+    instance->state = Gen1aPollerStateDump;
+
+    return command;
+}
+
+NfcCommand gen1a_poller_dump_handler(Gen1aPoller* instance) {
+    NfcCommand command = NfcCommandContinue;
+    Gen1aPollerError error = Gen1aPollerErrorNone;
+
+    MfClassicData* mfc_data = instance->gen1a_event_data.data_to_dump.mfc_data;
+    MfClassicBlock block = {};
+    uint16_t total_block_num =
+        mf_classic_get_total_block_num(MfClassicType1k); // Gen1 can only be 1k
+
+    while(instance->current_block < total_block_num) {
+        if(instance->current_block == 0) {
+            error = gen1a_poller_data_access(instance);
+            if(error != Gen1aPollerErrorNone) {
+                instance->state = Gen1aPollerStateFail;
+                break;
+            }
+        }
+
+        error = gen1a_poller_read_block(instance, instance->current_block, &block);
+
+        if(error != Gen1aPollerErrorNone) {
+            instance->state = Gen1aPollerStateFail;
+            break;
+        } else {
+            mf_classic_set_block_read(mfc_data, instance->current_block, &block);
+
+            if(mf_classic_is_sector_trailer(instance->current_block)) {
+                mf_classic_set_sector_trailer_read(
+                    mfc_data, instance->current_block, (MfClassicSectorTrailer*)&block);
+            }
+        }
+
+        if(instance->current_block == 0) {
+            error = gen1a_poller_parse_block0(&mfc_data->block[instance->current_block], mfc_data);
+            if(error != Gen1aPollerErrorNone) {
+                instance->state = Gen1aPollerStateFail;
+                break;
+            }
+        }
+
+        instance->current_block++;
+    }
+
+    if(instance->current_block == total_block_num) {
+        instance->state = Gen1aPollerStateSuccess;
+    }
+
+    return command;
+}
+
 NfcCommand gen1a_poller_success_handler(Gen1aPoller* instance) {
     NfcCommand command = NfcCommandContinue;
 
@@ -239,6 +319,8 @@ static const Gen1aPollerStateHandler gen1a_poller_state_handlers[Gen1aPollerStat
     [Gen1aPollerStateWipe] = gen1a_poller_wipe_handler,
     [Gen1aPollerStateWriteDataRequest] = gen1a_poller_write_data_request_handler,
     [Gen1aPollerStateWrite] = gen1a_poller_write_handler,
+    [Gen1aPollerStateDumpDataRequest] = gen1a_poller_dump_data_request_handler,
+    [Gen1aPollerStateDump] = gen1a_poller_dump_handler,
     [Gen1aPollerStateSuccess] = gen1a_poller_success_handler,
     [Gen1aPollerStateFail] = gen1a_poller_fail_handler,
 

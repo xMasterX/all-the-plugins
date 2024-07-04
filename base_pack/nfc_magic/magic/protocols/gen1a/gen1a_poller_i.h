@@ -25,6 +25,8 @@ typedef enum {
     Gen1aPollerStateWipe,
     Gen1aPollerStateWriteDataRequest,
     Gen1aPollerStateWrite,
+    Gen1aPollerStateDumpDataRequest,
+    Gen1aPollerStateDump,
     Gen1aPollerStateSuccess,
     Gen1aPollerStateFail,
 
@@ -61,6 +63,9 @@ Gen1aPollerError gen1a_poller_data_access(Gen1aPoller* instance);
 
 Gen1aPollerError
     gen1a_poller_write_block(Gen1aPoller* instance, uint8_t block_num, const MfClassicBlock* block);
+
+Gen1aPollerError
+    gen1a_poller_read_block(Gen1aPoller* instance, uint8_t block_num, MfClassicBlock* block);
 
 #ifdef __cplusplus
 }
