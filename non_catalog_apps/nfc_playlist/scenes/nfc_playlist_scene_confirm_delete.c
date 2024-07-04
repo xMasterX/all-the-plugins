@@ -15,6 +15,7 @@ void nfc_playlist_confirm_delete_scene_on_enter(void* context) {
         furi_string_get_cstr(nfc_playlist->settings.playlist_path), file_name);
     FuriString* temp_str =
         furi_string_alloc_printf("\e#Delete %s?\e#", furi_string_get_cstr(file_name));
+    furi_string_free(file_name);
 
     widget_add_text_box_element(
         nfc_playlist->widget,
@@ -40,7 +41,6 @@ void nfc_playlist_confirm_delete_scene_on_enter(void* context) {
         nfc_playlist);
 
     furi_string_free(temp_str);
-    furi_string_free(file_name);
 
     view_dispatcher_switch_to_view(nfc_playlist->view_dispatcher, NfcPlaylistView_Widget);
 }

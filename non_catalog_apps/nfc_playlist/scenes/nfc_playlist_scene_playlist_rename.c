@@ -3,21 +3,27 @@
 int32_t nfc_playlist_playlist_rename_thread_task(void* context) {
     NfcPlaylist* nfc_playlist = context;
 
-    char const* old_file_path = furi_string_get_cstr(nfc_playlist->settings.playlist_path);
-    char const* old_file_name =
-        strchr(old_file_path, '/') != NULL ? &strrchr(old_file_path, '/')[1] : old_file_path;
-    FuriString* new_file_path = furi_string_alloc_set_str(old_file_path);
-    furi_string_replace(new_file_path, old_file_name, nfc_playlist->text_input_output);
+    FuriString* old_file_path = furi_string_alloc();
+    path_extract_dirname(
+        furi_string_get_cstr(nfc_playlist->settings.playlist_path), old_file_path);
+    FuriString* new_file_path = furi_string_alloc_set(old_file_path);
+    path_concat(
+        furi_string_get_cstr(old_file_path), nfc_playlist->text_input_output, new_file_path);
+    furi_string_free(old_file_path);
     furi_string_cat_str(new_file_path, ".txt");
 
     Storage* storage = furi_record_open(RECORD_STORAGE);
 
     if(!storage_file_exists(storage, furi_string_get_cstr(new_file_path))) {
-        if(storage_common_rename(storage, old_file_path, furi_string_get_cstr(new_file_path)) ==
-           0) {
-            furi_string_move(nfc_playlist->settings.playlist_path, new_file_path);
+        if(storage_common_rename(
+               storage,
+               furi_string_get_cstr(nfc_playlist->settings.playlist_path),
+               furi_string_get_cstr(new_file_path)) == FSE_OK) {
+            furi_string_swap(nfc_playlist->settings.playlist_path, new_file_path);
         }
     }
+
+    furi_string_free(new_file_path);
 
     furi_record_close(RECORD_STORAGE);
 
@@ -47,15 +53,13 @@ void nfc_playlist_playlist_rename_menu_callback(void* context) {
 void nfc_playlist_playlist_rename_scene_on_enter(void* context) {
     NfcPlaylist* nfc_playlist = context;
 
-    char const* tmp_file_path = furi_string_get_cstr(nfc_playlist->settings.playlist_path);
-    char const* tmp_file_name =
-        strchr(tmp_file_path, '/') != NULL ? &strrchr(tmp_file_path, '/')[1] : tmp_file_path;
-    FuriString* tmp_file_name_furi = furi_string_alloc_set_str(tmp_file_name);
-    furi_string_replace(tmp_file_name_furi, ".txt", "");
+    FuriString* tmp_file_name = furi_string_alloc();
+    path_extract_filename_no_ext(
+        furi_string_get_cstr(nfc_playlist->settings.playlist_path), tmp_file_name);
 
     nfc_playlist->text_input_output = malloc(MAX_PLAYLIST_NAME_LEN + 1);
-    strcpy(nfc_playlist->text_input_output, furi_string_get_cstr(tmp_file_name_furi));
-    furi_string_free(tmp_file_name_furi);
+    strcpy(nfc_playlist->text_input_output, furi_string_get_cstr(tmp_file_name));
+    furi_string_free(tmp_file_name);
 
     text_input_set_header_text(nfc_playlist->text_input, "Enter new file name");
     text_input_set_minimum_length(nfc_playlist->text_input, 1);

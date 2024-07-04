@@ -99,8 +99,8 @@ bool nfc_playlist_nfc_remove_scene_on_event(void* context, SceneManagerEvent eve
                     }
                 }
 
-                stream_clean(stream);
                 furi_string_free(line);
+                stream_clean(stream);
                 stream_write_string(stream, tmp_str);
                 furi_string_free(tmp_str);
                 file_stream_close(stream);

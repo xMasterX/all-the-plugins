@@ -95,7 +95,7 @@ bool nfc_playlist_playlist_edit_scene_on_event(void* context, SceneManagerEvent 
             consumed = true;
             break;
         case NfcPlaylistMenuSelection_AddNfcItem:
-            scene_manager_next_scene(nfc_playlist->scene_manager, NfcPlaylistScene_NfcSelect);
+            scene_manager_next_scene(nfc_playlist->scene_manager, NfcPlaylistScene_NfcAdd);
             consumed = true;
             break;
         case NfcPlaylistMenuSelection_RemoveNfcItem:

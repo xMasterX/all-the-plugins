@@ -149,10 +149,15 @@ const NotificationSequence blink_sequence_error = {
 
 void start_blink(NfcPlaylist* nfc_playlist, int state) {
     if(nfc_playlist->settings.emulate_led_indicator) {
-        if(state == NfcPlaylistLedState_Normal) {
+        switch(state) {
+        case NfcPlaylistLedState_Normal:
             notification_message_block(nfc_playlist->notification, &blink_sequence_normal);
-        } else if(state == NfcPlaylistLedState_Error) {
+            break;
+        case NfcPlaylistLedState_Error:
             notification_message_block(nfc_playlist->notification, &blink_sequence_error);
+            break;
+        default:
+            break;
         }
     }
 }

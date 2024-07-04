@@ -82,6 +82,8 @@ void nfc_playlist_settings_scene_on_enter(void* context) {
         tmp_str, "%ds", options_emulate_delay[nfc_playlist->settings.emulate_delay]);
     variable_item_set_current_value_text(emulation_delay_setting, furi_string_get_cstr(tmp_str));
 
+    furi_string_free(tmp_str);
+
     VariableItem* emulation_led_indicator_setting = variable_item_list_add(
         nfc_playlist->variable_item_list,
         "LED Indicator",
@@ -113,7 +115,6 @@ void nfc_playlist_settings_scene_on_enter(void* context) {
 
     variable_item_list_set_enter_callback(
         nfc_playlist->variable_item_list, nfc_playlist_settings_menu_callback, nfc_playlist);
-    furi_string_free(tmp_str);
 
     view_dispatcher_switch_to_view(
         nfc_playlist->view_dispatcher, NfcPlaylistView_VariableItemList);
@@ -147,6 +148,8 @@ bool nfc_playlist_settings_scene_on_event(void* context, SceneManagerEvent event
             variable_item_set_current_value_text(
                 emulation_delay_setting, furi_string_get_cstr(tmp_str));
 
+            furi_string_free(tmp_str);
+
             nfc_playlist->settings.emulate_led_indicator = default_emulate_led_indicator;
             VariableItem* emulation_led_indicator_setting = variable_item_list_get(
                 nfc_playlist->variable_item_list, NfcPlaylistSettings_LedIndicator);
@@ -164,7 +167,6 @@ bool nfc_playlist_settings_scene_on_event(void* context, SceneManagerEvent event
             variable_item_set_current_value_text(
                 emulation_skip_error_setting, nfc_playlist->settings.skip_error ? "ON" : "OFF");
 
-            furi_string_free(tmp_str);
             consumed = true;
             break;
         default:
