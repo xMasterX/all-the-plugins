@@ -64,7 +64,7 @@ void wav_player_view_set_current(WavPlayerView* wav_view, size_t current);
 
 void wav_player_view_set_play(WavPlayerView* wav_view, bool play);
 
-void wav_player_view_set_data(WavPlayerView* wav_view, uint16_t* data, size_t data_count);
+void wav_player_view_set_data(WavPlayerView* wav_view, uint8_t* data, size_t data_count);
 
 void wav_player_view_set_bits(WavPlayerView* wav_view, uint16_t bit);
 void wav_player_view_set_chans(WavPlayerView* wav_view, uint16_t chn);

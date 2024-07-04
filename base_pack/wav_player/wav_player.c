@@ -86,8 +86,8 @@ static WavPlayerApp* app_alloc() {
     app->storage = furi_record_open(RECORD_STORAGE);
     app->stream = file_stream_alloc(app->storage);
     app->parser = wav_parser_alloc();
-    app->sample_buffer = malloc(sizeof(uint16_t) * app->samples_count);
-    app->tmp_buffer = malloc(sizeof(uint8_t) * app->samples_count);
+    app->sample_buffer = malloc(sizeof(*app->sample_buffer) * app->samples_count);
+    app->tmp_buffer = malloc(sizeof(*app->tmp_buffer) * app->samples_count);
     app->queue = furi_message_queue_alloc(10, sizeof(WavPlayerEvent));
 
     app->volume = 10.0f;
@@ -128,7 +128,7 @@ static void app_free(WavPlayerApp* app) {
 // TODO: that works only with 8-bit 2ch audio
 static bool fill_data(WavPlayerApp* app, size_t index) {
     if(app->num_channels == 1 && app->bits_per_sample == 8) {
-        uint16_t* sample_buffer_start = &app->sample_buffer[index];
+        uint8_t* sample_buffer_start = &app->sample_buffer[index];
         size_t count = stream_read(app->stream, app->tmp_buffer, app->samples_count_half);
 
         for(size_t i = count; i < app->samples_count_half; i++) {
@@ -167,7 +167,7 @@ static bool fill_data(WavPlayerApp* app, size_t index) {
     }
 
     if(app->num_channels == 1 && app->bits_per_sample == 16) {
-        uint16_t* sample_buffer_start = &app->sample_buffer[index];
+        uint8_t* sample_buffer_start = &app->sample_buffer[index];
         size_t count = stream_read(app->stream, app->tmp_buffer, app->samples_count);
 
         for(size_t i = count; i < app->samples_count; i++) {
@@ -205,7 +205,7 @@ static bool fill_data(WavPlayerApp* app, size_t index) {
     }
 
     if(app->num_channels == 2 && app->bits_per_sample == 16) {
-        uint16_t* sample_buffer_start = &app->sample_buffer[index];
+        uint8_t* sample_buffer_start = &app->sample_buffer[index];
         size_t count = stream_read(app->stream, app->tmp_buffer, app->samples_count);
 
         for(size_t i = 0; i < app->samples_count; i += 4) {
@@ -268,7 +268,7 @@ static bool fill_data(WavPlayerApp* app, size_t index) {
     }
 
     if(app->num_channels == 2 && app->bits_per_sample == 8) {
-        uint16_t* sample_buffer_start = &app->sample_buffer[index];
+        uint8_t* sample_buffer_start = &app->sample_buffer[index];
         size_t count = stream_read(app->stream, app->tmp_buffer, app->samples_count);
 
         for(size_t i = count; i < app->samples_count; i++) {
