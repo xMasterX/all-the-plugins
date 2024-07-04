@@ -52,15 +52,18 @@
     ((x) = ((x) >> 8 & 0xff00ff) | ((x) & 0xff00ff) << 8, (x) = (x) >> 16 | (x) << 16)
 //#define SIZEOF(arr) sizeof(arr) / sizeof(*arr)
 
-static int eta_round_time = 56;
-static int eta_total_time = 900;
+static int eta_round_time = 44;
+static int eta_total_time = 705;
 // MSB_LIMIT: Chunk size (out of 256)
 static int MSB_LIMIT = 16;
 
 int check_state(struct Crypto1State* t, MfClassicNonce* n) {
     if(!(t->odd | t->even)) return 0;
     if(n->attack == mfkey32) {
-        rollback_word_noret(t, 0, 0);
+        uint32_t rb = (napi_lfsr_rollback_word(t, 0, 0) ^ n->p64);
+        if(rb != n->ar0_enc) {
+            return 0;
+        }
         rollback_word_noret(t, n->nr0_enc, 1);
         rollback_word_noret(t, n->uid_xor_nt0, 0);
         struct Crypto1State temp = {t->odd, t->even};
@@ -419,6 +422,10 @@ void** allocate_blocks(const size_t* block_sizes, int num_blocks) {
     return block_pointers;
 }
 
+bool is_full_speed() {
+    return MSB_LIMIT == 16;
+}
+
 bool recover(MfClassicNonce* n, int ks2, unsigned int in, ProgramState* program_state) {
     bool found = false;
     const size_t block_sizes[] = {49216, 49216, 5120, 5120, 4096};
@@ -427,9 +434,11 @@ bool recover(MfClassicNonce* n, int ks2, unsigned int in, ProgramState* program_
     void** block_pointers = allocate_blocks(block_sizes, num_blocks);
     if(block_pointers == NULL) {
         // System has less than the guaranteed amount of RAM (140 KB) - adjust some parameters to run anyway at half speed
-        eta_round_time *= 2;
-        eta_total_time *= 2;
-        MSB_LIMIT /= 2;
+        if(is_full_speed()) {
+            //eta_round_time *= 2;
+            eta_total_time *= 2;
+            MSB_LIMIT /= 2;
+        }
         block_pointers = allocate_blocks(reduced_block_sizes, num_blocks);
         if(block_pointers == NULL) {
             // System has less than 70 KB of RAM - should never happen so we don't reduce speed further
@@ -721,7 +730,9 @@ static void render_callback(Canvas* const canvas, void* ctx) {
     } else if(program_state->mfkey_state == Complete) {
         // TODO: Scrollable list view to see cracked keys if user presses down
         elements_progress_bar(canvas, 5, 18, 118, 1);
-        canvas_draw_str_aligned(canvas, 40, 31, AlignLeft, AlignTop, "Complete");
+        canvas_set_font(canvas, FontSecondary);
+        snprintf(draw_str, sizeof(draw_str), "Complete");
+        canvas_draw_str_aligned(canvas, 40, 31, AlignLeft, AlignTop, draw_str);
         snprintf(
             draw_str,
             sizeof(draw_str),
@@ -756,12 +767,11 @@ static void render_callback(Canvas* const canvas, void* ctx) {
     furi_mutex_release(program_state->mutex);
 }
 
-static void input_callback(InputEvent* input_event, void* ctx) {
-    furi_assert(ctx);
-    FuriMessageQueue* event_queue = ctx;
+static void input_callback(InputEvent* input_event, void* event_queue) {
+    furi_assert(event_queue);
 
     PluginEvent event = {.type = EventTypeKey, .input = *input_event};
-    furi_message_queue_put(event_queue, &event, FuriWaitForever);
+    furi_message_queue_put((FuriMessageQueue*)event_queue, &event, FuriWaitForever);
 }
 
 static void mfkey_state_init(ProgramState* program_state) {

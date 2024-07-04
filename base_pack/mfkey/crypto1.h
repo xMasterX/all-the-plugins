@@ -21,6 +21,8 @@ static inline uint32_t crypt_word(struct Crypto1State* s);
 static inline void crypt_word_noret(struct Crypto1State* s, uint32_t in, int x);
 static inline uint32_t crypt_word_ret(struct Crypto1State* s, uint32_t in, int x);
 static inline void rollback_word_noret(struct Crypto1State* s, uint32_t in, int x);
+static inline uint8_t napi_lfsr_rollback_bit(struct Crypto1State* s, uint32_t in, int fb);
+static inline uint32_t napi_lfsr_rollback_word(struct Crypto1State* s, uint32_t in, int fb);
 
 static const uint8_t lookup1[256] = {
     0, 0,  16, 16, 0,  16, 0,  0,  0, 16, 0,  0,  16, 16, 16, 16, 0, 0,  16, 16, 0,  16, 0,  0,
@@ -145,6 +147,53 @@ static inline void rollback_word_noret(struct Crypto1State* s, uint32_t in, int 
         s->even |= (evenparity32(feedin)) << 23;
     }
     return;
+}
+
+// TODO:
+/*
+uint32_t rollback_word(struct Crypto1State *s, uint32_t in, int x) {
+    uint32_t res_ret = 0;
+    uint8_t ret;
+    uint32_t feedin, t, next_in;
+    for (int i = 31; i >= 0; i--) {
+        next_in = BEBIT(in, i);
+        s->odd &= 0xffffff;
+        t = s->odd, s->odd = s->even, s->even = t;
+        ret = filter(s->odd);
+        feedin = ret & (!!x);
+        feedin ^= s->even & 1;
+        feedin ^= LF_POLY_EVEN & (s->even >>= 1);
+        feedin ^= LF_POLY_ODD & s->odd;
+        feedin ^= !!next_in;
+        s->even |= (evenparity32(feedin)) << 23;
+        res_ret |= (ret << (24 ^ i));
+    }
+    return res_ret;
+}
+*/
+
+uint8_t napi_lfsr_rollback_bit(struct Crypto1State* s, uint32_t in, int fb) {
+    int out;
+    uint8_t ret;
+    uint32_t t;
+    s->odd &= 0xffffff;
+    t = s->odd, s->odd = s->even, s->even = t;
+
+    out = s->even & 1;
+    out ^= LF_POLY_EVEN & (s->even >>= 1);
+    out ^= LF_POLY_ODD & s->odd;
+    out ^= !!in;
+    out ^= (ret = filter(s->odd)) & !!fb;
+
+    s->even |= evenparity32(out) << 23;
+    return ret;
+}
+
+uint32_t napi_lfsr_rollback_word(struct Crypto1State* s, uint32_t in, int fb) {
+    int i;
+    uint32_t ret = 0;
+    for(i = 31; i >= 0; --i) ret |= napi_lfsr_rollback_bit(s, BEBIT(in, i), fb) << (i ^ 24);
+    return ret;
 }
 
 static inline uint32_t prng_successor(uint32_t x, uint32_t n) {
