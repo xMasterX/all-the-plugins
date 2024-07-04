@@ -5,6 +5,12 @@
 - Full screen 90 degree and 270 degree fill (#6).
 - WiFi streaming/connection support (#35).
 
+## v1.8
+
+- Use new Flipper Zero "DateTime" type for image filenames as "YYYYMMDD-HHMMSS.bmp" (#52).
+- Fix pinout guide image in-app for "GND-GND" pin reference (#59). Thanks PyroJoe313!
+- Fix up horizontal flip when camera is rotated 180 degrees (#57). Thanks 4k3or3et!
+
 ## v1.7
 
 - Add support for new Flipper Zero Firmware UART updates.
@@ -31,7 +37,7 @@
 - Improve Firmware code (requires reflash).
 - Improve Firmware flashing utility code.
 - Improve GitHub actions code.
-- Look to mitigate issue "Mirrored Image" #27.
+- Look to mitigate issue "Mirrored Image" (#27).
 - Addressed new linting issue with "ufbt" tools.
 
 ## v1.3
@@ -42,11 +48,12 @@
 - Bug Fix: Addressed picture inversion issue reported by user leedave. Thanks for your contribution! (Closes #23)
 - Code Refinement: Enhanced firmware code for readability and maintainability. Separated concerns into individual files for a more organized structure.
 - Technical Improvements: Implemented general code enhancements and introduced syntactic sugar for cleaner, more efficient code.
-- Work in Progress: Added a new test function for saving pictures to the onboard ESP32-CAM SD card. This feature is under development and will allow users to save pictures directly to the SD card in the future. Tracked under feature request #24.
+- Work in Progress: Added a new test function for saving pictures to the onboard ESP32-CAM SD card (#24).
 
 ## v1.2
 
-- Save image support. When the center button is pressed take a picture and save it to the "DCIM" folder at the root of your SD card. The image will be saved as a bitmap file with a timestamp as the filename ("YYYYMMDD-HHMMSS.bmp").
+- Save image support. When the center button is pressed take a picture and save it to the "DCIM" folder at the root of your SD card.
+- Image will be saved as a bitmap file with a timestamp as the filename ("YYYYMMDD-HHMMSS.bmp").
 - Camera flash support. Flashes the ESP32-CAM onboard LED when a picture is taken if enabled in the settings.
 - Move the camera dithering type to the settings scene as a new configurable option.
 - Add "Flash" option to the settings scene as a new configurable option.
