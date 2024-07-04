@@ -4,6 +4,7 @@ enum SubmenuIndex {
     SubmenuIndexSaved,
     SubmenuIndexLoclass,
     SubmenuIndexAcknowledgements,
+    SubmenuIndexKeygenAttack,
 };
 
 void picopass_scene_start_submenu_callback(void* context, uint32_t index) {
@@ -24,6 +25,12 @@ void picopass_scene_start_on_enter(void* context) {
         submenu,
         "Acknowledgements",
         SubmenuIndexAcknowledgements,
+        picopass_scene_start_submenu_callback,
+        picopass);
+    submenu_add_item(
+        submenu,
+        "Elite Keygen Attack",
+        SubmenuIndexKeygenAttack,
         picopass_scene_start_submenu_callback,
         picopass);
 
@@ -59,6 +66,11 @@ bool picopass_scene_start_on_event(void* context, SceneManagerEvent event) {
             scene_manager_set_scene_state(
                 picopass->scene_manager, PicopassSceneStart, PicopassSceneAcknowledgements);
             scene_manager_next_scene(picopass->scene_manager, PicopassSceneAcknowledgements);
+            consumed = true;
+        } else if(event.event == SubmenuIndexKeygenAttack) {
+            scene_manager_set_scene_state(
+                picopass->scene_manager, PicopassSceneStart, SubmenuIndexKeygenAttack);
+            scene_manager_next_scene(picopass->scene_manager, PicopassSceneEliteKeygenAttack);
             consumed = true;
         }
     }

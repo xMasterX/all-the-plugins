@@ -4,6 +4,7 @@
 #include "../loclass/optimized_cipher.h"
 
 #include <furi/furi.h>
+#include <toolbox/version.h>
 
 #define TAG "Picopass"
 
@@ -87,6 +88,15 @@ void picopass_poller_print_block(char* str, PicopassBlock block) {
 NfcCommand picopass_poller_pre_auth_handler(PicopassPoller* instance) {
     NfcCommand command = NfcCommandContinue;
     PicopassError error = PicopassErrorNone;
+
+    // Print version information for app and firmware for later review in log
+    const Version* version = version_get();
+    FURI_LOG_I(
+        TAG,
+        "Firmware origin: %s firmware version: %s app version: %s",
+        version_get_firmware_origin(version),
+        version_get_version(version),
+        FAP_VERSION);
 
     do {
         memcpy(
