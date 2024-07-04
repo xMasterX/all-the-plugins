@@ -1,6 +1,7 @@
 
 #include "sam_api.h"
 #include <toolbox/path.h>
+#include <toolbox/version.h>
 #include <bit_lib/bit_lib.h>
 
 #define TAG "SAMAPI"
@@ -1103,6 +1104,14 @@ NfcCommand seader_worker_card_detect(
     }
 
     seader_send_card_detected(seader, cardDetails);
+    // Print version information for app and firmware for later review in log
+    const Version* version = version_get();
+    FURI_LOG_I(
+        TAG,
+        "Firmware origin: %s firmware version: %s app version: %s",
+        version_get_firmware_origin(version),
+        version_get_version(version),
+        FAP_VERSION);
 
     free(cardDetails);
     return NfcCommandContinue;

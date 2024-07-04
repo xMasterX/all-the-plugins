@@ -141,7 +141,7 @@ size_t seader_ccid_process(Seader* seader, uint8_t* cmd, size_t cmd_len) {
     for(uint8_t i = 0; i < cmd_len; i++) {
         snprintf(display + (i * 2), sizeof(display), "%02x", cmd[i]);
     }
-    // FURI_LOG_D(TAG, "UART %d: %s", cmd_len, display);
+    FURI_LOG_D(TAG, "UART %d: %s", cmd_len, display);
 
     if(cmd_len == 2) {
         if(cmd[0] == CCID_MESSAGE_TYPE_RDR_to_PC_NotifySlotChange) {
@@ -164,6 +164,10 @@ size_t seader_ccid_process(Seader* seader, uint8_t* cmd, size_t cmd_len) {
                     powered[0] = false;
                     hasSAM = false;
                     retries = 3;
+                    if(seader_worker->callback) {
+                        seader_worker->callback(
+                            SeaderWorkerEventSamMissing, seader_worker->context);
+                    }
                 }
                 break;
             };
@@ -187,6 +191,10 @@ size_t seader_ccid_process(Seader* seader, uint8_t* cmd, size_t cmd_len) {
                     powered[1] = false;
                     hasSAM = false;
                     retries = 3;
+                    if(seader_worker->callback) {
+                        seader_worker->callback(
+                            SeaderWorkerEventSamMissing, seader_worker->context);
+                    }
                 }
                 break;
             };
@@ -276,6 +284,7 @@ size_t seader_ccid_process(Seader* seader, uint8_t* cmd, size_t cmd_len) {
         //0306 80 00000000 0001 42fe 00 38
         if(message.bStatus == 0x41 && message.bError == 0xfe) {
             FURI_LOG_W(TAG, "card probably upside down");
+            hasSAM = false;
             if(seader_worker->callback) {
                 seader_worker->callback(SeaderWorkerEventSamMissing, seader_worker->context);
             }

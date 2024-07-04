@@ -97,6 +97,9 @@ bool seader_scene_sam_present_on_event(void* context, SceneManagerEvent event) {
             consumed = true;
         } else if(event.event == SubmenuIndexFwVersion) {
             consumed = true;
+        } else if(event.event == SeaderWorkerEventSamMissing) {
+            scene_manager_next_scene(seader->scene_manager, SeaderSceneSamMissing);
+            consumed = true;
         }
     } else if(event.type == SceneManagerEventTypeBack) {
         scene_manager_stop(seader->scene_manager);
