@@ -108,6 +108,8 @@ void picopass_scene_read_card_success_on_enter(void* context) {
         // Neither of these are valid.  Indicates the block was all 0x00 or all 0xff
         if(SE) {
             furi_string_cat_printf(info_str, "SIO");
+        } else if(auth == PicopassDeviceAuthMethodFailed) {
+            furi_string_cat_printf(info_str, "Auth Failed");
         } else {
             furi_string_cat_printf(info_str, "Invalid PACS");
         }
