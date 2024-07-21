@@ -109,6 +109,22 @@ bool totp_config_migrate_to_latest(
 
         flipper_format_rewind(fff_backup_data_file);
 
+#ifdef TOTP_BADBT_AUTOMATION_ENABLED
+        uint32_t bt_profile_index;
+        if(!flipper_format_read_uint32(
+               fff_backup_data_file,
+               TOTP_CONFIG_KEY_AUTOMATION_BADBT_PROFILE,
+               &bt_profile_index,
+               1)) {
+            bt_profile_index = 0;
+        }
+
+        flipper_format_write_uint32(
+            fff_data_file, TOTP_CONFIG_KEY_AUTOMATION_BADBT_PROFILE, &bt_profile_index, 1);
+
+        flipper_format_rewind(fff_backup_data_file);
+#endif
+
         if(flipper_format_read_string(
                fff_backup_data_file, TOTP_CONFIG_KEY_AUTOMATION_INITIAL_DELAY, temp_str)) {
             flipper_format_write_string(

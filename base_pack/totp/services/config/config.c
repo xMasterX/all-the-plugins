@@ -178,6 +178,12 @@ static bool totp_open_config_file(Storage* storage, FlipperFormat** file) {
         flipper_format_write_uint32(
             fff_data_file, TOTP_CONFIG_KEY_AUTOMATION_KB_LAYOUT, &tmp_uint32, 1);
 
+#ifdef TOTP_BADBT_AUTOMATION_ENABLED
+        tmp_uint32 = 0; //-V1048
+        flipper_format_write_uint32(
+            fff_data_file, TOTP_CONFIG_KEY_AUTOMATION_BADBT_PROFILE, &tmp_uint32, 1);
+#endif
+
         tmp_uint32 = 500;
         flipper_format_write_uint32(
             fff_data_file, TOTP_CONFIG_KEY_AUTOMATION_INITIAL_DELAY, &tmp_uint32, 1);
@@ -267,6 +273,14 @@ bool totp_config_file_update_automation_method(const PluginState* plugin_state) 
             break;
         }
 
+#ifdef TOTP_BADBT_AUTOMATION_ENABLED
+        tmp_uint32 = plugin_state->bt_type_code_worker_profile_index;
+        if(!flipper_format_insert_or_update_uint32(
+               file, TOTP_CONFIG_KEY_AUTOMATION_BADBT_PROFILE, &tmp_uint32, 1)) {
+            break;
+        }
+#endif
+
         tmp_uint32 = plugin_state->automation_initial_delay;
         if(!flipper_format_insert_or_update_uint32(
                file, TOTP_CONFIG_KEY_AUTOMATION_INITIAL_DELAY, &tmp_uint32, 1)) {
@@ -310,6 +324,14 @@ bool totp_config_file_update_user_settings(const PluginState* plugin_state) {
                file, TOTP_CONFIG_KEY_AUTOMATION_KB_LAYOUT, &tmp_uint32, 1)) {
             break;
         }
+
+#ifdef TOTP_BADBT_AUTOMATION_ENABLED
+        tmp_uint32 = plugin_state->bt_type_code_worker_profile_index;
+        if(!flipper_format_insert_or_update_uint32(
+               file, TOTP_CONFIG_KEY_AUTOMATION_BADBT_PROFILE, &tmp_uint32, 1)) {
+            break;
+        }
+#endif
 
         tmp_uint32 = plugin_state->automation_initial_delay;
         if(!flipper_format_insert_or_update_uint32(
@@ -516,6 +538,19 @@ bool totp_config_file_load(PluginState* const plugin_state) {
         if(!flipper_format_rewind(fff_data_file)) {
             break;
         }
+
+#ifdef TOTP_BADBT_AUTOMATION_ENABLED
+        if(!flipper_format_read_uint32(
+               fff_data_file, TOTP_CONFIG_KEY_AUTOMATION_BADBT_PROFILE, &tmp_uint32, 1)) {
+            tmp_uint32 = 0;
+        }
+
+        plugin_state->bt_type_code_worker_profile_index = tmp_uint32;
+
+        if(!flipper_format_rewind(fff_data_file)) {
+            break;
+        }
+#endif
 
         if(!flipper_format_read_uint32(
                fff_data_file, TOTP_CONFIG_KEY_AUTOMATION_INITIAL_DELAY, &tmp_uint32, 1)) {
@@ -738,19 +773,15 @@ bool totp_config_file_ensure_latest_encryption(
     uint8_t pin_length) {
     bool result = true;
     if(plugin_state->crypto_settings.crypto_version < CRYPTO_LATEST_VERSION) {
-        FURI_LOG_I(
-            LOGGING_TAG,
-            "Migration crypto from v%" PRIu8 " to v%" PRIu8 " is needed",
-            plugin_state->crypto_settings.crypto_version,
-            CRYPTO_LATEST_VERSION);
-
+        FURI_LOG_I(LOGGING_TAG, "Migration crypto from v%" PRIu8 " to v%" PRIu8 " is needed", plugin_state->crypto_settings.crypto_version, CRYPTO_LATEST_VERSION);
+        
 #ifndef TOTP_OBSOLETE_CRYPTO_V1_COMPATIBILITY_ENABLED
-        if(plugin_state->crypto_settings.crypto_version == 1) {
+        if (plugin_state->crypto_settings.crypto_version == 1) {
             furi_crash("Authenticator: Crypto v1 is not supported");
         }
 #endif
 #ifndef TOTP_OBSOLETE_CRYPTO_V2_COMPATIBILITY_ENABLED
-        if(plugin_state->crypto_settings.crypto_version == 2) {
+        if (plugin_state->crypto_settings.crypto_version == 2) {
             furi_crash("Authenticator: Crypto v2 is not supported");
         }
 #endif

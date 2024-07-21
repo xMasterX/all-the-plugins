@@ -37,9 +37,11 @@ enum TotpBtTypeCodeWorkerEvents {
 /**
  * @brief Initializes bluetooth token input automation worker
  * @param mac_xor value to be used to XOR BT MAC address to make it unique
+ * @param profile_index profile index to be used
  * @return worker context
  */
-TotpBtTypeCodeWorkerContext* totp_bt_type_code_worker_init(uint16_t mac_xor);
+TotpBtTypeCodeWorkerContext*
+    totp_bt_type_code_worker_init(uint16_t mac_xor, uint8_t profile_index);
 
 /**
  * @brief Disposes bluetooth token input automation worker and releases all the allocated resources

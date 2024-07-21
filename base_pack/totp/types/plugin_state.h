@@ -74,6 +74,11 @@ typedef struct {
      * @brief Bad-Bluetooth worker context
      */
     TotpBtTypeCodeWorkerContext* bt_type_code_worker_context;
+
+    /**
+     * @brief Bad-Bluetooth profile index.
+     */
+    uint8_t bt_type_code_worker_profile_index;
 #endif
 
     /**
