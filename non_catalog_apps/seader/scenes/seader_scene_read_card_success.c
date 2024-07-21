@@ -43,6 +43,8 @@ void seader_scene_read_card_success_on_enter(void* context) {
             furi_string_set(type_str, "14443A");
         } else if(credential->type == SeaderCredentialTypePicopass) {
             furi_string_set(type_str, "Picopass");
+        } else if(credential->type == SeaderCredentialTypeMifareClassic) {
+            furi_string_set(type_str, "Mifare Classic");
         } else {
             furi_string_set(type_str, "");
         }

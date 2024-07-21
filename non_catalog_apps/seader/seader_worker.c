@@ -265,6 +265,9 @@ NfcCommand seader_worker_poller_callback_iso14443_4a(NfcGenericEvent event, void
 
     if(iso14443_4a_event->type == Iso14443_4aPollerEventTypeReady) {
         if(seader_worker->stage == SeaderPollerEventTypeCardDetect) {
+            view_dispatcher_send_custom_event(
+                seader->view_dispatcher, SeaderCustomEventPollerDetect);
+
             nfc_device_set_data(
                 seader->nfc_device, NfcProtocolIso14443_4a, nfc_poller_get_data(seader->poller));
 
@@ -321,6 +324,9 @@ NfcCommand seader_worker_poller_callback_mfc(NfcGenericEvent event, void* contex
 
     if(mfc_event->type == MfClassicPollerEventTypeSuccess) {
         if(seader_worker->stage == SeaderPollerEventTypeCardDetect) {
+            view_dispatcher_send_custom_event(
+                seader->view_dispatcher, SeaderCustomEventPollerDetect);
+
             const MfClassicData* mfc_data = nfc_poller_get_data(seader->poller);
             uint8_t sak = iso14443_3a_get_sak(mfc_data->iso14443_3a_data);
             size_t uid_len = 0;
@@ -356,6 +362,8 @@ NfcCommand seader_worker_poller_callback_picopass(PicopassPollerEvent event, voi
         seader_worker->stage = SeaderPollerEventTypeCardDetect;
     } else if(event.type == PicopassPollerEventTypeSuccess) {
         if(seader_worker->stage == SeaderPollerEventTypeCardDetect) {
+            view_dispatcher_send_custom_event(
+                seader->view_dispatcher, SeaderCustomEventPollerDetect);
             uint8_t* csn = picopass_poller_get_csn(instance);
             seader_worker_card_detect(seader, 0, NULL, csn, sizeof(PicopassSerialNum), NULL, 0);
             furi_thread_set_current_priority(FuriThreadPriorityLowest);

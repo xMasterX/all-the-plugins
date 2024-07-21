@@ -69,6 +69,7 @@ enum SeaderCustomEvent {
     SeaderCustomEventByteInputDone,
     SeaderCustomEventTextInputDone,
 
+    SeaderCustomEventPollerDetect,
     SeaderCustomEventPollerSuccess,
 };
 

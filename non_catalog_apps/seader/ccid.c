@@ -19,12 +19,21 @@ uint8_t getSequence(uint8_t slot) {
     return sequence[slot]++;
 }
 
-size_t seader_ccid_add_lrc(uint8_t* data, size_t len) {
+uint8_t seader_ccid_calc_lrc(uint8_t* data, size_t len) {
     uint8_t lrc = 0;
     for(size_t i = 0; i < len; i++) {
         lrc ^= data[i];
     }
-    data[len] = lrc;
+    return lrc;
+}
+
+bool seader_ccid_validate_lrc(uint8_t* data, size_t len) {
+    uint8_t lrc = seader_ccid_calc_lrc(data, len - 1);
+    return lrc == data[len - 1];
+}
+
+size_t seader_ccid_add_lrc(uint8_t* data, size_t len) {
+    data[len] = seader_ccid_calc_lrc(data, len);
     return len + 1;
 }
 
@@ -234,9 +243,20 @@ size_t seader_ccid_process(Seader* seader, uint8_t* cmd, size_t cmd_len) {
         }
 
         if(cmd_len < 2 + 10 + message.dwLength + 1) {
+            // Incomplete
             return message.consumed;
         }
         message.consumed += 2 + 10 + message.dwLength + 1;
+
+        if(seader_ccid_validate_lrc(cmd, 2 + 10 + message.dwLength + 1) == false) {
+            FURI_LOG_W(
+                TAG,
+                "Invalid LRC.  Recv: %02x vs Calc: %02x",
+                cmd[2 + 10 + message.dwLength + 1],
+                seader_ccid_calc_lrc(cmd, 2 + 10 + message.dwLength));
+            // TODO: Should I respond with an error?
+            return message.consumed;
+        }
 
         /*
         if(message.dwLength == 0) {
