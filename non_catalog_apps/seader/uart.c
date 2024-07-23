@@ -162,7 +162,7 @@ SeaderUartBridge* seader_uart_enable(SeaderUartConfig* cfg, Seader* seader) {
     memcpy(&(seader_uart->cfg_new), cfg, sizeof(SeaderUartConfig));
 
     seader_uart->thread =
-        furi_thread_alloc_ex("SeaderUartWorker", 5 * 1024, seader_uart_worker, seader);
+        furi_thread_alloc_ex("SeaderUartWorker", 4 * 1024, seader_uart_worker, seader);
 
     furi_thread_start(seader_uart->thread);
     return seader_uart;

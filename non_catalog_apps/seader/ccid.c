@@ -150,7 +150,7 @@ size_t seader_ccid_process(Seader* seader, uint8_t* cmd, size_t cmd_len) {
     for(uint8_t i = 0; i < cmd_len; i++) {
         snprintf(display + (i * 2), sizeof(display), "%02x", cmd[i]);
     }
-    FURI_LOG_D(TAG, "UART %d: %s", cmd_len, display);
+    FURI_LOG_D(TAG, "seader_ccid_process %d: %s", cmd_len, display);
 
     if(cmd_len == 2) {
         if(cmd[0] == CCID_MESSAGE_TYPE_RDR_to_PC_NotifySlotChange) {
