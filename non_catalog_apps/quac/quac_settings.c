@@ -3,7 +3,7 @@
 #include <flipper_format/flipper_format.h>
 
 // Quac Settings File Info
-#define QUAC_SETTINGS_FILE_TYPE "Quac Settings File"
+#define QUAC_SETTINGS_FILE_TYPE    "Quac Settings File"
 #define QUAC_SETTINGS_FILE_VERSION 1
 
 void quac_set_default_settings(App* app) {

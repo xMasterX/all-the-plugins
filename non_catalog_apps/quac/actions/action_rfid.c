@@ -12,7 +12,7 @@
 #include "action_i.h"
 #include "quac.h"
 
-#define RFID_FILE_TYPE "Flipper RFID key"
+#define RFID_FILE_TYPE    "Flipper RFID key"
 #define RFID_FILE_VERSION 1
 
 // lifted from flipperzero-firmware/applications/main/lfrfid/lfrfid_cli.c

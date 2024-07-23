@@ -2,7 +2,7 @@
 
 ## Quick Action Remote Control for Flipperzero
 
-[Latest Version: 0.6](https://github.com/rdefeo/quac/releases)
+[Latest Version: 0.6.1](https://github.com/rdefeo/quac/releases)
 
 ![build status badge](https://github.com/rdefeo/quac/actions/workflows/build.yml/badge.svg)
 

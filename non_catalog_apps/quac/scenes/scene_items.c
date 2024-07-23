@@ -75,7 +75,7 @@ void scene_items_on_enter(void* context) {
         // Add a bogus item - this lets the user still access the Action menu to import, etc
         action_menu_add_item(
             menu,
-            "<Empty>",
+            "<Empty, Hold Right>",
             EMPTY_ACTION_INDEX,
             scene_items_item_callback,
             ActionMenuItemTypeGroup,

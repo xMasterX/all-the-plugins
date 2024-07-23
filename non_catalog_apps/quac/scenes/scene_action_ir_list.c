@@ -8,6 +8,7 @@
 #include "quac.h"
 #include "scenes.h"
 #include "scene_action_ir_list.h"
+#include "../actions/action.h"
 #include "../actions/action_ir_utils.h"
 
 #include <flipper_format/flipper_format.h>
@@ -78,8 +79,12 @@ bool scene_action_ir_list_on_event(void* context, SceneManagerEvent event) {
             flipper_format_file_close(fff_data_file);
 
             // generate the new path, based on current item's dir and new command name
-            Item* item = ItemArray_get(app->items_view->items, app->selected_item);
-            path_extract_dirname(furi_string_get_cstr(item->path), file_name);
+            if(app->selected_item != EMPTY_ACTION_INDEX) {
+                Item* item = ItemArray_get(app->items_view->items, app->selected_item);
+                path_extract_dirname(furi_string_get_cstr(item->path), file_name);
+            } else {
+                furi_string_set(file_name, app->items_view->path);
+            }
             furi_string_cat_printf(file_name, "/%s.ir", furi_string_get_cstr(name));
 
             FURI_LOG_I(TAG, "Writing new IR file: %s", furi_string_get_cstr(file_name));

@@ -7,7 +7,7 @@
 
 #include <flipper_format/flipper_format.h>
 
-#define INFRARED_FILE_TYPE "IR signals file"
+#define INFRARED_FILE_TYPE    "IR signals file"
 #define INFRARED_FILE_VERSION 1
 
 typedef struct {

@@ -1,3 +1,12 @@
+## 0.6.1
+
+- Fix IR Import bus fault on empty
+- Add hint text on Empty group
+
+## 0.6.1
+
+- Several crash fixes when Importing files and Creating groups
+
 ## 0.6
 
 - Basic NFC support

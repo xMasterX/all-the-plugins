@@ -4,7 +4,7 @@
 
 // Max length of a filename, final path element only
 #define MAX_NAME_LEN 64
-#define MAX_EXT_LEN 6
+#define MAX_EXT_LEN  6
 
 /** Defines an individual item action or item group. Each object contains
  * the relevant file and type information needed to both render correctly
