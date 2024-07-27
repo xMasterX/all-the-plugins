@@ -11,7 +11,7 @@
 
 #define SYNC (0x03)
 #define CTRL (0x06)
-#define NAK (0x15)
+#define NAK  (0x15)
 
 #define BMICCSTATUS_MASK 0x03
 /*
@@ -23,48 +23,52 @@
 
 // TODO: rename/renumber
 #define SLOT_0_MASK 0x03
-#define CARD_OUT_1 0x02
-#define CARD_IN_1 0x03
+#define CARD_OUT_1  0x02
+#define CARD_IN_1   0x03
 #define SLOT_1_MASK 0x0C
-#define CARD_IN_2 0x04
-#define CARD_OUT_2 0x0C
+#define CARD_IN_2   0x04
+#define CARD_OUT_2  0x0C
 
 /*
  *  * BULK_OUT messages from PC to Reader
  *   * Defined in CCID Rev 1.1 6.1 (page 26)
  *    */
-#define CCID_MESSAGE_TYPE_PC_to_RDR_IccPowerOn 0x62
-#define CCID_MESSAGE_TYPE_PC_to_RDR_IccPowerOff 0x63
-#define CCID_MESSAGE_TYPE_PC_to_RDR_GetSlotStatus 0x65
-#define CCID_MESSAGE_TYPE_PC_to_RDR_XfrBlock 0x6f
-#define CCID_MESSAGE_TYPE_PC_to_RDR_GetParameters 0x6c
-#define CCID_MESSAGE_TYPE_PC_to_RDR_ResetParameters 0x6d
-#define CCID_MESSAGE_TYPE_PC_to_RDR_SetParameters 0x61
-#define CCID_MESSAGE_TYPE_PC_to_RDR_Escape 0x6b
-#define CCID_MESSAGE_TYPE_PC_to_RDR_IccClock 0x6e
-#define CCID_MESSAGE_TYPE_PC_to_RDR_T0APDU 0x6a
-#define CCID_MESSAGE_TYPE_PC_to_RDR_Secure 0x69
-#define CCID_MESSAGE_TYPE_PC_to_RDR_Mechanical 0x71
-#define CCID_MESSAGE_TYPE_PC_to_RDR_Abort 0x72
+#define CCID_MESSAGE_TYPE_PC_to_RDR_IccPowerOn                   0x62
+#define CCID_MESSAGE_TYPE_PC_to_RDR_IccPowerOff                  0x63
+#define CCID_MESSAGE_TYPE_PC_to_RDR_GetSlotStatus                0x65
+#define CCID_MESSAGE_TYPE_PC_to_RDR_XfrBlock                     0x6f
+#define CCID_MESSAGE_TYPE_PC_to_RDR_GetParameters                0x6c
+#define CCID_MESSAGE_TYPE_PC_to_RDR_ResetParameters              0x6d
+#define CCID_MESSAGE_TYPE_PC_to_RDR_SetParameters                0x61
+#define CCID_MESSAGE_TYPE_PC_to_RDR_Escape                       0x6b
+#define CCID_MESSAGE_TYPE_PC_to_RDR_IccClock                     0x6e
+#define CCID_MESSAGE_TYPE_PC_to_RDR_T0APDU                       0x6a
+#define CCID_MESSAGE_TYPE_PC_to_RDR_Secure                       0x69
+#define CCID_MESSAGE_TYPE_PC_to_RDR_Mechanical                   0x71
+#define CCID_MESSAGE_TYPE_PC_to_RDR_Abort                        0x72
 #define CCID_MESSAGE_TYPE_PC_to_RDR_SetDataRateAndClockFrequency 0x73
 /*
  *  * BULK_IN messages from Reader to PC
  *   * Defined in CCID Rev 1.1 6.2 (page 48)
  *    */
-#define CCID_MESSAGE_TYPE_RDR_to_PC_DataBlock 0x80
-#define CCID_MESSAGE_TYPE_RDR_to_PC_SlotStatus 0x81
-#define CCID_MESSAGE_TYPE_RDR_to_PC_Parameters 0x82
-#define CCID_MESSAGE_TYPE_RDR_to_PC_Escape 0x83
-#define CCID_MESSAGE_TYPE_RDR_to_PC_DataRateAndClockFrequency 0x84
+#define CCID_MESSAGE_TYPE_RDR_to_PC_DataBlock                    0x80
+#define CCID_MESSAGE_TYPE_RDR_to_PC_SlotStatus                   0x81
+#define CCID_MESSAGE_TYPE_RDR_to_PC_Parameters                   0x82
+#define CCID_MESSAGE_TYPE_RDR_to_PC_Escape                       0x83
+#define CCID_MESSAGE_TYPE_RDR_to_PC_DataRateAndClockFrequency    0x84
 /*
  *  * INTERRUPT_IN messages from Reader to PC
  *   * Defined in CCID Rev 1.1 6.3 (page 56)
  *    */
-#define CCID_MESSAGE_TYPE_RDR_to_PC_NotifySlotChange 0x50
-#define CCID_MESSAGE_TYPE_RDR_to_PC_HardwareError 0x51
+#define CCID_MESSAGE_TYPE_RDR_to_PC_NotifySlotChange             0x50
+#define CCID_MESSAGE_TYPE_RDR_to_PC_HardwareError                0x51
 
 /* Status codes that go in bStatus (see 6.2.6) */
-enum { ICC_STATUS_PRESENT_ACTIVE = 0, ICC_STATUS_PRESENT_INACTIVE, ICC_STATUS_NOT_PRESENT };
+enum {
+    ICC_STATUS_PRESENT_ACTIVE = 0,
+    ICC_STATUS_PRESENT_INACTIVE,
+    ICC_STATUS_NOT_PRESENT
+};
 enum {
     COMMAND_STATUS_NO_ERROR = 0,
     COMMAND_STATUS_FAILED,
@@ -95,7 +99,7 @@ struct CCID_Message {
 void seader_ccid_check_for_sam(SeaderUartBridge* seader_uart);
 void seader_ccid_IccPowerOn(SeaderUartBridge* seader_uart, uint8_t slot);
 void seader_ccid_GetSlotStatus(SeaderUartBridge* seader_uart, uint8_t slot);
-void seader_ccid_SetParameters(SeaderUartBridge* seader_uart);
+void seader_ccid_SetParameters(Seader* seader, uint8_t slot, uint8_t* atr, size_t atr_len);
 void seader_ccid_GetParameters(SeaderUartBridge* seader_uart);
 void seader_ccid_XfrBlock(SeaderUartBridge* seader_uart, uint8_t* data, size_t len);
 void seader_ccid_XfrBlockToSlot(

@@ -7,7 +7,7 @@
 #include <nfc/helpers/iso13239_crc.h>
 
 #define PICOPASS_POLLER_BUFFER_SIZE (255)
-#define PICOPASS_CRC_SIZE (2)
+#define PICOPASS_CRC_SIZE           (2)
 
 typedef enum {
     PicopassPollerSessionStateIdle,

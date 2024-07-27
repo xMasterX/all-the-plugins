@@ -9,7 +9,8 @@
 #include <furi.h>
 #include <furi_hal.h>
 
-#define SEADER_UART_RX_BUF_SIZE (128)
+// https://ww1.microchip.com/downloads/en/DeviceDoc/00001561C.pdf
+#define SEADER_UART_RX_BUF_SIZE (261)
 
 typedef struct {
     uint8_t uart_ch;
@@ -41,6 +42,9 @@ struct SeaderUartBridge {
     uint8_t rx_buf[SEADER_UART_RX_BUF_SIZE];
     uint8_t tx_buf[SEADER_UART_RX_BUF_SIZE];
     size_t tx_len;
+
+    // T=0 or T=1
+    uint8_t T;
 };
 
 typedef struct SeaderUartBridge SeaderUartBridge;

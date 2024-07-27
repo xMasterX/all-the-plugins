@@ -7,9 +7,9 @@
 #include "protocol/picopass_protocol.h"
 
 #define SEADER_CRED_NAME_MAX_LEN 22
-#define SEADER_APP_EXTENSION ".credential"
+#define SEADER_APP_EXTENSION     ".credential"
 #define SEADER_APP_MFC_EXTENSION ".nfc"
-#define SEADER_APP_MFC_FOLDER ANY_PATH("nfc")
+#define SEADER_APP_MFC_FOLDER    ANY_PATH("nfc")
 
 typedef void (*SeaderLoadingCallback)(void* context, bool state);
 

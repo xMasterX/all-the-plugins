@@ -60,6 +60,7 @@ void seader_scene_read_mfc_on_exit(void* context) {
     if(seader->poller) {
         nfc_poller_stop(seader->poller);
         nfc_poller_free(seader->poller);
+        seader->poller = NULL;
     }
 
     // Clear view
