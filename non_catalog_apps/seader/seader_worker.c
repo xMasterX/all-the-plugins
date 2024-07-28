@@ -6,8 +6,8 @@
 #define TAG "SeaderWorker"
 
 #define APDU_HEADER_LEN 5
-#define ASN1_PREFIX     6
-#define ASN1_DEBUG      true
+#define ASN1_PREFIX 6
+#define ASN1_DEBUG true
 
 #define RFAL_PICOPASS_TXRX_FLAGS                                                    \
     (FURI_HAL_NFC_LL_TXRX_FLAGS_CRC_TX_MANUAL | FURI_HAL_NFC_LL_TXRX_FLAGS_AGC_ON | \
@@ -315,6 +315,8 @@ NfcCommand seader_worker_poller_callback_iso14443_4a(NfcGenericEvent event, void
             ret = NfcCommandStop;
             break;
         case Iso14443_4aErrorTimeout:
+            break;
+        default:
             break;
         }
     }
