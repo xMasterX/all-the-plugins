@@ -157,7 +157,13 @@ bool seader_send_apdu(
         return false;
     }
 
-    uint8_t apdu[SEADER_UART_RX_BUF_SIZE];
+    uint8_t length = APDU_HEADER_LEN + payloadLen;
+    uint8_t* apdu = malloc(length);
+    if(!apdu) {
+        FURI_LOG_E(TAG, "Failed to allocate memory for apdu in seader_send_apdu");
+        return false;
+    }
+
     apdu[0] = CLA;
     apdu[1] = INS;
     apdu[2] = P1;
@@ -172,7 +178,6 @@ bool seader_send_apdu(
     }
 
     memcpy(apdu + APDU_HEADER_LEN, payload, payloadLen);
-    uint8_t length = APDU_HEADER_LEN + payloadLen;
 
     memset(display, 0, sizeof(display));
     for(uint8_t i = 0; i < length; i++) {
@@ -185,6 +190,7 @@ bool seader_send_apdu(
     } else {
         seader_ccid_XfrBlock(seader_uart, apdu, length);
     }
+    free(apdu);
 
     return true;
 }
@@ -981,17 +987,19 @@ bool seader_worker_state_machine(
 
     switch(payload->present) {
     case Payload_PR_response:
+        FURI_LOG_D(TAG, "Payload_PR_response");
         seader_parse_response(seader, &payload->choice.response);
         processed = true;
         break;
     case Payload_PR_nfcCommand:
+        FURI_LOG_D(TAG, "Payload_PR_nfcCommand");
         if(online) {
             seader_parse_nfc_command(seader, &payload->choice.nfcCommand, spc);
             processed = true;
         }
         break;
     case Payload_PR_errorResponse:
-        FURI_LOG_W(TAG, "Error Response");
+        FURI_LOG_W(TAG, "Payload_PR_errorResponse");
         processed = true;
         view_dispatcher_send_custom_event(seader->view_dispatcher, SeaderCustomEventWorkerExit);
         break;
@@ -1031,8 +1039,12 @@ bool seader_process_success_response_i(
                 ->op->print_struct(
                     &asn_DEF_Payload, payload, 1, seader_print_struct_callback, payloadDebug);
             if(strlen(payloadDebug) > 0) {
-                FURI_LOG_D(TAG, "Payload: %s", payloadDebug);
+                FURI_LOG_D(TAG, "Received Payload: %s", payloadDebug);
+            } else {
+                FURI_LOG_D(TAG, "Received empty Payload");
             }
+        } else {
+            FURI_LOG_D(TAG, "Online mode");
         }
 #endif
 

@@ -29,7 +29,6 @@ bool seader_scene_read_14a_on_event(void* context, SceneManagerEvent event) {
 
     if(event.type == SceneManagerEventTypeCustom) {
         if(event.event == SeaderCustomEventWorkerExit) {
-            seader->credential->type = SeaderCredentialType14A;
             scene_manager_next_scene(seader->scene_manager, SeaderSceneReadCardSuccess);
             consumed = true;
         } else if(event.event == SeaderCustomEventPollerDetect) {
@@ -37,7 +36,6 @@ bool seader_scene_read_14a_on_event(void* context, SceneManagerEvent event) {
             popup_set_header(popup, "DON'T\nMOVE", 68, 30, AlignLeft, AlignTop);
             consumed = true;
         } else if(event.event == SeaderCustomEventPollerSuccess) {
-            seader->credential->type = SeaderCredentialType14A;
             scene_manager_next_scene(seader->scene_manager, SeaderSceneReadCardSuccess);
             consumed = true;
         }

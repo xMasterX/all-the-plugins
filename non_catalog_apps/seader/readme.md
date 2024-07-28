@@ -43,7 +43,7 @@ Optionally 3d print a [case designed by sean](https://www.printables.com/model/5
 ### To Build ASN1 (if you change seader.asn1)
 
  * Install git version of [asnc1](https://github.com/vlm/asn1c) (`brew install asn1c --head` on macos)
- * Run `asn1c -D ./lib/asn1 -no-gen-example -pdu=all seader.asn` in in root to generate asn1c files
+ * Run `asn1c -D ./lib/asn1 -no-gen-example -pdu=all seader.asn1` in in root to generate asn1c files
 
 ## References
 

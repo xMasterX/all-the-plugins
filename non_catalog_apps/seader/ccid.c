@@ -147,11 +147,12 @@ void seader_ccid_XfrBlockToSlot(
     seader_uart->tx_len = header_len + len;
     seader_uart->tx_len = seader_add_lrc(seader_uart->tx_buf, seader_uart->tx_len);
 
-    char display[SEADER_UART_RX_BUF_SIZE * 2 + 1] = {0};
+    char* display = malloc(seader_uart->tx_len * 2 + 1);
     for(uint8_t i = 0; i < seader_uart->tx_len; i++) {
         snprintf(display + (i * 2), sizeof(display), "%02x", seader_uart->tx_buf[i]);
     }
     FURI_LOG_D(TAG, "seader_ccid_XfrBlockToSlot(%d) %d: %s", slot, seader_uart->tx_len, display);
+    free(display);
 
     furi_thread_flags_set(furi_thread_get_id(seader_uart->tx_thread), WorkerEvtSamRx);
 }
@@ -162,11 +163,12 @@ size_t seader_ccid_process(Seader* seader, uint8_t* cmd, size_t cmd_len) {
     CCID_Message message;
     message.consumed = 0;
 
-    char display[SEADER_UART_RX_BUF_SIZE * 2 + 1] = {0};
+    char* display = malloc(cmd_len * 2 + 1);
     for(uint8_t i = 0; i < cmd_len; i++) {
         snprintf(display + (i * 2), sizeof(display), "%02x", cmd[i]);
     }
     FURI_LOG_D(TAG, "seader_ccid_process %d: %s", cmd_len, display);
+    free(display);
 
     if(cmd_len == 2) {
         if(cmd[0] == CCID_MESSAGE_TYPE_RDR_to_PC_NotifySlotChange) {
@@ -253,11 +255,6 @@ size_t seader_ccid_process(Seader* seader, uint8_t* cmd, size_t cmd_len) {
         message.bError = ccid[8];
         message.payload = ccid + 10;
 
-        memset(display, 0, sizeof(display));
-        for(uint8_t i = 0; i < message.dwLength; i++) {
-            snprintf(display + (i * 2), sizeof(display), "%02x", message.payload[i]);
-        }
-
         if(cmd_len < 2 + 10 + message.dwLength + 1) {
             // Incomplete
             return message.consumed;
@@ -273,27 +270,6 @@ size_t seader_ccid_process(Seader* seader, uint8_t* cmd, size_t cmd_len) {
             // TODO: Should I respond with an error?
             return message.consumed;
         }
-
-        /*
-        if(message.dwLength == 0) {
-            FURI_LOG_D(
-                TAG,
-                "CCID [%d|%d] type: %02x, status: %02x, error: %02x",
-                message.bSlot,
-                message.bSeq,
-                message.bMessageType,
-                message.bStatus,
-                message.bError);
-        } else {
-            FURI_LOG_D(
-                TAG,
-                "CCID [%d|%d] %ld: %s",
-                message.bSlot,
-                message.bSeq,
-                message.dwLength,
-                display);
-        }
-        */
 
         //0306 81 00000000 0000 0200 01 87
         //0306 81 00000000 0000 0100 01 84

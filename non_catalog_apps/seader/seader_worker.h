@@ -6,6 +6,7 @@
 #include "sam_api.h"
 #include "seader_credential.h"
 #include "seader_bridge.h"
+#include "apdu_runner.h"
 
 typedef struct SeaderWorker SeaderWorker;
 typedef struct CCID_Message CCID_Message;
@@ -19,6 +20,7 @@ typedef enum {
     // Main worker states
     SeaderWorkerStateCheckSam,
     SeaderWorkerStateVirtualCredential,
+    SeaderWorkerStateAPDURunner,
     // Transition
     SeaderWorkerStateStop,
 } SeaderWorkerState;
@@ -35,6 +37,9 @@ typedef enum {
     SeaderWorkerEventSamMissing,
     SeaderWorkerEventNoCardDetected,
     SeaderWorkerEventStartReading,
+    SeaderWorkerEventAPDURunnerUpdate,
+    SeaderWorkerEventAPDURunnerSuccess,
+    SeaderWorkerEventAPDURunnerError,
 } SeaderWorkerEvent;
 
 typedef enum {

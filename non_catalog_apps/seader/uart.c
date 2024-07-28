@@ -98,7 +98,7 @@ int32_t seader_uart_worker(void* context) {
     seader_uart->tx_sem = furi_semaphore_alloc(1, 1);
 
     seader_uart->tx_thread =
-        furi_thread_alloc_ex("SeaderUartTxWorker", 3 * 1024, seader_uart_tx_thread, seader);
+        furi_thread_alloc_ex("SeaderUartTxWorker", 1.5 * 1024, seader_uart_tx_thread, seader);
 
     seader_uart_serial_init(seader_uart, seader_uart->cfg.uart_ch);
     seader_uart_set_baudrate(seader_uart, seader_uart->cfg.baudrate);

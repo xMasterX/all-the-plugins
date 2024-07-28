@@ -144,7 +144,6 @@ static inline void loclass_opt_suc(
     bool add32Zeroes) {
     for(int i = 0; i < length; i++) {
         uint8_t head = in[i];
-#pragma GCC unroll 8
         for(int j = 0; j < 8; j++) {
             loclass_opt_successor(k, s, head);
             head >>= 1;
@@ -159,7 +158,6 @@ static inline void loclass_opt_suc(
 }
 
 static inline void loclass_opt_output(const uint8_t* k, LoclassState_t* s, uint8_t* buffer) {
-#pragma GCC unroll 4
     for(uint8_t times = 0; times < 4; times++) {
         uint8_t bout = 0;
         bout |= (s->r & 0x4) >> 2;

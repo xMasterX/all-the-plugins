@@ -13,8 +13,6 @@
     (FURI_HAL_NFC_LL_TXRX_FLAGS_CRC_TX_MANUAL | FURI_HAL_NFC_LL_TXRX_FLAGS_AGC_ON | \
      FURI_HAL_NFC_LL_TXRX_FLAGS_PAR_RX_REMV | FURI_HAL_NFC_LL_TXRX_FLAGS_CRC_RX_KEEP)
 
-char display[SEADER_UART_RX_BUF_SIZE * 2 + 1] = {0};
-
 // Forward declaration
 void seader_send_card_detected(SeaderUartBridge* seader_uart, CardDetails_t* cardDetails);
 
@@ -117,11 +115,18 @@ bool seader_worker_process_sam_message(Seader* seader, uint8_t* apdu, uint32_t l
     if(len < 2) {
         return false;
     }
-    memset(display, 0, sizeof(display));
+
+    if(seader_worker->state == SeaderWorkerStateAPDURunner) {
+        return seader_apdu_runner_response(seader, apdu, len);
+    }
+
+    char* display = malloc(len * 2 + 1);
+    memset(display, 0, len * 2 + 1);
     for(uint8_t i = 0; i < len; i++) {
         snprintf(display + (i * 2), sizeof(display), "%02x", apdu[i]);
     }
     FURI_LOG_I(TAG, "APDU: %s", display);
+    free(display);
 
     uint8_t SW1 = apdu[len - 2];
     uint8_t SW2 = apdu[len - 1];
@@ -210,6 +215,10 @@ int32_t seader_worker_task(void* context) {
     } else if(seader_worker->state == SeaderWorkerStateVirtualCredential) {
         FURI_LOG_D(TAG, "Virtual Credential");
         seader_worker_virtual_credential(seader);
+    } else if(seader_worker->state == SeaderWorkerStateAPDURunner) {
+        FURI_LOG_D(TAG, "APDU Runner");
+        seader_apdu_runner_init(seader);
+        return 0;
     }
     seader_worker_change_state(seader_worker, SeaderWorkerStateReady);
 
@@ -286,6 +295,11 @@ NfcCommand seader_worker_poller_callback_iso14443_4a(NfcGenericEvent event, void
             seader_worker_poller_conversation(seader, &spc);
         } else if(seader_worker->stage == SeaderPollerEventTypeComplete) {
             ret = NfcCommandStop;
+        } else if(seader_worker->stage == SeaderPollerEventTypeFail) {
+            ret = NfcCommandStop;
+            view_dispatcher_send_custom_event(
+                seader->view_dispatcher, SeaderCustomEventWorkerExit);
+            FURI_LOG_W(TAG, "SeaderPollerEventTypeFail");
         }
     } else if(iso14443_4a_event->type == Iso14443_4aPollerEventTypeError) {
         Iso14443_4aPollerEventData* data = iso14443_4a_event->data;

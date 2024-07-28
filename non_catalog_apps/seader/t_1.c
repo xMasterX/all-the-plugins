@@ -69,10 +69,27 @@ void seader_t_1_send_ack(Seader* seader) {
 BitBuffer* seader_t_1_tx_buffer;
 size_t seader_t_1_tx_buffer_offset = 0;
 
-void seader_send_t1(SeaderUartBridge* seader_uart, uint8_t* apdu, size_t len) {
-    uint8_t frame[SEADER_UART_RX_BUF_SIZE];
+void seader_send_t1_chunk(SeaderUartBridge* seader_uart, uint8_t PCB, uint8_t* chunk, size_t len) {
+    uint8_t* frame = malloc(3 + len + 1);
     uint8_t frame_len = 0;
 
+    frame[0] = NAD;
+    frame[1] = PCB;
+    frame[2] = len;
+    frame_len = 3;
+
+    if(len > 0) {
+        memcpy(frame + frame_len, chunk, len);
+        frame_len += len;
+    }
+
+    frame_len = seader_add_lrc(frame, frame_len);
+
+    seader_ccid_XfrBlock(seader_uart, frame, frame_len);
+    free(frame);
+}
+
+void seader_send_t1(SeaderUartBridge* seader_uart, uint8_t* apdu, size_t len) {
     if(len > IFSC_VALUE) {
         if(seader_t_1_tx_buffer == NULL) {
             seader_t_1_tx_buffer = bit_buffer_alloc(768);
@@ -82,33 +99,16 @@ void seader_send_t1(SeaderUartBridge* seader_uart, uint8_t* apdu, size_t len) {
             (bit_buffer_get_size_bytes(seader_t_1_tx_buffer) - seader_t_1_tx_buffer_offset);
         size_t copy_length = remaining > IFSC_VALUE ? IFSC_VALUE : remaining;
 
-        frame[0] = NAD;
+        uint8_t* chunk =
+            (uint8_t*)bit_buffer_get_data(seader_t_1_tx_buffer) + seader_t_1_tx_buffer_offset;
+
         if(remaining > IFSC_VALUE) {
-            frame[1] = seader_next_dpcb() | MORE_BIT;
+            uint8_t PCB = seader_next_dpcb() | MORE_BIT;
+            seader_send_t1_chunk(seader_uart, PCB, chunk, copy_length);
         } else {
-            frame[1] = seader_next_dpcb();
+            uint8_t PCB = seader_next_dpcb();
+            seader_send_t1_chunk(seader_uart, PCB, chunk, copy_length);
         }
-        frame[2] = copy_length;
-        frame_len = 3;
-
-        memcpy(
-            frame + frame_len,
-            bit_buffer_get_data(seader_t_1_tx_buffer) + seader_t_1_tx_buffer_offset,
-            copy_length);
-        frame_len += copy_length;
-
-        frame_len = seader_add_lrc(frame, frame_len);
-
-        /*
-        FURI_LOG_D(
-            TAG,
-            "Sending T=1 frame %s more bit set.  Remaining: %d, Copy Length: %d",
-            (remaining > IFSC_VALUE) ? "with" : "without",
-            remaining,
-            copy_length);
-            */
-
-        seader_ccid_XfrBlock(seader_uart, frame, frame_len);
 
         seader_t_1_tx_buffer_offset += copy_length;
         if(seader_t_1_tx_buffer_offset >= bit_buffer_get_size_bytes(seader_t_1_tx_buffer)) {
@@ -119,19 +119,7 @@ void seader_send_t1(SeaderUartBridge* seader_uart, uint8_t* apdu, size_t len) {
         return;
     }
 
-    frame[0] = NAD;
-    frame[1] = seader_next_dpcb();
-    frame[2] = len;
-    frame_len = 3;
-
-    if(len > 0) {
-        memcpy(frame + frame_len, apdu, len);
-        frame_len += len;
-    }
-
-    frame_len = seader_add_lrc(frame, frame_len);
-
-    seader_ccid_XfrBlock(seader_uart, frame, frame_len);
+    seader_send_t1_chunk(seader_uart, seader_next_dpcb(), apdu, len);
 }
 
 BitBuffer* seader_t_1_rx_buffer;
