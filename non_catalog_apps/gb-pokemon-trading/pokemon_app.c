@@ -2158,7 +2158,6 @@ PokemonFap* pokemon_alloc() {
     // View dispatcher
     pokemon_fap->view_dispatcher = view_dispatcher_alloc();
 
-    view_dispatcher_enable_queue(pokemon_fap->view_dispatcher);
     view_dispatcher_set_event_callback_context(pokemon_fap->view_dispatcher, pokemon_fap);
     view_dispatcher_attach_to_gui(
         pokemon_fap->view_dispatcher,
