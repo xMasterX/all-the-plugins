@@ -1,0 +1,16 @@
+App(
+    appid="fmf_to_sub",
+    name="Music to Sub-GHz Radio",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="fmf_to_sub_app",
+    stack_size=4 * 1024,
+    requires=[
+        "gui",
+    ],
+    order=10,
+    fap_version="1.2",
+    fap_icon="fmf.png",
+    fap_category="Sub-GHz",
+    fap_icon_assets="assets",
+    fap_description="Converts Flipper music files (.FMF and .TXT) into Sub-GHz files (.SUB).",
+)

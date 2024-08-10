@@ -237,6 +237,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | TPMS Reader | ![SubGhz Badge] | [by wosk](https://github.com/wosk/flipperzero-tpms/tree/main) |  | ![None Badge] |
 | ShapShup | ![SubGhz Badge] | [by derskythe](https://github.com/derskythe/flipperzero-shapshup) | RAW files preview (+fixed app exit) | ![None Badge] |
 | Meal Pager Tool | ![SubGhz Badge] | [by leedave](https://github.com/leedave/flipper-zero-meal-pager) |  | ![None Badge] |
+| Music to Sub-GHz Radio Converter | ![SubGhz Badge] | [by jamisonderek](https://github.com/jamisonderek/flipper-zero-tutorials/tree/main/subghz/fmf_to_sub) |  | ![None Badge] |
 | Analog Clock | ![Tools Badge] | [by scrolltex](https://github.com/scrolltex/flipper_analog_clock) |  | [![UFW Badge]](https://lab.flipper.net/apps/analog_clock) |
 | Brainfuck interpreter | ![Tools Badge] | [by nymda](https://github.com/nymda/FlipperZeroBrainfuck) |  | [![UFW Badge]](https://lab.flipper.net/apps/brainfuck) |
 | Ceasar Cipher | ![Tools Badge] | [by panki27](https://github.com/panki27/caesar-cipher) |  | [![UFW Badge]](https://lab.flipper.net/apps/caesar_cipher) |
@@ -260,6 +261,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Tone Generator | ![Tools Badge] | [by GEMISIS](https://github.com/GEMISIS/tone_gen/) |  | ![None Badge] |
 | DCF77 Clock Sync | ![Tools Badge] | [by mdaskalov](https://github.com/mdaskalov/dcf77-clock-sync) |  | ![None Badge] |
 | Quac! Remote | ![Tools Badge] | [by rdefeo](https://github.com/rdefeo/quac) | Various fixes by @Willy-JL | [![Author Badge]](https://lab.flipper.net/apps/quac) |
+| Key Copier | ![Tools Badge] | [by zinongli](https://github.com/zinongli/KeyCopier) |  | ![None Badge] |
 | USB HID Autofire | ![USB Badge] | [by pbek](https://github.com/pbek/usb_hid_autofire) |  | ![None Badge] |
 | USB Consumer Control | ![USB Badge] | [by WithSecureLabs](https://github.com/WithSecureLabs/usb-consumer-control/tree/main) |  | ![None Badge] |
 | HID File Transfer | ![USB Badge] | [by Kavakuo](https://github.com/Kavakuo/HID-File-Transfer) | Get client app in [original repo](https://github.com/Kavakuo/HID-File-Transfer) | ![None Badge] |
