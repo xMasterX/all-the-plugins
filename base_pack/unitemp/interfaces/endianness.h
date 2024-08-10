@@ -5,6 +5,8 @@
 #ifndef FLIPPERZERO_FIRMWARE_ENDIANNESS_H
 #define FLIPPERZERO_FIRMWARE_ENDIANNESS_H
 
+#include <machine/endian.h>
+
 inline static void store16(uint8_t* b, uint16_t i) {
     memcpy(b, &i, 2);
 }

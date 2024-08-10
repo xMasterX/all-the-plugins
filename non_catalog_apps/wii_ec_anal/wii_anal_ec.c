@@ -41,12 +41,12 @@ bool evWiiEC(const eventMsg_t* const msg, state_t* const state) {
             break;
         }
         INFO(
-            "WIIP : %s '%c' = %d",
+            "WIIP : %s '%c' = %ld",
             s,
             (isprint((int)msg->wiiEc.in) ? msg->wiiEc.in : '_'),
             msg->wiiEc.val);
         if((msg->wiiEc.type == WIIEC_CONN) || (msg->wiiEc.type == WIIEC_DISCONN))
-            INFO("...%d=\"%s\"", msg->wiiEc.val, ecId[msg->wiiEc.val].name);
+            INFO("...%ld=\"%s\"", msg->wiiEc.val, ecId[msg->wiiEc.val].name);
     }
 #endif
 

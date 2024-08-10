@@ -9,6 +9,8 @@
 #include "wii_ec_classic.h"
 #include "wii_ec_udraw.h"
 
+#include "bc_logging.h"
+
 //----------------------------------------------------------------------------- ----------------------------------------
 // Crypto key (PSK),      base register : {0x40..0x4F}[2][8]
 #define ENC_LEN (2 * 8)

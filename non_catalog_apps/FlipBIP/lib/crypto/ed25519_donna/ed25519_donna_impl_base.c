@@ -1,6 +1,7 @@
 #include <assert.h>
 #include "ed25519_donna.h"
 #include "../memzero.h"
+#include "options.h"
 
 /* sqrt(x) is such an integer y that 0 <= y <= p - 1, y % 2 = 0, and y^2 = x (mod p). */
 /* d = -121665 / 121666 */

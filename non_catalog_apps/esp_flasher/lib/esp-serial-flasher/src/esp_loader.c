@@ -44,7 +44,7 @@ typedef enum {
 static const target_registers_t *s_reg = NULL;
 static target_chip_t s_target = ESP_UNKNOWN_CHIP;
 
-#if MD5_ENABLED
+#if defined(MD5_ENABLED) && MD5_ENABLED
 
 static const uint32_t MD5_TIMEOUT_PER_MB = 800;
 static struct MD5Context s_md5_context;
@@ -372,7 +372,7 @@ esp_loader_error_t esp_loader_change_transmission_rate(uint32_t transmission_rat
     return loader_change_baudrate_cmd(transmission_rate);
 }
 
-#if MD5_ENABLED
+#if defined(MD5_ENABLED) && MD5_ENABLED
 
 static void hexify(const uint8_t raw_md5[16], uint8_t hex_md5_out[32])
 {

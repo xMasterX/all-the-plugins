@@ -331,7 +331,7 @@ esp_loader_error_t flash_binary(const uint8_t *bin, size_t size, size_t address)
 
     printf("\nFinished programming\n");
 
-#if MD5_ENABLED
+#if defined(MD5_ENABLED) && MD5_ENABLED
     err = esp_loader_flash_verify();
     if (err == ESP_LOADER_ERROR_UNSUPPORTED_FUNC) {
         printf("ESP8266 does not support flash verify command.");
