@@ -232,6 +232,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | EM4100 universal keys generator (for RFID Fuzzer) | ![RFID Badge] | [by Milk-Cool](https://github.com/Milk-Cool/fz-em4100-generator) |  | [![Author Badge]](https://lab.flipper.net/apps/key_generator) |
 | (Q)M100 UHF RFID | ![RFID Badge] | [by frux-c](https://github.com/frux-c/uhf_rfid) | WIP -> (+Added icon by @xMasterX) | ![None Badge] |
 | T5577 Multiwriter | ![RFID Badge] | [by Leptopt1los](https://github.com/Leptopt1los/t5577_multiwriter) | | ![None Badge] |
+| T5577 Raw Writer | ![RFID Badge] | [by zinongli](https://github.com/zinongli/T5577_Raw_Writer) | | ![None Badge] |
 | Enhanced Sub-GHz Chat | ![SubGhz Badge] | [by twisted-pear](https://github.com/twisted-pear/esubghz_chat) |  | ![None Badge] |
 | TPMS Reader | ![SubGhz Badge] | [by wosk](https://github.com/wosk/flipperzero-tpms/tree/main) |  | ![None Badge] |
 | ShapShup | ![SubGhz Badge] | [by derskythe](https://github.com/derskythe/flipperzero-shapshup) | RAW files preview (+fixed app exit) | ![None Badge] |
