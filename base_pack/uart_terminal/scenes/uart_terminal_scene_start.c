@@ -11,7 +11,12 @@ typedef enum {
     OPEN_HELP
 } ActionType;
 // Command availability in different modes
-typedef enum { OFF = 0, TEXT_MODE = 1, HEX_MODE = 2, BOTH_MODES = 3 } ModeMask;
+typedef enum {
+    OFF = 0,
+    TEXT_MODE = 1,
+    HEX_MODE = 2,
+    BOTH_MODES = 3
+} ModeMask;
 
 #define MAX_OPTIONS (8)
 
@@ -107,6 +112,13 @@ static void uart_terminal_scene_start_var_list_change_callback(VariableItem* ite
 
 void uart_terminal_scene_start_on_enter(void* context) {
     UART_TerminalApp* app = context;
+
+    // Restore terminal mode
+    if(app->atmode_was_set == true) {
+        app->TERMINAL_MODE = app->old_term_mode;
+        app->atmode_was_set = false;
+    }
+
     VariableItemList* var_item_list = app->var_item_list;
 
     for(int i = 0; i < START_MENU_ITEMS; ++i) {

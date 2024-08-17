@@ -39,7 +39,7 @@ static const uint8_t keyboard_row_count = 4;
 
 #define mode_AT "Send AT command to UART"
 
-#define ENTER_KEY '\r'
+#define ENTER_KEY     '\r'
 #define BACKSPACE_KEY '\b'
 
 static const UART_TextInputKey keyboard_keys_row_1[] = {

@@ -37,7 +37,7 @@ static const uint8_t keyboard_origin_x = 5;
 static const uint8_t keyboard_origin_y = 28;
 static const uint8_t keyboard_row_count = 2;
 
-#define ENTER_KEY '\r'
+#define ENTER_KEY     '\r'
 #define BACKSPACE_KEY '\b'
 
 static const UART_TextInputKey keyboard_keys_row_1[] = {
