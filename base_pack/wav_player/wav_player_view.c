@@ -100,9 +100,6 @@ static bool wav_player_view_input_callback(InputEvent* event, void* context) {
             } else if(event->key == InputKeyOk) {
                 wav_player_view->callback(WavPlayerCtrlOk, wav_player_view->context);
                 consumed = true;
-            } else if(event->key == InputKeyBack) {
-                wav_player_view->callback(WavPlayerCtrlBack, wav_player_view->context);
-                consumed = true;
             }
         }
     }
@@ -134,20 +131,17 @@ View* wav_player_view_get_view(WavPlayerView* wav_view) {
 
 void wav_player_view_set_volume(WavPlayerView* wav_view, float volume) {
     furi_assert(wav_view);
-    with_view_model(
-        wav_view->view, WavPlayerViewModel * model, { model->volume = volume; }, true);
+    with_view_model(wav_view->view, WavPlayerViewModel * model, { model->volume = volume; }, true);
 }
 
 void wav_player_view_set_start(WavPlayerView* wav_view, size_t start) {
     furi_assert(wav_view);
-    with_view_model(
-        wav_view->view, WavPlayerViewModel * model, { model->start = start; }, true);
+    with_view_model(wav_view->view, WavPlayerViewModel * model, { model->start = start; }, true);
 }
 
 void wav_player_view_set_end(WavPlayerView* wav_view, size_t end) {
     furi_assert(wav_view);
-    with_view_model(
-        wav_view->view, WavPlayerViewModel * model, { model->end = end; }, true);
+    with_view_model(wav_view->view, WavPlayerViewModel * model, { model->end = end; }, true);
 }
 
 void wav_player_view_set_current(WavPlayerView* wav_view, size_t current) {
@@ -158,8 +152,7 @@ void wav_player_view_set_current(WavPlayerView* wav_view, size_t current) {
 
 void wav_player_view_set_play(WavPlayerView* wav_view, bool play) {
     furi_assert(wav_view);
-    with_view_model(
-        wav_view->view, WavPlayerViewModel * model, { model->play = play; }, true);
+    with_view_model(wav_view->view, WavPlayerViewModel * model, { model->play = play; }, true);
 }
 
 void wav_player_view_set_chans(WavPlayerView* wav_view, uint16_t chn) {
