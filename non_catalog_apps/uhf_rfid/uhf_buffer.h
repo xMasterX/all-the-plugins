@@ -5,10 +5,12 @@
 
 #define MAX_BUFFER_SIZE 200
 
-typedef struct Buffer {
+typedef struct {
     uint8_t* data;
     size_t size;
     size_t capacity;
+    size_t head;
+    size_t tail;
     bool closed;
 } Buffer;
 

@@ -70,18 +70,24 @@ UHFWorkerEvent write_single_card(UHFWorker* uhf_worker) {
         if(uhf_worker->state == UHFWorkerStateStop) return UHFWorkerEventAborted;
         if(rp_type == M100SuccessResponse) break;
     } while(true);
-    do {
+    while(m100_is_write_mask_enabled(uhf_worker->module, WRITE_USER)) {
         rp_type = m100_write_label_data_storage(
             uhf_worker->module, uhf_tag_from, uhf_tag_des, UserBank, 0, 0);
         if(uhf_worker->state == UHFWorkerStateStop) return UHFWorkerEventAborted;
         if(rp_type == M100SuccessResponse) break;
-    } while(true);
-    do {
+    }
+    while(m100_is_write_mask_enabled(uhf_worker->module, WRITE_TID)) {
+        rp_type = m100_write_label_data_storage(
+            uhf_worker->module, uhf_tag_from, uhf_tag_des, TIDBank, 0, 0);
+        if(uhf_worker->state == UHFWorkerStateStop) return UHFWorkerEventAborted;
+        if(rp_type == M100SuccessResponse) break;
+    }
+    while(m100_is_write_mask_enabled(uhf_worker->module, WRITE_EPC)) {
         rp_type = m100_write_label_data_storage(
             uhf_worker->module, uhf_tag_from, uhf_tag_des, EPCBank, 0, 0);
         if(uhf_worker->state == UHFWorkerStateStop) return UHFWorkerEventAborted;
         if(rp_type == M100SuccessResponse) break;
-    } while(true);
+    }
     return UHFWorkerEventSuccess;
 }
 

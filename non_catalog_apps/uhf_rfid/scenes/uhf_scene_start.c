@@ -1,6 +1,10 @@
 #include "../uhf_app_i.h"
 
-enum SubmenuIndex { SubmenuIndexRead, SubmenuIndexSaved, SubmenuIndexSettings };
+enum SubmenuIndex {
+    SubmenuIndexRead,
+    SubmenuIndexSaved,
+    SubmenuIndexSettings
+};
 
 void uhf_scene_start_submenu_callback(void* ctx, uint32_t index) {
     UHFApp* uhf_app = ctx;

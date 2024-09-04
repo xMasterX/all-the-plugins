@@ -1,7 +1,11 @@
 #include "../uhf_app_i.h"
 #include <dolphin/dolphin.h>
 
-typedef enum { EPC_INFO, TID_INFO, USER_INFO } UHFTagInfo;
+typedef enum {
+    EPC_INFO,
+    TID_INFO,
+    USER_INFO
+} UHFTagInfo;
 
 static UHFTagInfo current_info;
 
