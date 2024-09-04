@@ -42,7 +42,7 @@ int get_asn1c_environment_version(void);	/* Run-time version */
  * You may enable or override it.
  */
 #ifndef	ASN_DEBUG	/* If debugging code is not defined elsewhere... */
-#if defined(ASN_EMIT_DEBUG) && ASN_EMIT_DEBUG == 1	/* And it was asked to emit this code... */
+#if	defined(ASN_EMIT_DEBUG) && ASN_EMIT_DEBUG == 1	/* And it was asked to emit this code... */
 #if __STDC_VERSION__ >= 199901L
 #ifdef	ASN_THREAD_SAFE
 /* Thread safety requires sacrifice in output indentation:

@@ -1,7 +1,6 @@
 #include "../seader_i.h"
 
 enum SubmenuIndex {
-    SubmenuIndexParse,
     SubmenuIndexSave,
     SubmenuIndexSavePicopass,
     SubmenuIndexSaveRFID,
@@ -18,20 +17,7 @@ void seader_scene_card_menu_submenu_callback(void* context, uint32_t index) {
 void seader_scene_card_menu_on_enter(void* context) {
     Seader* seader = context;
     SeaderCredential* credential = seader->credential;
-    PluginWiegand* plugin = seader->plugin_wiegand;
     Submenu* submenu = seader->submenu;
-
-    if(plugin) {
-        size_t format_count = plugin->count(credential->bit_length, credential->credential);
-        if(format_count > 0) {
-            submenu_add_item(
-                submenu,
-                "Parse",
-                SubmenuIndexParse,
-                seader_scene_card_menu_submenu_callback,
-                seader);
-        }
-    }
 
     submenu_add_item(
         submenu, "Save", SubmenuIndexSave, seader_scene_card_menu_submenu_callback, seader);
@@ -73,6 +59,7 @@ bool seader_scene_card_menu_on_event(void* context, SceneManagerEvent event) {
         if(event.event == SubmenuIndexSave) {
             scene_manager_set_scene_state(
                 seader->scene_manager, SeaderSceneCardMenu, SubmenuIndexSave);
+            seader->credential->save_format = SeaderCredentialSaveFormatAgnostic;
             scene_manager_next_scene(seader->scene_manager, SeaderSceneSaveName);
             consumed = true;
         } else if(event.event == SubmenuIndexSavePicopass) {
@@ -98,11 +85,6 @@ bool seader_scene_card_menu_on_event(void* context, SceneManagerEvent event) {
                 seader->scene_manager, SeaderSceneCardMenu, SubmenuIndexSaveMFC);
             seader->credential->save_format = SeaderCredentialSaveFormatMFC;
             scene_manager_next_scene(seader->scene_manager, SeaderSceneSaveName);
-            consumed = true;
-        } else if(event.event == SubmenuIndexParse) {
-            scene_manager_set_scene_state(
-                seader->scene_manager, SeaderSceneCardMenu, SubmenuIndexParse);
-            scene_manager_next_scene(seader->scene_manager, SeaderSceneFormats);
             consumed = true;
         }
     } else if(event.type == SceneManagerEventTypeBack) {

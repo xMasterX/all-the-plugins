@@ -5,11 +5,13 @@
 #include <storage/storage.h>
 #include <dialogs/dialogs.h>
 #include "protocol/picopass_protocol.h"
+#include <optimized_ikeys.h>
+#include <optimized_cipher.h>
 
 #define SEADER_CRED_NAME_MAX_LEN 22
 #define SEADER_APP_EXTENSION     ".credential"
 #define SEADER_APP_MFC_EXTENSION ".nfc"
-#define SEADER_APP_MFC_FOLDER    ANY_PATH("nfc")
+#define SEADER_APP_MFC_FOLDER    EXT_PATH("nfc")
 
 typedef void (*SeaderLoadingCallback)(void* context, bool state);
 

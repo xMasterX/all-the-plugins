@@ -16,6 +16,7 @@ void seader_scene_read_card_success_widget_callback(
 void seader_scene_read_card_success_on_enter(void* context) {
     Seader* seader = context;
     SeaderCredential* credential = seader->credential;
+    PluginWiegand* plugin = seader->plugin_wiegand;
     Widget* widget = seader->widget;
 
     FuriString* type_str = furi_string_alloc();
@@ -58,6 +59,18 @@ void seader_scene_read_card_success_on_enter(void* context) {
     widget_add_button_element(
         widget, GuiButtonTypeRight, "More", seader_scene_read_card_success_widget_callback, seader);
 
+    if(plugin) {
+        size_t format_count = plugin->count(credential->bit_length, credential->credential);
+        if(format_count > 0) {
+            widget_add_button_element(
+                seader->widget,
+                GuiButtonTypeCenter,
+                "Parse",
+                seader_scene_read_card_success_widget_callback,
+                seader);
+        }
+    }
+
     widget_add_string_element(
         widget, 64, 5, AlignCenter, AlignCenter, FontPrimary, furi_string_get_cstr(type_str));
     widget_add_string_element(
@@ -99,6 +112,9 @@ bool seader_scene_read_card_success_on_event(void* context, SceneManagerEvent ev
             consumed = scene_manager_previous_scene(seader->scene_manager);
         } else if(event.event == GuiButtonTypeRight) {
             scene_manager_next_scene(seader->scene_manager, SeaderSceneCardMenu);
+            consumed = true;
+        } else if(event.event == GuiButtonTypeCenter) {
+            scene_manager_next_scene(seader->scene_manager, SeaderSceneFormats);
             consumed = true;
         }
     } else if(event.type == SceneManagerEventTypeBack) {

@@ -12,6 +12,7 @@
 
 static const char* seader_file_header = "Flipper Seader Credential";
 static const uint32_t seader_file_version = 1;
+extern const uint8_t picopass_iclass_key[];
 
 SeaderCredential* seader_credential_alloc() {
     SeaderCredential* seader_dev = malloc(sizeof(SeaderCredential));
@@ -197,7 +198,6 @@ bool seader_credential_save_mfc(SeaderCredential* cred, const char* name) {
     uint8_t empty_block[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     uint8_t pacs_block[16] = {0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-    bool use_load_path = true;
     bool saved = false;
     FlipperFormat* file = flipper_format_file_alloc(cred->storage);
     FuriString* temp_str;
@@ -208,15 +208,8 @@ bool seader_credential_save_mfc(SeaderCredential* cred, const char* name) {
     memcpy(pacs_block + 8, &swapped, sizeof(swapped));
 
     do {
-        if(use_load_path && !furi_string_empty(cred->load_path)) {
-            // Get directory name
-            path_extract_dirname(furi_string_get_cstr(cred->load_path), temp_str);
-            // Make path to file to save
-            furi_string_cat_printf(temp_str, "/%s%s", name, SEADER_APP_MFC_EXTENSION);
-        } else {
-            furi_string_printf(
-                temp_str, "%s/%s%s", SEADER_APP_MFC_FOLDER, name, SEADER_APP_MFC_EXTENSION);
-        }
+        furi_string_printf(
+            temp_str, "%s/%s%s", SEADER_APP_MFC_FOLDER, name, SEADER_APP_MFC_EXTENSION);
 
         FURI_LOG_D(TAG, "Save as MFC [%s]", furi_string_get_cstr(temp_str));
 
@@ -354,6 +347,9 @@ bool seader_credential_save_agnostic(SeaderCredential* cred, const char* name) {
             furi_string_printf(
                 temp_str, "%s/%s%s", STORAGE_APP_DATA_PATH_PREFIX, name, SEADER_APP_EXTENSION);
         }
+
+        FURI_LOG_D(TAG, "Save as Seader [%s]", furi_string_get_cstr(temp_str));
+
         // Open file
         if(!flipper_format_file_open_always(file, furi_string_get_cstr(temp_str))) break;
 
@@ -391,21 +387,17 @@ bool seader_credential_save_picopass(SeaderCredential* cred, const char* name) {
     uint8_t aia[PICOPASS_BLOCK_LEN] = {0xFF, 0xff, 0xff, 0xff, 0xFF, 0xFf, 0xff, 0xFF};
     uint8_t pacs_cfg[PICOPASS_BLOCK_LEN] = {0x03, 0x03, 0x03, 0x03, 0x00, 0x03, 0xe0, 0x14};
 
-    bool use_load_path = true;
     bool saved = false;
     bool withSIO = cred->save_format == SeaderCredentialSaveFormatSR;
+    if(withSIO) {
+        loclass_iclass_calc_div_key(cred->diversifier, picopass_iclass_key, debit_key, false);
+    }
+
     FlipperFormat* file = flipper_format_file_alloc(cred->storage);
     FuriString* temp_str = furi_string_alloc();
 
     storage_simply_mkdir(cred->storage, EXT_PATH("apps_data/picopass"));
-    if(use_load_path && !furi_string_empty(cred->load_path)) {
-        // Get directory name
-        path_extract_dirname(furi_string_get_cstr(cred->load_path), temp_str);
-        // Make path to file to save
-        furi_string_cat_printf(temp_str, "/%s%s", name, ".picopass");
-    } else {
-        furi_string_printf(temp_str, "%s/%s%s", EXT_PATH("apps_data/picopass"), name, ".picopass");
-    }
+    furi_string_printf(temp_str, "%s/%s%s", EXT_PATH("apps_data/picopass"), name, ".picopass");
 
     FURI_LOG_D(TAG, "Save as Picopass [%s]", furi_string_get_cstr(temp_str));
     uint64_t sentinel = 1ULL << cred->bit_length;
@@ -529,7 +521,7 @@ bool seader_credential_save_picopass(SeaderCredential* cred, const char* name) {
 bool seader_credential_save_rfid(SeaderCredential* cred, const char* name) {
     bool result = false;
     FuriString* file_path = furi_string_alloc();
-    furi_string_printf(file_path, "%s/%s%s", ANY_PATH("lfrfid"), name, ".rfid");
+    furi_string_printf(file_path, "%s/%s%s", EXT_PATH("lfrfid"), name, ".rfid");
     ProtocolDict* dict = protocol_dict_alloc(lfrfid_protocols, LFRFIDProtocolMax);
     ProtocolId protocol = LFRFIDProtocolHidGeneric;
 
