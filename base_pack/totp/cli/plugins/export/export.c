@@ -1,4 +1,6 @@
 #include <lib/toolbox/args.h>
+#include <dialogs/dialogs.h>
+#include "../../../ui/constants.h"
 #include <flipper_application/flipper_application.h>
 #include "../../../lib/polyfills/memset_s.h"
 #include "../../../services/config/config.h"
@@ -57,16 +59,26 @@ static void handle(PluginState* plugin_state, FuriString* args, Cli* cli) {
     TOTP_CLI_PRINTF_WARNING("WARNING!\r\n");
     TOTP_CLI_PRINTF_WARNING(
         "ALL THE INFORMATION (INCL. UNENCRYPTED SECRET) ABOUT ALL THE TOKENS WILL BE EXPORTED AND PRINTED TO THE CONSOLE.\r\n");
-    TOTP_CLI_PRINTF_WARNING("Confirm? [y/n]\r\n");
-    fflush(stdout);
-    char user_pick;
-    do {
-        user_pick = tolower(cli_getc(cli));
-    } while(user_pick != 'y' && user_pick != 'n' && user_pick != CliSymbolAsciiCR &&
-            user_pick != CliSymbolAsciiETX && user_pick != CliSymbolAsciiEsc);
+    TOTP_CLI_PRINTF_WARNING("Confirm this action on your Flipper\r\n");
 
-    if(user_pick != 'y' && user_pick != CliSymbolAsciiCR) {
+    DialogMessage* message = dialog_message_alloc();
+    dialog_message_set_buttons(message, "No", NULL, "Yes");
+    dialog_message_set_text(
+        message,
+        "Would you like to\nEXPORT TOKENS AND\nUNENCRYPTED SECRETS?",
+        SCREEN_WIDTH_CENTER,
+        SCREEN_HEIGHT_CENTER - 8,
+        AlignCenter,
+        AlignCenter);
+    DialogMessageButton dialog_result = dialog_message_show(plugin_state->dialogs_app, message);
+    dialog_message_free(message);
+
+    if(dialog_result != DialogMessageButtonRight) {
         TOTP_CLI_PRINTF_INFO("User has not confirmed\r\n");
+        return;
+    }
+
+    if(!totp_cli_ensure_authenticated(plugin_state, cli)) {
         return;
     }
 

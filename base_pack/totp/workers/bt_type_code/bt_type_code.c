@@ -14,7 +14,7 @@
 #include "../../config/app/config.h"
 #include "../../services/config/constants.h"
 
-#define HID_BT_KEYS_STORAGE_PATH_FORMAT CONFIG_FILE_DIRECTORY_PATH "/.bt_hid_%2X.keys"
+#define HID_BT_KEYS_STORAGE_PATH_FORMAT CONFIG_FILE_DIRECTORY_PATH "/.bt_hid_%02x.keys"
 
 struct TotpBtTypeCodeWorkerContext {
     char* code_buffer;
