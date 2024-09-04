@@ -1,7 +1,7 @@
 #include "imu.h"
 #include "../../lib/lsm6ds3tr-api/lsm6ds3tr-c_reg.h"
 
-#define LSM6DS3_TAG "LSM6DS3"
+#define LSM6DS3_TAG         "LSM6DS3"
 #define LSM6DS3_DEV_ADDRESS (0x6A << 1)
 
 stmdev_ctx_t lsm6ds3trc_ctx;
@@ -39,7 +39,8 @@ bool lsm6ds3trc_begin() {
 
     lsm6ds3tr_c_reset_set(&lsm6ds3trc_ctx, PROPERTY_ENABLE);
     uint8_t rst = PROPERTY_ENABLE;
-    while(rst) lsm6ds3tr_c_reset_get(&lsm6ds3trc_ctx, &rst);
+    while(rst)
+        lsm6ds3tr_c_reset_get(&lsm6ds3trc_ctx, &rst);
 
     lsm6ds3tr_c_block_data_update_set(&lsm6ds3trc_ctx, PROPERTY_ENABLE);
     lsm6ds3tr_c_fifo_mode_set(&lsm6ds3trc_ctx, LSM6DS3TR_C_BYPASS_MODE);

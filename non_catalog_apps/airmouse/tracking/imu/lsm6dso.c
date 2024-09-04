@@ -1,7 +1,7 @@
 #include "imu.h"
 #include "../../lib/lsm6dso-api/lsm6dso_reg.h"
 
-#define LSM6DSO_TAG "LSM6DO"
+#define LSM6DSO_TAG         "LSM6DO"
 #define LSM6DSO_DEV_ADDRESS (0x6B << 1)
 
 stmdev_ctx_t lsm6dso_ctx;
@@ -38,7 +38,8 @@ bool lsm6dso_begin() {
 
     lsm6dso_reset_set(&lsm6dso_ctx, PROPERTY_ENABLE);
     uint8_t rst = PROPERTY_ENABLE;
-    while(rst) lsm6dso_reset_get(&lsm6dso_ctx, &rst);
+    while(rst)
+        lsm6dso_reset_get(&lsm6dso_ctx, &rst);
 
     lsm6dso_block_data_update_set(&lsm6dso_ctx, PROPERTY_ENABLE);
     lsm6dso_fifo_mode_set(&lsm6dso_ctx, LSM6DSO_BYPASS_MODE);

@@ -1,7 +1,7 @@
 #include "imu.h"
 #include "../../lib/bmi160-api/bmi160.h"
 
-#define BMI160_TAG "BMI160"
+#define BMI160_TAG      "BMI160"
 #define BMI160_DEV_ADDR (0x69 << 1)
 
 struct bmi160_dev bmi160dev;
