@@ -29,8 +29,9 @@
 
 #include "scenes/nfc_playlist_scene.h"
 
-#define PLAYLIST_LOCATION "/ext/apps_data/nfc_playlist/"
-#define PLAYLIST_DIR "/ext/apps_data/nfc_playlist"
+#define PLAYLIST_LOCATION     "/ext/apps_data/nfc_playlist/"
+#define PLAYLIST_DIR          "/ext/apps_data/nfc_playlist"
+#define NFC_ITEM_LOCATION     "/ext/nfc/"
 #define MAX_PLAYLIST_NAME_LEN 50
 
 typedef enum {
@@ -45,7 +46,6 @@ typedef enum {
 typedef struct {
     FuriString* playlist_path;
     uint8_t playlist_length;
-    bool playlist_selected;
     uint8_t emulate_timeout;
     uint8_t emulate_delay;
     bool emulate_led_indicator;
@@ -71,7 +71,7 @@ typedef struct {
 
 static const int options_emulate_timeout[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
 static const int default_emulate_timeout = 4;
-static const int options_emulate_delay[] = {0, 1, 2, 3, 4, 5, 6};
+static const int options_emulate_delay[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
 static const int default_emulate_delay = 0;
 static const bool default_emulate_led_indicator = true;
 static const bool default_skip_error = false;

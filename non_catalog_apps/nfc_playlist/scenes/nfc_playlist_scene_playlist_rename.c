@@ -24,7 +24,6 @@ int32_t nfc_playlist_playlist_rename_thread_task(void* context) {
     }
 
     furi_string_free(new_file_path);
-
     furi_record_close(RECORD_STORAGE);
 
     return 0;

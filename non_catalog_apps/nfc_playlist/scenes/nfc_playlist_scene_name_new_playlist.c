@@ -3,8 +3,8 @@
 int32_t nfc_playlist_name_new_playlist_thread_task(void* context) {
     NfcPlaylist* nfc_playlist = context;
 
-    FuriString* file_name = furi_string_alloc_printf(
-        "/ext/apps_data/nfc_playlist/%s.txt", nfc_playlist->text_input_output);
+    FuriString* file_name =
+        furi_string_alloc_printf("%s%s.txt", PLAYLIST_LOCATION, nfc_playlist->text_input_output);
     char const* file_name_cstr = furi_string_get_cstr(file_name);
 
     Storage* storage = furi_record_open(RECORD_STORAGE);
