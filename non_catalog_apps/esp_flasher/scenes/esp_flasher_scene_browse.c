@@ -170,20 +170,20 @@ static void esp_flasher_scene_browse_callback(void* context, uint32_t index) {
     furi_string_free(predefined_filepath);
 }
 
-#define STR_SELECT "[x]"
-#define STR_UNSELECT "[ ]"
-#define STR_BOOT "Bootloader (" TOSTRING(ESP_ADDR_BOOT) ")"
-#define STR_BOOT_S3 "Bootloader (" TOSTRING(ESP_ADDR_BOOT_S3) ")"
-#define STR_PART "Part Table (" TOSTRING(ESP_ADDR_PART) ")"
-#define STR_NVS "NVS (" TOSTRING(ESP_ADDR_NVS) ")"
-#define STR_BOOT_APP0 "boot_app0 (" TOSTRING(ESP_ADDR_BOOT_APP0) ")"
-#define STR_APP_A "FirmwareA(" TOSTRING(ESP_ADDR_APP_A) ")"
-#define STR_APP_B "FirmwareB(" TOSTRING(ESP_ADDR_APP_B) ")"
-#define STR_CUSTOM "Custom"
-#define STR_FLASH_S3 "[>] FLASH - slow (S3)"
-#define STR_FLASH "[>] FLASH - slow"
+#define STR_SELECT         "[x]"
+#define STR_UNSELECT       "[ ]"
+#define STR_BOOT           "Bootloader (" TOSTRING(ESP_ADDR_BOOT) ")"
+#define STR_BOOT_S3        "Bootloader (" TOSTRING(ESP_ADDR_BOOT_S3) ")"
+#define STR_PART           "Part Table (" TOSTRING(ESP_ADDR_PART) ")"
+#define STR_NVS            "NVS (" TOSTRING(ESP_ADDR_NVS) ")"
+#define STR_BOOT_APP0      "boot_app0 (" TOSTRING(ESP_ADDR_BOOT_APP0) ")"
+#define STR_APP_A          "FirmwareA(" TOSTRING(ESP_ADDR_APP_A) ")"
+#define STR_APP_B          "FirmwareB(" TOSTRING(ESP_ADDR_APP_B) ")"
+#define STR_CUSTOM         "Custom"
+#define STR_FLASH_S3       "[>] FLASH - slow (S3)"
+#define STR_FLASH          "[>] FLASH - slow"
 #define STR_FLASH_TURBO_S3 "[>] FLASH - fast (S3)"
-#define STR_FLASH_TURBO "[>] FLASH - fast"
+#define STR_FLASH_TURBO    "[>] FLASH - fast"
 static void _refresh_submenu(EspFlasherApp* app) {
     Submenu* submenu = app->submenu;
 

@@ -1,0 +1,30 @@
+name: MatrixCreator
+
+run-name: "Creates supported family matrix for other jobs"
+
+on:
+  workflow_call:
+    outputs:
+      matrix:
+        description: "Supported family for job matrixing"
+        value: ${{ jobs.CreateMatrix.outputs.matrix }}
+
+jobs:
+  CreateMatrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.create-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout repo
+        id: checkout
+        uses: actions/checkout@v4
+
+      - name: Create matrix
+        id: create-matrix
+        run: |
+          files=$(find cmake/stm32/ -name '*.cmake' -exec sh -c "basename {} | cut -f1 -d '.' | tr '[:lower:]' '[:upper:]'" \;  | sort)
+          deletes="COMMON DEVICES LINKER_LD"
+          for del in $deletes; do
+            files=(${files[@]/$del})
+          done
+          echo "matrix={\"family\":$(jq --compact-output --null-input '$ARGS.positional' --args -- ${files[@]})}" >> $GITHUB_OUTPUT

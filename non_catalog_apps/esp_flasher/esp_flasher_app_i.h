@@ -27,7 +27,7 @@
 #define ESP_FLASHER_TEXT_BOX_STORE_SIZE (4096)
 
 #define ESP_APP_FOLDER_USER "apps_data/esp_flasher"
-#define ESP_APP_FOLDER EXT_PATH(ESP_APP_FOLDER_USER)
+#define ESP_APP_FOLDER      EXT_PATH(ESP_APP_FOLDER_USER)
 
 typedef enum SelectedFlashOptions {
     SelectedFlashS3Mode,
