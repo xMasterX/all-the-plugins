@@ -19,35 +19,35 @@
 #endif
 #define LOCLASS_MACS_TO_COLLECT (LOCLASS_NUM_CSNS * LOCLASS_NUM_PER_CSN)
 
-#define PICOPASS_DEV_NAME_MAX_LEN 129
+#define PICOPASS_DEV_NAME_MAX_LEN     129
 #define PICOPASS_READER_DATA_MAX_SIZE 64
-#define PICOPASS_MAX_APP_LIMIT 32
+#define PICOPASS_MAX_APP_LIMIT        32
 
-#define PICOPASS_CSN_BLOCK_INDEX 0
-#define PICOPASS_CONFIG_BLOCK_INDEX 1
+#define PICOPASS_CSN_BLOCK_INDEX             0
+#define PICOPASS_CONFIG_BLOCK_INDEX          1
 // These definitions for blocks above 2 only hold for secure cards.
-#define PICOPASS_SECURE_EPURSE_BLOCK_INDEX 2
-#define PICOPASS_SECURE_KD_BLOCK_INDEX 3
-#define PICOPASS_SECURE_KC_BLOCK_INDEX 4
-#define PICOPASS_SECURE_AIA_BLOCK_INDEX 5
+#define PICOPASS_SECURE_EPURSE_BLOCK_INDEX   2
+#define PICOPASS_SECURE_KD_BLOCK_INDEX       3
+#define PICOPASS_SECURE_KC_BLOCK_INDEX       4
+#define PICOPASS_SECURE_AIA_BLOCK_INDEX      5
 // Non-secure cards instead have an AIA at block 2
-#define PICOPASS_NONSECURE_AIA_BLOCK_INDEX 2
+#define PICOPASS_NONSECURE_AIA_BLOCK_INDEX   2
 // Only iClass cards
 #define PICOPASS_ICLASS_PACS_CFG_BLOCK_INDEX 6
 
 // Personalization Mode
-#define PICOPASS_FUSE_PERS 0x80
+#define PICOPASS_FUSE_PERS    0x80
 // Crypt1 // 1+1 (crypt1+crypt0) means secured and keys changable
-#define PICOPASS_FUSE_CRYPT1 0x10
+#define PICOPASS_FUSE_CRYPT1  0x10
 // Crypt0 // 1+0 means secure and keys locked, 0+1 means not secured, 0+0 means disable auth entirely
-#define PICOPASS_FUSE_CRYPT0 0x08
+#define PICOPASS_FUSE_CRYPT0  0x08
 #define PICOPASS_FUSE_CRYPT10 (PICOPASS_FUSE_CRYPT1 | PICOPASS_FUSE_CRYPT0)
 // Read Access, 1 meanns anonymous read enabled, 0 means must auth to read applicaion
-#define PICOPASS_FUSE_RA 0x01
+#define PICOPASS_FUSE_RA      0x01
 
-#define PICOPASS_APP_FOLDER ANY_PATH("picopass")
-#define PICOPASS_APP_EXTENSION ".picopass"
-#define PICOPASS_APP_FILE_PREFIX "Picopass"
+#define PICOPASS_APP_FOLDER           ANY_PATH("picopass")
+#define PICOPASS_APP_EXTENSION        ".picopass"
+#define PICOPASS_APP_FILE_PREFIX      "Picopass"
 #define PICOPASS_APP_SHADOW_EXTENSION ".pas"
 
 #define PICOPASS_DICT_KEY_BATCH_SIZE 10

@@ -41,9 +41,9 @@
 
 #define PICOPASS_TEXT_STORE_SIZE 129
 
-#define PICOPASS_ICLASS_ELITE_DICT_FLIPPER_NAME APP_ASSETS_PATH("iclass_elite_dict.txt")
+#define PICOPASS_ICLASS_ELITE_DICT_FLIPPER_NAME    APP_ASSETS_PATH("iclass_elite_dict.txt")
 #define PICOPASS_ICLASS_STANDARD_DICT_FLIPPER_NAME APP_ASSETS_PATH("iclass_standard_dict.txt")
-#define PICOPASS_ICLASS_ELITE_DICT_USER_NAME APP_DATA_PATH("assets/iclass_elite_dict_user.txt")
+#define PICOPASS_ICLASS_ELITE_DICT_USER_NAME       APP_DATA_PATH("assets/iclass_elite_dict_user.txt")
 
 enum PicopassCustomEvent {
     // Reserve first 100 events for button types and indexes, starting from 0

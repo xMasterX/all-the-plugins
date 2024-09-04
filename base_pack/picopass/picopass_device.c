@@ -20,17 +20,7 @@ const char unknown_block[] = "?? ?? ?? ?? ?? ?? ?? ??";
 
 PicopassDevice* picopass_device_alloc() {
     PicopassDevice* picopass_dev = malloc(sizeof(PicopassDevice));
-    picopass_dev->dev_data.auth = PicopassDeviceAuthMethodUnset;
-    picopass_dev->dev_data.pacs.legacy = false;
-    picopass_dev->dev_data.pacs.se_enabled = false;
-    picopass_dev->dev_data.pacs.sio = false;
-    picopass_dev->dev_data.pacs.biometrics = false;
-    memset(picopass_dev->dev_data.pacs.key, 0, sizeof(picopass_dev->dev_data.pacs.key));
-    picopass_dev->dev_data.pacs.elite_kdf = false;
-    picopass_dev->dev_data.pacs.pin_length = 0;
-    picopass_dev->dev_data.pacs.bitLength = 0;
-    memset(
-        picopass_dev->dev_data.pacs.credential, 0, sizeof(picopass_dev->dev_data.pacs.credential));
+    memset(picopass_dev, 0, sizeof(PicopassDevice));
     picopass_dev->storage = furi_record_open(RECORD_STORAGE);
     picopass_dev->dialogs = furi_record_open(RECORD_DIALOGS);
     picopass_dev->load_path = furi_string_alloc();
@@ -175,12 +165,6 @@ static bool picopass_device_save_file(
     PicopassBlock* card_data = dev->dev_data.card_data;
     FuriString* temp_str;
     temp_str = furi_string_alloc();
-
-    if(dev->format == PicopassDeviceSaveFormatPartial) {
-        // Clear key that may have been set when doing key tests for legacy
-        memset(card_data[PICOPASS_SECURE_KD_BLOCK_INDEX].data, 0, PICOPASS_BLOCK_LEN);
-        card_data[PICOPASS_SECURE_KD_BLOCK_INDEX].valid = false;
-    }
 
     do {
         if(use_load_path && !furi_string_empty(dev->load_path)) {

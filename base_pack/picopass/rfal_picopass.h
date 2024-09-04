@@ -3,7 +3,7 @@
 #include <furi_hal_nfc.h>
 
 #define RFAL_PICOPASS_UID_LEN 8
-#define PICOPASS_BLOCK_LEN 8
+#define PICOPASS_BLOCK_LEN    8
 
 enum {
     // PicoPass command bytes:

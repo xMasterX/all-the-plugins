@@ -2,13 +2,13 @@
 
 #include "../picopass_device.h"
 
-#define PICOPASS_BLOCK_LEN 8
-#define PICOPASS_MAX_APP_LIMIT 32
-#define PICOPASS_UID_LEN 8
+#define PICOPASS_BLOCK_LEN           8
+#define PICOPASS_MAX_APP_LIMIT       32
+#define PICOPASS_UID_LEN             8
 #define PICOPASS_READ_CHECK_RESP_LEN 8
-#define PICOPASS_CHECK_RESP_LEN 4
-#define PICOPASS_MAC_LEN 4
-#define PICOPASS_KEY_LEN 8
+#define PICOPASS_CHECK_RESP_LEN      4
+#define PICOPASS_MAC_LEN             4
+#define PICOPASS_KEY_LEN             8
 
 #define PICOPASS_FDT_LISTEN_FC (1000)
 

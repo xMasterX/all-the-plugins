@@ -313,15 +313,6 @@ NfcCommand picopass_poller_nr_mac_auth(PicopassPoller* instance) {
             if(instance->mode == PicopassPollerModeRead) {
                 picopass_poller_prepare_read(instance);
                 instance->state = PicopassPollerStateReadBlock;
-                // Set to non-zero keys to allow emulation
-                memset(
-                    instance->data->card_data[PICOPASS_SECURE_KD_BLOCK_INDEX].data,
-                    0xff,
-                    PICOPASS_BLOCK_LEN);
-                memset(
-                    instance->data->card_data[PICOPASS_SECURE_KC_BLOCK_INDEX].data,
-                    0xff,
-                    PICOPASS_BLOCK_LEN);
             }
         }
 
@@ -431,9 +422,12 @@ NfcCommand picopass_poller_read_block_handler(PicopassPoller* instance) {
             break;
         }
 
-        if(instance->secured && instance->current_block == PICOPASS_SECURE_KD_BLOCK_INDEX) {
-            // Skip over Kd block which is populated earlier (READ of Kd returns all FF's)
+        if(instance->secured && (instance->current_block == PICOPASS_SECURE_KD_BLOCK_INDEX ||
+                                 instance->current_block == PICOPASS_SECURE_KC_BLOCK_INDEX)) {
+            // Kd and Kc blocks cannot be read (card always returns FF's)
+            // Key blocks we authed as would have been already set earlier
             instance->current_block++;
+            continue;
         }
 
         PicopassBlock block = {};

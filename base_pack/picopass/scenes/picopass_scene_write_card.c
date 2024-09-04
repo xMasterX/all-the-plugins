@@ -3,7 +3,7 @@
 #include "../picopass_keys.h"
 
 #define PICOPASS_SCENE_WRITE_BLOCK_START 6
-#define PICOPASS_SCENE_WRITE_BLOCK_STOP 10
+#define PICOPASS_SCENE_WRITE_BLOCK_STOP  10
 
 NfcCommand picopass_scene_write_poller_callback(PicopassPollerEvent event, void* context) {
     Picopass* picopass = context;

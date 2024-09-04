@@ -3,7 +3,7 @@
 #include "../picopass_elite_keygen.h"
 
 #define PICOPASS_SCENE_DICT_ATTACK_KEYS_BATCH_UPDATE (10)
-#define PICOPASS_SCENE_ELITE_KEYGEN_ATTACK_LIMIT (2000)
+#define PICOPASS_SCENE_ELITE_KEYGEN_ATTACK_LIMIT     (2000)
 
 NfcCommand picopass_elite_keygen_attack_worker_callback(PicopassPollerEvent event, void* context) {
     furi_assert(context);
