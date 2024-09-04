@@ -9,7 +9,6 @@
 #include <cli/cli.h>
 #include <gui/gui.h>
 #include "furi_hal_rtc.h"
-#include <expansion/expansion.h>
 
 void draw_callback(Canvas* canvas, void* ctx) {
     PlayerViewModel* model = (PlayerViewModel*)ctx;
@@ -85,6 +84,14 @@ void draw_progress_bar(VideoPlayerApp* player) {
     canvas_draw_box(player->canvas, 1, 59, player->progress, 4);
 }
 
+void draw_volume_bar(VideoPlayerApp* player) {
+    canvas_set_color(player->canvas, ColorWhite);
+    canvas_draw_box(player->canvas, 122, 0, 6, 64);
+    canvas_set_color(player->canvas, ColorBlack);
+    canvas_draw_frame(player->canvas, 123, 0, 5, 64);
+    canvas_draw_box(player->canvas, 124, 64 - player->volume / 4, 4, player->volume / 4);
+}
+
 void draw_all(VideoPlayerApp* player) {
     canvas_reset(player->canvas);
 
@@ -100,14 +107,15 @@ void draw_all(VideoPlayerApp* player) {
         draw_progress_bar(player);
     }
 
+    if(player->changing_volume) {
+        draw_volume_bar(player);
+    }
+
     canvas_commit(player->canvas);
 }
 
 int32_t video_player_app(void* p) {
     UNUSED(p);
-
-    Expansion* expansion = furi_record_open(RECORD_EXPANSION);
-    expansion_disable(expansion);
 
     Storage* storage = furi_record_open(RECORD_STORAGE);
     bool st = storage_simply_mkdir(storage, APPSDATA_FOLDER);
@@ -198,12 +206,13 @@ int32_t video_player_app(void* p) {
             if(player->quit) {
                 deinit_player(player);
                 player_deinit_hardware();
-                expansion_enable(expansion);
-                furi_record_close(RECORD_EXPANSION);
                 return 0;
             }
 
             player->playing = true;
+            player->volume = 0xff;
+            player->seeking = false;
+            player->changing_volume = false;
 
             //vTaskPrioritySet(furi_thread_get_current_id(), FuriThreadPriorityIdle);
             furi_thread_set_current_priority(FuriThreadPriorityIdle);
@@ -231,7 +240,10 @@ int32_t video_player_app(void* p) {
                             player->header_size);
                         stream_seek(player->stream, seek, StreamOffsetFromStart);
 
-                        player->progress = (uint8_t)((int64_t)stream_tell(player->stream) * (int64_t)126 / ((int64_t)player->num_frames * (int64_t)player->frame_size + (int64_t)player->header_size));
+                        player->progress =
+                            (uint8_t)((int64_t)stream_tell(player->stream) * (int64_t)126 /
+                                      ((int64_t)player->num_frames * (int64_t)player->frame_size +
+                                       (int64_t)player->header_size));
 
                         if(event.input.type == InputTypeRelease) {
                             player->seeking = false;
@@ -250,7 +262,10 @@ int32_t video_player_app(void* p) {
                             player->header_size);
                         stream_seek(player->stream, seek, StreamOffsetFromStart);
 
-                        player->progress = (uint8_t)((int64_t)stream_tell(player->stream) * (int64_t)126 / ((int64_t)player->num_frames * (int64_t)player->frame_size + (int64_t)player->header_size));
+                        player->progress =
+                            (uint8_t)((int64_t)stream_tell(player->stream) * (int64_t)126 /
+                                      ((int64_t)player->num_frames * (int64_t)player->frame_size +
+                                       (int64_t)player->header_size));
 
                         if(event.input.type == InputTypeRelease) {
                             player->seeking = false;
@@ -258,6 +273,30 @@ int32_t video_player_app(void* p) {
 
                         static VideoPlayerEvent event = {.type = EventTypeJustRedraw};
                         furi_message_queue_put(player->event_queue, &event, 0);
+                    }
+
+                    if(event.input.key == InputKeyUp) {
+                        player->changing_volume = true;
+
+                        if(player->volume < 0xff - 3) {
+                            player->volume += 4;
+                        }
+
+                        if(event.input.type == InputTypeRelease) {
+                            player->changing_volume = false;
+                        }
+                    }
+
+                    if(event.input.key == InputKeyDown) {
+                        player->changing_volume = true;
+
+                        if(player->volume > 3) {
+                            player->volume -= 4;
+                        }
+
+                        if(event.input.type == InputTypeRelease) {
+                            player->changing_volume = false;
+                        }
                     }
 
                     if(player->playing) {
@@ -283,6 +322,10 @@ int32_t video_player_app(void* p) {
                         stream_read(player->stream, audio_buffer, player->audio_chunk_size);
                     }
 
+                    for(int i = 0; i < player->audio_chunk_size; i++) {
+                        audio_buffer[i] = (int)audio_buffer[i] * player->volume / 0xff;
+                    }
+
                     player->frames_played++;
 
                     draw_all(player);
@@ -300,6 +343,10 @@ int32_t video_player_app(void* p) {
 
                     else {
                         stream_read(player->stream, audio_buffer, player->audio_chunk_size);
+                    }
+
+                    for(int i = 0; i < player->audio_chunk_size; i++) {
+                        audio_buffer[i] = (int)audio_buffer[i] * player->volume / 0xff;
                     }
 
                     player->frames_played++;
@@ -321,9 +368,6 @@ int32_t video_player_app(void* p) {
         deinit_player(player);
         player_deinit_hardware();
     }
-
-    expansion_enable(expansion);
-    furi_record_close(RECORD_EXPANSION);
 
     return 0;
 }
