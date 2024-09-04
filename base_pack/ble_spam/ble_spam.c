@@ -357,7 +357,7 @@ static void draw_callback(Canvas* canvas, void* _ctx) {
             AlignTop,
             "\e#Delay\e# is time between\n"
             "attack attempts (top right),\n"
-            "keep 30ms for best results",
+            "keep 20ms for best results",
             false);
         break;
     case PageHelpDistance:
