@@ -1,4 +1,8 @@
-## 0.6.1
+## 0.6.3
+
+- Updated for firmware SDK 0.105.0
+
+## 0.6.2
 
 - Fix IR Import bus fault on empty
 - Add hint text on Empty group
