@@ -14,6 +14,7 @@ void quac_set_default_settings(App* app) {
     app->settings.nfc_duration = 1000;
     app->settings.subghz_repeat = 10;
     app->settings.subghz_use_ext_antenna = false;
+    app->settings.ir_use_ext_module = false;
     app->settings.show_hidden = false;
 }
 
@@ -91,7 +92,13 @@ void quac_load_settings(App* app) {
         if(!flipper_format_read_uint32(fff_settings, "SubGHz Ext Antenna", &temp_data32, 1)) {
             FURI_LOG_W(TAG, "SETTINGS: Missing 'SubGHz Ext Antenna'");
         } else {
-            app->settings.subghz_use_ext_antenna = (temp_data32 == 1) ? true : false;
+            app->settings.subghz_use_ext_antenna = temp_data32 == 1;
+        }
+
+        if(!flipper_format_read_uint32(fff_settings, "IR Ext Module", &temp_data32, 1)) {
+            FURI_LOG_W(TAG, "SETTINGS: Missing 'IR Ext Module'");
+        } else {
+            app->settings.ir_use_ext_module = temp_data32 == 1;
         }
 
         if(!flipper_format_read_uint32(fff_settings, "Show Hidden", &temp_data32, 1)) {
@@ -159,6 +166,11 @@ void quac_save_settings(App* app) {
         temp_data32 = app->settings.subghz_use_ext_antenna ? 1 : 0;
         if(!flipper_format_write_uint32(fff_settings, "SubGHz Ext Antenna", &temp_data32, 1)) {
             FURI_LOG_E(TAG, "SETTINGS: Failed to write 'SubGHz Ext Antenna'");
+            break;
+        }
+        temp_data32 = app->settings.ir_use_ext_module ? 1 : 0;
+        if(!flipper_format_write_uint32(fff_settings, "IR Ext Module", &temp_data32, 1)) {
+            FURI_LOG_E(TAG, "SETTINGS: Failed to write 'IR Ext Module'");
             break;
         }
         temp_data32 = app->settings.show_hidden ? 1 : 0;

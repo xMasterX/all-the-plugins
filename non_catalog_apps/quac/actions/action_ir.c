@@ -29,6 +29,8 @@ void action_ir_tx(void* context, const FuriString* action_path, FuriString* erro
             break;
         }
 
+        if(app->settings.ir_use_ext_module) action_ir_power_otg(true);
+
         if(signal->is_raw) {
             // raw
             FURI_LOG_I(
@@ -62,9 +64,22 @@ void action_ir_tx(void* context, const FuriString* action_path, FuriString* erro
             FURI_LOG_I(TAG, "IR: Send complete");
         }
 
+        if(app->settings.ir_use_ext_module) action_ir_power_otg(false);
     } while(false);
 
     furi_string_free(temp_str);
     flipper_format_free(fff_data_file);
     infrared_utils_signal_free(signal);
+}
+
+void action_ir_power_otg(bool enable) {
+    FuriHalInfraredTxPin tx_pin_detected = furi_hal_infrared_detect_tx_output();
+    furi_hal_infrared_set_tx_output(tx_pin_detected);
+
+    if(tx_pin_detected == FuriHalInfraredTxPinInternal) return;
+
+    if(enable)
+        furi_hal_power_enable_otg();
+    else
+        furi_hal_power_disable_otg();
 }

@@ -31,20 +31,20 @@ The app does not provide any recording functionality - you must use the existing
 ## Navigation / Controls
 
 * Pressing `OK` on a folder label will open/navigate to that folder and display it's contents
-* Pressing `OK` on a signal will transmit that signal
+* Pressing `OK` on a signal will transmit that signal / playlist
 * Pressing `Back` will take you up one folder
 * Pressing `Up` and `Down` will, you know, select things up and down...
 * Long pressing `Right` will open that item's settings: Rename, Delete, Import Here, Create Group
 
 ## Signal playback
 
-The signal files are played back as recorded. During playback/transmit, the LED light will flash blue until the action is complete. For RFID signals, they are continuously played back for 2.5 seconds, by default. This can be changed in [application Settings](README.md#application-settings).
+The signal files are played back as recorded. During playback/transmit, the LED light will flash blue until the action is complete. For RFID and NFC signals, they are continuously played back for their defined durations: RFID - 2.5 seconds and NFC - 1 second. These defaults can be changed in [application Settings](README.md#application-settings).
 
 ## Signal Organization
 
 The key to organizing your Quac! interface is to organize your `/ext/apps_data/quac` folder structure. The UI is derived directly from the filesystem structure. Every individual file/signal is given a label on screen. And every folder/directory is a logical group of more files/folders. Selecting a group in the UI will show you the contents of that folder. There is no limit on the number of actions or folders - nest as deep as you want!
 
-You can organize your files by device type, or by function. For example, you may have a folder of "TV" actions, which correspond to Channel Up, Channel Down, Volume Up, Volume Down, etc. Or you may have a "Work Access" folder, which contains files/actions that correspond to Parking Gate, Garage Door, Lobby Entrance.
+You can organize your files by device type, or by function. For example, you may have a folder of "TV" actions, which correspond to Channel Up, Channel Down, Volume Up, Volume Down, etc. Or you may have a "Work" folder, which contains files/actions that correspond to Parking Gate, Garage Door, Lobby Entrance.
 
 The files in a folder can be of mixed types. **This is Quac!'s main strength!** So continuing with the "Work Access" example, the Parking Gate can be Sub-Ghz and the Garage Door can be RFID.
 
@@ -80,7 +80,7 @@ You can chain multiple signal playback actions together by creating a playlist. 
 * Comments: lines that start with a `#` are ignored
 * `pause <ms>` on a line will pause the playback by the specified millisecond duration
 * Signal file names can be absolute (full path) or relative to the current directory
-* RFID files can have an optional duration specified. Simply add a space, followed by a millisecond duration. This duration will override the Quac! Settings value, just for this one signal.
+* RFID and NFC files can have an optional duration specified. Simply add a space after the signal's file name, followed by a millisecond duration. This duration will override the Quac! Settings value, just for this one signal.
 
 Errors found in the playlist will halt playback and vibrate the Flipper. Blank lines are ignored.
 
@@ -98,13 +98,14 @@ pause 2500
 /ext/apps_data/quac/06_Lights/Disco_Ball.sub
 
 Lava_Lamp.rfid 4000
+Neon_Strobe.nfc
 ```
 
-The first two `.sub` files live in the `/ext/apps_data/quac` folder, which is where `arrive_home.qpl` is located, and will not show up in any UI screen since they are hidden (start with a `.`). Next, we pause the playlist for 2.5 sec. The next two files live elsewhere, but can still be referenced by the playlist. Lastly, the RFID signal is transmitted for 4000ms, instead of the duration listed in Quac! Settings.
+The first two `.sub` files live in the `/ext/apps_data/quac` folder, which is where `arrive_home.qpl` is located, and they will not show up in any UI screen since they are hidden (they start with a `.`). Next, we pause the playlist for 2.5 sec. The next two files live elsewhere, but can still be referenced by the playlist since they are specified via absolute path. For the last two signals: the RFID signal is transmitted for 4000ms, instead of the duration listed in Quac! Settings, followed by an NFC signal which is transmitted for the default duration.
 
 ## Sorting and Naming
 
-The list view UI is based on the sorted file and folder order. This is enforced by sorting the actual filenames. When there are cases where you need to force a specific order, you can prepend the file and folder names with `XX_` where `X` is a digit between 0-9. This will let you place an action called `On` before `Off`, even though when sorted alphabeticaly, `Off` would come before `On`. Therefore, you would name your files `00_On.rfid` and `01_Off.rfid`. But that looks ugly! When the files and folders are rendered for display, any `XX_` prefix will be stripped. All underscores will be replaced with spaces. Extensions will be stripped. Casing is preserved. Additionally, all files and folders that begin with a `.` will be ignored when drawing the UI - these are "hidden" files. However, they can still be referenced in playlists. This keeps the UI uncluttered.
+The list view UI is based on the sorted file and folder order. This is enforced by sorting the actual filenames. When there are cases where you need to create a specific order, you can prepend the file and folder names with `XX_` where `X` is a digit between 0-9. This will let you place an action called `On` before `Off`, even though when sorted alphabeticaly, `Off` would come before `On`. Therefore, you would name your files `00_On.rfid` and `01_Off.rfid`. But that looks ugly! When the files and folders are rendered for display, any `XX_` prefix will be stripped. All underscores will be replaced with spaces. Extensions will be stripped. Casing is preserved. Additionally, all files and folders that begin with a `.` will be ignored when drawing the UI - these are "hidden" files. However, they can still be referenced in playlists. This keeps the UI uncluttered.
 
 ## Application Settings
 
@@ -118,6 +119,7 @@ The settings menu will appear as the last item when you are viewing the "root" d
 * RFID Duration: Changes the length of time a RFID signal is transmitted. Within playlists, this can be overridden per `.rfid` file.
 * NFC Duration: Changes the length of time a NFC signal is transmitted. Within playlists, this can be overridden per `.nfc` file.
 * SubGhz Ext Ant: Whether to try using the external antenna for sub-ghz signals. If this is "Enabled" but no external antenna is attached, or the external antenna can't be accessed, Quac! will fall back to using the internal antenna.
+* IR Ext Ant: Whether to use the external device for IR signals. If enabled, but no external IR device is attached to TX, then the internal IR device will be used.
 * Show Hidden: Will display files and folders that start with a period (`.`)
 * About: Application info
 
