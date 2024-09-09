@@ -1,0 +1,10 @@
+/dist/
+/venv/
+/flipperzero/__init__.py
+.vscode
+.clang-format
+.clangd
+.editorconfig
+.env
+.ufbt
+__pycache__
