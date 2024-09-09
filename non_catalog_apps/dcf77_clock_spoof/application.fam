@@ -1,0 +1,15 @@
+App(
+    appid="dcf77_clock_spoof",
+    name="DCF77 Clock Spoof",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="dcf77_clock_sync_app_main",
+    requires=["gui"],
+    stack_size=1 * 1024,
+    order=10,
+    fap_icon="icons/app_10x10.png",
+    fap_category="Tools",
+    fap_author="mdaskalov & Molodos",
+    fap_weburl="https://github.com/molodos/dcf77-clock-spoof",
+    fap_version="1.1",
+    fap_description="Spoof a DCF77 time signal with a selectable time on the RFID antenna and the GPIO A4 pin",
+)
