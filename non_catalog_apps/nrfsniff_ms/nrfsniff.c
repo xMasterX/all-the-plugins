@@ -8,16 +8,18 @@
 #include <nrf24.h>
 #include <toolbox/stream/file_stream.h>
 
-#define LOGITECH_MAX_CHANNEL 85
+#include "stdstring.h"
+
+#define LOGITECH_MAX_CHANNEL  85
 #define MICROSOFT_MIN_CHANNEL 49
-#define COUNT_THRESHOLD 2
-#define DEFAULT_SAMPLE_TIME 8000
-#define MAX_ADDRS 100
-#define MAX_CONFIRMED 32
+#define COUNT_THRESHOLD       2
+#define DEFAULT_SAMPLE_TIME   8000
+#define MAX_ADDRS             100
+#define MAX_CONFIRMED         32
 
 #define NRFSNIFF_APP_PATH_FOLDER STORAGE_APP_DATA_PATH_PREFIX
-#define NRFSNIFF_APP_FILENAME "addresses.txt"
-#define TAG "nrfsniff"
+#define NRFSNIFF_APP_FILENAME    "addresses.txt"
+#define TAG                      "nrfsniff"
 
 typedef enum {
     EventTypeTick,
@@ -160,11 +162,11 @@ static bool save_addr_to_file(
     if(target_rate == 8) rate = 2;
     snprintf(ending, sizeof(ending), ",%d\n", rate);
     hexlify(data, size, addrline);
-    strcat(addrline, ending);
+    nrf_strcat(addrline, ending);
     linesize = strlen(addrline);
     strcpy(filepath, NRFSNIFF_APP_PATH_FOLDER);
-    strcat(filepath, "/");
-    strcat(filepath, NRFSNIFF_APP_FILENAME);
+    nrf_strcat(filepath, "/");
+    nrf_strcat(filepath, NRFSNIFF_APP_FILENAME);
     stream_seek(stream, 0, StreamOffsetFromStart);
 
     // check if address already exists in file
@@ -176,14 +178,14 @@ static bool save_addr_to_file(
             file_contents = malloc(file_size + 1);
             memset(file_contents, 0, file_size + 1);
             if(stream_read(stream, file_contents, file_size) > 0) {
-                char* line = strtok((char*)file_contents, "\n");
+                char* line = nrf_strtok((char*)file_contents, "\n");
 
                 while(line != NULL) {
                     if(!memcmp(line, addrline, 12)) {
                         found = true;
                         break;
                     }
-                    line = strtok(NULL, "\n");
+                    line = nrf_strtok(NULL, "\n");
                 }
             }
             free(file_contents);
@@ -224,7 +226,8 @@ void alt_address(uint8_t* addr, uint8_t* altaddr) {
     uint8_t tmpaddr[5];
 
     // swap bytes
-    for(int i = 0; i < 5; i++) tmpaddr[i] = addr[4 - i];
+    for(int i = 0; i < 5; i++)
+        tmpaddr[i] = addr[4 - i];
 
     // get address into 32-bit and 8-bit variables
     memcpy(macmess_hi_b, tmpaddr, 4);
@@ -242,7 +245,8 @@ void alt_address(uint8_t* addr, uint8_t* altaddr) {
     tmpaddr[4] = macmess_lo;
 
     // swap bytes back
-    for(int i = 0; i < 5; i++) altaddr[i] = tmpaddr[4 - i];
+    for(int i = 0; i < 5; i++)
+        altaddr[i] = tmpaddr[4 - i];
 }
 
 static bool previously_confirmed(uint8_t* addr) {

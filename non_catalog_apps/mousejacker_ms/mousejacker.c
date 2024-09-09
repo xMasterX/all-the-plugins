@@ -12,15 +12,17 @@
 #include "mousejacker_ducky.h"
 #include "NRF24_Mouse_Jacker_icons.h"
 
-#define TAG "mousejacker"
-#define MICROSOFT_MIN_CHANNEL 49
-#define LOGITECH_MAX_CHANNEL 85
-#define NRFSNIFF_APP_PATH_FOLDER "/ext/apps_data/nrf24_sniffer_ms"
-#define NRFSNIFF_APP_PATH_EXTENSION ".txt"
-#define NRFSNIFF_APP_FILENAME "addresses.txt"
-#define MOUSEJACKER_APP_PATH_FOLDER "/ext/mousejacker"
+#include "stdstring.h"
+
+#define TAG                            "mousejacker"
+#define MICROSOFT_MIN_CHANNEL          49
+#define LOGITECH_MAX_CHANNEL           85
+#define NRFSNIFF_APP_PATH_FOLDER       "/ext/apps_data/nrf24_sniffer_ms"
+#define NRFSNIFF_APP_PATH_EXTENSION    ".txt"
+#define NRFSNIFF_APP_FILENAME          "addresses.txt"
+#define MOUSEJACKER_APP_PATH_FOLDER    "/ext/mousejacker"
 #define MOUSEJACKER_APP_PATH_EXTENSION ".txt"
-#define MAX_ADDRS 100
+#define MAX_ADDRS                      100
 
 typedef enum {
     EventTypeTick,
@@ -220,7 +222,7 @@ static bool load_addrs_file(Stream* file_stream) {
         bytes_read = stream_read(file_stream, file_buf, file_size);
         if(bytes_read == file_size) {
             FURI_LOG_D(TAG, "loading addrs file");
-            char* line = strtok((char*)file_buf, "\n");
+            char* line = nrf_strtok((char*)file_buf, "\n");
 
             while(line != NULL) {
                 line_ptr = strstr((char*)line, ",");
@@ -235,7 +237,7 @@ static bool load_addrs_file(Stream* file_stream) {
                 memset(loaded_addrs[counter], rate, 1);
                 memcpy(&loaded_addrs[counter++][1], addr, addrlen);
                 addrs_count++;
-                line = strtok(NULL, "\n");
+                line = nrf_strtok(NULL, "\n");
                 loaded = true;
             }
         } else {
