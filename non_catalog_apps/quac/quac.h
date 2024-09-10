@@ -52,6 +52,7 @@ typedef struct App {
 
     FuriString* temp_str; // used for renames/etc
     char temp_cstr[MAX_NAME_LEN]; // used for renames/etc
+    uint32_t temp_u32;
 
     struct {
         QuacAppLayout layout; // Defaults to Portrait

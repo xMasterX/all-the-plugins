@@ -44,5 +44,9 @@ The settings menu will appear as the last item when you are viewing the "root" d
 * Show Icons: Toggles display of all icons
 * Show Headers: Toggles display of header/folder text at the top, giving you room for one more item on screen!
 * RFID Duration: Changes the length of time a RFID signal is transmitted. Can be overridden, per RFID file in a Playlist
+* NFC Duration: Changes the length of time a NFC signal is transmitted. Can be overridden, per NFC file in a Playlist
+* SubGhz Ext Ant: Enables / Disables use of external sub-ghz antenna
+* IR Ext Ant: Enables / Disables use of external IR antenna
+* Show Hidden: Toggles display of files/folders that start with a period.
 
 **More information can be found in the Git repository**
