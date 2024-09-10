@@ -1,4 +1,4 @@
-# Laser Tag
+## **Laser Tag**
 **Turn your Flipper Zero into a Laser Tag Device!**
 
 ## Real World - Team based Laser Tag game
@@ -14,11 +14,11 @@ Use Flipper Zero as your laser blaster, RFID scan for power-ups, and automatic d
 - **External IR Boards**: Add or remove an external infrared blaster anytime during gameplay to switch between internal/external IR gun or swap weapons.
 
 ## How to Play
-1. **Select Your Team**: Use the Left or Right button to choose between Red or Blue team.
-2. **Fire Your Laser**: Press the OK button to shoot your laser at your opponents.
-3. **Reload**: When your ammo runs out, press 'Down' to reload and get back into action.
-4. **Survive**: Track your health, and make sure to avoid getting hit by your opponents' lasers. If your health reaches zero, it's game over!
-5. **RFID Powerups**: Press the UP button during gameplay to scan a Powerup Tag.
+- **Select Your Team**: Use the Left or Right button to choose between Red or Blue team.
+- **Fire Your Laser**: Press the OK button to shoot your laser at your opponents.
+- **Reload**: When your ammo runs out, press 'Down' to reload and get back into action.
+- **Survive**: Track your health, and make sure to avoid getting hit by your opponents' lasers. If your health reaches zero, it's game over!
+- **RFID Powerups**: Press the UP button during gameplay to scan a Powerup Tag.
 
 ## Current Powerups for RFID Tags (T5577/EM4100):
 - **Universal Ammo Refill**: 13 37 00 FD 0A – Increases ammo by 0x0A for any player.
