@@ -99,11 +99,12 @@ DTMFDolphinSceneData DTMFDolphinSceneDataRedboxUK = {
 DTMFDolphinSceneData DTMFDolphinSceneDataMisc = {
     .name = "Misc",
     .block = DTMF_DOLPHIN_TONE_BLOCK_MISC,
-    .tone_count = 3,
+    .tone_count = 4,
     .tones = {
         {"CCITT 11", 700.0, 1700.0, {0, 0, 5}, 0, 0, 0},
         {"CCITT 12", 900.0, 1700.0, {1, 0, 5}, 0, 0, 0},
         {"CCITT KP2", 1300.0, 1700.0, {2, 0, 5}, 0, 0, 0},
+        {"EAS", 853.0, 960.0, {3, 0, 5}, 0, 0, 0},
     }};
 
 DTMFDolphinToneSection current_section;
