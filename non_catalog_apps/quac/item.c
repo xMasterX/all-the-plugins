@@ -163,6 +163,8 @@ ItemType item_get_item_type_from_extension(const char* ext) {
         type = Item_IR;
     } else if(!strcmp(ext, ".nfc")) {
         type = Item_NFC;
+    } else if(!strcmp(ext, ".ibtn")) {
+        type = Item_iButton;
     } else if(!strcmp(ext, ".qpl")) {
         type = Item_Playlist;
     }

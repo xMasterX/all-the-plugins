@@ -2,7 +2,7 @@
 
 ## Quick Action Remote Control for Flipperzero
 
-[Latest Version: 0.6.3](https://github.com/rdefeo/quac/releases)
+[Latest Version: 0.7.0](https://github.com/rdefeo/quac/releases)
 
 ![build status badge](https://github.com/rdefeo/quac/actions/workflows/build.yml/badge.svg)
 
@@ -10,11 +10,11 @@ This app allows you to organize previously recorded signals, of any type*, so th
 
 The app does not provide any recording functionality - you must use the existing Flipperzero apps to create the saved files for your action/device. Quac! provides some basic functionality to manage your files. Or, you can manage the folder structure manually on your SD card.
 
-> Support files include: Sub-Ghz (.sub), RFID (.rfid), Infrared (.ir), and NFC (.nfc)
+> Supported files include: Sub-Ghz (.sub), RFID (.rfid), Infrared (.ir), NFC (.nfc), and iButton (.ibtn)
 
 ## Features
 
-* [Playback of rfid, sub-ghz, IR, NFC signals](README.md#signal-playback)
+* [Playback of rfid, sub-ghz, IR, NFC, iButton signals](README.md#signal-playback)
 * [Easy navigation](README.md#navigation--controls)
 * [Flexible signal organization](README.md#signal-organization) - utilizing the SDcard filesystem
 * [In-app file management](README.md#action-settings) - rename, delete, import
@@ -38,7 +38,7 @@ The app does not provide any recording functionality - you must use the existing
 
 ## Signal playback
 
-The signal files are played back as recorded. During playback/transmit, the LED light will flash blue until the action is complete. For RFID and NFC signals, they are continuously played back for their defined durations: RFID - 2.5 seconds and NFC - 1 second. These defaults can be changed in [application Settings](README.md#application-settings).
+The signal files are played back as recorded. During playback/transmit, the LED light will flash blue until the action is complete. For RFID, NFC, and iButton signals, they are continuously played back for their defined durations: RFID - 2.5 seconds, NFC - 1 second, iButton - 1 second. These defaults can be changed in [application Settings](README.md#application-settings).
 
 ## Signal Organization
 
@@ -70,7 +70,8 @@ Long pressing the `Right` button will launch a settings menu for the currently s
 * Rename: Allows you to rename the selected item. Useful for changing sorting order. The file extension is preserved on signal files. **Note: folder renaming is broken right now**
 * Delete: Deletes files and folders - folders must be empty
 * Import Here: Launches file browser to let you select a signal file from anywhere on the SDcard and then copies it to the current folder.
-  * When importing an IR file, you are prompted to select which IR command to import. This individual command is imported as it's own `.ir` file into the current location.
+  * When importing an IR file, you are prompted to select which IR command to import. This individual command is imported as it's own `.ir` file into the current location. You can also select `* IMPORT ALL *` to, well, import all commands.
+  * If an Import fails, the Flipperzero will flash red and buzz - this may be caused by a duplicate filename (i.e. that file/IR command already exists in the current folder) or the target file can not be read.
 * Create Group: Prompts for the name of a new folder that will be created at that point in the folder structure.
 
 ## Playlists
@@ -118,10 +119,15 @@ The settings menu will appear as the last item when you are viewing the "root" d
 * Show Headers: Toggles display of header/folder text at the top, giving you room for one more item on screen!
 * RFID Duration: Changes the length of time a RFID signal is transmitted. Within playlists, this can be overridden per `.rfid` file.
 * NFC Duration: Changes the length of time a NFC signal is transmitted. Within playlists, this can be overridden per `.nfc` file.
+* iButton Duration: Changes the length of time a iButton signal is transmitted. Within playlists, this can be overridden per `.ibtn` file.
 * SubGhz Ext Ant: Whether to try using the external antenna for sub-ghz signals. If this is "Enabled" but no external antenna is attached, or the external antenna can't be accessed, Quac! will fall back to using the internal antenna.
 * IR Ext Ant: Whether to use the external device for IR signals. If enabled, but no external IR device is attached to TX, then the internal IR device will be used.
 * Show Hidden: Will display files and folders that start with a period (`.`)
 * About: Application info
+
+## Troubleshooting
+
+For some errors, Quac! will show an error message on screen. In other cases, it may simply flash the LED red and vibrate. To get more information on what may be happening, it is helpful to connect your Flipperzero to your computer and view the logs. Quac! will print useful information and error information to the log file as it performs its actions. The handy `ufbt cli` command, followed by `log` will show all log statements in real time, and can be very useful if you need to report an error. Check out the [ufbt](https://github.com/flipperdevices/flipperzero-ufbt) page for more information.
 
 ## On deck
 
@@ -129,6 +135,6 @@ The settings menu will appear as the last item when you are viewing the "root" d
 
 ## Building / Install
 
-This app is currently built with `ufbt`, intended for the stock firmware. I have not tested this on other firmwares. The `.fap` file can be found in the Releases section on the right.
+This app is currently built with [ufbt](https://github.com/flipperdevices/flipperzero-ufbt), intended for the stock firmware. I have not tested this on other firmwares. The `.fap` file can be found in the Releases section on the right.
 
 <a href="https://www.buymeacoffee.com/rdefeo" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>

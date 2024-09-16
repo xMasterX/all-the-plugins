@@ -16,6 +16,7 @@ typedef enum {
     Item_RFID,
     Item_IR,
     Item_NFC,
+    Item_iButton,
     Item_Playlist,
     Item_Group,
     Item_Settings,

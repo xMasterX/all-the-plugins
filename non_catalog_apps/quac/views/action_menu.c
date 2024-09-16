@@ -25,6 +25,7 @@ static const Icon* ActionMenuIcons[] = {
     [ActionMenuItemTypeRFID] = &I_RFID_10px,
     [ActionMenuItemTypeIR] = &I_IR_10px,
     [ActionMenuItemTypeNFC] = &I_NFC_10px,
+    [ActionMenuItemTypeiButton] = &I_iButton_10px,
     [ActionMenuItemTypePlaylist] = &I_Playlist_10px,
     [ActionMenuItemTypeGroup] = &I_Directory_10px,
     [ActionMenuItemTypeSettings] = &I_Settings_10px,

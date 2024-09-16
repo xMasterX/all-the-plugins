@@ -22,6 +22,7 @@ typedef enum {
     ActionMenuItemTypeRFID,
     ActionMenuItemTypeIR,
     ActionMenuItemTypeNFC,
+    ActionMenuItemTypeiButton,
     ActionMenuItemTypePlaylist,
     ActionMenuItemTypeGroup,
     ActionMenuItemTypeSettings,

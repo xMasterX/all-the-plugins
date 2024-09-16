@@ -19,6 +19,7 @@ static const ActionMenuItemType ItemToMenuItem[] = {
     [Item_RFID] = ActionMenuItemTypeRFID,
     [Item_IR] = ActionMenuItemTypeIR,
     [Item_NFC] = ActionMenuItemTypeNFC,
+    [Item_iButton] = ActionMenuItemTypeiButton,
     [Item_Playlist] = ActionMenuItemTypePlaylist,
     [Item_Group] = ActionMenuItemTypeGroup,
     [Item_Settings] = ActionMenuItemTypeSettings,
