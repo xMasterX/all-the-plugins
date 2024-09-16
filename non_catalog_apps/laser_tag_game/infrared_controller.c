@@ -59,6 +59,16 @@ void update_infrared_board_status(InfraredController* controller) {
     }
 }
 
+static int32_t infrared_reset(void* context) {
+    InfraredController* controller = (InfraredController*)context;
+    // furi_stream_buffer_reset(instance->stream) not exposed to the API.
+    // infrared_worker_rx_stop calls it internally.
+    infrared_worker_rx_stop(controller->worker);
+    infrared_worker_rx_start(controller->worker);
+    controller->processing_signal = false;
+    return 0;
+}
+
 static void infrared_rx_callback(void* context, InfraredWorkerSignal* received_signal) {
     FURI_LOG_I(TAG, "RX callback triggered");
 
@@ -99,7 +109,8 @@ static void infrared_rx_callback(void* context, InfraredWorkerSignal* received_s
     }
 
     FURI_LOG_I(TAG, "RX callback completed");
-    controller->processing_signal = false;
+    FuriThread* thread = furi_thread_alloc_ex("InfraredReset", 512, infrared_reset, controller);
+    furi_thread_start(thread);
 }
 
 InfraredController* infrared_controller_alloc() {
