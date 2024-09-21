@@ -3,14 +3,16 @@ The idea behind this app is to allow for you to test multiple copies of NFC's at
 ## How it works:
 When starting the app you are greeted by a select file option where you choose the playlist you wanna run.
 
-All the playlists should be placed in ext/apps_data/nfc_playlist and an example of how the data in the file should look can be found below.
+All the playlists should be placed in ext/apps_data/nfc_playlist but can be placed in other file locations and an example of how the data in the file should look can be found below along with a example file in the repository.
 ```txt
 /ext/nfc/link.nfc
 /ext/nfc/link2.nfc
 ```
 An example file can be found in the repository
-## How to build
-This app was design, built and tested using the <a href="https://github.com/Next-Flip/Momentum-Firmware">Momentum</a> so keep that in mind when building the FAP for yourself
+## Feedback:
+Any feedback is welcome and would be very much appreciated as this is my first C project
+- <a href="https://github.com/acegoal07/FlipperZero_NFC_Playlist/issues/new?assignees=acegoal07&labels=enhancement&projects=&template=feature_request.md&title=%5BFEATURE%7D">Feature request</a>
+- <a href="https://github.com/acegoal07/FlipperZero_NFC_Playlist/issues/new?assignees=acegoal07&labels=bug&projects=&template=bug_report.md&title=%5BBUG%5D">Bug report</a>
 ## Supported Firmwares
 As i know these firmwares are supported and working if you know any more please let me know
 - <a href="https://github.com/Next-Flip/Momentum-Firmware">Momentum</a>
@@ -32,5 +34,3 @@ As i know these firmwares are supported and working if you know any more please 
 ## Feature ideas:
 - A function to allow you to add multiple nfc items to a playlist at once
 - A view playlist function which only shows the name of the playlist items excluding the file path
-
-Any feedback is welcome and would be very much appreciated

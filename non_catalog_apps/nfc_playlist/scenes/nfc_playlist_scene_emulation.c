@@ -6,7 +6,7 @@ typedef enum NfcPlaylistEmulationState {
     NfcPlaylistEmulationState_Canceled
 } NfcPlaylistEmulationState;
 
-NfcPlaylistEmulationState EmulationState = NfcPlaylistEmulationState_Stopped;
+static NfcPlaylistEmulationState EmulationState = NfcPlaylistEmulationState_Stopped;
 
 int32_t nfc_playlist_emulation_task(void* context) {
     NfcPlaylist* nfc_playlist = context;
