@@ -59,6 +59,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | POCSAG Pager | ![SubGhz Badge] | [by xMasterX & Shmuma](https://github.com/xMasterX/flipper-pager) | Better decoder by htotoo | [![UFW Badge]](https://lab.flipper.net/apps/pocsag_pager) |
 | **ProtoView** | ![SubGhz Badge] | [by antirez](https://github.com/antirez/protoview) |  | [![UFW Badge]](https://lab.flipper.net/apps/protoview) |
 | Rolling Flaws | ![SubGhz Badge] | [by CodeAllNight & jamisonderek](https://github.com/jamisonderek/flipper-zero-tutorials/tree/main/subghz/apps/rolling-flaws) |  | ![None Badge] |
+| Radio Scanner | ![SubGhz Badge] | [by RocketGod](https://github.com/RocketGod-git/Flipper-Zero-Radio-Scanner) | Scans frequencies available to the CC1101 and plays them over the speaker so you can hear them. | ![None Badge] |
 | **Mifare Nested** | ![NFC Badge] | [by AloneLiberty](https://github.com/AloneLiberty/FlipperNested) | Works with PC and python app `FlipperNested` | [![Author Badge]](https://lab.flipper.net/apps/mifare_nested) |
 | **NFC Maker** plugin | ![NFC Badge] | [by Willy-JL](https://github.com/Flipper-XFW/Xtreme-Firmware/tree/dev/applications/external/nfc_maker) | make tags with URLs, Wifi and other things | ![None Badge] |
 | **MFKey** with nested | ![NFC Badge] | [by noproto](https://github.com/noproto/FlipperMfkey) | mfkey32 upgrade | ![None Badge] |
