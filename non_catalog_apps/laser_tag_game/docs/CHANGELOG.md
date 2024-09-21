@@ -1,3 +1,8 @@
+## v2.3
+
+- Fix thread leak by CodeAllNight (@jamisonderek)
+- Fix crash when fire is sent while hit is processing by RocketGod (@RocketGod-git)
+
 ## v2.2
 
 - Bug fix to avoid hit queueing by CodeAllNight (@jamisonderek)

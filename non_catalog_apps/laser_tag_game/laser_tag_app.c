@@ -280,6 +280,11 @@ void laser_tag_app_fire(LaserTagApp* app) {
         return;
     }
 
+    if(app->ir_controller->processing_signal) {
+        FURI_LOG_W(TAG, "Cannot fire, hit is being processed");
+        return;
+    }
+
     infrared_controller_send(app->ir_controller);
     FURI_LOG_D(TAG, "Laser fired, decreasing ammo by 1");
     game_state_decrease_ammo(app->game_state, 1);
@@ -288,11 +293,9 @@ void laser_tag_app_fire(LaserTagApp* app) {
 
     if(game_state_get_team(app->game_state) == TeamBlue) {
         notification_message(app->notifications, &sequence_blink_blue_100);
-
         FURI_LOG_I(TAG, "Notifying user with blink blue and short beep");
     } else {
         notification_message(app->notifications, &sequence_blink_red_100);
-
         FURI_LOG_I(TAG, "Notifying user with blink red and short beep");
     }
 

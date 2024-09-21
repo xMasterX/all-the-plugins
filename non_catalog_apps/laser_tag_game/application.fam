@@ -6,7 +6,7 @@ App(
     cdefines=["APP_LASER_TAG"],
     fap_category="Games",
     fap_author="@RocketGod-git & @jamisonderek",
-    fap_version="2.2",
+    fap_version="2.3",
     fap_description="Laser Tag game for Flipper Zero",
     fap_icon="icons/laser_tag_10px.png",
     fap_libs=["assets"],
