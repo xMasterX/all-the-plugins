@@ -1,4 +1,5 @@
 ADD_SCENE(nfc_playlist, confirm_delete, ConfirmDelete)
+ADD_SCENE(nfc_playlist, nfc_duplicate, NfcDuplicate)
 ADD_SCENE(nfc_playlist, emulation, Emulation)
 ADD_SCENE(nfc_playlist, error_playlist_already_exists, ErrorPlaylistAlreadyExists)
 ADD_SCENE(nfc_playlist, main_menu, MainMenu)
