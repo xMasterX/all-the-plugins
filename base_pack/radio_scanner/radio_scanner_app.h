@@ -23,6 +23,6 @@ typedef struct {
     bool speaker_acquired;
 } RadioScannerApp;
 
-RadioScannerApp* radio_scanner_app_alloc();
+RadioScannerApp* radio_scanner_app_alloc(void);
 void radio_scanner_app_free(RadioScannerApp* app);
 int32_t radio_scanner_app(void* p);
