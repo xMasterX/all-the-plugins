@@ -15,12 +15,12 @@
 #include "scenes/flipbip_scene.h"
 #include "views/flipbip_scene_1.h"
 
-#define FLIPBIP_VERSION "v1.16"
+#define FLIPBIP_VERSION "v1.17"
 
-#define COIN_BTC 0
+#define COIN_BTC  0
 #define COIN_DOGE 3
-#define COIN_ETH 60
-#define COIN_ZEC 133
+#define COIN_ETH  60
+#define COIN_ZEC  133
 
 #define TEXT_BUFFER_SIZE 256
 
