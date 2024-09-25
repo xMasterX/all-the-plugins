@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `21 Sep 03:50 GMT +3`
+### Apps checked & updated at `25 Sep 04:33 GMT +3`
 
 
 # Default pack
@@ -117,7 +117,6 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Name | <div style="width:100px">Category</div> | Original author<br>or Source | Remark | <div style="width:70px">Catalog</div> |
 |---|:---:|---|---|:---:|
 | BT Camera Trigger | ![BT Badge] | [by Nem0oo](https://github.com/Nem0oo/flipper-zero-bluetooth-trigger) |  | [![UFW Badge]](https://lab.flipper.net/apps/bt_trigger) |
-| BT Serial Example | ![BT Badge] | [by maybe-hello-world](https://github.com/maybe-hello-world/fbs) |  | ![None Badge] |
 | Bluetooth remote Keynote for Kodi | ![BT Badge] | [by coded-with-claws](https://github.com/coded-with-claws/flipperzero-tools) | read more details in original repo | ![None Badge] |
 | PC Monitor | ![BT Badge] | [by TheSainEyereg](https://github.com/TheSainEyereg/flipper-pc-monitor) | (+ App fixes for new api by @Willy-JL) - PC App (backend) is required! [Download here](https://github.com/TheSainEyereg/flipper-pc-monitor-backend/releases) | [![Author Badge]](https://lab.flipper.net/apps/pc_monitor) |
 | 4 in row | ![Games Badge] | [by leo-need-more-coffee](https://github.com/leo-need-more-coffee/flipperzero-4inrow) |  | [![UFW Badge]](https://lab.flipper.net/apps/4inrow) |
@@ -191,7 +190,6 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | RCWL-516 Motion Sensor | ![GPIO Badge] | [by ahmedafe1](https://github.com/ahmedafe1/rcwl_0516-Flipperzero) |  | ![None Badge] |
 | ServoTester | ![GPIO Badge] | [by spin7ion](https://github.com/spin7ion/flipper-servotester) |  | [![UFW Badge]](https://lab.flipper.net/apps/servotester) |
 | ServoTester (2) | ![GPIO Badge] | [by mhasbini](https://github.com/mhasbini/ServoTesterApp/tree/master) |  | ![None Badge] |
-| TAS playback | ![GPIO Badge] | [by rcombs](https://github.com/rcombs/tas-playback) | `This app plays back TAS files for retro video games. Connect the GPIO pins to the console's controller port and select a file to play back.` | ![None Badge] |
 | u-blox GPS | ![GPIO Badge] | [by liamhays](https://github.com/liamhays/ublox) |  | [![Author Badge]](https://lab.flipper.net/apps/ublox) |
 | [USPING] Distance Sensor | ![GPIO Badge] | [by privet971](https://github.com/privet971/FlipperZeroApps/tree/main/usping) |  | ![None Badge] |
 | Wiegand Reader | ![GPIO Badge] | [by jamisonderek](https://github.com/jamisonderek/flipper-zero-tutorials/tree/main/gpio) |  | ![None Badge] |
