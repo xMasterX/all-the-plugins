@@ -8,9 +8,10 @@
 #include <gui/gui.h>
 #include <gui/view_dispatcher.h>
 #include <gui/modules/text_box.h>
-#include <gui/modules/text_input.h>
 #include <m-dict.h>
 #include <loader/loader.h>
+
+#include "custom_text_input.h"
 
 #define TEXT_BOX_STORE_SIZE   (4096)
 #define TEXT_INPUT_STORE_SIZE (512)
@@ -34,6 +35,6 @@ typedef struct {
     TextBox* text_box;
     FuriString* text_box_store;
     char text_input_store[TEXT_INPUT_STORE_SIZE + 1];
-    TextInput* text_input;
+    Custom_TextInput* text_input;
     ViewDispatcher* view_dispatcher;
 } CliguiApp;

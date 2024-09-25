@@ -37,7 +37,8 @@ static void cligui_tick_event_cb(void* context) {
         }
         idx--;
     }
-    text_input_set_header_text(app->text_input, furi_string_get_cstr(app->text_box_store) + idx);
+    custom_text_input_set_header_text(
+        app->text_input, furi_string_get_cstr(app->text_box_store) + idx);
     UNUSED(app);
 }
 
@@ -95,8 +96,8 @@ int32_t cligui_main(void* p) {
     text_box_set_text(cligui->text_box, furi_string_get_cstr(cligui->text_box_store));
     text_box_set_focus(cligui->text_box, TextBoxFocusEnd);
 
-    cligui->text_input = text_input_alloc();
-    text_input_set_result_callback(
+    cligui->text_input = custom_text_input_alloc();
+    custom_text_input_set_result_callback(
         cligui->text_input,
         text_input_result_callback,
         cligui,
@@ -104,7 +105,7 @@ int32_t cligui_main(void* p) {
         TEXT_INPUT_STORE_SIZE,
         true);
     view_dispatcher_add_view(
-        cligui->view_dispatcher, ViewTextInput, text_input_get_view(cligui->text_input));
+        cligui->view_dispatcher, ViewTextInput, custom_text_input_get_view(cligui->text_input));
 
     view_dispatcher_switch_to_view(cligui->view_dispatcher, ViewTextInput);
     cligui->data->state = ViewTextInput;
@@ -115,7 +116,7 @@ int32_t cligui_main(void* p) {
     view_dispatcher_remove_view(cligui->view_dispatcher, ViewTextInput);
     text_box_free(cligui->text_box);
     furi_string_free(cligui->text_box_store);
-    text_input_free(cligui->text_input);
+    custom_text_input_free(cligui->text_input);
     view_dispatcher_free(cligui->view_dispatcher);
 
     clicontrol_unhijack(persistent_exit);
