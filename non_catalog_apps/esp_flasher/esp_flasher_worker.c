@@ -287,18 +287,38 @@ static int32_t esp_flasher_flash_bin(void* context) {
 
 static void _initDTR(void) {
     furi_hal_gpio_init(&gpio_ext_pc3, GpioModeOutputPushPull, GpioPullDown, GpioSpeedVeryHigh);
+    //alternate DTR pin (15)
+    furi_hal_gpio_init(&gpio_ext_pc1, GpioModeOutputPushPull, GpioPullDown, GpioSpeedVeryHigh);
 }
 
 static void _initRTS(void) {
     furi_hal_gpio_init(&gpio_ext_pb2, GpioModeOutputPushPull, GpioPullDown, GpioSpeedVeryHigh);
+    //alternate RTS pin (16)
+    furi_hal_gpio_init(&gpio_ext_pc0, GpioModeOutputPushPull, GpioPullDown, GpioSpeedVeryHigh);
 }
 
 static void _setDTR(bool state) {
+    furi_hal_gpio_write(&gpio_ext_pc1, state);
+    //alternate DTR pin (15)
     furi_hal_gpio_write(&gpio_ext_pc3, state);
 }
 
 static void _setRTS(bool state) {
     furi_hal_gpio_write(&gpio_ext_pb2, state);
+    //alternate RTS pin (16)
+    furi_hal_gpio_write(&gpio_ext_pc0, state);
+}
+
+static void _deinitDTR(void) {
+    furi_hal_gpio_init(&gpio_ext_pc3, GpioModeAnalog, GpioPullNo, GpioSpeedLow);
+    //alternate DTR pin (15)
+    furi_hal_gpio_init(&gpio_ext_pc1, GpioModeAnalog, GpioPullNo, GpioSpeedLow);
+}
+
+static void _deinitRTS(void) {
+    furi_hal_gpio_init(&gpio_ext_pb2, GpioModeAnalog, GpioPullNo, GpioSpeedLow);
+    //alternate RTS pin (16)
+    furi_hal_gpio_init(&gpio_ext_pc0, GpioModeAnalog, GpioPullNo, GpioSpeedLow);
 }
 
 static int32_t esp_flasher_reset(void* context) {
@@ -331,6 +351,8 @@ static int32_t esp_flasher_reset(void* context) {
         esp_flasher_flash_bin(app);
     }
 
+    _deinitDTR();
+    _deinitRTS();
     return 0;
 }
 
