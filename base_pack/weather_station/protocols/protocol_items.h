@@ -23,5 +23,6 @@
 #include "auriol_ahfl.h"
 #include "kedsum_th.h"
 #include "emos_e601x.h"
+#include "bresser_3ch.h"
 
 extern const SubGhzProtocolRegistry weather_station_protocol_registry;
