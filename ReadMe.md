@@ -106,8 +106,8 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Mine Sweeper | ![Games Badge] | [by squee72564](https://github.com/squee72564/F0_Minesweeper_Fap) | Old version by @panki27 is published in official catalogue, will be replaced with redux version by @squee72564 | [![UFW Badge]](https://lab.flipper.net/apps/minesweeper) |
 | Heap Defence (aka Stack Attack) | ![Games Badge] | by xMasterX | ported to latest firmware by xMasterX, [original by wquinoa & Vedmein](https://github.com/Vedmein/flipperzerofirmware/tree/hd/svistoperdelki) | [![UFW Badge]](https://lab.flipper.net/apps/heap_defence) |
 | Game15 | ![Games Badge] | [by x27](https://github.com/x27/flipperzerogame15) |  | [![UFW Badge]](https://lab.flipper.net/apps/game15) |
-| Solitaire | ![Games Badge] | [by teeebor](https://github.com/teeebor/flipper_games) |  | ![None Badge] |
-| BlackJack | ![Games Badge] | [by teeebor](https://github.com/teeebor/flipper_games) |  | ![None Badge] |
+| Solitaire | ![Games Badge] | [by doofy-dev](https://github.com/doofy-dev/flipper_solitaire) |  | ![None Badge] |
+| BlackJack | ![Games Badge] | [by doofy-dev](https://github.com/doofy-dev/flipper_blackjack/tree/main) |  | ![None Badge] |
 | 2048 game | ![Games Badge] | [by eugenekirzhanov](https://github.com/eugene-kirzhanov/flipper-zero-2048-game) |  | [![UFW Badge]](https://lab.flipper.net/apps/game_2048) |
 | Bomberduck | ![Games Badge] | [by leoneedmorecoffee](https://github.com/leoneedmorecoffee/flipperzerobomberduck) |  | ![None Badge] |
 | JetPack Joyride | ![Games Badge] | [by timstrasser](https://github.com/timstrasser) |  | [![Author Badge]](https://lab.flipper.net/apps/jetpack_game) |
