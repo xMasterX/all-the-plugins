@@ -1,14 +1,12 @@
 App(
     appid="nfc_eink",
-    name="NFC-Eink",
+    name="NFC Eink Tags",
     apptype=FlipperAppType.EXTERNAL,
     targets=["f7"],
     entry_point="nfc_eink",
     stack_size=5 * 1024,
     order=30,
-    sources=[
-        "*.c*"
-    ],
+    sources=["*.c*"],
     fap_icon="icon.png",
     fap_icon_assets="assets",
     fap_description="Application for emulation and writing to NFC Eink tags",
