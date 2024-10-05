@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `5 Oct 06:04 GMT +3`
+### Apps checked & updated at `5 Oct 10:18 GMT +3`
 
 
 # Default pack
@@ -35,9 +35,11 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | SPI Mem Manager | ![GPIO Badge] |  | [![Official Badge]](https://lab.flipper.net/apps/spi_mem_manager) |
 | Signal Generator | ![GPIO Badge] |  | [![Official Badge]](https://lab.flipper.net/apps/signal_generator) |
 | Video Game Module Tool | ![GPIO Badge] | [by gsurkov](https://github.com/flipperdevices/flipperzero-good-faps/pull/127/files) | [![Official Badge]](https://lab.flipper.net/apps/video_game_module_tool) |
+| FlipTDI | ![GPIO Badge] | [by Skorpionm](https://github.com/flipperdevices/flipperzero-good-faps/pull/234/files) | [![Official Badge]](https://lab.flipper.net/apps/flip_tdi) |
 | MFKey | ![NFC Badge] |  | [![Official Badge]](https://lab.flipper.net/apps/mfkey32) |
 | PicoPass | ![NFC Badge] |  | [![Official Badge]](https://lab.flipper.net/apps/picopass) |
-| Nfc Magic | ![NFC Badge] |  | [![Official Badge]](https://lab.flipper.net/apps/nfc_magic) |
+| NFC Magic | ![NFC Badge] |  | [![Official Badge]](https://lab.flipper.net/apps/nfc_magic) |
+| NFC Eink Tags | ![NFC Badge] | [by RebornedBrain](https://github.com/flipperdevices/flipperzero-good-faps/pull/245/files) | [![Official Badge]](https://lab.flipper.net/apps/nfc_eink) |
 | NFC/RFID detector | ![Tools Badge] |  | [![Official Badge]](https://lab.flipper.net/apps/nfc_rfid_detector) |
 | Simple Clock | ![Tools Badge] | [original by CompaqDisc](https://gist.github.com/CompaqDisc/4e329c501bd03c1e801849b81f48ea61), timer by GMMan, included in OFW<br>Part of UFW as main app [sources](https://github.com/DarkFlippers/unleashed-firmware/tree/dev/applications/main/clock_app) | [![Official Badge]](https://lab.flipper.net/apps/clock) |
 | Weather Station | ![SubGhz Badge] | added External Radio Support | [![Official Badge]](https://lab.flipper.net/apps/weather_station) |
