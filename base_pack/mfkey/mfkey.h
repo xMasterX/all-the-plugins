@@ -18,16 +18,6 @@ struct Msb {
 };
 
 typedef enum {
-    EventTypeTick,
-    EventTypeKey,
-} EventType;
-
-typedef struct {
-    EventType type;
-    InputEvent input;
-} PluginEvent;
-
-typedef enum {
     MissingNonces,
     ZeroNonces,
     InsufficientRAM,
@@ -51,6 +41,7 @@ typedef struct {
     int cracked;
     int unique_cracked;
     int num_completed;
+    int num_candidates;
     int total;
     int dict_count;
     int search;
@@ -59,12 +50,16 @@ typedef struct {
     int eta_round;
     bool mfkey32_present;
     bool nested_present;
-    bool is_thread_running;
     bool close_thread_please;
     FuriThread* mfkeythread;
+    KeysDict* cuid_dict;
 } ProgramState;
 
-typedef enum { mfkey32, static_nested } AttackType;
+typedef enum {
+    mfkey32,
+    static_nested,
+    static_encrypted
+} AttackType;
 
 typedef struct {
     AttackType attack;

@@ -1,6 +1,6 @@
 #pragma once
 
-#define PLUGIN_APP_ID "mfkey"
+#define PLUGIN_APP_ID      "mfkey"
 #define PLUGIN_API_VERSION 1
 
 typedef struct {
