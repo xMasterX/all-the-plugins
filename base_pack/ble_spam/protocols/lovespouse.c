@@ -198,7 +198,7 @@ static void mode_callback(void* _ctx, uint32_t index) {
         view_dispatcher_send_custom_event(ctx->view_dispatcher, 0);
     } else if(index == modes[cfg->state].count + 1U) {
         scene_manager_next_scene(ctx->scene_manager, SceneLovespouseModeCustom);
-    } else if(modes[cfg->state].count + 2U) {
+    } else if(index == modes[cfg->state].count + 2U) {
         payload->mode = PayloadModeBruteforce;
         payload->bruteforce.counter = 0;
         payload->bruteforce.value = cfg->mode;
