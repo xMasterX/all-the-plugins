@@ -46,6 +46,7 @@ the hardware setup.
 * u-blox NEO-6M
 * u-blox NEO-7M
 * Uputronics u-blox MAX-M8C Pico
+* NewHail GNSS Modul
 
 If you have verified this application working with a module not listed here,
 please submit a PR adding it to the list.
