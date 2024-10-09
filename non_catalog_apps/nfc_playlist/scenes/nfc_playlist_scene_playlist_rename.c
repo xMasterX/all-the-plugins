@@ -1,8 +1,6 @@
 #include "../nfc_playlist.h"
 
-static bool playlist_exist_already = false;
-
-int32_t nfc_playlist_playlist_rename_thread_task(void* context) {
+void nfc_playlist_playlist_rename_menu_callback(void* context) {
     NfcPlaylist* nfc_playlist = context;
 
     FuriString* old_file_path = furi_string_alloc();
@@ -16,6 +14,7 @@ int32_t nfc_playlist_playlist_rename_thread_task(void* context) {
 
     Storage* storage = furi_record_open(RECORD_STORAGE);
 
+    bool playlist_exist_already = false;
     if(!storage_file_exists(storage, furi_string_get_cstr(new_file_path))) {
         if(storage_common_rename(
                storage,
@@ -32,39 +31,11 @@ int32_t nfc_playlist_playlist_rename_thread_task(void* context) {
     furi_string_free(new_file_path);
     furi_record_close(RECORD_STORAGE);
 
-    return 0;
-}
-
-void nfc_playlist_playlist_rename_thread_state_callback(FuriThreadState state, void* context) {
-    NfcPlaylist* nfc_playlist = context;
-    if(state == FuriThreadStateStopped) {
-        furi_thread_yield();
-        nfc_playlist->thread = NULL;
-        if(playlist_exist_already) {
-            scene_manager_next_scene(
-                nfc_playlist->scene_manager, NfcPlaylistScene_ErrorPlaylistAlreadyExists);
-        } else {
-            scene_manager_search_and_switch_to_previous_scene(
-                nfc_playlist->scene_manager, NfcPlaylistScene_MainMenu);
-        }
-    }
-}
-
-void nfc_playlist_playlist_rename_menu_callback(void* context) {
-    NfcPlaylist* nfc_playlist = context;
-
-    nfc_playlist->thread = furi_thread_alloc_ex(
-        "NfcPlaylistRenamer", 1024, nfc_playlist_playlist_rename_thread_task, nfc_playlist);
-    furi_thread_set_state_context(nfc_playlist->thread, nfc_playlist);
-    furi_thread_set_state_callback(
-        nfc_playlist->thread, nfc_playlist_playlist_rename_thread_state_callback);
-    furi_thread_start(nfc_playlist->thread);
+    view_dispatcher_send_custom_event(nfc_playlist->view_dispatcher, playlist_exist_already);
 }
 
 void nfc_playlist_playlist_rename_scene_on_enter(void* context) {
     NfcPlaylist* nfc_playlist = context;
-
-    playlist_exist_already = false;
 
     FuriString* tmp_file_name = furi_string_alloc();
     path_extract_filename_no_ext(
@@ -88,8 +59,19 @@ void nfc_playlist_playlist_rename_scene_on_enter(void* context) {
 }
 
 bool nfc_playlist_playlist_rename_scene_on_event(void* context, SceneManagerEvent event) {
-    UNUSED(context);
-    UNUSED(event);
+    NfcPlaylist* nfc_playlist = context;
+
+    if(event.type == SceneManagerEventTypeCustom) {
+        bool playlist_exist_already = event.event;
+        if(playlist_exist_already) {
+            scene_manager_next_scene(
+                nfc_playlist->scene_manager, NfcPlaylistScene_ErrorPlaylistAlreadyExists);
+        } else {
+            scene_manager_search_and_switch_to_previous_scene(
+                nfc_playlist->scene_manager, NfcPlaylistScene_MainMenu);
+        }
+        return true;
+    }
     return false;
 }
 
