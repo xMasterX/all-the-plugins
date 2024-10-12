@@ -13,18 +13,12 @@ typedef struct EthernetSaveConfig {
     File* log_file;
 } EthernetSaveConfig;
 
-#define ETHERNET_SAVE_DEFAULT_MAC \
-    { 0x10, 0x08, 0xDC, 0x47, 0x47, 0x54 }
-#define ETHERNET_SAVE_DEFAULT_IP \
-    { 192, 168, 0, 101 }
-#define ETHERNET_SAVE_DEFAULT_MASK \
-    { 255, 255, 255, 0 }
-#define ETHERNET_SAVE_DEFAULT_GATEWAY \
-    { 192, 168, 0, 1 }
-#define ETHERNET_SAVE_DEFAULT_DNS \
-    { 192, 168, 0, 1 }
-#define ETHERNET_SAVE_DEFAULT_PING_IP \
-    { 8, 8, 8, 8 }
+#define ETHERNET_SAVE_DEFAULT_MAC     {0x10, 0x08, 0xDC, 0x47, 0x47, 0x54}
+#define ETHERNET_SAVE_DEFAULT_IP      {192, 168, 0, 101}
+#define ETHERNET_SAVE_DEFAULT_MASK    {255, 255, 255, 0}
+#define ETHERNET_SAVE_DEFAULT_GATEWAY {192, 168, 0, 1}
+#define ETHERNET_SAVE_DEFAULT_DNS     {192, 168, 0, 1}
+#define ETHERNET_SAVE_DEFAULT_PING_IP {8, 8, 8, 8}
 
 EthernetSaveConfig* ethernet_save_process_malloc();
 void ethernet_save_process_free(EthernetSaveConfig* config);

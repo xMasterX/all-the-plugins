@@ -11,6 +11,11 @@ The second thing you will need is a proto-board for the Flipper Zero, which you 
 
 ## Assembly
 
+Pinout on picture is not complete - Connect RESET (RST) from W5500 module to flipper's (PC3 aka (C3) aka (7)) - pin
+Other pins - same as on picture below:
+
+
+
 If you got those things, you can get started.
 You will need to solder the board yourself, but don't worry. It's not that complicated.
 First we will need to know the pinout of the W5500-Lite-Module.

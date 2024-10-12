@@ -41,7 +41,60 @@ static void draw_process_selector(Canvas* canvas, DrawProcess selector, CursorPo
     }
 }
 
-static void draw_battery_cunsumption(Canvas* canvas, double cons) {
+static void draw_module_status(Canvas* canvas, EthWorkerState state) {
+    FuriString* string = furi_string_alloc_set("aaaaaaaaa");
+
+    switch(state) {
+    case EthWorkerStateNotInited:
+        furi_string_printf(string, "no init");
+        break;
+    case EthWorkerStateDefaultNext:
+        furi_string_printf(string, "df next");
+        break;
+    case EthWorkerStateInited:
+        furi_string_printf(string, "init ok");
+        break;
+    case EthWorkerStateInit:
+        furi_string_printf(string, "init");
+        break;
+    case EthWorkerStateModulePowerOn:
+        furi_string_printf(string, "pwr on");
+        break;
+    case EthWorkerStateModuleConnect:
+        furi_string_printf(string, "connect");
+        break;
+    case EthWorkerStateMACInit:
+        furi_string_printf(string, "mac init");
+        break;
+    case EthWorkerStateStaticIp:
+        furi_string_printf(string, "static ip");
+        break;
+    case EthWorkerStateDHCP:
+        furi_string_printf(string, "dhcp req.");
+        break;
+    case EthWorkerStateOnline:
+        furi_string_printf(string, "online");
+        break;
+    case EthWorkerStatePing:
+        furi_string_printf(string, "ping");
+        break;
+    case EthWorkerStateStop:
+        furi_string_printf(string, "stop");
+        break;
+    case EthWorkerStateReset:
+        furi_string_printf(string, "reset");
+        break;
+
+    default:
+        furi_string_printf(string, "unknown");
+        break;
+    }
+
+    canvas_draw_str(canvas, 45, 7, furi_string_get_cstr(string));
+    furi_string_free(string);
+}
+
+static void draw_battery_consumption(Canvas* canvas, double cons) {
     FuriString* string = furi_string_alloc_set("aaaaaaaa");
     if(cons >= 0) {
         furi_string_printf(string, "--");
@@ -72,8 +125,9 @@ static void eth_troubleshooter_app_draw_callback(Canvas* canvas, void* ctx) {
     } else {
         canvas_draw_icon(canvas, 0, 0, &I_main_128x64px);
         draw_process_selector(canvas, process, cursor);
-        draw_battery_cunsumption(canvas, (double)consumption);
+        draw_battery_consumption(canvas, (double)consumption);
         ethernet_view_process_draw(app->eth_worker->active_process, canvas);
+        draw_module_status(canvas, app->eth_worker->state);
         if(furi_hal_power_is_otg_enabled()) {
             canvas_draw_str(canvas, 22, 6, "+");
         } else {
@@ -103,7 +157,8 @@ EthTroubleshooterApp* eth_troubleshooter_app_alloc() {
     app->eth_worker = eth_worker_alloc();
 
     view_port_draw_callback_set(app->view_port, eth_troubleshooter_app_draw_callback, app);
-    view_port_input_callback_set(app->view_port, eth_troubleshooter_app_input_callback, app->event_queue);
+    view_port_input_callback_set(
+        app->view_port, eth_troubleshooter_app_input_callback, app->event_queue);
 
     app->gui = furi_record_open(RECORD_GUI);
     gui_add_view_port(app->gui, app->view_port, GuiLayerFullscreen);
