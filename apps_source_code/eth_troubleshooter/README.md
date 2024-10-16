@@ -12,9 +12,9 @@ The second thing you will need is a proto-board for the Flipper Zero, which you 
 ## Assembly
 
 Connect pins from module to flipper using this scheme:
--
+
 W5500 Module -> Flipper GPIO 
--
+
 MOSI (MO) -> A7 - 2pin
 SCLK (SCK) -> B3 - 5pin
 nSS (CS) -> A4 - 4pin
@@ -23,7 +23,7 @@ RESET (RST) -> C3 - 7pin
 3v3 (VCC) -> 3V3 - 9pin
 GND (G) -> GND - 8pin or 11pin
 
------
 
-Original App author - @karasevia - https://github.com/karasevia/finik_eth
+
+Original App author: @karasevia - https://github.com/karasevia/finik_eth
 Improved and updated by: @arag0re & @xMasterX
