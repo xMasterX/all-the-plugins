@@ -287,7 +287,7 @@ void upython_repl_execute(Cli* cli) {
                 character = cli_getc(cli);
 
                 // Ctrl + C
-                if(character == CliSymbolAsciiETX) {
+                if(character == CliKeyETX) {
                     context->cursor = 0;
 
                     furi_string_reset(context->line);
@@ -299,19 +299,19 @@ void upython_repl_execute(Cli* cli) {
                 }
 
                 // Ctrl + D
-                if(character == CliSymbolAsciiEOT) {
+                if(character == CliKeyEOT) {
                     exit = true;
 
                     break;
                 }
 
                 // skip line feed
-                if(character == CliSymbolAsciiLF) {
+                if(character == CliKeyLF) {
                     continue;
                 }
 
                 // handle carriage return
-                if(character == CliSymbolAsciiCR) {
+                if(character == CliKeyCR) {
                     furi_string_push_back(context->code, '\n');
                     furi_string_cat(context->code, context->line);
                     furi_string_trim(context->code);
@@ -332,14 +332,14 @@ void upython_repl_execute(Cli* cli) {
                 }
 
                 // handle tab, do autocompletion
-                if(character == CliSymbolAsciiTab) {
+                if(character == CliKeyTab) {
                     handle_autocomplete(context);
 
                     continue;
                 }
 
                 // handle backspace
-                if(character == CliSymbolAsciiBackspace || character == CliSymbolAsciiDel) {
+                if(character == CliKeyBackspace || character == CliKeyDEL) {
                     handle_backspace(context);
 
                     continue;
