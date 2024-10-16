@@ -2,6 +2,7 @@
 
 #include <FreeRTOS.h>
 #include <cli/cli.h>
+#include <cli/cli_ansi.h>
 #include <cli/cli_i.h>
 #include <cli/cli_vcp.h>
 #include <loader/loader.h>

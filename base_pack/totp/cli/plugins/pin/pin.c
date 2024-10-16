@@ -42,7 +42,7 @@ static bool totp_cli_read_pin(Cli* cli, uint8_t* pin, uint8_t* pin_length) {
     uint8_t c;
     *pin_length = 0;
     while(cli_read(cli, &c, 1) == 1) {
-        if(c == CliSymbolAsciiEsc) {
+        if(c == CliKeyEsc) {
             uint8_t c2;
             uint8_t c3;
             if(cli_read_timeout(cli, &c2, 1, 0) == 1 && cli_read_timeout(cli, &c3, 1, 0) == 1 &&
@@ -55,17 +55,17 @@ static bool totp_cli_read_pin(Cli* cli, uint8_t* pin, uint8_t* pin_length) {
                     fflush(stdout);
                 }
             }
-        } else if(c == CliSymbolAsciiETX) {
+        } else if(c == CliKeyETX) {
             TOTP_CLI_DELETE_CURRENT_LINE();
             TOTP_CLI_PRINTF_INFO("Cancelled by user\r\n");
             return false;
-        } else if(c == CliSymbolAsciiBackspace || c == CliSymbolAsciiDel) {
+        } else if(c == CliKeyBackspace || c == CliKeyDEL) {
             if(*pin_length > 0) {
                 *pin_length = *pin_length - 1;
                 pin[*pin_length] = 0;
                 TOTP_CLI_DELETE_LAST_CHAR();
             }
-        } else if(c == CliSymbolAsciiCR) {
+        } else if(c == CliKeyCR) {
             cli_nl(cli);
             break;
         }
