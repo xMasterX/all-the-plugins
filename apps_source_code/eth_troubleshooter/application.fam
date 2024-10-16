@@ -13,6 +13,7 @@ App(
     fap_author="@karasevia & @arag0re & @xMasterX",
     fap_weburl="https://github.com/xMasterX/all-the-plugins",
     fap_version="1.1",
+    fap_description="Test your Ethernet connection with W5500 module and Flipper",
     fap_icon_assets="images",
     fap_private_libs=[
         Lib(
