@@ -4,7 +4,7 @@
 #include "eth_worker_i.h"
 #include "eth_troubleshooter_icons.h"
 
-#include <u8g2.h>
+#include "ui_hacks_again/u8g2.h"
 
 #include <furi_hal.h>
 #include <gui/gui.h>
