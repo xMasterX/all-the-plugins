@@ -291,12 +291,14 @@ int gcm_start(
         p = iv;
         while(iv_len > 0) {
             use_len = (iv_len < 16) ? iv_len : 16;
-            for(i = 0; i < use_len; i++) ctx->y[i] ^= p[i];
+            for(i = 0; i < use_len; i++)
+                ctx->y[i] ^= p[i];
             gcm_mult(ctx, ctx->y, ctx->y);
             iv_len -= use_len;
             p += use_len;
         }
-        for(i = 0; i < 16; i++) ctx->y[i] ^= work_buf[i];
+        for(i = 0; i < 16; i++)
+            ctx->y[i] ^= work_buf[i];
         gcm_mult(ctx, ctx->y, ctx->y);
     }
     if((ret = aes_cipher(&ctx->aes_ctx, ctx->y, ctx->base_ectr)) != 0) return (ret);
@@ -305,7 +307,8 @@ int gcm_start(
     p = add;
     while(add_len > 0) {
         use_len = (add_len < 16) ? add_len : 16;
-        for(i = 0; i < use_len; i++) ctx->buf[i] ^= p[i];
+        for(i = 0; i < use_len; i++)
+            ctx->buf[i] ^= p[i];
         gcm_mult(ctx, ctx->buf, ctx->buf);
         add_len -= use_len;
         p += use_len;
@@ -409,9 +412,11 @@ int gcm_finish(
         PUT_UINT32_BE((orig_len >> 32), work_buf, 8);
         PUT_UINT32_BE((orig_len), work_buf, 12);
 
-        for(i = 0; i < 16; i++) ctx->buf[i] ^= work_buf[i];
+        for(i = 0; i < 16; i++)
+            ctx->buf[i] ^= work_buf[i];
         gcm_mult(ctx, ctx->buf, ctx->buf);
-        for(i = 0; i < tag_len; i++) tag[i] ^= ctx->buf[i];
+        for(i = 0; i < tag_len; i++)
+            tag[i] ^= ctx->buf[i];
     }
     return (0);
 }
@@ -492,7 +497,8 @@ int gcm_auth_decrypt(
         ctx, DECRYPT, iv, iv_len, add, add_len, input, output, length, check_tag, tag_len);
 
     // now we verify the authentication tag in 'constant time'
-    for(diff = 0, i = 0; i < tag_len; i++) diff |= tag[i] ^ check_tag[i];
+    for(diff = 0, i = 0; i < tag_len; i++)
+        diff |= tag[i] ^ check_tag[i];
 
     if(diff != 0) { // see whether any bits differed?
         memset(output, 0, length); // if so... wipe the output data

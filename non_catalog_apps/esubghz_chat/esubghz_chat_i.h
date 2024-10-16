@@ -1,8 +1,8 @@
 #pragma once
 
 #include <furi.h>
-#include <gui/view_dispatcher_i.h>
-#include <gui/view_port_i.h>
+#include "ui_hacks_for_no_reason/view_dispatcher_i.h"
+#include "ui_hacks_for_no_reason/view_port_i.h"
 #include <gui/scene_manager.h>
 #include <gui/modules/byte_input.h>
 #include <gui/modules/dialog_ex.h>
@@ -29,9 +29,9 @@
 
 #define RX_TX_BUFFER_SIZE 1024
 
-#define CHAT_BOX_STORE_SIZE 4096
+#define CHAT_BOX_STORE_SIZE   4096
 #define TEXT_INPUT_STORE_SIZE 256
-#define MSG_PREVIEW_SIZE 32
+#define MSG_PREVIEW_SIZE      32
 
 #define KEY_HEX_STR_SIZE ((KEY_BITS / 8) * 3)
 

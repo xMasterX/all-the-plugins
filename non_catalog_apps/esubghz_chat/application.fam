@@ -12,6 +12,9 @@ App(
     fap_libs=["mbedtls"],
     fap_private_libs=[Lib(name="nfclegacy"), Lib(name="parity")],
     fap_icon="assets/chat_10px.png",
+    fap_author="@twisted-pear & @xMasterX & more in ReadMe",
+    fap_weburl="https://github.com/twisted-pear/esubghz_chat",
+    fap_version="1.1",
     fap_icon_assets="assets",
     fap_icon_assets_symbol="esubghz_chat",
 )

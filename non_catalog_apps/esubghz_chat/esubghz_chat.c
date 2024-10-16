@@ -7,11 +7,11 @@
 
 #include "bgloader_api.h"
 
-#define CHAT_LEAVE_DELAY 10
-#define TICK_INTERVAL 50
+#define CHAT_LEAVE_DELAY           10
+#define TICK_INTERVAL              50
 #define MESSAGE_COMPLETION_TIMEOUT 500
 
-#define KBD_UNLOCK_CNT 3
+#define KBD_UNLOCK_CNT     3
 #define KBD_UNLOCK_TIMEOUT 1000
 
 /* Callback for RX events from the Sub-GHz worker. Records the current ticks as
