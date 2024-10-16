@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include <cli/cli.h>
+#include <cli/cli_ansi.h>
 #include <furi.h>
 
 #include <genhdr/mpversion.h>
