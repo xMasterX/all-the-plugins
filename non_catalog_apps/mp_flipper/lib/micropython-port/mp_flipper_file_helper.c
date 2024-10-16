@@ -4,10 +4,15 @@
 #include <furi.h>
 #include <storage/storage.h>
 
+#include <py/mperrno.h>
+
+#include "mp_flipper_context.h"
+
 mp_flipper_import_stat_t mp_flipper_try_resolve_filesystem_path(FuriString* path) {
+    mp_flipper_context_t* ctx = mp_flipper_context;
+
     const char* path_str = furi_string_get_cstr(path);
     FuriString* _path = furi_string_alloc_printf("%s", path_str);
-    Storage* storage = furi_record_open(RECORD_STORAGE);
 
     mp_flipper_import_stat_t stat = MP_FLIPPER_IMPORT_STAT_FILE;
 
@@ -21,7 +26,7 @@ mp_flipper_import_stat_t mp_flipper_try_resolve_filesystem_path(FuriString* path
         }
 
         // check if file or folder exists
-        error = storage_common_stat(storage, furi_string_get_cstr(_path), &info);
+        error = storage_common_stat(ctx->storage, furi_string_get_cstr(_path), &info);
         if(error == FSE_OK) {
             break;
         }
@@ -29,7 +34,7 @@ mp_flipper_import_stat_t mp_flipper_try_resolve_filesystem_path(FuriString* path
         // check for existing python file
         furi_string_cat_str(_path, ".py");
 
-        error = storage_common_stat(storage, furi_string_get_cstr(_path), &info);
+        error = storage_common_stat(ctx->storage, furi_string_get_cstr(_path), &info);
         if(error == FSE_OK) {
             break;
         }
@@ -47,8 +52,6 @@ mp_flipper_import_stat_t mp_flipper_try_resolve_filesystem_path(FuriString* path
     else if((info.flags & FSF_DIRECTORY) == FSF_DIRECTORY) {
         stat = MP_FLIPPER_IMPORT_STAT_DIR;
     }
-
-    furi_record_close(RECORD_STORAGE);
 
     furi_string_move(path, _path);
 

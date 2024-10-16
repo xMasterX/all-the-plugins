@@ -4,10 +4,22 @@
 #include <math.h>
 #include <string.h>
 
-#define POLYFILL_FUN_1(name, ret, arg1) ret name(arg1)
-#define POLYFILL_FUN_2(name, ret, arg1, arg2) ret name(arg1, arg2)
-#define POLYFILL_FUN_3(name, ret, arg1, arg2, arg3) ret name(arg1, arg2, arg3)
+#define POLYFILL_FUN_1(name, ret, arg1)                   ret name(arg1)
+#define POLYFILL_FUN_2(name, ret, arg1, arg2)             ret name(arg1, arg2)
+#define POLYFILL_FUN_3(name, ret, arg1, arg2, arg3)       ret name(arg1, arg2, arg3)
 #define POLYFILL_FUN_4(name, ret, arg1, arg2, arg3, arg4) ret name(arg1, arg2, arg3, arg4)
+
+#ifndef __aeabi_l2f
+POLYFILL_FUN_1(__aeabi_l2f, float, long long x) {
+    return x;
+}
+#endif
+
+#ifndef __aeabi_f2lz
+POLYFILL_FUN_1(__aeabi_f2lz, long long, float x) {
+    return x;
+}
+#endif
 
 #ifndef __aeabi_dcmple
 POLYFILL_FUN_2(__aeabi_dcmple, double, double, double) {

@@ -1,6 +1,8 @@
 /dist/
 /venv/
+/node_modules/
 /flipperzero/__init__.py
+/fssdk
 .vscode
 .clang-format
 .clangd

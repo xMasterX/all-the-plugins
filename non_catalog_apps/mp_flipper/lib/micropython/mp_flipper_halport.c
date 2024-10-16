@@ -1,15 +1,13 @@
+#include "py/mperrno.h"
+#include "py/obj.h"
+#include "py/runtime.h"
 #include <stdio.h>
 
 #include "py/mphal.h"
 #include "py/builtin.h"
 
 #include "mp_flipper_halport.h"
-
-mp_obj_t mp_builtin_open(size_t n_args, const mp_obj_t* args, mp_map_t* kwargs) {
-    return mp_const_none;
-}
-
-MP_DEFINE_CONST_FUN_OBJ_KW(mp_builtin_open_obj, 1, mp_builtin_open);
+#include "mp_flipper_fileio.h"
 
 void mp_hal_stdout_tx_str(const char* str) {
     mp_flipper_stdout_tx_str(str);
@@ -33,8 +31,6 @@ mp_import_stat_t mp_import_stat(const char* path) {
     return MP_IMPORT_STAT_NO_EXIST;
 }
 
-#ifdef MP_FLIPPER_SPLIT_HEAP
 size_t gc_get_max_new_split(void) {
     return mp_flipper_gc_get_max_new_split();
 }
-#endif

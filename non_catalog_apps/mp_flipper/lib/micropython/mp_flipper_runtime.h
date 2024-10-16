@@ -2,8 +2,6 @@
 
 #include <stddef.h>
 
-#include "py/mperrno.h"
-
 #include "mpconfigport.h"
 
 extern const char* mp_flipper_root_module_path;
@@ -13,7 +11,6 @@ extern void* mp_flipper_context;
 void mp_flipper_set_root_module_path(const char* path);
 
 void mp_flipper_init(void* memory, size_t memory_size, size_t stack_size, void* stack_top);
-void mp_flipper_exec_mpy_file(const char* file_path);
 void mp_flipper_save_file(const char* file_path, const char* data, size_t size);
 void mp_flipper_deinit();
 void mp_flipper_nlr_jump_fail(void* value);

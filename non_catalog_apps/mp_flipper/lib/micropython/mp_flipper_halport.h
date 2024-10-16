@@ -16,6 +16,4 @@ void mp_flipper_stdout_tx_strn_cooked(const char* str, size_t len);
 
 mp_flipper_import_stat_t mp_flipper_import_stat(const char* path);
 
-#ifdef MP_FLIPPER_SPLIT_HEAP
 size_t mp_flipper_gc_get_max_new_split();
-#endif

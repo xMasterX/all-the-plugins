@@ -258,3 +258,12 @@ bool mp_flipper_infrared_transmit(
     float duty,
     bool use_external_pin);
 bool mp_flipper_infrared_is_busy();
+
+#define MP_FLIPPER_UART_MODE_USART (0)
+#define MP_FLIPPER_UART_MODE_LPUART (1)
+
+void* mp_flipper_uart_open(uint8_t raw_mode, uint32_t baud_rate);
+bool mp_flipper_uart_close(void* handle);
+bool mp_flipper_uart_sync(void* handle);
+size_t mp_flipper_uart_read(void* handle, void* buffer, size_t size, int* errcode);
+size_t mp_flipper_uart_write(void* handle, const void* buffer, size_t size, int* errcode);

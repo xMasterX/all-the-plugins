@@ -13,6 +13,7 @@ Here you can see what to expect from future releases.
 ## Planned
 
 * I2C
+* NFC
 * UART
 * USB HID
 * Subghz

@@ -233,8 +233,8 @@ Alignment
 .. autodata:: flipperzero.ALIGN_CENTER
 .. autofunction:: flipperzero.canvas_set_text_align
 
-Texts
-~~~~~
+Text
+~~~~
 
 .. autodata:: flipperzero.FONT_PRIMARY
 .. autodata:: flipperzero.FONT_SECONDARY
@@ -396,23 +396,106 @@ Functions
 .. autofunction:: flipperzero.infrared_transmit
 .. autofunction:: flipperzero.infrared_is_busy
 
+UART
+----
+
+Connect to UART enabled devices.
+
+Modes
+~~~~~
+
+.. autodata:: flipperzero.UART_MODE_LPUART
+.. autodata:: flipperzero.UART_MODE_USART
+
+Functions
+~~~~~~~~~
+
+.. autofunction:: flipperzero.uart_open
+
+Classes
+~~~~~~~
+
+.. autoclass:: flipperzero.UART
+   :members: read, readline, readlines, write, flush, close, __enter__, __exit__, __del__
+
+Logging
+-------
+
+Log messages to the Flipper's own logging backend.
+Check out the `Flipper Zero docs <https://docs.flipper.net/development/cli#_yZ2E>`_ on how to reveal them in the CLI.
+Be aware, that you can't change Flipper's global log level from within your script.
+Change the `corresponding settings <https://docs.flipper.net/basics/settings#d5TAt>`_ instead or use the **log** command in the CLI with the desired log level as the first argument.
+
+Levels
+~~~~~~
+
+.. autodata:: logging.TRACE
+.. autodata:: logging.DEBUG
+.. autodata:: logging.INFO
+.. autodata:: logging.WARN
+.. autodata:: logging.ERROR
+.. autodata:: logging.NONE
+.. autodata:: logging.level
+
+Functions
+~~~~~~~~~
+
+.. autofunction:: logging.setLevel
+.. autofunction:: logging.getEffectiveLevel
+.. autofunction:: logging.trace
+.. autofunction:: logging.debug
+.. autofunction:: logging.info
+.. autofunction:: logging.warn
+.. autofunction:: logging.error
+.. autofunction:: logging.log
+
+I/O
+---
+
+Read and write files on the SD card.
+
+Constants
+~~~~~~~~~
+
+.. autodata:: io.SEEK_SET
+.. autodata:: io.SEEK_CUR
+.. autodata:: io.SEEK_END
+
+Functions
+~~~~~~~~~
+
+.. autofunction:: io.open
+
+Classes
+~~~~~~~
+
+.. autoclass:: io.BinaryFileIO
+   :members: name, read, readline, readlines, readable, writable, write, flush, seek, tell, close, __enter__, __exit__, __del__
+
+.. autoclass:: io.TextFileIO
+   :members: name, read, readline, readlines, readable, writable, write, flush, seek, tell, close, __enter__, __exit__, __del__
+
 Built-In
 --------
 
 The functions in this section are `not` part of the ``flipperzero`` module.
 They're members of the global namespace instead.
 
-.. py:function:: print(*objects, sep=' ', end='\n', file=None, flush=False) -> None
+.. py:function:: print(*objects, sep=' ', end='\n') -> None
 
    The standard Python `print <https://docs.python.org/3/library/functions.html#print>`_ function.
+   Where the output of this function will be redirected depends on how the script is invoked:
+
+      * When invoked from the UI, the output will be sent to the Flipper's log buffer.
+        Check out the `Flipper Zero docs <https://docs.flipper.net/development/cli#_yZ2E>`_ on how to view them in the CLI interface.
+      * In the REPL, the output will be sent to the standard output buffer.
+      * When invoked by the **py** command, the output will be sent to the standard output buffer.
 
    :param objects: The objects to print (mostly a single string).
    :param sep: The separator to use between the objects.
    :param end: The line terminator character to use.
 
    .. versionadded:: 1.0.0
+   .. versionchanged:: 1.5.0
 
-   .. attention::
-      
-      This function prints to the internal log buffer.
-      Check out the `Flipper Zero docs <https://docs.flipper.net/development/cli#_yZ2E>`_ on how to reveal them in the CLI interface.
+      Output redirection, based on script invocation.

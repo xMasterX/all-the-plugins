@@ -3,6 +3,7 @@
 #include <furi.h>
 #include <gui/gui.h>
 #include <dialogs/dialogs.h>
+#include <storage/storage.h>
 
 #include <mp_flipper_modflipperzero.h>
 
@@ -40,6 +41,7 @@ typedef struct {
     const char* dialog_message_button_left;
     const char* dialog_message_button_center;
     const char* dialog_message_button_right;
+    Storage* storage;
     FuriHalAdcHandle* adc_handle;
     mp_flipper_gpio_pin_t* gpio_pins;
     mp_flipper_infrared_rx_t* infrared_rx;

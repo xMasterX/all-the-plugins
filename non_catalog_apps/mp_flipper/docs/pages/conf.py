@@ -5,16 +5,31 @@ import sys
 base = pathlib.Path(__file__).parent.parent.parent
 root = base.__str__()
 flipperzero = base.joinpath('flipperzero').__str__()
-now = datetime.datetime.now()
 
 sys.path.append(root)
 sys.path.append(flipperzero)
 
+def copy_dict(source, target):
+    for key, value in source.__dict__.items():
+        target.__dict__[key] = value
+
+import flipperzero.logging
+import logging
+
+copy_dict(flipperzero.logging, logging)
+
+import flipperzero.io
+import io
+
+copy_dict(flipperzero.io, io)
+
+now = datetime.datetime.now()
+
 project = 'uPython'
 copyright = str(now.year) + ', Oliver Fabel'
 author = 'Oliver Fabel'
-release = '1.1.0'
-version = '1.1'
+release = '1.5.0'
+version = '1.5'
 language = 'en'
 
 extensions = [

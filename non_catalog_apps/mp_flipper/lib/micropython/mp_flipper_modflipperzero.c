@@ -1,9 +1,11 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "py/mperrno.h"
 #include "py/objint.h"
 #include "py/objfun.h"
 #include "py/obj.h"
+#include "py/stream.h"
 #include "py/runtime.h"
 
 #include "mp_flipper_modflipperzero.h"
@@ -617,6 +619,131 @@ static mp_obj_t flipperzero_infrared_is_busy() {
 }
 static MP_DEFINE_CONST_FUN_OBJ_0(flipperzero_infrared_is_busy_obj, flipperzero_infrared_is_busy);
 
+extern const mp_obj_type_t flipperzero_uart_connection_type;
+
+typedef struct _flipperzero_uart_connection_t {
+    mp_obj_base_t base;
+    void* handle;
+    mp_obj_t mode;
+    mp_obj_t baud_rate;
+} flipperzero_uart_connection_t;
+
+static mp_obj_t flipperzero_uart_open(mp_obj_t raw_mode, mp_obj_t raw_baud_rate) {
+    uint8_t mode = mp_obj_get_int(raw_mode);
+    uint32_t baud_rate = mp_obj_get_int(raw_baud_rate);
+
+    void* handle = mp_flipper_uart_open(mode, baud_rate);
+
+    if(handle == NULL) {
+        mp_flipper_raise_os_error(MP_EBUSY);
+
+        return mp_const_none;
+    }
+
+    flipperzero_uart_connection_t* connection =
+        mp_obj_malloc_with_finaliser(flipperzero_uart_connection_t, &flipperzero_uart_connection_type);
+
+    connection->handle = handle;
+    connection->mode = raw_mode;
+    connection->baud_rate = raw_baud_rate;
+
+    return connection;
+}
+static MP_DEFINE_CONST_FUN_OBJ_2(flipperzero_uart_open_obj, flipperzero_uart_open);
+
+static mp_uint_t flipperzero_uart_read(mp_obj_t self, void* buf, mp_uint_t size, int* errcode) {
+    flipperzero_uart_connection_t* connection = MP_OBJ_TO_PTR(self);
+
+    if(connection->handle == NULL) {
+        *errcode = MP_EIO;
+
+        return MP_STREAM_ERROR;
+    }
+
+    return mp_flipper_uart_read(connection->handle, buf, size, errcode);
+}
+
+static mp_uint_t flipperzero_uart_write(mp_obj_t self, const void* buf, mp_uint_t size, int* errcode) {
+    flipperzero_uart_connection_t* connection = MP_OBJ_TO_PTR(self);
+
+    if(connection->handle == NULL) {
+        *errcode = MP_EIO;
+
+        return MP_STREAM_ERROR;
+    }
+
+    return mp_flipper_uart_write(connection->handle, buf, size, errcode);
+}
+
+static mp_uint_t flipperzero_uart_ioctl(mp_obj_t self, mp_uint_t request, uintptr_t arg, int* errcode) {
+    flipperzero_uart_connection_t* connection = MP_OBJ_TO_PTR(self);
+
+    if(connection->handle == NULL) {
+        return 0;
+    }
+
+    if(request == MP_STREAM_SEEK) {
+        return 0;
+    }
+
+    if(request == MP_STREAM_FLUSH) {
+        if(!mp_flipper_uart_sync(connection->handle)) {
+            *errcode = MP_EIO;
+
+            return MP_STREAM_ERROR;
+        }
+
+        return 0;
+    }
+
+    if(request == MP_STREAM_CLOSE) {
+        if(!mp_flipper_uart_close(connection->handle)) {
+            *errcode = MP_EIO;
+
+            connection->handle = NULL;
+
+            return MP_STREAM_ERROR;
+        }
+
+        connection->handle = NULL;
+
+        return 0;
+    }
+
+    *errcode = MP_EINVAL;
+
+    return MP_STREAM_ERROR;
+}
+
+static const mp_map_elem_t flipperzero_uart_connection_locals_dict_table[] = {
+    {MP_ROM_QSTR(MP_QSTR_read), MP_ROM_PTR(&mp_stream_read_obj)},
+    {MP_ROM_QSTR(MP_QSTR_readline), MP_ROM_PTR(&mp_stream_unbuffered_readline_obj)},
+    {MP_ROM_QSTR(MP_QSTR_readlines), MP_ROM_PTR(&mp_stream_unbuffered_readlines_obj)},
+    {MP_ROM_QSTR(MP_QSTR_write), MP_ROM_PTR(&mp_stream_write_obj)},
+    {MP_ROM_QSTR(MP_QSTR_flush), MP_ROM_PTR(&mp_stream_flush_obj)},
+    {MP_ROM_QSTR(MP_QSTR_close), MP_ROM_PTR(&mp_stream_close_obj)},
+    {MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&mp_stream_close_obj)},
+    {MP_ROM_QSTR(MP_QSTR___enter__), MP_ROM_PTR(&mp_identity_obj)},
+    {MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&mp_stream___exit___obj)},
+};
+static MP_DEFINE_CONST_DICT(flipperzero_uart_connection_locals_dict, flipperzero_uart_connection_locals_dict_table);
+
+static const mp_stream_p_t flipperzero_uart_connection_stream_p = {
+    .read = flipperzero_uart_read,
+    .write = flipperzero_uart_write,
+    .ioctl = flipperzero_uart_ioctl,
+    .is_text = false,
+};
+
+MP_DEFINE_CONST_OBJ_TYPE(
+    flipperzero_uart_connection_type,
+    MP_QSTR_UART,
+    MP_TYPE_FLAG_ITER_IS_STREAM,
+    protocol,
+    &flipperzero_uart_connection_stream_p,
+    locals_dict,
+    &flipperzero_uart_connection_locals_dict);
+
 static const mp_rom_map_elem_t flipperzero_module_globals_table[] = {
     // light
     {MP_OBJ_NEW_QSTR(MP_QSTR___name__), MP_OBJ_NEW_QSTR(MP_QSTR_flipperzero)},
@@ -846,6 +973,11 @@ for octave in range(9):
     {MP_ROM_QSTR(MP_QSTR_infrared_receive), MP_ROM_PTR(&flipperzero_infrared_receive_obj)},
     {MP_ROM_QSTR(MP_QSTR_infrared_transmit), MP_ROM_PTR(&flipperzero_infrared_transmit_obj)},
     {MP_ROM_QSTR(MP_QSTR_infrared_is_busy), MP_ROM_PTR(&flipperzero_infrared_is_busy_obj)},
+    // UART
+    {MP_ROM_QSTR(MP_QSTR_UART), MP_ROM_PTR(&flipperzero_uart_connection_type)},
+    {MP_ROM_QSTR(MP_QSTR_UART_MODE_LPUART), MP_ROM_INT(MP_FLIPPER_UART_MODE_LPUART)},
+    {MP_ROM_QSTR(MP_QSTR_UART_MODE_USART), MP_ROM_INT(MP_FLIPPER_UART_MODE_USART)},
+    {MP_ROM_QSTR(MP_QSTR_uart_open), MP_ROM_PTR(&flipperzero_uart_open_obj)},
 };
 static MP_DEFINE_CONST_DICT(flipperzero_module_globals, flipperzero_module_globals_table);
 

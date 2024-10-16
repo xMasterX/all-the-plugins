@@ -1,6 +1,8 @@
 #include <furi.h>
 #include <storage/storage.h>
 
+#include <py/mperrno.h>
+
 #include <mp_flipper_runtime.h>
 #include <mp_flipper_modflipperzero.h>
 
@@ -14,8 +16,9 @@ static void on_input_callback(const InputEvent* event, void* ctx) {
 }
 
 void mp_flipper_save_file(const char* file_path, const char* data, size_t size) {
-    Storage* storage = furi_record_open(RECORD_STORAGE);
-    File* file = storage_file_alloc(storage);
+    mp_flipper_context_t* ctx = mp_flipper_context;
+
+    File* file = storage_file_alloc(ctx->storage);
 
     do {
         if(!storage_file_open(file, file_path, FSAM_WRITE, FSOM_CREATE_ALWAYS)) {
@@ -30,7 +33,6 @@ void mp_flipper_save_file(const char* file_path, const char* data, size_t size) 
     } while(false);
 
     storage_file_free(file);
-    furi_record_close(RECORD_STORAGE);
 }
 
 inline void mp_flipper_nlr_jump_fail(void* val) {
@@ -84,6 +86,8 @@ void* mp_flipper_context_alloc() {
     ctx->dialog_message_button_center = NULL;
     ctx->dialog_message_button_right = NULL;
 
+    ctx->storage = furi_record_open(RECORD_STORAGE);
+
     ctx->adc_handle = NULL;
 
     // GPIO
@@ -128,6 +132,8 @@ void mp_flipper_context_free(void* context) {
 
     furi_record_close(RECORD_GUI);
     furi_record_close(RECORD_INPUT_EVENTS);
+
+    furi_record_close(RECORD_STORAGE);
 
     // disable ADC handle
     if(ctx->adc_handle) {

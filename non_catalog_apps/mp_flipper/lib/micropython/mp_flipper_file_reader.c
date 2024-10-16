@@ -1,4 +1,5 @@
 #include "py/reader.h"
+#include "py/qstr.h"
 
 #include "mp_flipper_file_reader.h"
 
