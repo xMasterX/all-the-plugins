@@ -28,7 +28,7 @@ typedef struct {
 
 static void scroll_draw_callback(Canvas* canvas, void* model) {
     ImageScrollViewModel* m = model;
-    canvas_draw_xbm_mirrored(canvas, 0, 0, IMAGE_WINDOW_WIDTH, IMAGE_WINDOW_HEIGHT, m->view_image);
+    canvas_draw_xbm_ex(canvas, 0, 0, IMAGE_WINDOW_WIDTH, IMAGE_WINDOW_HEIGHT, IconRotation180, m->view_image);
 }
 
 static inline int16_t image_scroll_calculate_new_pos(int16_t pos, int8_t step, int16_t max_pos) {
