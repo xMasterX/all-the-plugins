@@ -54,6 +54,7 @@ typedef struct {
     Widget* widget_about;
     VariableItem* key_name_item;
     VariableItem* format_item;
+    VariableItem* format_name_item;
     char* temp_buffer;
     uint32_t temp_buffer_size;
 
@@ -147,9 +148,12 @@ static void key_copier_format_change(VariableItem* item) {
     }
     model->data_loaded = false;
     variable_item_set_current_value_text(item, model->format.format_name);
+    variable_item_set_current_value_text(app->format_name_item, model->format.manufacturer);
     model->format = all_formats[model->format_index];
 }
+
 static const char* format_config_label = "Key Format";
+static const char* format_name_config_label = "Brand";
 static void key_copier_config_enter_callback(void* context) {
     KeyCopierApp* app = (KeyCopierApp*)context;
     KeyCopierModel* my_model = view_get_model(app->view_measure);
@@ -162,16 +166,17 @@ static void key_copier_config_enter_callback(void* context) {
         key_copier_format_change,
         app);
 
+    app->format_name_item = variable_item_list_add(
+        app->variable_item_list_config, format_name_config_label, 0, NULL, NULL);
     View* view_config_i = variable_item_list_get_view(app->variable_item_list_config);
     variable_item_set_current_value_index(app->format_item, my_model->format_index);
+    variable_item_set_current_value_text(app->format_name_item, my_model->format.manufacturer);
     key_copier_format_change(app->format_item);
     view_set_previous_callback(view_config_i, key_copier_navigation_submenu_callback);
     view_dispatcher_remove_view(
-        app->view_dispatcher,
-        KeyCopierViewConfigure_i); // delete the last one
+        app->view_dispatcher, KeyCopierViewConfigure_i); // delete the last one
     view_dispatcher_add_view(app->view_dispatcher, KeyCopierViewConfigure_i, view_config_i);
-    view_dispatcher_switch_to_view(app->view_dispatcher,
-                                   KeyCopierViewConfigure_i); // recreate it
+    view_dispatcher_switch_to_view(app->view_dispatcher, KeyCopierViewConfigure_i); // recreate it
 }
 
 static const char* key_name_entry_text = "Enter name";
@@ -253,8 +258,7 @@ static void key_copier_view_save_callback(void* context) {
         },
         redraw);
 
-    // Configure the text input.  When user enters text and clicks OK,
-    // key_copier_file_saver be called.
+    // Configure the text input.  When user enters text and clicks OK, key_copier_file_saver be called.
     bool clear_previous_text = false;
     text_input_set_result_callback(
         app->text_input,
@@ -511,8 +515,7 @@ static void key_copier_view_measure_draw_callback(Canvas* canvas, void* model) {
                 down_slope_start_x_px,
                 top_contour_px);
         }
-        if((current_depth + next_depth) > my_format.clearance) { // yes
-            // intersection
+        if((current_depth + next_depth) > my_format.clearance) { //yes intersection
             double numerator = (double)current_depth;
             double denominator = (double)(current_depth + next_depth);
             double product = (numerator / denominator) * pin_step_px;
@@ -595,7 +598,7 @@ static bool key_copier_view_measure_input_callback(InputEvent* event, void* cont
                 KeyCopierModel * model,
                 {
                     if(model->depth[model->pin_slc - 1] > model->format.min_depth_ind) {
-                        if(model->pin_slc == 1) { // first pin only limited by the next one
+                        if(model->pin_slc == 1) { //first pin only limited by the next one
                             if(model->depth[model->pin_slc] - model->depth[model->pin_slc - 1] <
                                model->format.macs)
                                 model->depth[model->pin_slc - 1]--;
@@ -627,7 +630,7 @@ static bool key_copier_view_measure_input_callback(InputEvent* event, void* cont
                 KeyCopierModel * model,
                 {
                     if(model->depth[model->pin_slc - 1] < model->format.max_depth_ind) {
-                        if(model->pin_slc == 1) { // first pin only limited by the next one
+                        if(model->pin_slc == 1) { //first pin only limited by the next one
                             if(model->depth[model->pin_slc - 1] - model->depth[model->pin_slc] <
                                model->format.macs)
                                 model->depth[model->pin_slc - 1]++;
@@ -672,16 +675,21 @@ static KeyCopierApp* key_copier_app_alloc() {
     app->dialogs = furi_record_open(RECORD_DIALOGS);
     app->file_path = furi_string_alloc();
     app->submenu = submenu_alloc();
+    submenu_set_header(app->submenu, "Key Copier v1.1");
+    submenu_add_item(
+        app->submenu,
+        "Select Template",
+        KeyCopierSubmenuIndexConfigure,
+        key_copier_submenu_callback,
+        app);
     submenu_add_item(
         app->submenu, "Measure", KeyCopierSubmenuIndexMeasure, key_copier_submenu_callback, app);
-    submenu_add_item(
-        app->submenu, "Config", KeyCopierSubmenuIndexConfigure, key_copier_submenu_callback, app);
     submenu_add_item(
         app->submenu, "Save", KeyCopierSubmenuIndexSave, key_copier_submenu_callback, app);
     submenu_add_item(
         app->submenu, "Load", KeyCopierSubmenuIndexLoad, key_copier_submenu_callback, app);
     submenu_add_item(
-        app->submenu, "About", KeyCopierSubmenuIndexAbout, key_copier_submenu_callback, app);
+        app->submenu, "Help", KeyCopierSubmenuIndexAbout, key_copier_submenu_callback, app);
     view_set_previous_callback(
         submenu_get_view(app->submenu), key_copier_navigation_exit_callback);
     view_dispatcher_add_view(
