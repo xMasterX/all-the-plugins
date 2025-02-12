@@ -274,7 +274,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | USB Game Controller (Xbox360) | ![USB Badge] | [by expected-ingot](https://github.com/expected-ingot/flipper-xinput) |  | ![None Badge] |
 
 
-#### Catalog links checked at `01 Sep 16:24 GMT +3`
+#### Catalog links checked at `13 Feb 01:00 GMT +3`
 
 --- 
 
