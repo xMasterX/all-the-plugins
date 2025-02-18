@@ -7,7 +7,6 @@
 #include "quac.h"
 #include "scenes.h"
 #include "scene_action_rename.h"
-#include "../actions/action.h"
 
 #include <lib/toolbox/path.h>
 

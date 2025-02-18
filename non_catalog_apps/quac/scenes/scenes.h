@@ -1,5 +1,6 @@
 #pragma once
 
+#include <gui/scene_manager.h>
 typedef enum {
     QScene_Items,
     QScene_Settings,

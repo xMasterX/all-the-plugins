@@ -46,7 +46,6 @@ The settings menu will appear as the last item when you are viewing the "root" d
 * RFID Duration: Changes the length of time a RFID signal is transmitted. Can be overridden, per RFID file in a Playlist
 * NFC Duration: Changes the length of time a NFC signal is transmitted. Can be overridden, per NFC file in a Playlist
 * iButton Duration: Changes the length of time a iButton signal is transmitted. Can be overridden, per iButton file in a Playlist
-* SubGhz Ext Ant: Enables / Disables use of external sub-ghz antenna
 * IR Ext Ant: Enables / Disables use of external IR antenna
 * Show Hidden: Toggles display of files/folders that start with a period.
 

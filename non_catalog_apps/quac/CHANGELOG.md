@@ -1,3 +1,19 @@
+## 0.8.0
+
+- Complete refactor of SubGhz code
+- Supports dynamic SubGhz signals with rolling codes
+- Auto-detect External SubGhz Antenna and use/prefer if available
+- Removed SugGhz External Antenna setting due to new auto-detect feature
+- Removed SubGhz Repeat setting, no longer needed (was non-standard)
+
+## 0.7.2
+
+- Updated for firmware SDK 1.2
+
+## 0.7.1
+
+- Updated for firmware SDK 1.1.12
+
 ## 0.7.0
 
 - Addded support for iButton

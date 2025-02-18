@@ -17,7 +17,7 @@
 #include "item.h"
 
 #define QUAC_NAME    "Quac!"
-#define QUAC_VERSION "v0.7.0"
+#define QUAC_VERSION "v0.8.0"
 #define QUAC_ABOUT                                    \
     "Quick Action remote control\n" QUAC_VERSION "\n" \
     "github.com/rdefeo/quac"
@@ -61,8 +61,6 @@ typedef struct App {
         uint32_t rfid_duration; // Defaults to 2500 ms
         uint32_t nfc_duration; // Defaults to 1000 ms
         uint32_t ibutton_duration; // Defaults to 1000 ms
-        uint32_t subghz_repeat; // Defaults to 10, just like the CLI
-        bool subghz_use_ext_antenna; // Defaults to False
         bool ir_use_ext_module; // Defaults to False
         bool show_hidden; // Defaults to False
     } settings;
