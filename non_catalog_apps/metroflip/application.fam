@@ -1,0 +1,111 @@
+App(
+    appid="metroflip",
+    name="Metroflip",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="metroflip",
+    stack_size=2 * 1024,
+    fap_category="NFC",
+    fap_version="0.6",
+    fap_icon="icon.png",
+    fap_description="An implementation of metrodroid on the flipper",
+    fap_author="luu176",
+    fap_icon_assets="images",  # Image assets to compile for this application
+    fap_file_assets="files",
+)
+
+App(
+    appid="charliecard_plugin",
+    apptype=FlipperAppType.PLUGIN,
+    entry_point="charliecard_plugin_ep",
+    requires=["metroflip"],
+    sources=["scenes/plugins/charliecard.c"],
+    fal_embedded=True,
+)
+
+App(
+    appid="calypso_plugin",
+    apptype=FlipperAppType.PLUGIN,
+    entry_point="calypso_plugin_ep",
+    requires=["metroflip"],
+    sources=["scenes/plugins/calypso.c"],
+    fal_embedded=True,
+)
+
+App(
+    appid="metromoney_plugin",
+    apptype=FlipperAppType.PLUGIN,
+    entry_point="metromoney_plugin_ep",
+    requires=["metroflip"],
+    sources=["scenes/plugins/metromoney.c"],
+)
+
+App(
+    appid="bip_plugin",
+    apptype=FlipperAppType.PLUGIN,
+    entry_point="bip_plugin_ep",
+    requires=["metroflip"],
+    sources=["scenes/plugins/bip.c"],
+)
+
+App(
+    appid="clipper_plugin",
+    apptype=FlipperAppType.PLUGIN,
+    entry_point="clipper_plugin_ep",
+    requires=["metroflip"],
+    sources=["scenes/plugins/clipper.c"],
+    fal_embedded=True,
+)
+
+App(
+    appid="itso_plugin",
+    apptype=FlipperAppType.PLUGIN,
+    entry_point="itso_plugin_ep",
+    requires=["metroflip"],
+    sources=["scenes/plugins/itso.c"],
+    fal_embedded=True,
+)
+
+App(
+    appid="myki_plugin",
+    apptype=FlipperAppType.PLUGIN,
+    entry_point="myki_plugin_ep",
+    requires=["metroflip"],
+    sources=["scenes/plugins/myki.c"],
+    fal_embedded=True,
+)
+
+App(
+    appid="opal_plugin",
+    apptype=FlipperAppType.PLUGIN,
+    entry_point="opal_plugin_ep",
+    requires=["metroflip"],
+    sources=["scenes/plugins/opal.c"],
+    fal_embedded=True,
+)
+
+App(
+    appid="smartrider_plugin",
+    apptype=FlipperAppType.PLUGIN,
+    entry_point="smartrider_plugin_ep",
+    requires=["metroflip"],
+    sources=["scenes/plugins/smartrider.c"],
+    fal_embedded=True,
+)
+
+App(
+    appid="troika_plugin",
+    apptype=FlipperAppType.PLUGIN,
+    entry_point="troika_plugin_ep",
+    requires=["metroflip"],
+    sources=["scenes/plugins/troika.c"],
+    fal_embedded=True,
+)
+
+App(
+    appid="gocard_plugin",
+    apptype=FlipperAppType.PLUGIN,
+    entry_point="gocard_plugin_ep",
+    requires=["metroflip"],
+    sources=["scenes/plugins/gocard.c"],
+    fal_embedded=True,
+)
