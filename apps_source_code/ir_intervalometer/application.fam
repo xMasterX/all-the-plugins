@@ -10,7 +10,7 @@ App(
     fap_icon_assets="icons",
     fap_author="@Nitepone",
     fap_category="Infrared",
-    fap_description="Intervalometer for Canon, Nikon, and Sony cameras. Uses IR shutter release.",
-    fap_version="1.2",
+    fap_description="Intervalometer for Pentax, Canon, Nikon, and Sony cameras. Uses IR shutter release.",
+    fap_version="2.2",
     fap_weburl="https://github.com/Nitepone/flipper-intervalometer",
 )
