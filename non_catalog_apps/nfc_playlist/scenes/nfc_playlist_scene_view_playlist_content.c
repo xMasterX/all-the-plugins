@@ -34,7 +34,7 @@ void nfc_playlist_view_playlist_content_scene_on_enter(void* context) {
 
         widget_add_text_scroll_element(
             nfc_playlist->widget, 4, 4, 124, 60, furi_string_get_cstr(tmp_str));
-        widget_add_frame_element(nfc_playlist->widget, 0, 0, 128, 64, 0);
+        widget_add_rect_element(nfc_playlist->widget, 0, 0, 128, 64, 0, false);
 
         furi_string_free(tmp_str);
     } else {

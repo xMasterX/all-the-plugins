@@ -167,8 +167,8 @@ void unitemp_widget_help_switch(void) {
     widget_add_string_multiline_element(
         app->widget, 55, 5, AlignLeft, AlignTop, FontSecondary, "You can find help\nthere");
 
-    widget_add_frame_element(app->widget, 0, 0, 128, 63, 7);
-    widget_add_frame_element(app->widget, 0, 0, 128, 64, 7);
+    widget_add_rect_element(app->widget, 0, 0, 128, 63, 7, false);
+    widget_add_rect_element(app->widget, 0, 0, 128, 64, 7, false);
 
     view_set_previous_callback(widget_get_view(app->widget), _help_exit_callback);
     view_dispatcher_switch_to_view(app->view_dispatcher, UnitempViewWidget);
@@ -183,8 +183,8 @@ void unitemp_widget_about_switch(void) {
     //Очистка виджета
     widget_reset(app->widget);
 
-    widget_add_frame_element(app->widget, 0, 0, 128, 63, 7);
-    widget_add_frame_element(app->widget, 0, 0, 128, 64, 7);
+    widget_add_rect_element(app->widget, 0, 0, 128, 63, 7, false);
+    widget_add_rect_element(app->widget, 0, 0, 128, 64, 7, false);
 
     snprintf(app->buff, BUFF_SIZE, "#Unitemp %s#", UNITEMP_APP_VER);
     widget_add_text_box_element(
