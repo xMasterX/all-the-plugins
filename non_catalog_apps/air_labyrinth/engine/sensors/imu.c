@@ -275,7 +275,7 @@ static void imu_madgwick_filter(
 /* IMU API */
 
 struct Imu {
-    const FuriHalSpiBusHandle* icm42688p_device;
+    FuriHalSpiBusHandle* icm42688p_device;
     ICM42688P* icm42688p;
     ImuThread* thread;
     bool present;
@@ -283,8 +283,8 @@ struct Imu {
 
 Imu* imu_alloc(void) {
     Imu* imu = malloc(sizeof(Imu));
-    imu->icm42688p_device = malloc(sizeof(const FuriHalSpiBusHandle));
-    memcpy(imu->icm42688p_device, &furi_hal_spi_bus_handle_external, sizeof(const FuriHalSpiBusHandle));
+    imu->icm42688p_device = malloc(sizeof(FuriHalSpiBusHandle));
+    memcpy(imu->icm42688p_device, &furi_hal_spi_bus_handle_external, sizeof(FuriHalSpiBusHandle));
     imu->icm42688p_device->cs = &gpio_ext_pc3;
 
     imu->icm42688p = icm42688p_alloc(imu->icm42688p_device, &gpio_ext_pb2);
