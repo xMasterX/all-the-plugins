@@ -113,7 +113,7 @@ void clicontrol_unhijack(bool persist) {
 
     if(persist) {
         // Don't trigger a terminal reset as the session switches
-        cli_vcp.is_connected = &furi_hal_version_do_i_belong_here;
+        //cli_vcp.is_connected = &furi_hal_version_do_i_belong_here;
     } else {
         // Send CTRL-C a few times
         char eot = 0x03;
