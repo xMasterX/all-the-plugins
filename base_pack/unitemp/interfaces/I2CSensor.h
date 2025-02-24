@@ -25,7 +25,7 @@
 //Структура I2C датчика
 typedef struct I2CSensor {
     //Указатель на интерфейс I2C
-    FuriHalI2cBusHandle* i2c;
+    const FuriHalI2cBusHandle* i2c;
     //Минимальный адрес устройства на шине I2C
     uint8_t minI2CAdr;
     //Максимальный адрес устройства на шине I2C
@@ -41,7 +41,7 @@ typedef struct I2CSensor {
  * 
  * @param handle Указатель на шину
  */
-void unitemp_i2c_acquire(FuriHalI2cBusHandle* handle);
+void unitemp_i2c_acquire(const FuriHalI2cBusHandle* handle);
 
 /**
  * @brief Проверить наличие датчика на шине

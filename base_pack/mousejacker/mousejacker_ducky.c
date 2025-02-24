@@ -120,7 +120,7 @@ static void checksum(uint8_t* payload, size_t len) {
 }
 
 static void inject_packet(
-    FuriHalSpiBusHandle* handle,
+    const FuriHalSpiBusHandle* handle,
     uint8_t* addr,
     uint8_t addr_size,
     uint8_t rate,
@@ -165,7 +165,7 @@ static void build_hid_packet(uint8_t mod, uint8_t hid, uint8_t* payload) {
 }
 
 static void release_key(
-    FuriHalSpiBusHandle* handle,
+    const FuriHalSpiBusHandle* handle,
     uint8_t* addr,
     uint8_t addr_size,
     uint8_t rate,
@@ -189,7 +189,7 @@ static void release_key(
 }
 
 static void send_hid_packet(
-    FuriHalSpiBusHandle* handle,
+    const FuriHalSpiBusHandle* handle,
     uint8_t* addr,
     uint8_t addr_size,
     uint8_t rate,
@@ -215,7 +215,7 @@ static bool ducky_end_line(const char chr) {
 
 // returns false if there was an error processing script line
 static bool mj_process_ducky_line(
-    FuriHalSpiBusHandle* handle,
+    const FuriHalSpiBusHandle* handle,
     uint8_t* addr,
     uint8_t addr_size,
     uint8_t rate,
@@ -434,7 +434,7 @@ static bool mj_process_ducky_line(
 }
 
 void mj_process_ducky_script(
-    FuriHalSpiBusHandle* handle,
+    const FuriHalSpiBusHandle* handle,
     uint8_t* addr,
     uint8_t addr_size,
     uint8_t rate,

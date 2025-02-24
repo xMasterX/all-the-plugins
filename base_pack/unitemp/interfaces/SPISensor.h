@@ -24,7 +24,7 @@
 //Структура SPI датчика
 typedef struct SPISensor {
     //Указатель на интерфейс SPI
-    FuriHalSpiBusHandle* spi;
+    const FuriHalSpiBusHandle* spi;
     //Порт подключения CS
     const GPIO* CS_pin;
 } SPISensor;

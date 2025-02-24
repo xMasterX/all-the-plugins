@@ -23,7 +23,7 @@ typedef struct {
     Submenu* start_submenu;
     DialogEx* error_dialog;
     AirMouseView* air_mouse_view;
-    FuriHalSpiBusHandle* icm42688p_device;
+    const FuriHalSpiBusHandle* icm42688p_device;
     ICM42688P* icm42688p;
     FuriHalUsbInterface* usb_mode_prev;
     Bt* bt;
@@ -263,8 +263,8 @@ int32_t air_mouse_app(void* arg) {
     UNUSED(arg);
     AirMouseApp* app = air_mouse_alloc();
 
-    app->icm42688p_device = malloc(sizeof(FuriHalSpiBusHandle));
-    memcpy(app->icm42688p_device, &furi_hal_spi_bus_handle_external, sizeof(FuriHalSpiBusHandle));
+    app->icm42688p_device = malloc(sizeof(const FuriHalSpiBusHandle));
+    memcpy(app->icm42688p_device, &furi_hal_spi_bus_handle_external, sizeof(const FuriHalSpiBusHandle));
     app->icm42688p_device->cs = &gpio_ext_pc3;
     app->icm42688p = icm42688p_alloc(app->icm42688p_device, &gpio_ext_pb2);
     bool icm42688p_valid = icm42688p_init(app->icm42688p);

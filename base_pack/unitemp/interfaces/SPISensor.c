@@ -43,8 +43,8 @@ bool unitemp_spi_sensor_alloc(Sensor* sensor, char* args) {
         return false;
     }
 
-    instance->spi = malloc(sizeof(FuriHalSpiBusHandle));
-    memcpy(instance->spi, &furi_hal_spi_bus_handle_external, sizeof(FuriHalSpiBusHandle));
+    instance->spi = malloc(sizeof(const FuriHalSpiBusHandle));
+    memcpy(instance->spi, &furi_hal_spi_bus_handle_external, sizeof(const FuriHalSpiBusHandle));
 
     instance->spi->cs = instance->CS_pin->pin;
 
