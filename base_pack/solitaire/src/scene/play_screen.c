@@ -219,9 +219,9 @@ void input_play_screen(void *data, InputKey key, InputType type) {
                     //pick from waste
                     if (state->hand->count == 0 && state->waste->count > 0) {
                         list_push_back(list_pop_back(state->waste), state->hand);
-                        set_picked_from(0, 1);
+                        set_picked_from(1, 0);
                         return;
-                    } else if (is_picked_from(0, 1)) { //put back to waste
+                    } else if (is_picked_from(1, 0)) { //put back to waste
                         list_push_back(list_pop_back(state->hand), state->waste);
                         reset_picked();
                         return;

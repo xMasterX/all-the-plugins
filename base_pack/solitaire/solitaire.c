@@ -93,31 +93,34 @@ static void cleanup(GameState *instance) {
     gui_direct_draw_release(instance->gui);
     furi_record_close(RECORD_GUI);
     furi_record_close(RECORD_INPUT_EVENTS);
+    furi_record_close(RECORD_NOTIFICATION);
+
     list_clear(game_logic);
+    free(game_logic);
     buffer_release(instance->buffer);
     free(instance);
 }
 
-static void next_scene(GameState *instance) {
+static void next_scene(GameState* instance) {
     FURI_LOG_W("SCENE", "Next scene");
     current_state = current_state->next;
-    if (current_state == NULL) {
+    if(current_state == NULL) {
         current_state = game_logic->head;
     }
-    ((GameLogic *) current_state->data)->start(instance);
+    ((GameLogic*)current_state->data)->start(instance);
 }
 
-static void prev_scene(GameState *instance) {
+static void prev_scene(GameState* instance) {
     FURI_LOG_W("SCENE", "Prev scene");
     current_state = game_logic->head;
-    if (current_state->prev == NULL) {
+    if(current_state->prev == NULL) {
         instance->exit = true;
         return;
     }
-    ((GameLogic *) current_state->data)->start(instance);
+    ((GameLogic*)current_state->data)->start(instance);
 }
 
-static void direct_draw_run(GameState *instance) {
+static void direct_draw_run(GameState* instance) {
     if(!check_pointer(instance)) return;
 
     size_t currFrameTime;
@@ -146,22 +149,21 @@ static void direct_draw_run(GameState *instance) {
         check_pointer(instance->canvas);
         check_pointer(instance->buffer);
         instance->scene_switch = 0;
-        if (curr_state && instance->isDirty && instance->canvas && instance->buffer) {
+        if(curr_state && instance->isDirty && instance->canvas && instance->buffer) {
             canvas_reset(instance->canvas);
 
-            if(instance->lateRender){
+            if(instance->lateRender) {
                 buffer_swap_back(instance->buffer);
                 buffer_render(instance->buffer, instance->canvas);
                 curr_state->render(instance);
-            }else{
-                curr_state->render(instance);
+            } else {
                 buffer_swap_back(instance->buffer);
+                curr_state->render(instance);
                 buffer_render(instance->buffer, instance->canvas);
             }
             canvas_commit(instance->canvas);
 
-            if (instance->clearBuffer)
-                buffer_clear(instance->buffer);
+            if(instance->clearBuffer) buffer_clear(instance->buffer);
 
             instance->clearBuffer = true;
             instance->lateRender = false;
