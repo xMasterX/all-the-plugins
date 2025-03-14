@@ -21,7 +21,7 @@ The app does not provide any recording functionality - you must use the existing
 * [Playback of rfid, sub-ghz, IR, NFC, iButton signals](README.md#signal-playback)
 * [Easy navigation](README.md#navigation--controls)
 * [Flexible signal organization](README.md#signal-organization) - utilizing the SDcard filesystem
-* [In-app file management](README.md#action-settings) - rename, delete, import
+* [In-app file management](README.md#action-settings) - rename, delete, import, import link
 * [Playlist support](README.md#playlists)
 * [Flexible naming/sorting, hidden file/folder support](README.md#sorting-and-naming)
 * [Customizable UI](README.md#application-settings)
@@ -48,7 +48,7 @@ SubGhz signals that are dynamic (i.e. have rolling codes / counters) will be re-
 
 ## Signal Organization
 
-The key to organizing your Quac! interface is to organize your `/ext/apps_quac` folder structure. The UI is derived directly from the filesystem structure. Every individual file/signal is given a label on screen. And every folder/directory is a logical group of more files/folders. Selecting a group in the UI will show you the contents of that folder. There is no limit on the number of actions or folders - nest as deep as you want!
+The key to organizing your Quac! interface is to organize your `/ext/apps_data/quac` folder structure. The UI is derived directly from the filesystem structure. Every individual file/signal is given a label on screen. And every folder/directory is a logical group of more files/folders. Selecting a group in the UI will show you the contents of that folder. There is no limit on the number of actions or folders - nest as deep as you want!
 
 You can organize your files by device type, or by function. For example, you may have a folder of "TV" actions, which correspond to Channel Up, Channel Down, Volume Up, Volume Down, etc. Or you may have a "Work" folder, which contains files/actions that correspond to Parking Gate, Garage Door, Lobby Entrance.
 
@@ -73,12 +73,15 @@ Here's an example file layout for the screenshots above:
 
 Long pressing the `Right` button will launch a settings menu for the currently selected action. This provides the following options:
 
-* Rename: Allows you to rename the selected item. Useful for changing sorting order. The file extension is preserved on signal files. **Note: folder renaming is broken right now**
-* Delete: Deletes files and folders - folders must be empty
-* Import Here: Launches file browser to let you select a signal file from anywhere on the SDcard and then copies it to the current folder.
+* **Rename**: Allows you to rename the selected item. Useful for changing sorting order. The file extension is preserved on signal files. **Note: folder renaming is broken right now**
+* **Delete**: Deletes files and folders - folders must be empty
+* **Import Here**: Launches file browser to let you select a signal file from anywhere on the SDcard and then copies it to the current folder.
   * When importing an IR file, you are prompted to select which IR command to import. This individual command is imported as it's own `.ir` file into the current location. You can also select `* IMPORT ALL *` to, well, import all commands.
   * If an Import fails, the Flipperzero will flash red and buzz - this may be caused by a duplicate filename (i.e. that file/IR command already exists in the current folder) or the target file can not be read.
-* Create Group: Prompts for the name of a new folder that will be created at that point in the folder structure.
+* **Import Link Here**: Similar to Link Here, but instead of copying the file, it will generate a Quac Link file (`.ql`) which contains the path of the selected file.
+  * At this time, you can not create a link to an IR file, as this would need to also include a reference to the specific signal within the target file.
+  * You can not create a link to a Quac Link file.
+* **Create Group**: Prompts for the name of a new folder that will be created at that point in the folder structure.
 
 ## Playlists
 
@@ -128,7 +131,7 @@ The settings menu will appear as the last item when you are viewing the "root" d
 * iButton Duration: Changes the length of time a iButton signal is transmitted. Within playlists, this can be overridden per `.ibtn` file.
 * IR Ext Ant: Whether to use the external device for IR signals. If enabled, but no external IR device is attached to TX, then the internal IR device will be used.
 * Show Hidden: Will display files and folders that start with a period (`.`)
-* About: Application info
+* About: Application info and version
 
 ## Troubleshooting
 
@@ -140,6 +143,6 @@ For some errors, Quac! will show an error message on screen. In other cases, it 
 
 ## Building
 
-This app is currently built with [ufbt](https://github.com/flipperdevices/flipperzero-ufbt), intended for the stock firmware. I have not tested this on other firmwares. The `.fap` file can be found in the Releases section on the right.
+This app is currently built with [ufbt](https://github.com/flipperdevices/flipperzero-ufbt), intended for the official firmware. I have not tested this on other firmwares. The `.fap` file can be found in the Releases section on the right.
 
 <a href="https://www.buymeacoffee.com/rdefeo" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>

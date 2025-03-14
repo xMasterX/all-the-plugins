@@ -3,8 +3,8 @@
 #include <m-array.h>
 
 // Max length of a filename, final path element only
-#define MAX_NAME_LEN 64
-#define MAX_EXT_LEN  6
+#define MAX_NAME_LEN (size_t)64
+#define MAX_EXT_LEN  (size_t)6
 
 /** Defines an individual item action or item group. Each object contains
  * the relevant file and type information needed to both render correctly
@@ -28,7 +28,8 @@ typedef struct Item {
     ItemType type;
     FuriString* name;
     FuriString* path;
-    char ext[MAX_EXT_LEN + 1];
+    char ext[MAX_EXT_LEN];
+    bool is_link;
 } Item;
 
 ARRAY_DEF(ItemArray, Item, M_POD_OPLIST);
@@ -64,3 +65,11 @@ void item_prettify_name(FuriString* name);
  * @param   ext     File extension
 */
 ItemType item_get_item_type_from_extension(const char* ext);
+
+/** Extract filename and extension from path. Check if path is a link file
+*/
+void item_path_extract_filename(
+    FuriString* path,
+    FuriString* name,
+    char (*ext)[MAX_EXT_LEN],
+    bool* is_link);

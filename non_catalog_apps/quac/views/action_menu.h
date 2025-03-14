@@ -116,6 +116,13 @@ void action_menu_set_header(ActionMenu* action_menu, const char* header);
  */
 void action_menu_set_selected_item(ActionMenu* action_menu, uint32_t index);
 
+/** Set whether this item is a link
+ *
+ * @param      action_item  ActionMenuItem pointer
+ * @param      is_link      bool
+ */
+void action_menu_item_set_link(ActionMenuItem* action_item, bool is_link);
+
 #ifdef __cplusplus
 }
 #endif

@@ -67,9 +67,12 @@ void scene_items_on_enter(void* context) {
         int32_t index = 0;
         for(ItemArray_it(iter, items_view->items); !ItemArray_end_p(iter);
             ItemArray_next(iter), ++index) {
-            const char* label = furi_string_get_cstr(ItemArray_cref(iter)->name);
-            ActionMenuItemType type = ItemToMenuItem[ItemArray_cref(iter)->type];
-            action_menu_add_item(menu, label, index, scene_items_item_callback, type, app);
+            const Item* item = ItemArray_cref(iter);
+            const char* label = furi_string_get_cstr(item->name);
+            ActionMenuItemType type = ItemToMenuItem[item->type];
+            ActionMenuItem* menu_item =
+                action_menu_add_item(menu, label, index, scene_items_item_callback, type, app);
+            action_menu_item_set_link(menu_item, item->is_link);
         }
     } else {
         FURI_LOG_W(TAG, "No items for: %s", furi_string_get_cstr(items_view->path));
