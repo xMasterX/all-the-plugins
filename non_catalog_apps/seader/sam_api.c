@@ -19,12 +19,6 @@ static char display[SEADER_UART_RX_BUF_SIZE * 2 + 1] = {0};
 char asn1_log[SEADER_UART_RX_BUF_SIZE] = {0};
 #endif
 
-uint8_t read4Block6[] = {RFAL_PICOPASS_CMD_READ4, 0x06, 0x45, 0x56};
-uint8_t read4Block9[] = {RFAL_PICOPASS_CMD_READ4, 0x09, 0xB2, 0xAE};
-uint8_t read4Block10[] = {RFAL_PICOPASS_CMD_READ4, 0x0A, 0x29, 0x9C};
-uint8_t read4Block13[] = {RFAL_PICOPASS_CMD_READ4, 0x0D, 0x96, 0xE8};
-//uint8_t read4Block14[] = {RFAL_PICOPASS_CMD_READ4, 0x0E, 0x0d, 0xda};
-
 uint8_t updateBlock2[] = {RFAL_PICOPASS_CMD_UPDATE, 0x02};
 
 uint8_t ev2_request[] =
@@ -387,15 +381,14 @@ bool seader_unpack_pacs(Seader* seader, uint8_t* buf, size_t size) {
             ->op->print_struct(&asn_DEF_PAC, pac, 1, seader_print_struct_callback, pacDebug);
         if(strlen(pacDebug) > 0) {
             FURI_LOG_D(TAG, "Received pac: %s", pacDebug);
+        }
 
-            memset(display, 0, sizeof(display));
-            if(seader_credential->sio[0] == 0x30) {
-                for(uint8_t i = 0; i < seader_credential->sio_len; i++) {
-                    snprintf(
-                        display + (i * 2), sizeof(display), "%02x", seader_credential->sio[i]);
-                }
-                FURI_LOG_D(TAG, "SIO %s", display);
+        memset(display, 0, sizeof(display));
+        if(seader_credential->sio[0] == 0x30) {
+            for(uint8_t i = 0; i < seader_credential->sio_len; i++) {
+                snprintf(display + (i * 2), sizeof(display), "%02x", seader_credential->sio[i]);
             }
+            FURI_LOG_D(TAG, "SIO %s", display);
         }
 
         if(pac->size <= sizeof(seader_credential->credential)) {
@@ -634,18 +627,21 @@ void seader_capture_sio(BitBuffer* tx_buffer, BitBuffer* rx_buffer, SeaderCreden
     const uint8_t* rxBuffer = bit_buffer_get_data(rx_buffer);
 
     if(credential->type == SeaderCredentialTypePicopass) {
-        if(memcmp(buffer, read4Block6, len) == 0 && rxBuffer[0] == 0x30) {
-            memcpy(credential->sio, rxBuffer, 32);
-            credential->sio_len += 32;
-        } else if(memcmp(buffer, read4Block10, len) == 0 && rxBuffer[0] == 0x30) {
-            memcpy(credential->sio, rxBuffer, 32);
-            credential->sio_len += 32;
-        } else if(memcmp(buffer, read4Block9, len) == 0) {
-            memcpy(credential->sio + 32, rxBuffer + 8, 24);
-            credential->sio_len += 24;
-        } else if(memcmp(buffer, read4Block13, len) == 0) {
-            memcpy(credential->sio + 32, rxBuffer + 8, 24);
-            credential->sio_len += 24;
+        if(buffer[0] == RFAL_PICOPASS_CMD_READ_OR_IDENTIFY) {
+            FURI_LOG_D(TAG, "Picopass Read1 block %02x", buffer[1]);
+        }
+        if(buffer[0] == RFAL_PICOPASS_CMD_READ4) {
+            FURI_LOG_D(TAG, "Picopass Read4 block %02x", buffer[1]);
+        }
+
+        if(buffer[0] == RFAL_PICOPASS_CMD_READ4) {
+            uint8_t block_num = buffer[1];
+            if(credential->sio_len == 0 && rxBuffer[0] == 0x30) {
+                credential->sio_start_block = block_num;
+            }
+            uint8_t offset = (block_num - credential->sio_start_block) * PICOPASS_BLOCK_LEN;
+            memcpy(credential->sio + offset, rxBuffer, PICOPASS_BLOCK_LEN * 4);
+            credential->sio_len += PICOPASS_BLOCK_LEN * 4;
         }
     } else if(credential->type == SeaderCredentialType14A) {
         // Desfire EV1 passes SIO in the clear
