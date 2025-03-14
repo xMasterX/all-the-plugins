@@ -67,38 +67,38 @@ This is a list of metro cards and transit systems that need support or have part
 
 ## ✅ Supported Cards
 
-| **Card / Agency**  | **Country / City**                          | **Card Type**     |
-|--------------------|---------------------------------------------|-------------------|
-| **Bip!**           | 🇨🇱 Santiago de Chile, Chile                | Mifare Classic    |
-| **Charliecard**    | 🇺🇸 Boston, MA, USA                        | Mifare Classic    |
-| **Clipper**        | 🇺🇸 San Francisco, CA, USA                  | Mifare DESFire    |
-| **ITSO**           | 🇬🇧 United Kingdom                          | Mifare DESFire    |
-| **Metromoney**     | 🇬🇪 Tbilisi, Georgia                        | Mifare Classic    |
-| **myki**           | 🇦🇺 Melbourne (and surrounds), VIC, Australia | Mifare DESFire    |
-| **Navigo**         | 🇫🇷 Paris, France                           | Calypso           |
-| **Opal**           | 🇦🇺 Sydney (and surrounds), NSW, Australia  | Mifare DESFire    |
-| **Opus**           | 🇨🇦 Montreal, QC, Canada                    | Calypso           |
-| **Rav-Kav**        | 🇮🇱 Israel                                  | Calypso           |
-| **SmartRider**     | :australia: Western Australia, Australia   | Mifare Classic    |
-| **Troika**         | 🇷🇺 Moscow, Russia                          | Mifare Classic    |
+| **Card / Agency**  | **City / Country**                           | **Card Type**     |
+|--------------------|----------------------------------------------|-------------------|
+| **Bip!**           | 🇨🇱 Santiago de Chile, Chile                  | MIFARE Classic    |
+| **Charliecard**    | 🇺🇸 Boston, MA, USA                           | MIFARE Classic    |
+| **Clipper**        | 🇺🇸 San Francisco, CA, USA                    | MIFARE DESFire    |
+| **ITSO**           | 🇬🇧 United Kingdom                            | MIFARE DESFire    |
+| **Metromoney**     | 🇬🇪 Tbilisi, Georgia                          | MIFARE Classic    |
+| **myki**           | 🇦🇺 Melbourne (and surrounds), VIC, Australia | MIFARE DESFire    |
+| **Navigo**         | 🇫🇷 Paris, France                             | Calypso           |
+| **Opal**           | 🇦🇺 Sydney (and surrounds), NSW, Australia    | MIFARE DESFire    |
+| **Opus**           | 🇨🇦 Montreal, QC, Canada                      | Calypso           |
+| **Rav-Kav**        | 🇮🇱 Israel                                    | Calypso           |
+| **SmartRider**     | 🇦🇺 Perth, WA, Australia                      | MIFARE Classic    |
+| **Troika**         | 🇷🇺 Moscow, Russia                            | MIFARE Classic    |
 
 
 ---
 
 # Credits
-- **App Author**: [@luu176](https://github.com/luu176)
-- **Charliecard Parser**: [@zacharyweiss](https://github.com/zacharyweiss)
-- **Rav-Kav Parser**: [@luu176](https://github.com/luu176)
-- **Navigo Parser**: [@luu176](https://github.com/luu176), [@DocSystem](https://github.com/DocSystem)
-- **Opus Parser**: [@DocSystem](https://github.com/DocSystem)
-- **Metromoney Parser**: [@Leptopt1los](https://github.com/Leptopt1los)
-- **Bip! Parser**: [@rbasoalto](https://github.com/rbasoalto), [@gornekich](https://github.com/gornekich)
-- **Clipper Parser**: [@ke6jjj](https://github.com/ke6jjj)
-- **Troika Parser**: [@gornekich](https://github.com/gornekich)
-- **Myki Parser**: [@gornekich](https://github.com/gornekich)
-- **Opal Parser**: [@gornekich](https://github.com/gornekich)
-- **ITSO Parser**: [@gsp8181](https://github.com/gsp8181), [@hedger](https://github.com/hedger), [@gornekich](https://github.com/gornekich)
-- **Info Slaves**: [@equipter](https://github.com/equipter), [TheDingo8MyBaby](https://github.com/TheDingo8MyBaby)
+- **App Author:** [@luu176](https://github.com/luu176)
+- **Info Slaves:** [@equipter](https://github.com/equipter), [TheDingo8MyBaby](https://github.com/TheDingo8MyBaby)
+- **Bip! Parser:** [@rbasoalto](https://github.com/rbasoalto), [@gornekich](https://github.com/gornekich)
+- **Charliecard Parser:** [@zacharyweiss](https://github.com/zacharyweiss)
+- **Clipper Parser:** [@ke6jjj](https://github.com/ke6jjj)
+- **ITSO Parser:** [@gsp8181](https://github.com/gsp8181), [@hedger](https://github.com/hedger), [@gornekich](https://github.com/gornekich)
+- **Metromoney Parser:** [@Leptopt1los](https://github.com/Leptopt1los)
+- **myki Parser:** [@gornekich](https://github.com/gornekich)
+- **Navigo Parser:** [@luu176](https://github.com/luu176), [@DocSystem](https://github.com/DocSystem)
+- **Opal Parser:** [@gornekich](https://github.com/gornekich)
+- **Opus Parser:** [@DocSystem](https://github.com/DocSystem)
+- **Rav-Kav Parser:** [@luu176](https://github.com/luu176)
+- **Troika Parser:** [@gornekich](https://github.com/gornekich)
 
 ---
 
