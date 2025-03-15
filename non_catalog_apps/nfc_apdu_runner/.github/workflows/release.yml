@@ -1,0 +1,129 @@
+name: "Release: Build and publish"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号 (例如: v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  build-linux-windows:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 编译FAP
+      - name: Build FAP with ufbt
+        uses: flipperdevices/flipperzero-ufbt-action@v0.1
+        id: build-app
+        with:
+          sdk-channel: release
+          sdk-index-url: https://up.unleashedflip.com/directory.json
+
+      # 设置Go环境
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      # 编译nfc_analysis_platform工具 (Windows和Linux版本)
+      - name: Build nfc_analysis_platform tools for Windows and Linux
+        run: |
+          cd tools/nfc_analysis_platform
+          make build-windows build-linux
+
+      # 上传编译结果
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-windows-builds
+          path: |
+            ${{ steps.build-app.outputs.fap-artifacts }}
+            tools/nfc_analysis_platform/nfc_analysis_platform_linux
+            tools/nfc_analysis_platform/nfc_analysis_platform.exe
+            tools/nfc_analysis_platform/nard_format/*.apdufmt
+            apdu_script/*
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 设置Go环境
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      # 编译nfc_analysis_platform工具 (macOS版本)
+      - name: Build nfc_analysis_platform tools for macOS
+        run: |
+          cd tools/nfc_analysis_platform
+          make build-macos
+          # 显示文件以便调试
+          ls -la
+
+      # 上传编译结果
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-builds
+          path: tools/nfc_analysis_platform/nfc_analysis_platform_macos
+
+  package-release:
+    needs: [build-linux-windows, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      # 调试：显示下载的文件结构
+      - name: Debug artifacts
+        run: |
+          find artifacts -type f | sort
+
+      # 创建发布目录结构
+      - name: Create release directory structure
+        run: |
+          mkdir -p release_package/nfc_analysis_platform/nard_format
+          mkdir -p release_package/apdu_script
+          
+          # 复制FAP文件
+          find artifacts/linux-windows-builds -name "*.fap" -exec cp {} release_package/nfc_apdu_runner.fap \;
+          
+          # 复制示例脚本
+          cp -r artifacts/linux-windows-builds/apdu_script/* release_package/apdu_script/ || echo "no script files found, skipping"
+          
+          # 复制nfc_analysis_platform工具
+          cp artifacts/linux-windows-builds/tools/nfc_analysis_platform/nfc_analysis_platform_linux release_package/nfc_analysis_platform/ || echo "Linux binary not found"
+          cp artifacts/linux-windows-builds/tools/nfc_analysis_platform/nfc_analysis_platform.exe release_package/nfc_analysis_platform/ || echo "Windows binary not found"
+          cp artifacts/macos-builds/nfc_analysis_platform_macos release_package/nfc_analysis_platform/ || echo "macOS binary not found"
+          
+          # 复制格式文件
+          cp -r artifacts/linux-windows-builds/tools/nfc_analysis_platform/nard_format/*.apdufmt release_package/nfc_analysis_platform/nard_format/ || echo "Format files not found"
+          
+          # 创建压缩包
+          cd release_package
+          zip -r ../nfc_apdu_runner_${{ github.event.inputs.version }}.zip .
+
+      # 创建GitHub Release
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          name: Release ${{ github.event.inputs.version }}
+          draft: false
+          prerelease: false
+          files: |
+            nfc_apdu_runner_${{ github.event.inputs.version }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

@@ -1,0 +1,451 @@
+swagger: "2.0"
+info:
+  title: NFC Analysis Platform API
+  description: API for NFC Analysis Platform
+  version: 1.0.0
+  contact:
+    name: SpenserCai
+    url: https://github.com/spensercai
+  license:
+    name: GNU Affero General Public License v3.0
+    url: https://www.gnu.org/licenses/agpl-3.0.en.html
+basePath: /api
+schemes:
+  - http
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+tags:
+  - name: nard
+    description: APDU Response Decoder operations
+  - name: tlv
+    description: TLV Parser operations
+  - name: system
+    description: System operations
+
+paths:
+  # System endpoints
+  /system/info:
+    get:
+      tags:
+        - system
+      summary: Get system information
+      description: Returns information about the NFC Analysis Platform
+      operationId: getSystemInfo
+      responses:
+        200:
+          description: Successful operation
+          schema:
+            $ref: "#/definitions/ApiResponse"
+
+  # NARD endpoints
+  /nard/formats:
+    get:
+      tags:
+        - nard
+      summary: Get available format templates
+      description: Returns a list of available .apdufmt format templates
+      operationId: getFormatTemplates
+      parameters:
+        - name: directory
+          in: query
+          description: Custom directory to search for format templates
+          required: false
+          type: string
+      responses:
+        200:
+          description: Successful operation
+          schema:
+            $ref: "#/definitions/ApiResponse"
+
+  /nard/formats/{format_id}:
+    get:
+      tags:
+        - nard
+      summary: Get format template content
+      description: Returns the content of a specific format template
+      operationId: getFormatTemplateContent
+      parameters:
+        - name: format_id
+          in: path
+          description: ID of the format template
+          required: true
+          type: string
+        - name: directory
+          in: query
+          description: Custom directory to search for format templates
+          required: false
+          type: string
+      responses:
+        200:
+          description: Successful operation
+          schema:
+            $ref: "#/definitions/ApiResponse"
+
+  /nard/flipper/devices:
+    get:
+      tags:
+        - nard
+      summary: Get available Flipper Zero devices
+      description: Returns a list of available Flipper Zero devices
+      operationId: getFlipperDevices
+      responses:
+        200:
+          description: Successful operation
+          schema:
+            $ref: "#/definitions/ApiResponse"
+
+  /nard/flipper/files:
+    get:
+      tags:
+        - nard
+      summary: Get available .apdures files from Flipper Zero
+      description: Returns a list of available .apdures files from Flipper Zero device
+      operationId: getFlipperFiles
+      parameters:
+        - name: device_path
+          in: query
+          description: Path to the Flipper Zero device
+          required: false
+          type: string
+        - name: serial_port
+          in: query
+          description: Serial port for Flipper Zero communication
+          required: false
+          type: string
+        - name: use_serial
+          in: query
+          description: Whether to use serial communication
+          required: false
+          type: boolean
+          default: false
+      responses:
+        200:
+          description: Successful operation
+          schema:
+            $ref: "#/definitions/ApiResponse"
+
+  /nard/flipper/files/{file_id}:
+    get:
+      tags:
+        - nard
+      summary: Get content of .apdures file from Flipper Zero
+      description: Returns the content of a specific .apdures file from Flipper Zero device
+      operationId: getFlipperFileContent
+      parameters:
+        - name: file_id
+          in: path
+          description: ID of the .apdures file
+          required: true
+          type: string
+        - name: device_path
+          in: query
+          description: Path to the Flipper Zero device
+          required: false
+          type: string
+        - name: serial_port
+          in: query
+          description: Serial port for Flipper Zero communication
+          required: false
+          type: string
+        - name: use_serial
+          in: query
+          description: Whether to use serial communication
+          required: false
+          type: boolean
+          default: false
+      responses:
+        200:
+          description: Successful operation
+          schema:
+            $ref: "#/definitions/ApiResponse"
+
+  /nard/decode:
+    post:
+      tags:
+        - nard
+      summary: Decode APDU response
+      description: Decodes APDU response data using a format template
+      operationId: decodeApduResponse
+      parameters:
+        - name: decode_request
+          in: body
+          description: Decode request
+          required: true
+          schema:
+            $ref: "#/definitions/DecodeRequest"
+      responses:
+        200:
+          description: Successful operation
+          schema:
+            $ref: "#/definitions/ApiResponse"
+
+  # TLV endpoints
+  /tlv/parse:
+    post:
+      tags:
+        - tlv
+      summary: Parse TLV data
+      description: Parses TLV data and returns the structure
+      operationId: parseTlvData
+      parameters:
+        - name: parse_request
+          in: body
+          description: Parse request
+          required: true
+          schema:
+            $ref: "#/definitions/TlvParseRequest"
+      responses:
+        200:
+          description: Successful operation
+          schema:
+            $ref: "#/definitions/ApiResponse"
+
+  /tlv/extract:
+    post:
+      tags:
+        - tlv
+      summary: Extract values from TLV data
+      description: Extracts values for specified tags from TLV data
+      operationId: extractTlvValues
+      parameters:
+        - name: extract_request
+          in: body
+          description: Extract request
+          required: true
+          schema:
+            $ref: "#/definitions/TlvExtractRequest"
+      responses:
+        200:
+          description: Successful operation
+          schema:
+            $ref: "#/definitions/ApiResponse"
+
+definitions:
+  ApiResponse:
+    type: object
+    properties:
+      code:
+        type: integer
+        format: int32
+        description: Response code, 0 for success, non-zero for errors
+      message:
+        type: string
+        description: Response message, "success" for successful operations, error message for failures
+      data:
+        type: object
+        description: Response data, contains the actual response data or empty object for errors
+
+  SystemInfo:
+    type: object
+    properties:
+      version:
+        type: string
+        description: Version of the NFC Analysis Platform
+      build_date:
+        type: string
+        format: date-time
+        description: Build date of the NFC Analysis Platform
+      go_version:
+        type: string
+        description: Go version used to build the NFC Analysis Platform
+      os:
+        type: string
+        description: Operating system
+      arch:
+        type: string
+        description: Architecture
+
+  FormatTemplate:
+    type: object
+    properties:
+      id:
+        type: string
+        description: ID of the format template
+      name:
+        type: string
+        description: Name of the format template
+      path:
+        type: string
+        description: Path to the format template file
+      description:
+        type: string
+        description: Description of the format template
+
+  FormatTemplateContent:
+    type: object
+    properties:
+      id:
+        type: string
+        description: ID of the format template
+      name:
+        type: string
+        description: Name of the format template
+      content:
+        type: string
+        description: Content of the format template
+
+  FlipperDevice:
+    type: object
+    properties:
+      id:
+        type: string
+        description: ID of the Flipper Zero device
+      path:
+        type: string
+        description: Path to the Flipper Zero device
+      serial_port:
+        type: string
+        description: Serial port for the Flipper Zero device
+      is_serial:
+        type: boolean
+        description: Whether the device is connected via serial
+
+  ApduResFile:
+    type: object
+    properties:
+      id:
+        type: string
+        description: ID of the .apdures file
+      name:
+        type: string
+        description: Name of the .apdures file
+      path:
+        type: string
+        description: Path to the .apdures file
+      mod_time:
+        type: string
+        format: date-time
+        description: Modification time of the .apdures file
+      size:
+        type: integer
+        format: int64
+        description: Size of the .apdures file in bytes
+
+  ApduResContent:
+    type: object
+    properties:
+      id:
+        type: string
+        description: ID of the .apdures file
+      name:
+        type: string
+        description: Name of the .apdures file
+      content:
+        type: string
+        description: Content of the .apdures file
+
+  DecodeRequest:
+    type: object
+    required:
+      - response_data
+    properties:
+      response_data:
+        type: string
+        description: APDU response data to decode
+      format_id:
+        type: string
+        description: ID of the format template to use
+      format_content:
+        type: string
+        description: Content of the format template to use (alternative to format_id)
+      debug:
+        type: boolean
+        description: Whether to enable debug mode
+        default: false
+
+  DecodeResult:
+    type: object
+    properties:
+      status:
+        type: string
+        description: Status of the APDU response
+      output:
+        type: string
+        description: Decoded output
+      errors:
+        type: array
+        items:
+          type: string
+        description: Errors encountered during decoding (only in debug mode)
+
+  TlvParseRequest:
+    type: object
+    required:
+      - hex_data
+    properties:
+      hex_data:
+        type: string
+        description: Hex TLV data to parse
+
+  TlvParseResult:
+    type: object
+    properties:
+      structure:
+        type: array
+        items:
+          $ref: "#/definitions/TlvItem"
+        description: Parsed TLV structure
+
+  TlvItem:
+    type: object
+    properties:
+      tag:
+        type: string
+        description: Tag
+      length:
+        type: integer
+        description: Length
+      value:
+        type: string
+        description: Value (hex encoded)
+      is_constructed:
+        type: boolean
+        description: Whether the tag is constructed
+      children:
+        type: array
+        items:
+          $ref: "#/definitions/TlvItem"
+        description: Child TLV items (if constructed)
+
+  TlvExtractRequest:
+    type: object
+    required:
+      - hex_data
+    properties:
+      hex_data:
+        type: string
+        description: Hex TLV data to parse
+      tags:
+        type: array
+        items:
+          type: string
+        description: Tags to extract
+      data_type:
+        type: string
+        enum: [hex, utf8, ascii, numeric]
+        description: Data type for display
+        default: hex
+
+  TlvExtractResult:
+    type: object
+    properties:
+      values:
+        type: object
+        additionalProperties:
+          type: string
+        description: Extracted values (tag -> value)
+
+  Error:
+    type: object
+    properties:
+      code:
+        type: integer
+        format: int32
+        description: Error code
+      message:
+        type: string
+        description: Error message

@@ -1,0 +1,8 @@
+EMV Card Information
+Application Label: {O[1]TAG(50), "ascii"}
+Card Number: {O[3]TAG(9F6B)[0:16], "numeric"}
+Expiry Date: Year: 20{O[3]TAG(9F6B)[17:19], "numeric"}, Month: {O[3]TAG(9F6B)[19:21], "numeric"}
+Country Code: {O[1]TAG(9F6E)[0:4]}
+Application Priority: {O[1]TAG(87), "hex"}
+Application Interchange Profile: {O[2]TAG(82), "hex"}
+PIN Try Counter: {O[4]TAG(9F17), "numeric"}
