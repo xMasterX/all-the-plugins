@@ -282,6 +282,163 @@ static void nfc_maker_scene_save_generate_populate_ndef_buffer(NfcMaker* app) {
     furi_check(app->ndef_size == (size_t)(buf - app->ndef_buffer));
 }
 
+static void nfc_maker_scene_save_generate_populate_device_mful(NfcMaker* app, Card card_type) {
+    const CardDef* card = &cards[card_type];
+
+    nfc_data_generator_fill_data(card->generator, app->nfc_device);
+    MfUltralightData* data = mf_ultralight_alloc();
+    nfc_device_copy_data(app->nfc_device, NfcProtocolMfUltralight, data);
+
+    size_t size =
+        MIN(card->size, // Known size
+            data->page[3].data[2] * NTAG_DATA_AREA_UNIT_SIZE // Capability Container
+        );
+    furi_check(app->ndef_size <= size);
+    memcpy(&data->page[4].data[0], app->ndef_buffer, app->ndef_size);
+    free(app->ndef_buffer);
+    app->ndef_buffer = NULL;
+
+    nfc_device_set_data(app->nfc_device, NfcProtocolMfUltralight, data);
+    mf_ultralight_free(data);
+}
+
+static void nfc_maker_scene_save_generate_populate_device_mfc(NfcMaker* app, Card card_type) {
+    const CardDef* card = &cards[card_type];
+
+    nfc_data_generator_fill_data(card->generator, app->nfc_device);
+    MfClassicData* data = mf_classic_alloc();
+    nfc_device_copy_data(app->nfc_device, NfcProtocolMfClassic, data);
+    const size_t sector_count = mf_classic_get_total_sectors_num(data->type);
+
+    const uint8_t* buf = app->ndef_buffer;
+    size_t len = app->ndef_size;
+    size_t real_block = 4; // Skip MAD1
+
+    uint8_t* cur = &data->block[real_block].data[0];
+    while(len) {
+        size_t sector_trailer = mf_classic_get_sector_trailer_num_by_block(real_block);
+        const uint8_t* end = &data->block[sector_trailer].data[0];
+
+        const size_t chunk_len = MIN((size_t)(end - cur), len);
+        memcpy(cur, buf, chunk_len);
+        buf += chunk_len;
+        len -= chunk_len;
+
+        if(len) {
+            real_block = sector_trailer + 1;
+            if(real_block == 64) {
+                real_block += 4; // Skip MAD2
+            }
+            cur = &data->block[real_block].data[0];
+        }
+    }
+
+    // Format data sector trailers
+    MfClassicSectorTrailer data_tr = {
+        .key_a = {{0xD3, 0xF7, 0xD3, 0xF7, 0xD3, 0xF7}}, // NFC key
+        .access_bits = {{0x7F, 0x07, 0x88, 0x40}}, // Default access rights
+        .key_b = {{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}}, // Default key
+    };
+    for(size_t sector = 0; sector < sector_count; sector++) {
+        mf_classic_set_sector_trailer_read(
+            data, mf_classic_get_sector_trailer_num_by_sector(sector), &data_tr);
+    }
+
+    // https://www.nxp.com/docs/en/application-note/AN10787.pdf
+    // Format MAD1
+    size_t mad_block = 1;
+    uint8_t* mad = &data->block[mad_block].data[0];
+    mad[1] = 0x01; // Info byte
+    mad[2] = 0x03; // NDEF app ID
+    mad[3] = 0xE1; // NDEF app ID
+    mad[0] = bit_lib_crc8(&mad[1], MF_CLASSIC_BLOCK_SIZE * 2 - 1, 0x1D, 0xC7, false, false, 0x00);
+    MfClassicSectorTrailer mad_tr = {
+        .key_a = {{0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5}}, // MAD key
+        .access_bits = {{0x78, 0x77, 0x88, 0xC1}}, // Read with A/B, write with B
+        .key_b = {{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}}, // Default key
+    };
+    mf_classic_set_sector_trailer_read(
+        data, mf_classic_get_sector_trailer_num_by_block(mad_block), &mad_tr);
+    // Format MAD2
+    if(sector_count > 16) {
+        mad_block = 64;
+        mad = &data->block[mad_block].data[0];
+        mad[1] = 0x01; // Info byte
+        mad[0] =
+            bit_lib_crc8(&mad[1], MF_CLASSIC_BLOCK_SIZE * 3 - 1, 0x1D, 0xC7, false, false, 0x00);
+        mf_classic_set_sector_trailer_read(
+            data, mf_classic_get_sector_trailer_num_by_block(mad_block), &mad_tr);
+    }
+
+    free(app->ndef_buffer);
+    app->ndef_buffer = NULL;
+
+    nfc_device_set_data(app->nfc_device, NfcProtocolMfClassic, data);
+    mf_classic_free(data);
+}
+
+static void nfc_maker_scene_save_generate_populate_device_slix(NfcMaker* app, Card card_type) {
+    SlixData* data = slix_alloc();
+
+    size_t block_count = 0;
+    data->iso15693_3_data->system_info.flags =
+        ISO15693_3_SYSINFO_FLAG_DSFID | ISO15693_3_SYSINFO_FLAG_AFI |
+        ISO15693_3_SYSINFO_FLAG_MEMORY | ISO15693_3_SYSINFO_FLAG_IC_REF;
+    uint8_t uid[8];
+    furi_hal_random_fill_buf(uid, sizeof(uid));
+    uid[0] = 0xE0; // All ISO15693-3 cards must have this as first UID byte
+    uid[1] = 0x04; // NXP manufacturer code
+
+    switch(card_type) {
+    case CardSlix:
+        block_count = 28;
+        uid[2] = 0x01; // ICODE Type
+        uid[3] &= ~(0x03 << 3);
+        uid[3] |= 0x02 << 3; // Type Indicator
+        break;
+    case CardSlixS:
+        block_count = 40;
+        uid[2] = 0x02; // ICODE Type
+        break;
+    case CardSlixL:
+        block_count = 8;
+        uid[2] = 0x03; // ICODE Type
+        break;
+    case CardSlix2:
+        block_count = 80;
+        uid[2] = 0x01; // ICODE Type
+        uid[3] &= ~(0x03 << 3);
+        uid[3] |= 0x01 << 3; // Type Indicator
+        break;
+    default:
+        break;
+    }
+
+    slix_set_uid(data, uid, sizeof(uid));
+    const size_t block_size = SLIX_BLOCK_SIZE;
+    const size_t data_area = block_count * block_size;
+    data->iso15693_3_data->system_info.block_size = block_size;
+    data->iso15693_3_data->system_info.block_count = block_count;
+    simple_array_init(data->iso15693_3_data->block_data, data_area);
+    simple_array_init(data->iso15693_3_data->block_security, block_count);
+
+    uint8_t* blocks = simple_array_get_data(data->iso15693_3_data->block_data);
+    memcpy(&blocks[1 * block_size], app->ndef_buffer, app->ndef_size);
+
+    // https://community.nxp.com/pwmxy87654/attachments/pwmxy87654/nfc/7583/1/EEOL_2011FEB16_EMS_RFD_AN_01.pdf
+    // Format Capability Container
+    blocks[0] = 0xE1; // NFC Magic Number
+    blocks[1] = 0x40; // 0x4X: Version 1, 0xX0: Full R/W access
+    blocks[2] = data_area / 8; // Data Area Size: Total byte size / 8
+    blocks[3] = 0x01; // MBREAD: Supports Multiple Block Read command
+
+    free(app->ndef_buffer);
+    app->ndef_buffer = NULL;
+
+    nfc_device_set_data(app->nfc_device, NfcProtocolSlix, data);
+    slix_free(data);
+}
+
 void nfc_maker_scene_save_generate_submenu_callback(void* context, uint32_t index) {
     NfcMaker* app = context;
     view_dispatcher_send_custom_event(app->view_dispatcher, index);
@@ -294,14 +451,14 @@ void nfc_maker_scene_save_generate_on_enter(void* context) {
 
     submenu_set_header(submenu, "Tag Type:");
 
-    for(Ntag ntag = 0; ntag < NtagMAX; ntag++) {
+    for(Card card = 0; card < CardMAX; card++) {
         submenu_add_lockable_item(
             submenu,
-            ntag_names[ntag],
-            ntag,
+            cards[card].name,
+            card,
             nfc_maker_scene_save_generate_submenu_callback,
             app,
-            app->ndef_size > ntag_sizes[ntag],
+            app->ndef_size > cards[card].size,
             "Data is\ntoo large!");
     }
 
@@ -317,26 +474,24 @@ bool nfc_maker_scene_save_generate_on_event(void* context, SceneManagerEvent eve
 
     if(event.type == SceneManagerEventTypeCustom) {
         scene_manager_set_scene_state(app->scene_manager, NfcMakerSceneSaveGenerate, event.event);
-        if(event.event >= NtagMAX) return consumed;
+        if(event.event >= CardMAX) return consumed;
         consumed = true;
 
-        nfc_data_generator_fill_data(ntag_generators[event.event], app->nfc_device);
-        MfUltralightData* data = mf_ultralight_alloc();
-        nfc_device_copy_data(app->nfc_device, NfcProtocolMfUltralight, data);
+        switch(cards[event.event].protocol) {
+        case NfcProtocolMfUltralight:
+            nfc_maker_scene_save_generate_populate_device_mful(app, event.event);
+            break;
+        case NfcProtocolMfClassic:
+            nfc_maker_scene_save_generate_populate_device_mfc(app, event.event);
+            break;
+        case NfcProtocolSlix:
+            nfc_maker_scene_save_generate_populate_device_slix(app, event.event);
+            break;
+        default:
+            break;
+        }
 
-        size_t size =
-            MIN(ntag_sizes[event.event], // Known size
-                data->page[3].data[2] * NTAG_DATA_AREA_UNIT_SIZE // Capability Container
-            );
-        furi_check(app->ndef_size <= size);
-        memcpy(&data->page[4].data[0], app->ndef_buffer, app->ndef_size);
-        free(app->ndef_buffer);
-        app->ndef_buffer = NULL;
-
-        nfc_device_set_data(app->nfc_device, NfcProtocolMfUltralight, data);
-        mf_ultralight_free(data);
-
-        scene_manager_next_scene(app->scene_manager, NfcMakerSceneSaveUidMful);
+        scene_manager_next_scene(app->scene_manager, NfcMakerSceneSaveUid);
     }
 
     return consumed;

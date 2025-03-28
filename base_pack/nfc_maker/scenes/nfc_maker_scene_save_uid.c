@@ -4,7 +4,7 @@ enum ByteInputResult {
     ByteInputResultOk,
 };
 
-static void nfc_maker_scene_save_uid_mful_byte_input_callback(void* context) {
+static void nfc_maker_scene_save_uid_byte_input_callback(void* context) {
     NfcMaker* app = context;
 
     size_t uid_len;
@@ -18,13 +18,13 @@ static void nfc_maker_scene_save_uid_mful_byte_input_callback(void* context) {
     }
 }
 
-static void nfc_maker_scene_save_uid_mful_byte_input_changed(void* context) {
+static void nfc_maker_scene_save_uid_byte_input_changed(void* context) {
     NfcMaker* app = context;
 
     byte_input_set_header_text(app->byte_input, "Change UID:");
 }
 
-void nfc_maker_scene_save_uid_mful_on_enter(void* context) {
+void nfc_maker_scene_save_uid_on_enter(void* context) {
     NfcMaker* app = context;
     ByteInput* byte_input = app->byte_input;
 
@@ -36,8 +36,8 @@ void nfc_maker_scene_save_uid_mful_on_enter(void* context) {
 
     byte_input_set_result_callback(
         byte_input,
-        nfc_maker_scene_save_uid_mful_byte_input_callback,
-        nfc_maker_scene_save_uid_mful_byte_input_changed,
+        nfc_maker_scene_save_uid_byte_input_callback,
+        nfc_maker_scene_save_uid_byte_input_changed,
         app,
         app->uid_buf,
         uid_len);
@@ -45,7 +45,7 @@ void nfc_maker_scene_save_uid_mful_on_enter(void* context) {
     view_dispatcher_switch_to_view(app->view_dispatcher, NfcMakerViewByteInput);
 }
 
-bool nfc_maker_scene_save_uid_mful_on_event(void* context, SceneManagerEvent event) {
+bool nfc_maker_scene_save_uid_on_event(void* context, SceneManagerEvent event) {
     NfcMaker* app = context;
     bool consumed = false;
 
@@ -63,7 +63,7 @@ bool nfc_maker_scene_save_uid_mful_on_event(void* context, SceneManagerEvent eve
     return consumed;
 }
 
-void nfc_maker_scene_save_uid_mful_on_exit(void* context) {
+void nfc_maker_scene_save_uid_on_exit(void* context) {
     NfcMaker* app = context;
     byte_input_set_result_callback(app->byte_input, NULL, NULL, NULL, NULL, 0);
     byte_input_set_header_text(app->byte_input, "");

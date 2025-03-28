@@ -1,28 +1,112 @@
 #include "nfc_maker.h"
 
-const NfcDataGeneratorType ntag_generators[NtagMAX] = {
-    [Ntag203] = NfcDataGeneratorTypeNTAG203,
-    [Ntag213] = NfcDataGeneratorTypeNTAG213,
-    [Ntag215] = NfcDataGeneratorTypeNTAG215,
-    [Ntag216] = NfcDataGeneratorTypeNTAG216,
-    [NtagI2C1K] = NfcDataGeneratorTypeNTAGI2C1k,
-    [NtagI2C2K] = NfcDataGeneratorTypeNTAGI2C2k,
-};
-const char* ntag_names[NtagMAX] = {
-    [Ntag203] = "NTAG203",
-    [Ntag213] = "NTAG213",
-    [Ntag215] = "NTAG215",
-    [Ntag216] = "NTAG216",
-    [NtagI2C1K] = "NTAG I2C 1K",
-    [NtagI2C2K] = "NTAG I2C 2K",
-};
-const size_t ntag_sizes[NtagMAX] = {
-    [Ntag203] = 0x12 * NTAG_DATA_AREA_UNIT_SIZE,
-    [Ntag213] = 0x12 * NTAG_DATA_AREA_UNIT_SIZE,
-    [Ntag215] = 0x3E * NTAG_DATA_AREA_UNIT_SIZE,
-    [Ntag216] = 0x6D * NTAG_DATA_AREA_UNIT_SIZE,
-    [NtagI2C1K] = 0x6D * NTAG_DATA_AREA_UNIT_SIZE,
-    [NtagI2C2K] = 0xEA * NTAG_DATA_AREA_UNIT_SIZE,
+const CardDef cards[CardMAX] = {
+    // MfUltralight
+    [CardNtag203] =
+        {
+            .name = "NTAG 203 (144B)",
+            .size = 0x12 * NTAG_DATA_AREA_UNIT_SIZE,
+            .protocol = NfcProtocolMfUltralight,
+            .generator = NfcDataGeneratorTypeNTAG203,
+        },
+    [CardNtag213] =
+        {
+            .name = "NTAG 213 (144B)",
+            .size = 0x12 * NTAG_DATA_AREA_UNIT_SIZE,
+            .protocol = NfcProtocolMfUltralight,
+            .generator = NfcDataGeneratorTypeNTAG213,
+        },
+    [CardNtag215] =
+        {
+            .name = "NTAG 215 (496B)",
+            .size = 0x3E * NTAG_DATA_AREA_UNIT_SIZE,
+            .protocol = NfcProtocolMfUltralight,
+            .generator = NfcDataGeneratorTypeNTAG215,
+        },
+    [CardNtag216] =
+        {
+            .name = "NTAG 216 (872B)",
+            .size = 0x6D * NTAG_DATA_AREA_UNIT_SIZE,
+            .protocol = NfcProtocolMfUltralight,
+            .generator = NfcDataGeneratorTypeNTAG216,
+        },
+    [CardNtagI2C1K] =
+        {
+            .name = "NTAG I2C 1K (872B)",
+            .size = 0x6D * NTAG_DATA_AREA_UNIT_SIZE,
+            .protocol = NfcProtocolMfUltralight,
+            .generator = NfcDataGeneratorTypeNTAGI2C1k,
+        },
+    [CardNtagI2C2K] =
+        {
+            .name = "NTAG I2C 2K (1872B)",
+            .size = 0xEA * NTAG_DATA_AREA_UNIT_SIZE,
+            .protocol = NfcProtocolMfUltralight,
+            .generator = NfcDataGeneratorTypeNTAGI2C2k,
+        },
+
+    // MfClassic (size excludes sector trailers and MAD1/2 sectors)
+    [CardMfClassicMini] =
+        {
+            .name = "MIFARE Classic Mini 0.3K",
+            .size = (5 - 1) * (4 - 1) * MF_CLASSIC_BLOCK_SIZE,
+            .protocol = NfcProtocolMfClassic,
+            .generator = NfcDataGeneratorTypeMfClassicMini,
+        },
+    [CardMfClassic1K4b] =
+        {
+            .name = "MIFARE Classic 1K UID4",
+            .size = (16 - 1) * (4 - 1) * MF_CLASSIC_BLOCK_SIZE,
+            .protocol = NfcProtocolMfClassic,
+            .generator = NfcDataGeneratorTypeMfClassic1k_4b,
+        },
+    [CardMfClassic1K7b] =
+        {
+            .name = "MIFARE Classic 1K UID7",
+            .size = (16 - 1) * (4 - 1) * MF_CLASSIC_BLOCK_SIZE,
+            .protocol = NfcProtocolMfClassic,
+            .generator = NfcDataGeneratorTypeMfClassic1k_7b,
+        },
+    [CardMfClassic4K4b] =
+        {
+            .name = "MIFARE Classic 4K UID4",
+            .size = (((32 - 2) * (4 - 1)) + ((8) * (16 - 1))) * MF_CLASSIC_BLOCK_SIZE,
+            .protocol = NfcProtocolMfClassic,
+            .generator = NfcDataGeneratorTypeMfClassic4k_4b,
+        },
+    [CardMfClassic4K7b] =
+        {
+            .name = "MIFARE Classic 4K UID7",
+            .size = (((32 - 2) * (4 - 1)) + ((8) * (16 - 1))) * MF_CLASSIC_BLOCK_SIZE,
+            .protocol = NfcProtocolMfClassic,
+            .generator = NfcDataGeneratorTypeMfClassic4k_7b,
+        },
+
+    // Slix (size excludes first block which is Capability Container)
+    [CardSlix] =
+        {
+            .name = "SLIX (108B)",
+            .size = (28 - 1) * SLIX_BLOCK_SIZE,
+            .protocol = NfcProtocolSlix,
+        },
+    [CardSlixS] =
+        {
+            .name = "SLIX-S (156B)",
+            .size = (40 - 1) * SLIX_BLOCK_SIZE,
+            .protocol = NfcProtocolSlix,
+        },
+    [CardSlixL] =
+        {
+            .name = "SLIX-L (28B)",
+            .size = (8 - 1) * SLIX_BLOCK_SIZE,
+            .protocol = NfcProtocolSlix,
+        },
+    [CardSlix2] =
+        {
+            .name = "SLIX2 (316B)",
+            .size = (80 - 1) * SLIX_BLOCK_SIZE,
+            .protocol = NfcProtocolSlix,
+        },
 };
 
 static bool nfc_maker_custom_event_callback(void* context, uint32_t event) {
@@ -105,7 +189,7 @@ void nfc_maker_free(NfcMaker* app) {
     free(app);
 }
 
-extern int32_t nfc_maker(void* p) {
+int32_t nfc_maker(void* p) {
     UNUSED(p);
     NfcMaker* app = nfc_maker_alloc();
     scene_manager_set_scene_state(app->scene_manager, NfcMakerSceneStart, NfcMakerSceneHttps);

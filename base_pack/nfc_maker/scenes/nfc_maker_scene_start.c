@@ -9,7 +9,7 @@ void nfc_maker_scene_start_on_enter(void* context) {
     NfcMaker* app = context;
     Submenu* submenu = app->submenu;
 
-    submenu_set_header(submenu, "NFC Tag Maker:");
+    submenu_set_header(submenu, "NFC Tag Maker v" FAP_VERSION);
 
     submenu_add_item(
         submenu,

@@ -4,12 +4,19 @@
 
 enum PopupEvent {
     PopupEventExit,
+    PopupEventFailed,
 };
 
-static void nfc_maker_scene_save_result_popup_callback(void* context) {
+static void nfc_maker_scene_save_result_popup_callback_exit(void* context) {
     NfcMaker* app = context;
 
     view_dispatcher_send_custom_event(app->view_dispatcher, PopupEventExit);
+}
+
+static void nfc_maker_scene_save_result_popup_callback_failed(void* context) {
+    NfcMaker* app = context;
+
+    view_dispatcher_send_custom_event(app->view_dispatcher, PopupEventFailed);
 }
 
 void nfc_maker_scene_save_result_on_enter(void* context) {
@@ -25,14 +32,15 @@ void nfc_maker_scene_save_result_on_enter(void* context) {
         popup_set_icon(popup, 36, 5, &I_DolphinDone_80x58);
         popup_set_header(popup, "Saved!", 13, 22, AlignLeft, AlignBottom);
         popup_enable_timeout(popup);
+        popup_set_callback(popup, nfc_maker_scene_save_result_popup_callback_exit);
     } else {
         popup_set_icon(popup, 69, 15, &I_WarningDolphinFlip_45x42);
         popup_set_header(popup, "Error!", 13, 22, AlignLeft, AlignBottom);
         popup_disable_timeout(popup);
+        popup_set_callback(popup, nfc_maker_scene_save_result_popup_callback_failed);
     }
     popup_set_timeout(popup, 1500);
     popup_set_context(popup, app);
-    popup_set_callback(popup, nfc_maker_scene_save_result_popup_callback);
 
     view_dispatcher_switch_to_view(app->view_dispatcher, NfcMakerViewPopup);
 }
@@ -47,6 +55,9 @@ bool nfc_maker_scene_save_result_on_event(void* context, SceneManagerEvent event
         case PopupEventExit:
             scene_manager_search_and_switch_to_previous_scene(
                 app->scene_manager, NfcMakerSceneStart);
+            break;
+        case PopupEventFailed:
+            scene_manager_previous_scene(app->scene_manager);
             break;
         default:
             break;
