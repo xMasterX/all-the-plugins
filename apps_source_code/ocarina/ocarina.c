@@ -93,7 +93,8 @@ typedef struct {
     bool key_down[INPUT_KEY_COUNT]; // Track the state of each key
 } Ocarina;
 
-char* splitGetFirst(char *s, const char *del) {
+// Helper function to split a string by delimiter
+char* split_get_first(char *s, const char *del) {
     static char *last = NULL;
     if (s == NULL) s = last;
     if (s == NULL) return NULL;
@@ -145,14 +146,14 @@ void draw_callback(Canvas* canvas, void* ctx) {
 
             // Draw sequence symbols
             char* sequence_copy = strdup(songs[song_index].sequence);
-            char* token = splitGetFirst(sequence_copy, " ");
+            char* token = split_get_first(sequence_copy, " ");
             unsigned int x_offset = 5;
             canvas_set_custom_u8g2_font(canvas, u8g2_font_open_iconic_arrow_1x_t);
             while (token != NULL) {
                 canvas_set_custom_u8g2_font(canvas, u8g2_font_open_iconic_arrow_1x_t);
                 draw_glyph(canvas, token, x_offset, 29 + (i * 16));
                 x_offset += 8;
-                token = splitGetFirst(NULL, " ");
+                token = split_get_first(NULL, " ");
             }
             free(sequence_copy);
         }
