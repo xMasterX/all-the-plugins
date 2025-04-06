@@ -54,7 +54,7 @@ typedef struct {
     Gui* gui;
     ViewDispatcher* view_dispatcher;
     SceneManager* scene_manager;
-    Cli* cli;
+    CliRegistry* cli;
 
     FlipperSPITerminalAppConfig config;
 

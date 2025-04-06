@@ -62,9 +62,9 @@ void upython_cli_register(void* args) {
         action = ActionNone;
     }
 
-    Cli* cli = furi_record_open(RECORD_CLI);
+    CliRegistry* registry = furi_record_open(RECORD_CLI);
 
-    cli_add_command(cli, CLI, CliCommandFlagParallelSafe, upython_cli, NULL);
+    cli_registry_add_command(registry, CLI, CliCommandFlagParallelSafe, upython_cli, NULL);
 
     furi_record_close(RECORD_CLI);
 }
@@ -76,9 +76,9 @@ void upython_cli_unregister(void* args) {
         return;
     }
 
-    Cli* cli = furi_record_open(RECORD_CLI);
+    CliRegistry* registry = furi_record_open(RECORD_CLI);
 
-    cli_delete_command(cli, CLI);
+    cli_registry_delete_command(registry, CLI);
 
     furi_record_close(RECORD_CLI);
 }

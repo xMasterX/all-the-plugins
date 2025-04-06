@@ -3,7 +3,7 @@
 #include <furi_hal_usb_cdc.h>
 #include <storage/storage.h>
 #include "bc_scanner_script.h"
-#include "cli/cli_vcp.h"
+#include <cli/cli_vcp.h>
 #include <toolbox/cli/cli_command.h>
 #include <cli/cli_main_commands.h>
 
@@ -51,9 +51,9 @@ static void scan_sound() {
 
 static void usb_uart_serial_init(BarCodeScript* bc_context) {
     furi_hal_usb_unlock();
-    Cli* cli = furi_record_open(RECORD_CLI);
-    cli_session_close(cli);
-    furi_record_close(RECORD_CLI);
+    CliVcp* cli = furi_record_open(RECORD_CLI_VCP);
+    cli_vcp_disable(cli);
+    furi_record_close(RECORD_CLI_VCP);
     furi_check(furi_hal_usb_set_config(&usb_cdc_single, NULL) == true);
 
     bc_context->serial_handle = furi_hal_serial_control_acquire(UART_CH);
@@ -64,9 +64,9 @@ static void usb_uart_serial_init(BarCodeScript* bc_context) {
 static void usb_uart_serial_deinit(BarCodeScript* bc_context) {
     furi_hal_usb_unlock();
     furi_check(furi_hal_usb_set_config(&usb_cdc_single, NULL) == true);
-    Cli* cli = furi_record_open(RECORD_CLI);
-    cli_session_open(cli, &cli_vcp);
-    furi_record_close(RECORD_CLI);
+    CliVcp* cli = furi_record_open(RECORD_CLI_VCP);
+    cli_vcp_enable(cli);
+    furi_record_close(RECORD_CLI_VCP);
     furi_hal_serial_deinit(bc_context->serial_handle);
     furi_hal_serial_control_release(bc_context->serial_handle);
 }

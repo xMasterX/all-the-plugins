@@ -8,7 +8,6 @@ App(
         "gui",
         "dialogs",
     ],
-    provides=["music_beeper_start"],
     stack_size=2 * 1024,
     order=45,
     fap_icon="music_10px.png",

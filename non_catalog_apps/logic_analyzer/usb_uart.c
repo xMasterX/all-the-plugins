@@ -54,16 +54,16 @@ static const CdcCallbacks cdc_cb = {
 static void usb_uart_vcp_init(UsbUart* usb_uart, uint8_t vcp_ch) {
     furi_hal_usb_unlock();
 
-    Cli* cli = furi_record_open(RECORD_CLI);
-    cli_session_close(cli);
+    CliVcp* cli = furi_record_open(RECORD_CLI_VCP);
+    cli_vcp_disable(cli);
 
     if(vcp_ch == 0) {
         furi_check(furi_hal_usb_set_config(&usb_cdc_single, NULL) == true);
     } else {
         furi_check(furi_hal_usb_set_config(&usb_cdc_dual, NULL) == true);
-        cli_session_open(cli, &cli_vcp);
+        cli_vcp_enable(cli);
     }
-    furi_record_close(RECORD_CLI);
+    furi_record_close(RECORD_CLI_VCP);
     furi_hal_cdc_set_callbacks(vcp_ch, (CdcCallbacks*)&cdc_cb, usb_uart);
 }
 
@@ -71,9 +71,9 @@ static void usb_uart_vcp_deinit(UsbUart* usb_uart, uint8_t vcp_ch) {
     UNUSED(usb_uart);
     furi_hal_cdc_set_callbacks(vcp_ch, NULL, NULL);
     if(vcp_ch != 0) {
-        Cli* cli = furi_record_open(RECORD_CLI);
-        cli_session_close(cli);
-        furi_record_close(RECORD_CLI);
+        CliVcp* cli = furi_record_open(RECORD_CLI_VCP);
+        cli_vcp_disable(cli);
+        furi_record_close(RECORD_CLI_VCP);
     }
 }
 
@@ -152,9 +152,9 @@ static int32_t usb_uart_worker(void* context) {
 
     furi_hal_usb_unlock();
     furi_check(furi_hal_usb_set_config(&usb_cdc_single, NULL) == true);
-    Cli* cli = furi_record_open(RECORD_CLI);
-    cli_session_open(cli, &cli_vcp);
-    furi_record_close(RECORD_CLI);
+    CliVcp* cli = furi_record_open(RECORD_CLI_VCP);
+    cli_vcp_enable(cli);
+    furi_record_close(RECORD_CLI_VCP);
 
     return 0;
 }
