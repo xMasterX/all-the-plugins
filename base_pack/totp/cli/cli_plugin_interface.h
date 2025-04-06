@@ -10,5 +10,5 @@
 
 typedef struct {
     const char* name;
-    void (*handle)(PluginState*, FuriString*, Cli*);
+    void (*handle)(PluginState*, FuriString*, PipeSide*);
 } CliPlugin;

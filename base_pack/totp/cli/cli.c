@@ -37,7 +37,7 @@ static void run_external_cli_plugin_handler(
     const char* handler_name,
     TotpCliContext* cli_context,
     FuriString* args,
-    Cli* cli) {
+    PipeSide* pipe) {
     Storage* storage = furi_record_open(RECORD_STORAGE);
     FlipperApplication* plugin_app = flipper_application_alloc(
         storage, composite_api_resolver_get(cli_context->plugin_api_resolver));
@@ -81,14 +81,14 @@ static void run_external_cli_plugin_handler(
 
         const CliPlugin* plugin = app_descriptor->entry_point;
 
-        plugin->handle(cli_context->plugin_state, args, cli);
+        plugin->handle(cli_context->plugin_state, args, pipe);
     } while(false);
     flipper_application_free(plugin_app);
 
     furi_record_close(RECORD_STORAGE);
 }
 
-static void totp_cli_handler(Cli* cli, FuriString* args, void* context) {
+static void totp_cli_handler(PipeSide* pipe, FuriString* args, void* context) {
     TotpCliContext* cli_context = context;
 
     FuriString* cmd = furi_string_alloc();
@@ -145,7 +145,7 @@ static void totp_cli_handler(Cli* cli, FuriString* args, void* context) {
     }
 
     if(external_plugin_name != NULL) {
-        run_external_cli_plugin_handler(external_plugin_name, cli_context, args, cli);
+        run_external_cli_plugin_handler(external_plugin_name, cli_context, args, pipe);
     }
 
     furi_string_free(cmd);

@@ -5,13 +5,13 @@
 #include "cli_helpers.h"
 #include "../types/plugin_event.h"
 
-bool totp_cli_ensure_authenticated(const PluginState* plugin_state, Cli* cli) {
+bool totp_cli_ensure_authenticated(const PluginState* plugin_state, PipeSide* pipe) {
     if(plugin_state->current_scene == TotpSceneAuthentication) {
         TOTP_CLI_PRINTF("Pleases enter PIN on your flipper device\r\n");
 
         while((plugin_state->current_scene == TotpSceneAuthentication ||
                plugin_state->current_scene == TotpSceneNone) &&
-              !cli_cmd_interrupt_received(cli)) {
+              !cli_is_pipe_broken_or_is_etx_next_char(pipe)) {
             furi_delay_ms(100);
         }
 
@@ -33,17 +33,17 @@ void totp_cli_force_close_app(void* ctx) {
     furi_message_queue_put(event_queue, &event, FuriWaitForever);
 }
 
-bool totp_cli_read_line(Cli* cli, FuriString* out_str, bool mask_user_input) {
+bool totp_cli_read_line(PipeSide* pipe, FuriString* out_str, bool mask_user_input) {
     uint8_t c;
-    while(cli_read(cli, &c, 1) == 1) {
+    while(pipe_receive(pipe, &c, 1) == 1) {
         if(c == CliKeyEsc) {
             // Some keys generating escape-sequences
             // We need to ignore them as we care about alpha-numerics only
             uint8_t c2;
-            cli_read_timeout(cli, &c2, 1, 0);
-            cli_read_timeout(cli, &c2, 1, 0);
+            pipe_receive(pipe, &c2, 1);
+            pipe_receive(pipe, &c2, 1);
         } else if(c == CliKeyETX) {
-            cli_nl(cli);
+            printf("\r\n");
             return false;
         } else if(
             (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
@@ -62,7 +62,7 @@ bool totp_cli_read_line(Cli* cli, FuriString* out_str, bool mask_user_input) {
                 furi_string_left(out_str, out_str_size - 1);
             }
         } else if(c == CliKeyCR) {
-            cli_nl(cli);
+            printf("\r\n");
             break;
         }
     }
