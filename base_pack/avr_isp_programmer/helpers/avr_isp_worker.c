@@ -39,8 +39,8 @@ struct AvrIspWorker {
 #include <cli/cli.h>
 #include <furi_hal_usb_cdc.h>
 
-#define AVR_ISP_VCP_CDC_CH 1
-#define AVR_ISP_VCP_CDC_PKT_LEN CDC_DATA_SZ
+#define AVR_ISP_VCP_CDC_CH           1
+#define AVR_ISP_VCP_CDC_PKT_LEN      CDC_DATA_SZ
 #define AVR_ISP_VCP_UART_RX_BUF_SIZE (AVR_ISP_VCP_CDC_PKT_LEN * 5)
 
 static void vcp_on_cdc_tx_complete(void* context);
@@ -91,16 +91,16 @@ static void vcp_on_line_config(void* context, struct usb_cdc_line_coding* config
 
 static void avr_isp_worker_vcp_cdc_init(void* context) {
     furi_hal_usb_unlock();
-    Cli* cli = furi_record_open(RECORD_CLI);
+    CliVcp* cli_vcp = furi_record_open(RECORD_CLI_VCP);
     //close cli
-    cli_session_close(cli);
+    cli_vcp_disable(cli_vcp);
     //disable callbacks VCP_CDC=0
     furi_hal_cdc_set_callbacks(0, NULL, NULL);
     //set 2 cdc
     furi_check(furi_hal_usb_set_config(&usb_cdc_dual, NULL) == true);
     //open cli VCP_CDC=0
-    cli_session_open(cli, &cli_vcp);
-    furi_record_close(RECORD_CLI);
+    cli_vcp_enable(cli_vcp);
+    furi_record_close(RECORD_CLI_VCP);
 
     furi_hal_cdc_set_callbacks(AVR_ISP_VCP_CDC_CH, (CdcCallbacks*)&cdc_cb, context);
 }
@@ -109,15 +109,15 @@ static void avr_isp_worker_vcp_cdc_deinit(void) {
     //disable callbacks AVR_ISP_VCP_CDC_CH
     furi_hal_cdc_set_callbacks(AVR_ISP_VCP_CDC_CH, NULL, NULL);
 
-    Cli* cli = furi_record_open(RECORD_CLI);
+    CliVcp* cli_vcp = furi_record_open(RECORD_CLI_VCP);
     //close cli
-    cli_session_close(cli);
+    cli_vcp_disable(cli_vcp);
     furi_hal_usb_unlock();
     //set 1 cdc
     furi_check(furi_hal_usb_set_config(&usb_cdc_single, NULL) == true);
     //open cli VCP_CDC=0
-    cli_session_open(cli, &cli_vcp);
-    furi_record_close(RECORD_CLI);
+    cli_vcp_enable(cli_vcp);
+    furi_record_close(RECORD_CLI_VCP);
 }
 
 //#################################################################################
