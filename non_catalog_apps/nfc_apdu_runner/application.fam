@@ -11,7 +11,7 @@ Description: file content
 
 App(
     appid="nfc_apdu_runner",  # Must be unique
-    name="NFC Apdu Runner",  # Displayed in menus
+    name="NFC APDU Runner",  # Displayed in menus
     apptype=FlipperAppType.EXTERNAL,
     entry_point="nfc_apdu_runner_app",
     stack_size=2 * 1024,
