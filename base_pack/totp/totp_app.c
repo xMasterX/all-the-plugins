@@ -16,8 +16,7 @@
 #include "ui/constants.h"
 #include "ui/common_dialogs.h"
 #include "services/crypto/crypto_facade.h"
-#include <toolbox/cli/cli_command.h>
-#include <cli/cli_main_commands.h>
+#include "cli/cli.h"
 #include "version.h"
 #include <wolfssl/version.h>
 
