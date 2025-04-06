@@ -14,7 +14,8 @@
 #include <furi_hal_spi_config.h>
 #include <furi_hal_spi_types.h>
 
-#include <cli/cli.h>
+#include <toolbox/cli/cli_command.h>
+#include <cli/cli_main_commands.h>
 
 #include "views/terminal_view.h"
 

@@ -1,5 +1,6 @@
 #include <furi.h>
-#include <cli/cli.h>
+#include <toolbox/cli/cli_command.h>
+#include <cli/cli_main_commands.h>
 #include <storage/storage.h>
 #include "music_beeper_worker.h"
 

@@ -36,7 +36,8 @@ struct AvrIspWorker {
 //########################/* VCP CDC */#############################################
 #include "usb_cdc.h"
 #include <cli/cli_vcp.h>
-#include <cli/cli.h>
+#include <toolbox/cli/cli_command.h>
+#include <cli/cli_main_commands.h>
 #include <furi_hal_usb_cdc.h>
 
 #define AVR_ISP_VCP_CDC_CH           1

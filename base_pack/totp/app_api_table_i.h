@@ -1,5 +1,6 @@
 #include <stdbool.h>
-#include <cli/cli.h>
+#include <toolbox/cli/cli_command.h>
+#include <cli/cli_main_commands.h>
 #include <cli/cli_ansi.h>
 #include <lib/print/wrappers.h>
 #include <lib/toolbox/args.h>
