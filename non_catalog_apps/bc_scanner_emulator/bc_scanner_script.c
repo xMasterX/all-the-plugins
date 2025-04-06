@@ -4,7 +4,8 @@
 #include <storage/storage.h>
 #include "bc_scanner_script.h"
 #include "cli/cli_vcp.h"
-#include "cli/cli.h"
+#include <toolbox/cli/cli_command.h>
+#include <cli/cli_main_commands.h>
 
 #define TAG "BarCodeScanner"
 #define WORKER_TAG TAG "Worker"
