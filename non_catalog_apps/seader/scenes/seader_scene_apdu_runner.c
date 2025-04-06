@@ -32,6 +32,7 @@ void seader_scene_apdu_runner_on_enter(void* context) {
 
 bool seader_scene_apdu_runner_on_event(void* context, SceneManagerEvent event) {
     Seader* seader = context;
+    Popup* popup = seader->popup;
     bool consumed = false;
 
     if(event.type == SceneManagerEventTypeCustom) {
@@ -41,7 +42,6 @@ bool seader_scene_apdu_runner_on_event(void* context, SceneManagerEvent event) {
             consumed = true;
         } else if(event.event == SeaderWorkerEventAPDURunnerUpdate) {
             SeaderAPDURunnerContext apdu_runner_ctx = seader->apdu_runner_ctx;
-            Popup* popup = seader->popup;
             snprintf(
                 seader_scene_apdu_runner_update_text,
                 sizeof(seader_scene_apdu_runner_update_text),
@@ -53,12 +53,10 @@ bool seader_scene_apdu_runner_on_event(void* context, SceneManagerEvent event) {
             consumed = true;
         } else if(event.event == SeaderWorkerEventAPDURunnerSuccess) {
             notification_message(seader->notifications, &sequence_success);
-            Popup* popup = seader->popup;
             popup_set_header(popup, "APDU Runner\nSuccess", 68, 30, AlignLeft, AlignTop);
             consumed = true;
         } else if(event.event == SeaderWorkerEventAPDURunnerError) {
             notification_message(seader->notifications, &sequence_error);
-            Popup* popup = seader->popup;
             popup_set_header(popup, "APDU Runner\nError", 68, 30, AlignLeft, AlignTop);
             consumed = true;
         }

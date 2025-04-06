@@ -32,7 +32,7 @@ App(
     fap_private_libs=[
         Lib(
             name="asn1",
-            cflags=["-Wno-error"],
+            cflags=["-Wno-error", "-DASN_EMIT_DEBUG=0", "-Os", "-DASN_DISABLE_PER_SUPPORT=1"],
         ),
         Lib(
             name="loclass",
