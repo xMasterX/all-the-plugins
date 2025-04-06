@@ -70,7 +70,6 @@ static const CdcCallbacks cdc_cb = {
     vcp_state_callback,
     vcp_on_cdc_control_line,
     vcp_on_line_config,
-    NULL,
 };
 
 /* USB UART worker */
