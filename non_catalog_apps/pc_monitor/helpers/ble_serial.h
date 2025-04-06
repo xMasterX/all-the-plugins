@@ -1,3 +1,13 @@
+/*
+ * This code is based on the Willy-JL's (https://github.com/Willy-JL) BLE fix.
+ * 
+ * Thank you to Willy-JL for providing this code and making it available under the https://github.com/Flipper-XFW/Xtreme-Apps repository.
+ * Your contribution has been invaluable for this project.
+ * 
+ * Based on <targets/f7/ble_glue/profiles/serial_profile.h>
+ * and on <lib/ble_profile/extra_profiles/hid_profile.h>
+ */
+
 #pragma once
 
 #include <furi_ble/profile_interface.h>
@@ -23,7 +33,7 @@ typedef struct {
 typedef SerialServiceEventCallback FuriHalBtSerialCallback;
 
 /** Serial profile descriptor */
-extern const FuriHalBleProfileTemplate* ble_profile_serial;
+extern const FuriHalBleProfileTemplate* const ble_profile_serial;
 
 /** Send data through BLE
  *
