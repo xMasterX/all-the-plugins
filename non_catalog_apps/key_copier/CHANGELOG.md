@@ -1,5 +1,11 @@
+## 1.3
+* A new UI/workflow for key format selection by @Offreds's PR
+* Added QR code directing user to @TalkingSasquach's awesome video from decoding keys to 3D-printing copies.
+
+## 1.2 
+Bug fixes
+
 ## 1.1
-## What's Changed
 * Support for double sided key and multiple new key formats by @HonestLocksmith
 * New formats:
 Manufacturer-Format Name-Data Sheet(if applicable)
