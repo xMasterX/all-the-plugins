@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `28 Mar 14:34 GMT +3`
+### Apps checked & updated at `6 Apr 04:40 GMT +3`
 
 
 # Default pack
@@ -89,7 +89,6 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | WAV Player | ![Media Badge] | [OFW: DrZlo13](https://github.com/flipperdevices/flipperzero-firmware/tree/zlo/wav-player) | Fixed and improved by [LTVA1](https://github.com/LTVA1/wav_player) -> Also outputs audio on `PA6` `3(A6)` pin | [![UFW Badge]](https://lab.flipper.net/apps/wav_player) |
 | Metronome | ![Media Badge] | [by panki27](https://github.com/panki27/Metronome) |  | [![UFW Badge]](https://lab.flipper.net/apps/metronome) |
 | Morse Code | ![Media Badge] | [by wh00hw](https://github.com/wh00hw/MorseCodeFAP) |  | [![UFW Badge]](https://lab.flipper.net/apps/morse_code) |
-| **BadKB** plugin | ![Tools Badge] | [by Willy-JL, ClaraCrazy, XFW contributors](https://github.com/Flipper-XFW/Xtreme-Firmware/tree/dev/applications/main/bad_kb) | BadKB (aka BadUSB via Bluetooth) | ![None Badge] |
 | BLE Spam | ![BT Badge] | [by @Willy-JL & @ECTO-1A & @Spooks4576](https://github.com/Next-Flip/Momentum-Apps/tree/dev/ble_spam) |  | ![None Badge] |
 | FindMy Flipper | ![BT Badge] | [by @MatthewKuKanich](https://github.com/MatthewKuKanich/FindMyFlipper) | Please Read [how to add keys here](https://github.com/MatthewKuKanich/FindMyFlipper) | ![None Badge] |
 
@@ -237,6 +236,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | NFC Playlist | ![NFC Badge] | [by acegoal07](https://github.com/acegoal07/FlipperZero_NFC_Playlist/tree/main) |  | ![None Badge] |
 | Metroflip | ![NFC Badge] | [by luu176](https://github.com/luu176/Metroflip) |  | ![None Badge] |
 | NFC APDU Runner | ![NFC Badge] | [by SpenserCai](https://github.com/SpenserCai/nfc_apdu_runner) |  | ![None Badge] |
+| Passport Reader (Passy) | ![NFC Badge] | [by bettse](https://github.com/bettse/passy) |  | ![None Badge] |
 | RFID Beacon | ![RFID Badge] | [by nmrr](https://github.com/nmrr/flipperzero-rfidbeacon)  | `A letter/number Morse beacon on 125 kHz` | ![None Badge] |
 | EM4100 universal keys generator (for RFID Fuzzer) | ![RFID Badge] | [by Milk-Cool](https://github.com/Milk-Cool/fz-em4100-generator) |  | [![Author Badge]](https://lab.flipper.net/apps/key_generator) |
 | (Q)M100 UHF RFID | ![RFID Badge] | [by frux-c](https://github.com/frux-c/uhf_rfid) | WIP -> (+Added icon by @xMasterX) | ![None Badge] |
