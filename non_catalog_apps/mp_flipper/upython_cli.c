@@ -11,7 +11,7 @@ static void write_to_stdout_buffer(const char* data, size_t size, void* context)
     furi_stream_buffer_send(stdout_buffer, data, size, 0);
 }
 
-void upython_cli(Cli* cli, FuriString* args, void* ctx) {
+void upython_cli(PipeSide* pipe, FuriString* args, void* ctx) {
     UNUSED(ctx);
 
     if(action != ActionNone) {
@@ -23,7 +23,7 @@ void upython_cli(Cli* cli, FuriString* args, void* ctx) {
     if(furi_string_empty(args)) {
         action = ActionRepl;
 
-        upython_repl_execute(cli);
+        upython_repl_execute(pipe);
 
         action = ActionNone;
     } else {

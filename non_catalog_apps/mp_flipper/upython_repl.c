@@ -246,7 +246,8 @@ inline static bool continue_with_input(mp_flipper_repl_context_t* context) {
     return true;
 }
 
-void upython_repl_execute(Cli* cli) {
+void upython_repl_execute(PipeSide* pipe) {
+    UNUSED(pipe);
     size_t stack;
 
     const size_t heap_size = memmgr_get_free_heap() * 0.1;
@@ -285,7 +286,7 @@ void upython_repl_execute(Cli* cli) {
 
             // scan character loop
             do {
-                character = cli_getc(cli);
+                character = getchar();
 
                 // Ctrl + C
                 if(character == CliKeyETX) {
@@ -317,15 +318,15 @@ void upython_repl_execute(Cli* cli) {
                     furi_string_cat(context->code, context->line);
                     furi_string_trim(context->code);
 
-                    cli_nl(cli);
+                    printf("\r\n");
 
                     break;
                 }
 
                 // handle arrow keys
                 if(character >= 0x18 && character <= 0x1B) {
-                    character = cli_getc(cli);
-                    character = cli_getc(cli);
+                    character = getchar();
+                    character = getchar();
 
                     handle_arrow_keys(character, context);
 
@@ -349,7 +350,7 @@ void upython_repl_execute(Cli* cli) {
                 // append at end
                 if(context->cursor == furi_string_size(context->line)) {
                     buffer[0] = character;
-                    cli_write(cli, (const uint8_t*)buffer, 1);
+                    putchar(character);
 
                     furi_string_push_back(context->line, character);
 
