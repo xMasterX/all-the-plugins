@@ -41,6 +41,7 @@ steps:
       - rm -f artifacts-base/iButton/ibutton.fap
       - rm -f artifacts-base/Infrared/infrared.fap
       - rm -f artifacts-base/NFC/nfc.fap
+      - rm -f artifacts-base/NFC/mfkey.fap
       - rm -f artifacts-base/RFID/lfrfid.fap
       - rm -f artifacts-base/Sub-GHz/subghz_remote.fap
       - rm -f artifacts-base/Tools/clock.fap
@@ -83,6 +84,7 @@ steps:
       - rm -f artifacts-extra/iButton/ibutton.fap
       - rm -f artifacts-extra/Infrared/infrared.fap
       - rm -f artifacts-extra/NFC/nfc.fap
+      - rm -f artifacts-extra/NFC/mfkey.fap
       - rm -f artifacts-extra/RFID/lfrfid.fap
       - rm -f artifacts-extra/Sub-GHz/subghz_remote.fap
       - rm -f artifacts-extra/Tools/clock.fap
