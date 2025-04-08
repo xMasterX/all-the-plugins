@@ -187,8 +187,16 @@ void pomodoro_draw_callback(Canvas* canvas, void* context, int max_seconds, int 
     // Time to rest
     if(model->rest_running && !model->timer_running) {
         canvas_set_font(canvas, FontBigNumbers);
+
+        // Determine rest duration
+        int rest_duration = max_seconds_rest;
+        if(model->counter % 3 == 0) {
+            rest_duration = max_seconds + (5 * 60); // Pomodoro time + 5 minutes
+        }
+
+        // Calculate time left
         int rest_passed = current_timestamp - model->rest_start_timestamp;
-        int rest_total_time_left = (max_seconds_rest - rest_passed);
+        int rest_total_time_left = (rest_duration - rest_passed);
         int rest_minutes_left = rest_total_time_left / 60;
         int rest_seconds_left = rest_total_time_left % 60;
 
