@@ -1,3 +1,7 @@
+# Flizzer Tracker v0.11 #
+## Fixed ##
+- Build for new firmware version
+
 # Flizzer Tracker v0.10 #
 ## Fixed ##
 - App not responding to keypresses
