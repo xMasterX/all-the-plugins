@@ -15,9 +15,11 @@ void passy_scene_passport_number_input_on_enter(void* context) {
     // Setup view
     TextInput* text_input = passy->text_input;
 
-    // TODO: reload from saved data
-
     text_input_set_header_text(text_input, "Passport Number");
+    text_input_set_minimum_length(text_input, 9);
+    if(passy->passport_number[0] != '\0') {
+        strlcpy(passy->text_store, passy->passport_number, sizeof(passy->text_store));
+    }
     text_input_set_result_callback(
         text_input,
         passy_scene_passport_number_input_text_input_callback,

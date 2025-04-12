@@ -84,6 +84,9 @@ bool passy_scene_main_menu_on_event(void* context, SceneManagerEvent event) {
             scene_manager_next_scene(passy->scene_manager, PassySceneRead);
             consumed = true;
         }
+    } else if(event.type == SceneManagerEventTypeBack) {
+        while(scene_manager_previous_scene(passy->scene_manager))
+            ;
     }
 
     return consumed;

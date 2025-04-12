@@ -10,11 +10,10 @@
  - Caches MRZ info to make subsequent use faster
 
 ## Limitations
- - Only requests DG1, the contents of the MRZ
+ - Does not parse some of the optional DG (under 'advanced' menu)
 
 ## To do
  - Support other country passports
- - Add event for file not found when selecting file, and UI
 
 ## Generate asn:
 

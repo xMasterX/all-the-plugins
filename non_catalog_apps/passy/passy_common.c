@@ -142,6 +142,8 @@ char passy_checksum(char* str) {
             value = values[str[i] - '0'];
         } else if(str[i] >= 'A' && str[i] <= 'Z') {
             value = values[str[i] - 'A' + 10];
+        } else if(str[i] >= 'a' && str[i] <= 'z') {
+            value = values[str[i] - 'a' + 10];
         } else if(str[i] == '<') {
             value = 0;
         } else {
