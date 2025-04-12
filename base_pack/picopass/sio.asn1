@@ -1,0 +1,24 @@
+SIO DEFINITIONS ::=
+BEGIN
+
+-- Black Hate Asia 25: Dismantling-the-seos-protocol.
+
+Key ::= SEQUENCE {
+  referenceId [1] IMPLICIT OCTET STRING,
+  crypto OCTET STRING
+}
+
+PACS ::= SEQUENCE {
+  payload [5] IMPLICIT OCTET STRING
+}
+
+SIO ::= SEQUENCE {
+  rid [1] IMPLICIT OCTET STRING,
+  unknown3 [3] IMPLICIT OCTET STRING OPTIONAL,
+  unknown5 [5] NULL,
+  key [6] IMPLICIT Key,
+  pacs [7] IMPLICIT PACS,
+  unknown9 [9] NULL
+}
+
+END
