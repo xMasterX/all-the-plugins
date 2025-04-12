@@ -288,7 +288,7 @@ void seader_send_request_pacs(Seader* seader) {
     payload->present = Payload_PR_samCommand;
     payload->choice.samCommand = *samCommand;
 
-    seader_send_payload(seader, payload, 0x44, 0x0a, 0x44);
+    seader_send_payload(seader, payload, ExternalApplicationA, SAMInterface, ExternalApplicationA);
 
     ASN_STRUCT_FREE(asn_DEF_Payload, payload);
     ASN_STRUCT_FREE(asn_DEF_SamCommand, samCommand);
@@ -310,7 +310,7 @@ void seader_worker_send_serial_number(Seader* seader) {
     payload->present = Payload_PR_samCommand;
     payload->choice.samCommand = *samCommand;
 
-    seader_send_payload(seader, payload, 0x44, 0x0a, 0x44);
+    seader_send_payload(seader, payload, ExternalApplicationA, SAMInterface, ExternalApplicationA);
 
     ASN_STRUCT_FREE(asn_DEF_Payload, payload);
     ASN_STRUCT_FREE(asn_DEF_SamCommand, samCommand);
@@ -331,7 +331,7 @@ void seader_worker_send_version(Seader* seader) {
     payload->present = Payload_PR_samCommand;
     payload->choice.samCommand = *samCommand;
 
-    seader_send_payload(seader, payload, 0x44, 0x0a, 0x44);
+    seader_send_payload(seader, payload, ExternalApplicationA, SAMInterface, ExternalApplicationA);
 
     ASN_STRUCT_FREE(asn_DEF_Payload, payload);
     ASN_STRUCT_FREE(asn_DEF_SamCommand, samCommand);
@@ -359,7 +359,7 @@ void seader_send_card_detected(Seader* seader, CardDetails_t* cardDetails) {
     payload->present = Payload_PR_samCommand;
     payload->choice.samCommand = *samCommand;
 
-    seader_send_payload(seader, payload, 0x44, 0x0a, 0x44);
+    seader_send_payload(seader, payload, ExternalApplicationA, SAMInterface, ExternalApplicationA);
 
     ASN_STRUCT_FREE(asn_DEF_Payload, payload);
     ASN_STRUCT_FREE(asn_DEF_SamCommand, samCommand);
@@ -376,12 +376,14 @@ bool seader_unpack_pacs(Seader* seader, uint8_t* buf, size_t size) {
     asn_dec_rval_t rval = asn_decode(0, ATS_DER, &asn_DEF_PAC, (void**)&pac, buf, size);
 
     if(rval.code == RC_OK) {
+#ifdef ASN1_DEBUG
         char pacDebug[384] = {0};
         (&asn_DEF_PAC)
             ->op->print_struct(&asn_DEF_PAC, pac, 1, seader_print_struct_callback, pacDebug);
         if(strlen(pacDebug) > 0) {
             FURI_LOG_D(TAG, "Received pac: %s", pacDebug);
         }
+#endif
 
         memset(display, 0, sizeof(display));
         if(seader_credential->sio[0] == 0x30) {
@@ -389,6 +391,34 @@ bool seader_unpack_pacs(Seader* seader, uint8_t* buf, size_t size) {
                 snprintf(display + (i * 2), sizeof(display), "%02x", seader_credential->sio[i]);
             }
             FURI_LOG_D(TAG, "SIO %s", display);
+
+#ifdef ASN1_DEBUG
+            SIO_t* sio = 0;
+            sio = calloc(1, sizeof *sio);
+            assert(sio);
+            rval = asn_decode(
+                0,
+                ATS_DER,
+                &asn_DEF_SIO,
+                (void**)&sio,
+                seader_credential->sio,
+                seader_credential->sio_len);
+
+            if(rval.code == RC_OK) {
+                FURI_LOG_D(TAG, "Decoded SIO");
+                char sioDebug[384] = {0};
+                (&asn_DEF_SIO)
+                    ->op->print_struct(
+                        &asn_DEF_SIO, sio, 1, seader_print_struct_callback, sioDebug);
+                if(strlen(sioDebug) > 0) {
+                    FURI_LOG_D(TAG, "SIO: %s", sioDebug);
+                }
+            } else {
+                FURI_LOG_W(TAG, "Failed to decode SIO %d consumed", rval.consumed);
+            }
+
+            ASN_STRUCT_FREE(asn_DEF_SIO, sio);
+#endif
         }
 
         if(pac->size <= sizeof(seader_credential->credential)) {
@@ -614,7 +644,7 @@ void seader_send_nfc_rx(Seader* seader, uint8_t* buffer, size_t len) {
     response->present = Response_PR_nfcResponse;
     response->choice.nfcResponse = *nfcResponse;
 
-    seader_send_response(seader, response, 0x14, 0x0a, 0x0);
+    seader_send_response(seader, response, NFCInterface, SAMInterface, 0x0);
 
     ASN_STRUCT_FREE(asn_DEF_NFCRx, nfcRx);
     ASN_STRUCT_FREE(asn_DEF_NFCResponse, nfcResponse);
@@ -965,7 +995,7 @@ void seader_parse_nfc_off(Seader* seader) {
     response->present = Response_PR_nfcResponse;
     response->choice.nfcResponse = *nfcResponse;
 
-    seader_send_response(seader, response, 0x44, 0x0a, 0);
+    seader_send_response(seader, response, ExternalApplicationA, SAMInterface, 0);
 
     free(response);
     free(nfcResponse);
