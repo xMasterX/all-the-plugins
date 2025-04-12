@@ -90,7 +90,7 @@ static void handle(PluginState* plugin_state, FuriString* args, PipeSide* pipe) 
 
     size_t original_index = totp_token_info_iterator_get_current_token_index(iterator_context);
 
-    printf("\r\n");
+    TOTP_CLI_NL();
     TOTP_CLI_PRINTF("# --- EXPORT LIST BEGIN ---\r\n");
 
     for(size_t i = 0; i < total_count; i++) {
@@ -116,7 +116,7 @@ static void handle(PluginState* plugin_state, FuriString* args, PipeSide* pipe) 
         } else {
             TOTP_CLI_PRINTF("&period=%" PRIu8, token_info->duration);
         }
-        printf("\r\n");
+        TOTP_CLI_NL();
     }
 
     TOTP_CLI_PRINTF("# --- EXPORT LIST END ---\r\n\r\n");

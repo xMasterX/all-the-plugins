@@ -65,7 +65,7 @@ static bool totp_cli_read_pin(PipeSide* pipe, uint8_t* pin, uint8_t* pin_length)
                 TOTP_CLI_DELETE_LAST_CHAR();
             }
         } else if(c == CliKeyCR) {
-            printf("\r\n");
+            TOTP_CLI_NL();
             break;
         }
     }

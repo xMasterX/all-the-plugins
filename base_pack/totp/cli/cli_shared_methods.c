@@ -44,7 +44,7 @@ bool totp_cli_read_line(PipeSide* pipe, FuriString* out_str, bool mask_user_inpu
             pipe_receive(pipe, &c2, 1);
             pipe_receive(pipe, &c2, 1);
         } else if(c == CliKeyETX) {
-            printf("\r\n");
+            TOTP_CLI_NL();
             return false;
         } else if(
             (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
@@ -63,7 +63,7 @@ bool totp_cli_read_line(PipeSide* pipe, FuriString* out_str, bool mask_user_inpu
                 furi_string_left(out_str, out_str_size - 1);
             }
         } else if(c == CliKeyCR) {
-            printf("\r\n");
+            TOTP_CLI_NL();
             break;
         }
     }
