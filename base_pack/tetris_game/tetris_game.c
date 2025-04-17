@@ -75,6 +75,7 @@ typedef struct {
     Piece currPiece;
     uint16_t numLines;
     uint16_t fallSpeed;
+    bool hardDropping;
     GameState gameState;
     FuriTimer* timer;
     FuriMutex* mutex;
@@ -266,6 +267,7 @@ static void tetris_game_init_state(TetrisState* tetris_state) {
     tetris_state->gameState = GameStatePlaying;
     tetris_state->numLines = 0;
     tetris_state->fallSpeed = MAX_FALL_SPEED;
+    tetris_state->hardDropping = false;
     memset(tetris_state->playField, 0, sizeof(tetris_state->playField));
     memset(tetris_state->bag, 0, sizeof(tetris_state->bag));
 
@@ -402,6 +404,8 @@ static void
         if(tetris_game_piece_at_bottom(tetris_state, newPiece)) {
             furi_timer_stop(tetris_state->timer);
 
+            tetris_state->hardDropping = false;
+
             tetris_game_render_curr_piece(tetris_state);
             uint8_t numLines = 0;
             uint8_t lines[] = {0, 0, 0, 0};
@@ -511,12 +515,20 @@ int32_t tetris_game_app() {
             }
         }
 
+        if(tetris_state->hardDropping) {
+            for(int i = 0; i < 4; i++) {
+                newPiece->p[i].y += 1;
+            }
+            wasDownMove = true;
+        }
+
         if(event_status == FuriStatusOk) {
             if(event.type == EventTypeKey) {
                 if(event.input.type == InputTypePress || event.input.type == InputTypeLong ||
                    event.input.type == InputTypeRepeat) {
                     switch(event.input.key) {
                     case InputKeyUp:
+                        tetris_state->hardDropping = true;
                         break;
                     case InputKeyDown:
                         break;
