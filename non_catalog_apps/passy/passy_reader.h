@@ -6,6 +6,7 @@
 #include <nfc/nfc_device.h>
 #include <lib/nfc/protocols/nfc_generic_event.h>
 #include <lib/nfc/protocols/iso14443_4b/iso14443_4b_poller.h>
+#include <lib/nfc/protocols/iso14443_4a/iso14443_4a_poller.h>
 #include <lib/nfc/helpers/iso14443_crc.h>
 #include <mbedtls/des.h>
 
@@ -24,6 +25,7 @@ typedef struct {
     Passy* passy;
 
     Iso14443_4bPoller* iso14443_4b_poller;
+    Iso14443_4aPoller* iso14443_4a_poller;
     BitBuffer* tx_buffer;
     BitBuffer* rx_buffer;
 

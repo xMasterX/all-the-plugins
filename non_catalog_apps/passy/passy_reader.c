@@ -88,16 +88,29 @@ void passy_reader_free(PassyReader* passy_reader) {
 
 NfcCommand passy_reader_send(PassyReader* passy_reader) {
     NfcCommand ret = NfcCommandContinue;
+    Passy* passy = passy_reader->passy;
     BitBuffer* tx_buffer = passy_reader->tx_buffer;
     BitBuffer* rx_buffer = passy_reader->rx_buffer;
-    Iso14443_4bPoller* iso14443_4b_poller = passy_reader->iso14443_4b_poller;
-    Iso14443_4bError error;
+    if(strcmp(passy->proto, "4a") == 0) {
+        Iso14443_4aPoller* iso14443_4a_poller = passy_reader->iso14443_4a_poller;
+        Iso14443_4aError error;
 
-    // passy_log_bitbuffer(TAG, "NFC transmit", tx_buffer);
-    error = iso14443_4b_poller_send_block(iso14443_4b_poller, tx_buffer, rx_buffer);
-    if(error != Iso14443_4bErrorNone) {
-        FURI_LOG_W(TAG, "iso14443_4b_poller_send_block error %d", error);
-        return NfcCommandStop;
+        // passy_log_bitbuffer(TAG, "NFC transmit", tx_buffer);
+        error = iso14443_4a_poller_send_block(iso14443_4a_poller, tx_buffer, rx_buffer);
+        if(error != Iso14443_4aErrorNone) {
+            FURI_LOG_W(TAG, "iso14443_4a_poller_send_block error %d", error);
+            return NfcCommandStop;
+        }
+    } else {
+        Iso14443_4bPoller* iso14443_4b_poller = passy_reader->iso14443_4b_poller;
+        Iso14443_4bError error;
+
+        // passy_log_bitbuffer(TAG, "NFC transmit", tx_buffer);
+        error = iso14443_4b_poller_send_block(iso14443_4b_poller, tx_buffer, rx_buffer);
+        if(error != Iso14443_4bErrorNone) {
+            FURI_LOG_W(TAG, "iso14443_4b_poller_send_block error %d", error);
+            return NfcCommandStop;
+        }
     }
     bit_buffer_reset(tx_buffer);
     // passy_log_bitbuffer(TAG, "NFC response", rx_buffer);
@@ -467,43 +480,80 @@ NfcCommand passy_reader_state_machine(PassyReader* passy_reader) {
 }
 
 NfcCommand passy_reader_poller_callback(NfcGenericEvent event, void* context) {
-    furi_assert(event.protocol == NfcProtocolIso14443_4b);
     PassyReader* passy_reader = context;
     NfcCommand ret = NfcCommandContinue;
+    Passy* passy = passy_reader->passy;
+    if(strcmp(passy->proto, "4a") == 0) {
+        furi_assert(event.protocol == NfcProtocolIso14443_4a);
+        const Iso14443_4aPollerEvent* iso14443_4a_event = event.event_data;
+        Iso14443_4aPoller* iso14443_4a_poller = event.instance;
 
-    const Iso14443_4bPollerEvent* iso14443_4b_event = event.event_data;
-    Iso14443_4bPoller* iso14443_4b_poller = event.instance;
+        FURI_LOG_D(TAG, "iso14443_4a_event->type %i", iso14443_4a_event->type);
 
-    FURI_LOG_D(TAG, "iso14443_4b_event->type %i", iso14443_4b_event->type);
+        passy_reader->iso14443_4a_poller = iso14443_4a_poller;
+        if(iso14443_4a_event->type == Iso14443_4aPollerEventTypeReady) {
+            nfc_device_set_data(
+                passy_reader->passy->nfc_device,
+                NfcProtocolIso14443_4a,
+                nfc_poller_get_data(passy_reader->passy->poller));
 
-    passy_reader->iso14443_4b_poller = iso14443_4b_poller;
+            ret = passy_reader_state_machine(passy_reader);
 
-    if(iso14443_4b_event->type == Iso14443_4bPollerEventTypeReady) {
-        view_dispatcher_send_custom_event(
-            passy_reader->passy->view_dispatcher, PassyCustomEventReaderDetected);
-        nfc_device_set_data(
-            passy_reader->passy->nfc_device,
-            NfcProtocolIso14443_4b,
-            nfc_poller_get_data(passy_reader->passy->poller));
-
-        ret = passy_reader_state_machine(passy_reader);
-
-        furi_thread_set_current_priority(FuriThreadPriorityLowest);
-    } else if(iso14443_4b_event->type == Iso14443_4bPollerEventTypeError) {
-        Iso14443_4bPollerEventData* data = iso14443_4b_event->data;
-        Iso14443_4bError error = data->error;
-        FURI_LOG_W(TAG, "Iso14443_4bError %i", error);
-        switch(error) {
-        case Iso14443_4bErrorNone:
-            break;
-        case Iso14443_4bErrorNotPresent:
-            break;
-        case Iso14443_4bErrorProtocol:
-            ret = NfcCommandStop;
-            break;
-        case Iso14443_4bErrorTimeout:
-            break;
+            furi_thread_set_current_priority(FuriThreadPriorityLowest);
+        } else if(iso14443_4a_event->type == Iso14443_4aPollerEventTypeError) {
+            Iso14443_4aPollerEventData* data = iso14443_4a_event->data;
+            Iso14443_4aError error = data->error;
+            FURI_LOG_W(TAG, "Iso14443_4aError %i", error);
+            switch(error) {
+            case Iso14443_4aErrorNone:
+                break;
+            case Iso14443_4aErrorNotPresent:
+                break;
+            case Iso14443_4aErrorProtocol:
+                ret = NfcCommandStop;
+                break;
+            case Iso14443_4aErrorTimeout:
+                break;
+            default:
+                break;
+            }
         }
+    } else if(strcmp(passy->proto, "4b") == 0) {
+        furi_assert(event.protocol == NfcProtocolIso14443_4b);
+        const Iso14443_4bPollerEvent* iso14443_4b_event = event.event_data;
+        Iso14443_4bPoller* iso14443_4b_poller = event.instance;
+
+        FURI_LOG_D(TAG, "iso14443_4b_event->type %i", iso14443_4b_event->type);
+
+        passy_reader->iso14443_4b_poller = iso14443_4b_poller;
+
+        if(iso14443_4b_event->type == Iso14443_4bPollerEventTypeReady) {
+            nfc_device_set_data(
+                passy_reader->passy->nfc_device,
+                NfcProtocolIso14443_4b,
+                nfc_poller_get_data(passy_reader->passy->poller));
+
+            ret = passy_reader_state_machine(passy_reader);
+
+            furi_thread_set_current_priority(FuriThreadPriorityLowest);
+        } else if(iso14443_4b_event->type == Iso14443_4bPollerEventTypeError) {
+            Iso14443_4bPollerEventData* data = iso14443_4b_event->data;
+            Iso14443_4bError error = data->error;
+            FURI_LOG_W(TAG, "Iso14443_4bError %i", error);
+            switch(error) {
+            case Iso14443_4bErrorNone:
+                break;
+            case Iso14443_4bErrorNotPresent:
+                break;
+            case Iso14443_4bErrorProtocol:
+                ret = NfcCommandStop;
+                break;
+            case Iso14443_4bErrorTimeout:
+                break;
+            }
+        }
+    } else {
+        view_dispatcher_send_custom_event(passy->view_dispatcher, PassyCustomEventReaderError);
     }
 
     return ret;
