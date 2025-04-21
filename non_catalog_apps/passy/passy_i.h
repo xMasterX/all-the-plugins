@@ -51,6 +51,7 @@ enum PassyCustomEvent {
     // Read card events
     PassyCustomEventReaderError,
     PassyCustomEventReaderSuccess,
+    PassyCustomEventReaderRestart,
     PassyCustomEventReaderDetected,
     PassyCustomEventReaderAuthenticated,
     PassyCustomEventReaderReading,

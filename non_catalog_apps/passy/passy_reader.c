@@ -95,7 +95,7 @@ NfcCommand passy_reader_send(PassyReader* passy_reader) {
         Iso14443_4aPoller* iso14443_4a_poller = passy_reader->iso14443_4a_poller;
         Iso14443_4aError error;
 
-        // passy_log_bitbuffer(TAG, "NFC transmit", tx_buffer);
+        passy_log_bitbuffer(TAG, "NFC transmit", tx_buffer);
         error = iso14443_4a_poller_send_block(iso14443_4a_poller, tx_buffer, rx_buffer);
         if(error != Iso14443_4aErrorNone) {
             FURI_LOG_W(TAG, "iso14443_4a_poller_send_block error %d", error);
@@ -105,7 +105,7 @@ NfcCommand passy_reader_send(PassyReader* passy_reader) {
         Iso14443_4bPoller* iso14443_4b_poller = passy_reader->iso14443_4b_poller;
         Iso14443_4bError error;
 
-        // passy_log_bitbuffer(TAG, "NFC transmit", tx_buffer);
+        passy_log_bitbuffer(TAG, "NFC transmit", tx_buffer);
         error = iso14443_4b_poller_send_block(iso14443_4b_poller, tx_buffer, rx_buffer);
         if(error != Iso14443_4bErrorNone) {
             FURI_LOG_W(TAG, "iso14443_4b_poller_send_block error %d", error);
@@ -113,7 +113,7 @@ NfcCommand passy_reader_send(PassyReader* passy_reader) {
         }
     }
     bit_buffer_reset(tx_buffer);
-    // passy_log_bitbuffer(TAG, "NFC response", rx_buffer);
+    passy_log_bitbuffer(TAG, "NFC response", rx_buffer);
 
     // Check SW
     size_t length = bit_buffer_get_size_bytes(rx_buffer);
@@ -293,6 +293,7 @@ NfcCommand passy_reader_read_binary(
     }
 
     secure_messaging_unwrap_rapdu(passy_reader->secure_messaging, passy_reader->rx_buffer);
+    passy_log_bitbuffer(TAG, "NFC response (decrypted)", passy_reader->rx_buffer);
     const uint8_t* decrypted_data = bit_buffer_get_data(passy_reader->rx_buffer);
     memcpy(output_buffer, decrypted_data, Le);
 

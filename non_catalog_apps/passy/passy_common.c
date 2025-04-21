@@ -101,53 +101,20 @@ void passy_mac(uint8_t* key, uint8_t* data, size_t data_length, uint8_t* mac, bo
 
 // https://en.wikipedia.org/wiki/Machine-readable_passport
 char passy_checksum(char* str) {
-    uint8_t values[] = {
-        0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
-        13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
-        // < = filler
-        // A = 10
-        // B = 11
-        // C = 12
-        // D = 13
-        // E = 14
-        // F = 15
-        // G = 16
-        // H = 17
-        // I = 18
-        // J = 19
-        // K = 20
-        // L = 21
-        // M = 22
-        // N = 23
-        // O = 24
-        // P = 25
-        // Q = 26
-        // R = 27
-        // S = 28
-        // T = 29
-        // U = 30
-        // V = 31
-        // W = 32
-        // X = 33
-        // Y = 34
-        // Z = 35
-    };
-
     size_t sum = 0;
     uint8_t weight_map[] = {7, 3, 1};
     for(uint8_t i = 0; i < strlen(str); i++) {
         uint8_t value;
+        char c = toupper(str[i]);
         uint8_t weight = weight_map[(i % 3)];
-        if(str[i] >= '0' && str[i] <= '9') {
-            value = values[str[i] - '0'];
-        } else if(str[i] >= 'A' && str[i] <= 'Z') {
-            value = values[str[i] - 'A' + 10];
-        } else if(str[i] >= 'a' && str[i] <= 'z') {
-            value = values[str[i] - 'a' + 10];
-        } else if(str[i] == '<') {
+        if(c >= '0' && c <= '9') {
+            value = c - '0';
+        } else if(c >= 'A' && c <= 'Z') {
+            value = c - 'A' + 10;
+        } else if(c == '<') {
             value = 0;
         } else {
-            FURI_LOG_E(TAG, "Invalid character %02x", str[i]);
+            FURI_LOG_E(TAG, "Invalid character %02x", c);
             return -1;
         }
         sum += value * weight;

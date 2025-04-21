@@ -115,6 +115,8 @@ void passy_scene_advanced_menu_on_enter(void* context) {
     free(com);
     com = 0;
 
+    submenu_set_selected_item(
+        submenu, scene_manager_get_scene_state(passy->scene_manager, PassySceneAdvancedMenu));
     view_dispatcher_switch_to_view(passy->view_dispatcher, PassyViewMenu);
 }
 

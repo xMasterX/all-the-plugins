@@ -56,6 +56,8 @@ void passy_scene_main_menu_on_enter(void* context) {
             passy);
     }
 
+    submenu_set_selected_item(
+        submenu, scene_manager_get_scene_state(passy->scene_manager, PassySceneMainMenu));
     view_dispatcher_switch_to_view(passy->view_dispatcher, PassyViewMenu);
 }
 
