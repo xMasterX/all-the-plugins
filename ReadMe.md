@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `21 Apr 19:40 GMT +3`
+### Apps checked & updated at `23 Apr 03:14 GMT +3`
 
 
 # Default pack
@@ -273,6 +273,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Quac! Remote | ![Tools Badge] | [by rdefeo](https://github.com/rdefeo/quac) | Various fixes by @Willy-JL | [![Author Badge]](https://lab.flipper.net/apps/quac) |
 | Key Copier | ![Tools Badge] | [by zinongli](https://github.com/zinongli/KeyCopier) |  | ![None Badge] |
 | uPython | ![Tools Badge] | [by ofabel](https://github.com/ofabel/mp-flipper) | read more details in original repo | [![Author Badge]](https://lab.flipper.net/apps/upython) |
+| Nickname Generator | ![Tools Badge] | [by disaxq](https://github.com/disaxq/Nickname-Generator) |  | ![None Badge] |
 | USB HID Autofire | ![USB Badge] | [by pbek](https://github.com/pbek/usb_hid_autofire) |  | ![None Badge] |
 | USB Consumer Control | ![USB Badge] | [by WithSecureLabs](https://github.com/WithSecureLabs/usb-consumer-control/tree/main) |  | ![None Badge] |
 | HID File Transfer | ![USB Badge] | [by Kavakuo](https://github.com/Kavakuo/HID-File-Transfer) | Get client app in [original repo](https://github.com/Kavakuo/HID-File-Transfer) | ![None Badge] |
