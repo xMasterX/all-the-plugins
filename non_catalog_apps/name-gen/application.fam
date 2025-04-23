@@ -1,0 +1,9 @@
+App(
+    appid="nickname_generator",
+    name="NickName Generator",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="nickname_generator_app",
+    stack_size=1 * 1024,
+    fap_category="Tools",
+    fap_icon="icon.png",
+)
