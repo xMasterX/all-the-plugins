@@ -84,7 +84,8 @@ void passy_scene_read_success_on_enter(void* context) {
                 char* row_1 = (char*)dg1->mrz.buf + 0;
                 char* row_2 = (char*)dg1->mrz.buf + 44;
 
-                furi_string_cat_printf(str, "Country: %.3s\n", row_1 + 2);
+                furi_string_cat_printf(str, "Issuing state: %.3s\n", row_1 + 2);
+                furi_string_cat_printf(str, "Nationality: %.3s\n", row_2 + 10);
                 furi_string_cat_printf(str, "Name: %s\n", name);
                 furi_string_cat_printf(str, "Doc Number: %.9s\n", row_2);
                 furi_string_cat_printf(str, "DoB: %.6s\n", row_2 + 13);
@@ -100,7 +101,8 @@ void passy_scene_read_success_on_enter(void* context) {
                 char* row_2 = (char*)dg1->mrz.buf + 30;
                 char* row_3 = (char*)dg1->mrz.buf + 60;
 
-                furi_string_cat_printf(str, "Country: %.3s\n", row_1 + 2);
+                furi_string_cat_printf(str, "Issuing state: %.3s\n", row_1 + 2);
+                furi_string_cat_printf(str, "Nationality: %.3s\n", row_2 + 15);
                 furi_string_cat_printf(str, "Name: %s\n", name);
                 furi_string_cat_printf(str, "Doc Number: %.9s\n", row_1 + 5);
                 furi_string_cat_printf(str, "DoB: %.6s\n", row_2);
