@@ -4,8 +4,7 @@
 #include <gui/gui.h>
 #include <dialogs/dialogs.h>
 #include <storage/storage.h>
-#include <toolbox/cli/cli_command.h>
-#include <cli/cli_main_commands.h>
+#include <cli/cli.h>
 #include <cli/cli_vcp.h>
 
 #include <mp_flipper_runtime.h>

@@ -1,5 +1,4 @@
-#include <toolbox/cli/cli_command.h>
-#include <cli/cli_main_commands.h>
+#include <cli/cli.h>
 #include <furi.h>
 
 #include <genhdr/mpversion.h>

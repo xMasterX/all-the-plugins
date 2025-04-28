@@ -1,7 +1,6 @@
 #include <stdio.h>
 
-#include <toolbox/cli/cli_command.h>
-#include <cli/cli_main_commands.h>
+#include <cli/cli.h>
 #include <cli/cli_ansi.h>
 #include <furi.h>
 
@@ -14,6 +13,21 @@
 
 #define AUTOCOMPLETE_MANY_MATCHES (size_t)(-1)
 #define HISTORY_SIZE              16
+
+typedef enum {
+    CliSymbolAsciiSOH = 0x01,
+    CliSymbolAsciiETX = 0x03,
+    CliSymbolAsciiEOT = 0x04,
+    CliSymbolAsciiBell = 0x07,
+    CliSymbolAsciiBackspace = 0x08,
+    CliSymbolAsciiTab = 0x09,
+    CliSymbolAsciiLF = 0x0A,
+    CliSymbolAsciiCR = 0x0D,
+    CliSymbolAsciiEsc = 0x1B,
+    CliSymbolAsciiUS = 0x1F,
+    CliSymbolAsciiSpace = 0x20,
+    CliSymbolAsciiDel = 0x7F,
+} CliSymbols;
 
 typedef struct {
     FuriString** stack;
@@ -247,8 +261,7 @@ inline static bool continue_with_input(mp_flipper_repl_context_t* context) {
     return true;
 }
 
-void upython_repl_execute(PipeSide* pipe) {
-    UNUSED(pipe);
+void upython_repl_execute() {
     size_t stack;
 
     const size_t heap_size = memmgr_get_free_heap() * 0.1;
@@ -287,7 +300,7 @@ void upython_repl_execute(PipeSide* pipe) {
 
             // scan character loop
             do {
-                character = getchar();
+                character = getc(stdin);
 
                 // Ctrl + C
                 if(character == CliKeyETX) {
@@ -326,8 +339,8 @@ void upython_repl_execute(PipeSide* pipe) {
 
                 // handle arrow keys
                 if(character >= 0x18 && character <= 0x1B) {
-                    character = getchar();
-                    character = getchar();
+                    character = getc(stdin);
+                    character = getc(stdin);
 
                     handle_arrow_keys(character, context);
 
@@ -351,7 +364,8 @@ void upython_repl_execute(PipeSide* pipe) {
                 // append at end
                 if(context->cursor == furi_string_size(context->line)) {
                     buffer[0] = character;
-                    putchar(character);
+                    putc(buffer[0], stdout);
+                    fflush(stdout);
 
                     furi_string_push_back(context->line, character);
 
