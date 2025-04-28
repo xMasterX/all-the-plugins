@@ -25,6 +25,8 @@ typedef enum {
     ADULT = 3073 // 0xc01
 } ConcessionType;
 
+bool hasTravelPassAvailable = false;
+
 // Function to print concession type
 void printConcessionType(unsigned short concession_type, FuriString* parsed_data) {
     switch(concession_type) {
@@ -57,18 +59,38 @@ uint32_t extract_and_convert(const char* str, int start, int length) {
     return value;
 }
 
-void parse_gocard_time(const char* bin_str, FuriString* parsed_data) {
-    int len = strlen(bin_str);
+void parse_gocard_time(int block, int offset, const MfClassicData* data, FuriString* parsed_data) {
+    //byte to start at
+    int num_bytes = 4;
+    char gocard_date_bit_representation[num_bytes * 8 + 1];
+    memset(gocard_date_bit_representation, 0, sizeof(gocard_date_bit_representation));
+
+    for(int i = (offset + num_bytes - 1), j = 0; i >= offset;
+        i--, j++) { // Reverse the order of bytes and converty to binary
+        char bits[9];
+        byte_to_binary(data->block[block].data[i], bits);
+        memcpy(&gocard_date_bit_representation[j * 8], bits, 8);
+    }
+    gocard_date_bit_representation[num_bytes * 8] = '\0';
+
+    int len = strlen(gocard_date_bit_representation);
+    FURI_LOG_I(TAG, "len %d", len); // I get 34
+
     if(len != 32 && len != 33) {
         FURI_LOG_I(TAG, "Invalid input length");
         return;
     }
 
+    // Field layout (from rightmost bit):
+    // - Day: 5 bits
+    // - Month: 4 bits
+    // - Year: 6 bits (years since 2000)
+    // - Minutes: 11 bits (minutes from midnight)
     // Extract values from right to left using bit_slice_to_dec
-    uint32_t day = bit_slice_to_dec(bin_str, len - 5, len);
-    uint32_t month = bit_slice_to_dec(bin_str, len - 9, len - 6);
-    uint32_t year = bit_slice_to_dec(bin_str, len - 15, len - 10);
-    uint32_t minutes = bit_slice_to_dec(bin_str, len - 26, len - 16);
+    uint32_t day = bit_slice_to_dec(gocard_date_bit_representation, len - 5, len);
+    uint32_t month = bit_slice_to_dec(gocard_date_bit_representation, len - 9, len - 6);
+    uint32_t year = bit_slice_to_dec(gocard_date_bit_representation, len - 15, len - 10);
+    uint32_t minutes = bit_slice_to_dec(gocard_date_bit_representation, len - 26, len - 16);
 
     // Convert year from offset 2000
     year += 2000;
@@ -80,6 +102,44 @@ void parse_gocard_time(const char* bin_str, FuriString* parsed_data) {
     // Format output string: "YYYY-MM-DD HH:MM"
     furi_string_cat_printf(
         parsed_data, "%04lu-%02lu-%02lu %02lu:%02lu\n", year, month, day, hours, mins);
+}
+
+void parse_gocard_topup_info(FuriString* parsed_data, const MfClassicData* data) {
+    furi_string_cat_printf(parsed_data, "\n\e#Top-Up Info:");
+    bool fully_empty = true;
+    int block_num = 8;
+    for(int i = block_num; i < block_num + 3; i++) {
+        /******* Check if it's empty ******/
+        bool is_block_empty = true;
+
+        for(int j = 2; j < 8; j++) {
+            if(data->block[i].data[j] != 0) {
+                FURI_LOG_I(TAG, "Not 0, proceeding");
+                is_block_empty = false;
+                break;
+            }
+        }
+
+        if(is_block_empty) {
+            FURI_LOG_I(TAG, "Block %d is empty", i);
+            continue;
+        } else {
+            fully_empty = false;
+        }
+
+        /**** If not fully empty, proceed ******/
+        unsigned short creditcents =
+            byteArrayToIntReversed(data->block[i].data[6], data->block[i].data[7]);
+        creditcents &= 0x7FFF;
+        double credit = creditcents / 100.0;
+
+        furi_string_cat_printf(parsed_data, "\nCredit Added: A$%.2f\nTime: ", credit);
+        parse_gocard_time(i, 2, data, parsed_data);
+    }
+
+    if(fully_empty) {
+        FURI_LOG_I(TAG, "All checked blocks are empty, returning.");
+    }
 }
 
 static bool gocard_parse(FuriString* parsed_data, const MfClassicData* data) {
@@ -108,23 +168,12 @@ static bool gocard_parse(FuriString* parsed_data, const MfClassicData* data) {
         double balance = balancecents / 100.0;
         furi_string_printf(parsed_data, "\e#go card\nValue: A$%.2f\n", balance); //show balance
 
+        hasTravelPassAvailable = (data->block[balance_slot].data[7] != 0x00) ? true : false;
         int start_index = 4; //byte to start at
-        int end_index = 7; // byte to end at
         int config_block = 6; //block number containing card configuration
-        int num_bytes = end_index - start_index + 1;
-        char config_bit_representation[num_bytes * 8 + 1];
 
-        for(int i = end_index, j = 0; i >= start_index;
-            i--, j++) { // Reverse the order of bytes and converty to binary
-            char bits[9];
-            byte_to_binary(data->block[config_block].data[i], bits);
-            memcpy(&config_bit_representation[j * 8], bits, 8);
-        }
-
-        config_bit_representation[num_bytes * 8] = '\0'; //add a null terminator as always
         furi_string_cat_printf(parsed_data, "Expiry:\n");
-        parse_gocard_time(config_bit_representation, parsed_data);
-        FURI_LOG_I(TAG, "bitrepr: %s", config_bit_representation);
+        parse_gocard_time(config_block, start_index, data, parsed_data);
 
         //concession type:
 
@@ -132,6 +181,8 @@ static bool gocard_parse(FuriString* parsed_data, const MfClassicData* data) {
             data->block[config_block].data[8], data->block[config_block].data[9]);
 
         printConcessionType(concession_type, parsed_data);
+
+        parse_gocard_topup_info(parsed_data, data);
 
         parsed = true;
     } while(false);

@@ -4,6 +4,7 @@
 #include <bit_lib.h>
 #include <lib/nfc/protocols/nfc_protocol.h>
 #include "../api/metroflip/metroflip_api.h"
+#include "../api/suica/suica_loading.h"
 #define TAG "Metroflip:Scene:Load"
 #include "keys.h"
 #include <nfc/protocols/mf_classic/mf_classic.h>
@@ -15,7 +16,7 @@ void metroflip_scene_load_on_enter(void* context) {
     bool has_card_type = false;
     // The same string we will use to direct parse scene which plugin to call
     // Extracted from the file
-    FuriString* card_type = furi_string_alloc();
+    FuriString* card_type_str = furi_string_alloc();
     FuriString* device_type = furi_string_alloc();
 
     // All the app_data browser stuff. Don't worry about this
@@ -32,7 +33,7 @@ void metroflip_scene_load_on_enter(void* context) {
             if(!flipper_format_file_open_existing(format, furi_string_get_cstr(file_path))) break;
             if(!flipper_format_read_string(format, "Device type", device_type)) break;
             const char* protocol_name = furi_string_get_cstr(device_type);
-            if(!flipper_format_read_string(format, "Card Type", card_type)) {
+            if(!flipper_format_read_string(format, "Card Type", card_type_str)) {
                 flipper_format_file_close(format);
                 flipper_format_file_open_existing(format, furi_string_get_cstr(file_path));
 
@@ -103,6 +104,12 @@ void metroflip_scene_load_on_enter(void* context) {
                 flipper_format_file_close(format);
             } else {
                 has_card_type = false;
+                if(furi_string_equal_str(card_type_str, "suica")) {
+                    FURI_LOG_I(TAG, "Detected: Suica");
+                    app->data_loaded = true;
+                    app->card_type = "suica";
+                    load_suica_data(app, format);
+                }
             }
             app->file_path = furi_string_get_cstr(file_path);
             strncpy(
@@ -119,7 +126,7 @@ void metroflip_scene_load_on_enter(void* context) {
     if(app->data_loaded) {
         // Direct to the parsing screen just like the auto scene does
         if(!has_card_type) {
-            app->card_type = furi_string_get_cstr(card_type);
+            app->card_type = furi_string_get_cstr(card_type_str);
             has_card_type = false;
         }
         scene_manager_search_and_switch_to_previous_scene(app->scene_manager, MetroflipSceneStart);
@@ -128,6 +135,7 @@ void metroflip_scene_load_on_enter(void* context) {
         scene_manager_search_and_switch_to_previous_scene(app->scene_manager, MetroflipSceneStart);
     }
     furi_string_free(file_path);
+    furi_string_free(card_type_str);
     furi_record_close(RECORD_STORAGE);
 }
 

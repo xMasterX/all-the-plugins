@@ -141,10 +141,11 @@ static NfcCommand metromoney_poller_callback(NfcGenericEvent event, void* contex
 
 static void metromoney_on_enter(Metroflip* app) {
     dolphin_deed(DolphinDeedNfcRead);
-
+    FURI_LOG_I(TAG, "open metromoney");
     app->sec_num = 0;
 
     if(app->data_loaded) {
+        FURI_LOG_I(TAG, "tbilisi loaded");
         Storage* storage = furi_record_open(RECORD_STORAGE);
         FlipperFormat* ff = flipper_format_file_alloc(storage);
         if(flipper_format_file_open_existing(ff, app->file_path)) {
@@ -172,6 +173,7 @@ static void metromoney_on_enter(Metroflip* app) {
         }
         flipper_format_free(ff);
     } else {
+        FURI_LOG_I(TAG, "tbilisi not loaded");
         // Setup view
         Popup* popup = app->popup;
         popup_set_header(popup, "Apply\n card to\nthe back", 68, 30, AlignLeft, AlignTop);

@@ -22,8 +22,7 @@ void metroflip_scene_supported_on_enter(void* context) {
     furi_string_cat_printf(str, " - ITSO:\nUnited Kingdom\nProtocol: MIFARE DESFire\n\n");
     furi_string_cat_printf(str, " - Metromoney:\nTbilisi, Georgia\nProtocol: MIFARE Classic\n\n");
     furi_string_cat_printf(
-        str,
-        " - myki:\nMelbourne (and surrounds), VIC, Australia\nProtocol: MIFARE DESFire\n\n");
+        str, " - myki:\nMelbourne (and surrounds), VIC, Australia\nProtocol: MIFARE DESFire\n\n");
     furi_string_cat_printf(str, " - Navigo:\nParis, France\nProtocol: Calypso\n\n");
     furi_string_cat_printf(
         str, " - Opal:\nSydney (and surrounds), NSW, Australia\nProtocol: MIFARE DESFire\n\n");

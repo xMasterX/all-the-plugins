@@ -79,6 +79,11 @@ void metroflip_scene_detect_scan_callback(NfcScannerEvent event, void* context) 
                 app->detected_protocols, event.data.protocols, event.data.protocol_num);
             view_dispatcher_send_custom_event(
                 app->view_dispatcher, MetroflipCustomEventPollerDetect);
+        } else if(event.data.protocols && *event.data.protocols == NfcProtocolFelica) {
+            nfc_detected_protocols_set(
+                app->detected_protocols, event.data.protocols, event.data.protocol_num);
+            view_dispatcher_send_custom_event(
+                app->view_dispatcher, MetroflipCustomEventPollerDetect);
         } else {
             const NfcProtocol* invalid_protocol = (const NfcProtocol*)NfcProtocolInvalid;
             nfc_detected_protocols_set(
@@ -195,6 +200,12 @@ bool metroflip_scene_auto_on_event(void* context, SceneManagerEvent event) {
                 nfc_detected_protocols_get_protocol(app->detected_protocols, 0) ==
                 NfcProtocolIso14443_4b) {
                 app->card_type = "calypso";
+                scene_manager_next_scene(app->scene_manager, MetroflipSceneParse);
+                consumed = true;
+            } else if(
+                nfc_detected_protocols_get_protocol(app->detected_protocols, 0) ==
+                NfcProtocolFelica) {
+                app->card_type = "suica";
                 scene_manager_next_scene(app->scene_manager, MetroflipSceneParse);
                 consumed = true;
             } else if(

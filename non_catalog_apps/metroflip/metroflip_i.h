@@ -49,6 +49,8 @@
 #include "scenes/metroflip_scene.h"
 
 #include "api/calypso/calypso_i.h"
+#include "api/suica/suica_structs.h"
+
 
 #define KEY_MASK_BIT_CHECK(key_mask_1, key_mask_2) (((key_mask_1) & (key_mask_2)) == (key_mask_1))
 #define METROFLIP_FILE_EXTENSION                   ".nfc"
@@ -101,6 +103,9 @@ typedef struct {
 
     // Calypso specific context
     CalypsoContext* calypso_context;
+
+    // Suica
+    SuicaContext* suica_context;
 
     DialogsApp* dialogs;
 
