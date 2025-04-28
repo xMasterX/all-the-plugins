@@ -25,5 +25,6 @@
 #include "emos_e601x.h"
 #include "bresser_3ch.h"
 #include "vauno_en8822c.h"
+#include "bl999.h"
 
 extern const SubGhzProtocolRegistry weather_station_protocol_registry;
