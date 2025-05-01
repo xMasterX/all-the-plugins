@@ -112,7 +112,7 @@ static FuriHalSubGhzPreset str_to_preset(FuriString* preset) {
 }
 
 // -4: missing protocol
-// -3: missing preset
+// -3: missing or wrong preset
 // -2: transmit error
 // -1: error
 // 0: ok
@@ -148,6 +148,38 @@ static int playlist_worker_process(
     if(!flipper_format_read_string(fff_file, "Preset", preset)) {
         FURI_LOG_E(TAG, "  (TX) Missing Preset");
         return -3;
+        // load preset
+    } else {
+                uint32_t temp_data32;
+                uint8_t* custom_preset_data;
+                uint32_t custom_preset_data_size;
+
+                if(!strcmp(furi_string_get_cstr(preset), "FuriHalSubGhzPresetCustom")) {
+
+                    if(!flipper_format_get_value_count(fff_file, "Custom_preset_data", &temp_data32))
+                        return -3;
+                    if(!temp_data32 || (temp_data32 % 2)) {
+                        FURI_LOG_E(TAG, "  (TX) Missing Custom preset data");
+                        return -3;
+                    }
+                    custom_preset_data_size = sizeof(uint8_t) * temp_data32;
+                    custom_preset_data = malloc(custom_preset_data_size);
+                    if(!flipper_format_read_hex(
+                           fff_file,
+                           "Custom_preset_data",
+                           custom_preset_data,
+                           custom_preset_data_size)) {
+                        FURI_LOG_E(TAG, " (TX) Custom preset data read error");
+                        return -3;
+                    }
+                    subghz_devices_load_preset(worker->radio_device,str_to_preset(preset),custom_preset_data);
+                    free(custom_preset_data);
+                    FURI_LOG_D(TAG, "  (TX) Custom preset loaded ");
+                } else {
+                    subghz_devices_load_preset(worker->radio_device, str_to_preset(preset), NULL);
+                    FURI_LOG_D(TAG, "  (TX) Standart preset loaded ");
+                }
+
     }
 
     // check if protocol is present
@@ -174,8 +206,6 @@ static int playlist_worker_process(
 
     subghz_transmitter_deserialize(transmitter, fff_data);
 
-    subghz_devices_load_preset(worker->radio_device, str_to_preset(preset), NULL);
-    // there is no check for a custom preset
     frequency = subghz_devices_set_frequency(worker->radio_device, frequency);
 
     // Set device to TX and check frequency is alowed to TX
