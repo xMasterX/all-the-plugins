@@ -106,7 +106,9 @@ static void handle(PluginState* plugin_state, FuriString* args, PipeSide* pipe) 
             token_info->token_length,
             &plugin_state->crypto_settings,
             &key_length);
-        print_as_base32(key, key_length);
+        size_t plain_key_length =
+            token_info->token_plain_length > 0 ? token_info->token_plain_length : key_length;
+        print_as_base32(key, plain_key_length);
         memset_s(key, key_length, 0, key_length);
         free(key);
         TOTP_CLI_PRINTF("&algorithm=%s", token_info_get_algo_as_cstr(token_info));
