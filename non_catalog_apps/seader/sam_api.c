@@ -216,8 +216,8 @@ static int seader_print_struct_callback(const void* buffer, size_t size, void* a
 void seader_send_payload(
     Seader* seader,
     Payload_t* payload,
-    uint8_t to,
     uint8_t from,
+    uint8_t to,
     uint8_t replyTo) {
     uint8_t rBuffer[SEADER_UART_RX_BUF_SIZE] = {0};
 
@@ -240,8 +240,8 @@ void seader_send_payload(
 #endif
     //0xa0, 0xda, 0x02, 0x63, 0x00, 0x00, 0x0a,
     //0x44, 0x0a, 0x44, 0x00, 0x00, 0x00, 0xa0, 0x02, 0x96, 0x00
-    rBuffer[0] = to;
-    rBuffer[1] = from;
+    rBuffer[0] = from;
+    rBuffer[1] = to;
     rBuffer[2] = replyTo;
 
     seader_send_apdu(seader, 0xA0, 0xDA, 0x02, 0x63, rBuffer, 6 + er.encoded);
@@ -250,8 +250,8 @@ void seader_send_payload(
 void seader_send_response(
     Seader* seader,
     Response_t* response,
-    uint8_t to,
     uint8_t from,
+    uint8_t to,
     uint8_t replyTo) {
     Payload_t* payload = 0;
     payload = calloc(1, sizeof *payload);
@@ -260,7 +260,7 @@ void seader_send_response(
     payload->present = Payload_PR_response;
     payload->choice.response = *response;
 
-    seader_send_payload(seader, payload, to, from, replyTo);
+    seader_send_payload(seader, payload, from, to, replyTo);
 
     ASN_STRUCT_FREE(asn_DEF_Payload, payload);
 }

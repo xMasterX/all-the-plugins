@@ -73,6 +73,8 @@ static bool seader_credential_load(SeaderCredential* cred, FuriString* path, boo
         // Optional SIO/Diversifier
         cred->sio_len = sizeof(cred->sio); // No way to know real length;
         cred->diversifier_len = sizeof(cred->diversifier); // No way to know real length;
+        memset(cred->sio, 0, sizeof(cred->sio));
+        memset(cred->diversifier, 0, sizeof(cred->diversifier));
         flipper_format_read_hex(file, "SIO", cred->sio, cred->sio_len);
         flipper_format_read_hex(file, "Diversifier", cred->diversifier, cred->diversifier_len);
 
