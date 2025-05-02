@@ -125,7 +125,7 @@ void passy_scene_read_success_on_enter(void* context) {
         dg1 = 0;
 
     } else if(passy->read_type == PassyReadDG2 || passy->read_type == PassyReadDG7) {
-        furi_string_cat_printf(str, "Saved to disk in apps_data/passy/\n");
+        furi_string_cat_printf(str, "Saved to disk in apps_data/passy/...\n");
     } else {
         char display[9]; // 4 byte header in hex + NULL
         memset(display, 0, sizeof(display));

@@ -7,6 +7,7 @@ enum SubmenuIndex {
     SubmenuIndexReadDG1,
     SubmenuIndexReadDG2,
     SubmenuIndexReadAdvanced,
+    SubmenuIndexKnownIssues,
     SubmenuIndexDeleteMRZInfo,
 };
 
@@ -42,12 +43,21 @@ void passy_scene_main_menu_on_enter(void* context) {
             SubmenuIndexReadDG2,
             passy_scene_main_menu_submenu_callback,
             passy);
+        if(furi_hal_rtc_is_flag_set(FuriHalRtcFlagDebug)) {
+            submenu_add_item(
+                submenu,
+                "Read Advanced",
+                SubmenuIndexReadAdvanced,
+                passy_scene_main_menu_submenu_callback,
+                passy);
+        }
         submenu_add_item(
             submenu,
-            "Read Advanced",
-            SubmenuIndexReadAdvanced,
+            "Known Issues",
+            SubmenuIndexKnownIssues,
             passy_scene_main_menu_submenu_callback,
             passy);
+
         submenu_add_item(
             submenu,
             "Delete MRZ Info",
@@ -83,7 +93,10 @@ bool passy_scene_main_menu_on_event(void* context, SceneManagerEvent event) {
             consumed = true;
         } else if(event.event == SubmenuIndexReadAdvanced) {
             passy->read_type = PassyReadCOM;
-            scene_manager_next_scene(passy->scene_manager, PassySceneRead);
+            scene_manager_next_scene(passy->scene_manager, PassySceneAdvWarning);
+            consumed = true;
+        } else if(event.event == SubmenuIndexKnownIssues) {
+            scene_manager_next_scene(passy->scene_manager, PassySceneKnownIssues);
             consumed = true;
         }
     } else if(event.type == SceneManagerEventTypeBack) {

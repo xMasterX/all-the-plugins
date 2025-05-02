@@ -16,7 +16,6 @@ void passy_scene_passport_number_input_on_enter(void* context) {
     TextInput* text_input = passy->text_input;
 
     text_input_set_header_text(text_input, "Passport Number");
-    text_input_set_minimum_length(text_input, 9);
     if(passy->passport_number[0] != '\0') {
         strlcpy(passy->text_store, passy->passport_number, sizeof(passy->text_store));
     }
@@ -37,6 +36,13 @@ bool passy_scene_passport_number_input_on_event(void* context, SceneManagerEvent
 
     if(event.type == SceneManagerEventTypeCustom) {
         if(event.event == PassyCustomEventTextInputDone) {
+            // Padding the passport number with '<' to make it 9 characters long
+            size_t len = strlen(passy->text_store);
+            while(len < 9) {
+                passy->text_store[len++] = '<';
+            }
+            passy->text_store[len] = '\0';
+
             strlcpy(passy->passport_number, passy->text_store, strlen(passy->text_store) + 1);
             scene_manager_next_scene(passy->scene_manager, PassySceneDoBInput);
             consumed = true;

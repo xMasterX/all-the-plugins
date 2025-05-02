@@ -1,11 +1,13 @@
 #include "passy_reader.h"
 
+#define ASN_EMIT_DEBUG 0
+#include <lib/asn1/COM.h>
+
 #define TAG                         "PassyReader"
 #define PASSY_READER_DG1_CHUNK_SIZE 0x20
 #define PASSY_READER_DG2_CHUNK_SIZE 0x20
 
-#define ASN_EMIT_DEBUG 0
-#include <lib/asn1/COM.h>
+#define PASSY_DG2_LOOKAHEAD 120
 
 static uint8_t passport_aid[] = {0xA0, 0x00, 0x00, 0x02, 0x47, 0x10, 0x01};
 static uint8_t select_header[] = {0x00, 0xA4, 0x04, 0x0C};
@@ -17,6 +19,8 @@ static uint8_t SW_success[] = {0x90, 0x00};
 static const uint8_t jpeg_header[4] = {0xFF, 0xD8, 0xFF, 0xE0};
 static const uint8_t jpeg2k_header[6] = {0x00, 0x00, 0x00, 0x0C, 0x6A, 0x50};
 static const uint8_t jpeg2k_cs_header[4] = {0xFF, 0x4F, 0xFF, 0x51};
+
+static bool print_logs = true;
 
 size_t asn1_length(uint8_t data[3]) {
     if(data[0] <= 0x7F) {
@@ -95,25 +99,34 @@ NfcCommand passy_reader_send(PassyReader* passy_reader) {
         Iso14443_4aPoller* iso14443_4a_poller = passy_reader->iso14443_4a_poller;
         Iso14443_4aError error;
 
-        passy_log_bitbuffer(TAG, "NFC transmit", tx_buffer);
+        if(print_logs) {
+            passy_log_bitbuffer(TAG, "NFC transmit", tx_buffer);
+        }
         error = iso14443_4a_poller_send_block(iso14443_4a_poller, tx_buffer, rx_buffer);
         if(error != Iso14443_4aErrorNone) {
             FURI_LOG_W(TAG, "iso14443_4a_poller_send_block error %d", error);
             return NfcCommandStop;
         }
-    } else {
+    } else if(strcmp(passy->proto, "4b") == 0) {
         Iso14443_4bPoller* iso14443_4b_poller = passy_reader->iso14443_4b_poller;
         Iso14443_4bError error;
 
-        passy_log_bitbuffer(TAG, "NFC transmit", tx_buffer);
+        if(print_logs) {
+            passy_log_bitbuffer(TAG, "NFC transmit", tx_buffer);
+        }
         error = iso14443_4b_poller_send_block(iso14443_4b_poller, tx_buffer, rx_buffer);
         if(error != Iso14443_4bErrorNone) {
             FURI_LOG_W(TAG, "iso14443_4b_poller_send_block error %d", error);
             return NfcCommandStop;
         }
+    } else {
+        FURI_LOG_W(TAG, "Unknown protocol %s", passy->proto);
+        return NfcCommandStop;
     }
     bit_buffer_reset(tx_buffer);
-    passy_log_bitbuffer(TAG, "NFC response", rx_buffer);
+    if(print_logs) {
+        passy_log_bitbuffer(TAG, "NFC response", rx_buffer);
+    }
 
     // Check SW
     size_t length = bit_buffer_get_size_bytes(rx_buffer);
@@ -139,7 +152,6 @@ NfcCommand passy_reader_select_application(PassyReader* passy_reader) {
     bit_buffer_append_bytes(tx_buffer, select_header, sizeof(select_header));
     bit_buffer_append_byte(tx_buffer, sizeof(passport_aid));
     bit_buffer_append_bytes(tx_buffer, passport_aid, sizeof(passport_aid));
-    bit_buffer_append_byte(tx_buffer, 0x00); // Le
     ret = passy_reader_send(passy_reader);
     if(ret != NfcCommandContinue) {
         return ret;
@@ -205,7 +217,7 @@ NfcCommand passy_reader_authenticate(PassyReader* passy_reader) {
     bit_buffer_append_byte(tx_buffer, sizeof(eifd) + sizeof(mifd));
     bit_buffer_append_bytes(tx_buffer, eifd, sizeof(eifd));
     bit_buffer_append_bytes(tx_buffer, mifd, sizeof(mifd));
-    bit_buffer_append_byte(tx_buffer, 0x28); // Le
+    bit_buffer_append_byte(tx_buffer, 0); // Le
 
     ret = passy_reader_send(passy_reader);
     if(ret != NfcCommandContinue) {
@@ -233,7 +245,10 @@ NfcCommand passy_reader_authenticate(PassyReader* passy_reader) {
         mbedtls_des3_crypt_cbc(&ctx, MBEDTLS_DES_DECRYPT, length - 2 - 8, iv, data, decrypted);
         mbedtls_des3_free(&ctx);
     } while(false);
-    passy_log_buffer(TAG, "decrypted", decrypted, sizeof(decrypted));
+
+    if(print_logs) {
+        passy_log_buffer(TAG, "decrypted", decrypted, sizeof(decrypted));
+    }
 
     uint8_t* rnd_icc = decrypted;
     uint8_t* rnd_ifd = decrypted + 8;
@@ -267,7 +282,9 @@ NfcCommand passy_reader_select_file(PassyReader* passy_reader, uint16_t file_id)
     }
 
     secure_messaging_unwrap_rapdu(passy_reader->secure_messaging, passy_reader->rx_buffer);
-    passy_log_bitbuffer(TAG, "NFC response (decrypted)", passy_reader->rx_buffer);
+    if(print_logs) {
+        passy_log_bitbuffer(TAG, "NFC response (decrypted)", passy_reader->rx_buffer);
+    }
 
     return ret;
 }
@@ -293,9 +310,152 @@ NfcCommand passy_reader_read_binary(
     }
 
     secure_messaging_unwrap_rapdu(passy_reader->secure_messaging, passy_reader->rx_buffer);
-    passy_log_bitbuffer(TAG, "NFC response (decrypted)", passy_reader->rx_buffer);
+    if(print_logs) {
+        passy_log_bitbuffer(TAG, "NFC response (decrypted)", passy_reader->rx_buffer);
+    }
     const uint8_t* decrypted_data = bit_buffer_get_data(passy_reader->rx_buffer);
     memcpy(output_buffer, decrypted_data, Le);
+
+    return ret;
+}
+
+NfcCommand passy_reader_read_com(PassyReader* passy_reader) {
+    NfcCommand ret = NfcCommandContinue;
+    Passy* passy = passy_reader->passy;
+
+    bit_buffer_reset(passy_reader->COM);
+    uint8_t header[4];
+    ret = passy_reader_read_binary(passy_reader, 0x00, sizeof(header), header);
+    if(ret != NfcCommandContinue) {
+        view_dispatcher_send_custom_event(passy->view_dispatcher, PassyCustomEventReaderError);
+        return ret;
+    }
+    size_t body_size = 1 + asn1_length_length(header + 1) + asn1_length(header + 1);
+    uint8_t body_offset = sizeof(header);
+    bit_buffer_append_bytes(passy_reader->COM, header, sizeof(header));
+    do {
+        view_dispatcher_send_custom_event(passy->view_dispatcher, PassyCustomEventReaderReading);
+        uint8_t chunk[PASSY_READER_DG1_CHUNK_SIZE];
+        uint8_t Le = MIN(sizeof(chunk), (size_t)(body_size - body_offset));
+
+        ret = passy_reader_read_binary(passy_reader, body_offset, Le, chunk);
+        if(ret != NfcCommandContinue) {
+            view_dispatcher_send_custom_event(passy->view_dispatcher, PassyCustomEventReaderError);
+            break;
+        }
+        bit_buffer_append_bytes(passy_reader->COM, chunk, Le);
+        body_offset += Le;
+    } while(body_offset < body_size);
+
+    return ret;
+}
+
+NfcCommand passy_reader_read_dg1(PassyReader* passy_reader) {
+    NfcCommand ret = NfcCommandContinue;
+    Passy* passy = passy_reader->passy;
+    bit_buffer_reset(passy->DG1);
+    uint8_t header[4];
+    ret = passy_reader_read_binary(passy_reader, 0x00, sizeof(header), header);
+    if(ret != NfcCommandContinue) {
+        view_dispatcher_send_custom_event(passy->view_dispatcher, PassyCustomEventReaderError);
+
+        return ret;
+    }
+    size_t body_size = 1 + asn1_length_length(header + 1) + asn1_length(header + 1);
+    uint8_t body_offset = sizeof(header);
+    bit_buffer_append_bytes(passy_reader->DG1, header, sizeof(header));
+    do {
+        view_dispatcher_send_custom_event(passy->view_dispatcher, PassyCustomEventReaderReading);
+        uint8_t chunk[PASSY_READER_DG1_CHUNK_SIZE];
+        uint8_t Le = MIN(sizeof(chunk), (size_t)(body_size - body_offset));
+
+        ret = passy_reader_read_binary(passy_reader, body_offset, Le, chunk);
+        if(ret != NfcCommandContinue) {
+            view_dispatcher_send_custom_event(passy->view_dispatcher, PassyCustomEventReaderError);
+            break;
+        }
+        bit_buffer_append_bytes(passy_reader->DG1, chunk, Le);
+        body_offset += Le;
+    } while(body_offset < body_size);
+    passy_log_bitbuffer(TAG, "DG1", passy_reader->DG1);
+
+    return ret;
+}
+
+NfcCommand passy_reader_read_dg2_or_dg7(PassyReader* passy_reader) {
+    NfcCommand ret = NfcCommandContinue;
+    Passy* passy = passy_reader->passy;
+
+    uint8_t header[PASSY_DG2_LOOKAHEAD];
+    ret = passy_reader_read_binary(passy_reader, 0x00, sizeof(header) / 2, header);
+    if(ret != NfcCommandContinue) {
+        view_dispatcher_send_custom_event(passy->view_dispatcher, PassyCustomEventReaderError);
+        return ret;
+    }
+    // Issue with reading whole 120 bytes at once, so we read 60 bytes and then
+    ret = passy_reader_read_binary(
+        passy_reader, sizeof(header) / 2, sizeof(header) / 2, header + sizeof(header) / 2);
+    if(ret != NfcCommandContinue) {
+        view_dispatcher_send_custom_event(passy->view_dispatcher, PassyCustomEventReaderError);
+        return ret;
+    }
+
+    view_dispatcher_send_custom_event(passy->view_dispatcher, PassyCustomEventReaderReading);
+
+    size_t body_size = 1 + asn1_length_length(header + 1) + asn1_length(header + 1);
+    FURI_LOG_I(TAG, "%s length: %d", passy->read_type == PassyReadDG2 ? "DG2" : "DG7", body_size);
+
+    void* jpeg = memmem(header, sizeof(header), jpeg_header, sizeof(jpeg_header));
+    void* jpeg2k = memmem(header, sizeof(header), jpeg2k_header, sizeof(jpeg2k_header));
+    void* jpeg2k_cs = memmem(header, sizeof(header), jpeg2k_cs_header, sizeof(jpeg2k_cs_header));
+
+    FuriString* path = furi_string_alloc();
+    uint8_t start = 0;
+    const char* dg_type = passy->read_type == PassyReadDG2 ? "DG2" : "DG7";
+    char* dg_ext = ".bin";
+
+    if(jpeg) {
+        dg_ext = ".jpeg";
+        start = (uint8_t*)jpeg - header;
+    } else if(jpeg2k) {
+        dg_ext = ".jp2";
+        start = (uint8_t*)jpeg2k - header;
+    } else if(jpeg2k_cs) {
+        dg_ext = ".jpc";
+        start = (uint8_t*)jpeg2k_cs - header;
+    } else {
+        furi_string_printf(path, "%s/%s%s", STORAGE_APP_DATA_PATH_PREFIX, dg_type, ".bin");
+        start = 0;
+        passy_log_buffer(TAG, "header", header, sizeof(header));
+    }
+    furi_string_printf(path, "%s/%s%s", STORAGE_APP_DATA_PATH_PREFIX, dg_type, dg_ext);
+    FURI_LOG_I(TAG, "Writing offset %d to %s", start, furi_string_get_cstr(path));
+
+    Storage* storage = furi_record_open(RECORD_STORAGE);
+    Stream* stream = file_stream_alloc(storage);
+    file_stream_open(stream, furi_string_get_cstr(path), FSAM_WRITE, FSOM_OPEN_ALWAYS);
+
+    uint8_t chunk[PASSY_READER_DG2_CHUNK_SIZE];
+    passy->offset = start;
+    passy->bytes_total = body_size;
+    do {
+        memset(chunk, 0, sizeof(chunk));
+        uint8_t Le = MIN(sizeof(chunk), (size_t)(body_size - passy->offset));
+
+        ret = passy_reader_read_binary(passy_reader, passy->offset, Le, chunk);
+        if(ret != NfcCommandContinue) {
+            view_dispatcher_send_custom_event(passy->view_dispatcher, PassyCustomEventReaderError);
+            break;
+        }
+        passy->offset += Le;
+        // passy_log_buffer(TAG, "chunk", chunk, sizeof(chunk));
+        stream_write(stream, chunk, Le);
+        view_dispatcher_send_custom_event(passy->view_dispatcher, PassyCustomEventReaderReading);
+    } while(passy->offset < body_size);
+
+    file_stream_close(stream);
+    furi_record_close(RECORD_STORAGE);
+    furi_string_free(path);
 
     return ret;
 }
@@ -333,131 +493,17 @@ NfcCommand passy_reader_state_machine(PassyReader* passy_reader) {
         }
 
         if(passy->read_type == PassyReadCOM) {
-            bit_buffer_reset(passy_reader->COM);
-            uint8_t header[4];
-            ret = passy_reader_read_binary(passy_reader, 0x00, sizeof(header), header);
-            if(ret != NfcCommandContinue) {
-                view_dispatcher_send_custom_event(
-                    passy->view_dispatcher, PassyCustomEventReaderError);
-
-                break;
-            }
-            size_t body_size = 1 + asn1_length_length(header + 1) + asn1_length(header + 1);
-            uint8_t body_offset = sizeof(header);
-            bit_buffer_append_bytes(passy_reader->COM, header, sizeof(header));
-            do {
-                view_dispatcher_send_custom_event(
-                    passy->view_dispatcher, PassyCustomEventReaderReading);
-                uint8_t chunk[PASSY_READER_DG1_CHUNK_SIZE];
-                uint8_t Le = MIN(sizeof(chunk), (size_t)(body_size - body_offset));
-
-                ret = passy_reader_read_binary(passy_reader, body_offset, Le, chunk);
-                if(ret != NfcCommandContinue) {
-                    view_dispatcher_send_custom_event(
-                        passy->view_dispatcher, PassyCustomEventReaderError);
-                    break;
-                }
-                bit_buffer_append_bytes(passy_reader->COM, chunk, Le);
-                body_offset += Le;
-            } while(body_offset < body_size);
-
+            ret = passy_reader_read_com(passy_reader);
         } else if(passy->read_type == PassyReadDG1) {
-            bit_buffer_reset(passy->DG1);
-            uint8_t header[4];
-            ret = passy_reader_read_binary(passy_reader, 0x00, sizeof(header), header);
-            if(ret != NfcCommandContinue) {
-                view_dispatcher_send_custom_event(
-                    passy->view_dispatcher, PassyCustomEventReaderError);
-
-                break;
-            }
-            size_t body_size = 1 + asn1_length_length(header + 1) + asn1_length(header + 1);
-            uint8_t body_offset = sizeof(header);
-            bit_buffer_append_bytes(passy_reader->DG1, header, sizeof(header));
-            do {
-                view_dispatcher_send_custom_event(
-                    passy->view_dispatcher, PassyCustomEventReaderReading);
-                uint8_t chunk[PASSY_READER_DG1_CHUNK_SIZE];
-                uint8_t Le = MIN(sizeof(chunk), (size_t)(body_size - body_offset));
-
-                ret = passy_reader_read_binary(passy_reader, body_offset, Le, chunk);
-                if(ret != NfcCommandContinue) {
-                    view_dispatcher_send_custom_event(
-                        passy->view_dispatcher, PassyCustomEventReaderError);
-                    break;
-                }
-                bit_buffer_append_bytes(passy_reader->DG1, chunk, Le);
-                body_offset += Le;
-            } while(body_offset < body_size);
-            passy_log_bitbuffer(TAG, "DG1", passy_reader->DG1);
-        } else if(passy->read_type == PassyReadDG2 || passy->read_type == PassyReadDG7) {
-            uint8_t header[100];
-            ret = passy_reader_read_binary(passy_reader, 0x00, sizeof(header), header);
-            if(ret != NfcCommandContinue) {
-                view_dispatcher_send_custom_event(
-                    passy->view_dispatcher, PassyCustomEventReaderError);
-                break;
-            }
-            view_dispatcher_send_custom_event(
-                passy->view_dispatcher, PassyCustomEventReaderReading);
-
-            size_t body_size = 1 + asn1_length_length(header + 1) + asn1_length(header + 1);
-            FURI_LOG_I(
-                TAG, "%s length: %d", passy->read_type == PassyReadDG2 ? "DG2" : "DG7", body_size);
-
-            void* jpeg = memmem(header, sizeof(header), jpeg_header, sizeof(jpeg_header));
-            void* jpeg2k = memmem(header, sizeof(header), jpeg2k_header, sizeof(jpeg2k_header));
-            void* jpeg2k_cs =
-                memmem(header, sizeof(header), jpeg2k_cs_header, sizeof(jpeg2k_cs_header));
-
-            FuriString* path = furi_string_alloc();
-            uint8_t start = 0;
-            const char* dg_type = passy->read_type == PassyReadDG2 ? "DG2" : "DG7";
-
-            if(jpeg) {
-                furi_string_printf(
-                    path, "%s/%s%s", STORAGE_APP_DATA_PATH_PREFIX, dg_type, ".jpeg");
-                start = (uint8_t*)jpeg - header;
-            } else if(jpeg2k) {
-                furi_string_printf(path, "%s/%s%s", STORAGE_APP_DATA_PATH_PREFIX, dg_type, ".jp2");
-                start = (uint8_t*)jpeg2k - header;
-            } else if(jpeg2k_cs) {
-                furi_string_printf(path, "%s/%s%s", STORAGE_APP_DATA_PATH_PREFIX, dg_type, ".jpc");
-                start = (uint8_t*)jpeg2k_cs - header;
-            } else {
-                furi_string_printf(path, "%s/%s%s", STORAGE_APP_DATA_PATH_PREFIX, dg_type, ".bin");
-                start = 0;
-                passy_log_buffer(TAG, "header", header, sizeof(header));
-            }
-            FURI_LOG_I(TAG, "Writing offset %d to %s", start, furi_string_get_cstr(path));
-
-            Storage* storage = furi_record_open(RECORD_STORAGE);
-            Stream* stream = file_stream_alloc(storage);
-            file_stream_open(stream, furi_string_get_cstr(path), FSAM_WRITE, FSOM_OPEN_ALWAYS);
-
-            uint8_t chunk[PASSY_READER_DG2_CHUNK_SIZE];
-            passy->offset = start;
-            passy->bytes_total = body_size;
-            do {
-                memset(chunk, 0, sizeof(chunk));
-                uint8_t Le = MIN(sizeof(chunk), (size_t)(body_size - passy->offset));
-
-                ret = passy_reader_read_binary(passy_reader, passy->offset, Le, chunk);
-                if(ret != NfcCommandContinue) {
-                    view_dispatcher_send_custom_event(
-                        passy->view_dispatcher, PassyCustomEventReaderError);
-                    break;
-                }
-                passy->offset += Le;
-                // passy_log_buffer(TAG, "chunk", chunk, sizeof(chunk));
-                stream_write(stream, chunk, Le);
-                view_dispatcher_send_custom_event(
-                    passy->view_dispatcher, PassyCustomEventReaderReading);
-            } while(passy->offset < body_size);
-
-            file_stream_close(stream);
-            furi_record_close(RECORD_STORAGE);
-            furi_string_free(path);
+            ret = passy_reader_read_dg1(passy_reader);
+        } else if(passy->read_type == PassyReadDG2) {
+            print_logs = false;
+            ret = passy_reader_read_dg2_or_dg7(passy_reader);
+            print_logs = true;
+        } else if(passy->read_type == PassyReadDG7) {
+            print_logs = false;
+            ret = passy_reader_read_dg2_or_dg7(passy_reader);
+            print_logs = true;
         } else {
             // Until file specific handling is implemented, we just read the header
             bit_buffer_reset(passy_reader->dg_header);
@@ -514,8 +560,6 @@ NfcCommand passy_reader_poller_callback(NfcGenericEvent event, void* context) {
                 ret = NfcCommandStop;
                 break;
             case Iso14443_4aErrorTimeout:
-                break;
-            default:
                 break;
             }
         }
