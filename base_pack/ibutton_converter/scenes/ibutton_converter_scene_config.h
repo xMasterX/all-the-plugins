@@ -1,0 +1,7 @@
+ADD_SCENE(ibutton_converter, start, Start)
+ADD_SCENE(ibutton_converter, select_key, SelectKey)
+ADD_SCENE(ibutton_converter, select_cyfral_convert_option, SelectCyfralConvertOption)
+ADD_SCENE(ibutton_converter, select_metakom_convert_option, SelectMetakomConvertOption)
+ADD_SCENE(ibutton_converter, save_name, SaveName)
+ADD_SCENE(ibutton_converter, save_success, SaveSuccess)
+ADD_SCENE(ibutton_converter, error, Error)
