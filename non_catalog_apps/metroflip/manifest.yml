@@ -9,14 +9,22 @@ screenshots:
   - 'screenshots/Menu-Top.png'
   - 'screenshots/Menu-Middle.png'
   - 'screenshots/Navigo.png'
-  - 'screenshots/Navigo2.png'
-  - 'screenshots/Rav-Kav.png'
-  - 'screenshots/App.png'
+  - 'screenshots/Suica_Balance.png'
+  - 'screenshots/Suica_Vend1.png'
+  - 'screenshots/Suica_Vend2.png'
+  - 'screenshots/Suica_Issue1.png'
+  - 'screenshots/Suica_Store1.png'
+  - 'screenshots/Suica_Train1.png'
+  - 'screenshots/Suica_Train2.png'
+  - 'screenshots/Suica_Issue2.png'
+  - 'screenshots/Suica_Store2.png'
+  
+  
 short_description: 'An implementation of Metrodroid on the Flipper Zero'
 sourcecode:
   location:
-    commit_sha: c4e1ed2304ad96a3565f83a58b3c7f8529f9d651
+    commit_sha: 5630b5b6a385cceedd3edc75c6622c64baa71d34
     origin: https://github.com/luu176/Metroflip
     subdir:
   type: git
-version: 0.6
+version: 0.7
