@@ -561,6 +561,8 @@ NfcCommand passy_reader_poller_callback(NfcGenericEvent event, void* context) {
                 break;
             case Iso14443_4aErrorTimeout:
                 break;
+            default:
+                break;
             }
         }
     } else if(strcmp(passy->proto, "4b") == 0) {
