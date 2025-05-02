@@ -17,7 +17,7 @@ SeosCentral* seos_central_alloc(Seos* seos) {
     SeosCentral* seos_central = malloc(sizeof(SeosCentral));
     memset(seos_central, 0, sizeof(SeosCentral));
     seos_central->seos = seos;
-    seos_central->credential = &seos->credential;
+    seos_central->credential = seos->credential;
 
     seos_central->phase = SELECT_AID;
     // Using DES for greater compatibilty
@@ -77,20 +77,13 @@ void seos_central_notify(void* context, const uint8_t* buffer, size_t buffer_len
             bit_buffer_append_bytes(response, (uint8_t*)file_not_found, sizeof(file_not_found));
         }
     } else if(memcmp(apdu, select_adf_header, sizeof(select_adf_header)) == 0) {
-        // is our adf in the list?
-        // +1 to skip APDU length byte
-        void* p = memmem(
-            apdu + sizeof(select_adf_header) + 1,
-            apdu[sizeof(select_adf_header)],
-            SEOS_ADF_OID,
-            SEOS_ADF_OID_LEN);
-        if(p) {
-            seos_log_buffer(TAG, "Matched ADF", p, SEOS_ADF_OID_LEN);
+        const uint8_t* oid_list = apdu + sizeof(select_adf_header) + 1;
+        size_t oid_list_len = apdu[sizeof(select_adf_header)];
 
-            bit_buffer_append_byte(response, BLE_START);
+        bit_buffer_append_byte(response, BLE_START);
 
-            seos_emulator_select_adf(&seos_central->params, seos_central->credential, response);
-
+        if(seos_emulator_select_adf(
+               oid_list, oid_list_len, &seos_central->params, seos_central->credential, response)) {
             bit_buffer_append_bytes(response, (uint8_t*)success, sizeof(success));
             seos_central->phase = GENERAL_AUTHENTICATION_1;
         } else {

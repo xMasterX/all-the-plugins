@@ -22,7 +22,7 @@ SeosCharacteristic* seos_characteristic_alloc(Seos* seos) {
     SeosCharacteristic* seos_characteristic = malloc(sizeof(SeosCharacteristic));
     memset(seos_characteristic, 0, sizeof(SeosCharacteristic));
     seos_characteristic->seos = seos;
-    seos_characteristic->credential = &seos->credential;
+    seos_characteristic->credential = seos->credential;
 
     seos_characteristic->phase = SELECT_AID;
     seos_characteristic->secure_messaging = NULL;
@@ -196,18 +196,15 @@ void seos_characteristic_cred_flow(
             bit_buffer_append_bytes(payload, (uint8_t*)file_not_found, sizeof(file_not_found));
         }
     } else if(memcmp(apdu, select_adf_header, sizeof(select_adf_header)) == 0) {
-        // is our adf in the list?
-        // +1 to skip APDU length byte
-        void* p = memmem(
-            apdu + sizeof(select_adf_header) + 1,
-            apdu[sizeof(select_adf_header)],
-            SEOS_ADF_OID,
-            SEOS_ADF_OID_LEN);
-        if(p) {
-            seos_log_buffer(TAG, "Matched ADF", p, SEOS_ADF_OID_LEN);
+        const uint8_t* oid_list = apdu + sizeof(select_adf_header) + 1;
+        size_t oid_list_len = apdu[sizeof(select_adf_header)];
 
-            seos_emulator_select_adf(
-                &seos_characteristic->params, seos_characteristic->credential, payload);
+        if(seos_emulator_select_adf(
+               oid_list,
+               oid_list_len,
+               &seos_characteristic->params,
+               seos_characteristic->credential,
+               payload)) {
             bit_buffer_append_bytes(payload, (uint8_t*)success, sizeof(success));
         } else {
             FURI_LOG_W(TAG, "Failed to match any ADF OID");

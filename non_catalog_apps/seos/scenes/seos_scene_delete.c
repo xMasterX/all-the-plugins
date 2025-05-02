@@ -9,11 +9,11 @@ void seos_scene_delete_widget_callback(GuiButtonType result, InputType type, voi
 
 void seos_scene_delete_on_enter(void* context) {
     Seos* seos = context;
-    SeosEmulator* seos_emulator = seos->seos_emulator;
+    SeosCredential* seos_credential = seos->credential;
 
     // Setup Custom Widget view
     char temp_str[141];
-    snprintf(temp_str, sizeof(temp_str), "\e#Delete %s?\e#", seos_emulator->name);
+    snprintf(temp_str, sizeof(temp_str), "\e#Delete %s?\e#", seos_credential->name);
     widget_add_text_box_element(
         seos->widget, 0, 0, 128, 23, AlignCenter, AlignCenter, temp_str, false);
     widget_add_button_element(
@@ -26,14 +26,14 @@ void seos_scene_delete_on_enter(void* context) {
 
 bool seos_scene_delete_on_event(void* context, SceneManagerEvent event) {
     Seos* seos = context;
-    SeosEmulator* seos_emulator = seos->seos_emulator;
+    SeosCredential* seos_credential = seos->credential;
     bool consumed = false;
 
     if(event.type == SceneManagerEventTypeCustom) {
         if(event.event == GuiButtonTypeLeft) {
             return scene_manager_previous_scene(seos->scene_manager);
         } else if(event.event == GuiButtonTypeRight) {
-            if(seos_emulator_delete(seos_emulator, true)) {
+            if(seos_credential_delete(seos_credential, true)) {
                 scene_manager_next_scene(seos->scene_manager, SeosSceneDeleteSuccess);
             } else {
                 scene_manager_search_and_switch_to_previous_scene(

@@ -8,6 +8,7 @@
 
 #include "secure_messaging.h"
 #include "seos_common.h"
+#include "seos_credential.h"
 #include "seos.h"
 #include "seos_att.h"
 #include "keys.h"

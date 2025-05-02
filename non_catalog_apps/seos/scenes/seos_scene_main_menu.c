@@ -58,7 +58,7 @@ void seos_scene_main_menu_on_enter(void* context) {
     submenu_add_item(
         submenu, "About", SubmenuIndexAbout, seos_scene_main_menu_submenu_callback, seos);
 
-    if(storage_dir_exists(seos->storage, SEADER_PATH)) {
+    if(storage_dir_exists(seos->credential->storage, SEADER_PATH)) {
         submenu_add_item(
             submenu,
             "Saved (Seader)",
@@ -103,13 +103,13 @@ bool seos_scene_main_menu_on_event(void* context, SceneManagerEvent event) {
         } else if(event.event == SubmenuIndexSaved) {
             scene_manager_set_scene_state(
                 seos->scene_manager, SeosSceneMainMenu, SubmenuIndexSaved);
-            seos->seos_emulator->load_type = SeosLoadSeos;
+            seos->credential->load_type = SeosLoadSeos;
             scene_manager_next_scene(seos->scene_manager, SeosSceneFileSelect);
             consumed = true;
         } else if(event.event == SubmenuIndexSavedSeader) {
             scene_manager_set_scene_state(
                 seos->scene_manager, SeosSceneMainMenu, SubmenuIndexSavedSeader);
-            seos->seos_emulator->load_type = SeosLoadSeader;
+            seos->credential->load_type = SeosLoadSeader;
             scene_manager_next_scene(seos->scene_manager, SeosSceneFileSelect);
             consumed = true;
         } else if(event.event == SubmenuIndexInspect) {

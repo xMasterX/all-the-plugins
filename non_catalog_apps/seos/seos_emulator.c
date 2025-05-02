@@ -2,9 +2,7 @@
 
 #define TAG "SeosEmulator"
 
-#define NAD_MASK             0x08
-#define SEADER_PATH          "/ext/apps_data/seader"
-#define SEADER_APP_EXTENSION ".credential"
+#define NAD_MASK 0x08
 
 static uint8_t select_header[] = {0x00, 0xa4, 0x04, 0x00};
 static uint8_t standard_seos_aid[] = {0xa0, 0x00, 0x00, 0x04, 0x40, 0x00, 0x01, 0x01, 0x00, 0x01};
@@ -25,8 +23,6 @@ static uint8_t general_authenticate_1[] =
 static uint8_t general_authenticate_1_response_header[] = {0x7c, 0x0a, 0x81, 0x08};
 static uint8_t general_authenticate_2_header[] = {0x00, 0x87, 0x00, 0x01};
 static uint8_t secure_messaging_header[] = {0x0c, 0xcb, 0x3f, 0xff};
-static uint8_t empty[16] =
-    {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 SeosEmulator* seos_emulator_alloc(SeosCredential* credential) {
     SeosEmulator* seos_emulator = malloc(sizeof(SeosEmulator));
@@ -42,9 +38,6 @@ SeosEmulator* seos_emulator_alloc(SeosCredential* credential) {
 
     seos_emulator->secure_messaging = NULL;
 
-    seos_emulator->storage = furi_record_open(RECORD_STORAGE);
-    seos_emulator->dialogs = furi_record_open(RECORD_DIALOGS);
-    seos_emulator->load_path = furi_string_alloc();
     seos_emulator->tx_buffer = bit_buffer_alloc(SEOS_WORKER_MAX_BUFFER_SIZE);
 
     return seos_emulator;
@@ -57,297 +50,8 @@ void seos_emulator_free(SeosEmulator* seos_emulator) {
         secure_messaging_free(seos_emulator->secure_messaging);
     }
 
-    furi_record_close(RECORD_STORAGE);
-    furi_record_close(RECORD_DIALOGS);
-    furi_string_free(seos_emulator->load_path);
     bit_buffer_free(seos_emulator->tx_buffer);
     free(seos_emulator);
-}
-
-void seos_emulator_set_loading_callback(
-    SeosEmulator* seos_emulator,
-    SeosLoadingCallback callback,
-    void* context) {
-    furi_assert(seos_emulator);
-
-    seos_emulator->loading_cb = callback;
-    seos_emulator->loading_cb_ctx = context;
-}
-
-static bool
-    seos_emulator_file_load(SeosEmulator* seos_emulator, FuriString* path, bool show_dialog) {
-    bool parsed = false;
-    FlipperFormat* file = flipper_format_file_alloc(seos_emulator->storage);
-    FuriString* temp_str;
-    temp_str = furi_string_alloc();
-    bool deprecated_version = false;
-
-    if(seos_emulator->loading_cb) {
-        seos_emulator->loading_cb(seos_emulator->loading_cb_ctx, true);
-    }
-
-    memset(
-        seos_emulator->credential->diversifier, 0, sizeof(seos_emulator->credential->diversifier));
-    memset(seos_emulator->credential->sio, 0, sizeof(seos_emulator->credential->sio));
-    do {
-        if(!flipper_format_file_open_existing(file, furi_string_get_cstr(path))) break;
-
-        // Read and verify file header
-        uint32_t version = 0;
-        if(!flipper_format_read_header(file, temp_str, &version)) break;
-        if(furi_string_cmp_str(temp_str, seos_file_header) || (version != seos_file_version)) {
-            deprecated_version = true;
-            break;
-        }
-
-        if(!flipper_format_read_uint32(
-               file,
-               "Diversifier Length",
-               (uint32_t*)&(seos_emulator->credential->diversifier_len),
-               1))
-            break;
-        if(!flipper_format_read_hex(
-               file,
-               "Diversifier",
-               seos_emulator->credential->diversifier,
-               seos_emulator->credential->diversifier_len))
-            break;
-
-        if(!flipper_format_read_uint32(
-               file, "SIO Length", (uint32_t*)&(seos_emulator->credential->sio_len), 1))
-            break;
-        if(!flipper_format_read_hex(
-               file, "SIO", seos_emulator->credential->sio, seos_emulator->credential->sio_len))
-            break;
-
-        // optional
-        memset(
-            seos_emulator->credential->priv_key, 0, sizeof(seos_emulator->credential->priv_key));
-        memset(
-            seos_emulator->credential->auth_key, 0, sizeof(seos_emulator->credential->auth_key));
-        memset(
-            seos_emulator->credential->adf_response,
-            0,
-            sizeof(seos_emulator->credential->adf_response));
-        flipper_format_read_hex(
-            file,
-            "Priv Key",
-            seos_emulator->credential->priv_key,
-            sizeof(seos_emulator->credential->priv_key));
-        flipper_format_read_hex(
-            file,
-            "Auth Key",
-            seos_emulator->credential->auth_key,
-            sizeof(seos_emulator->credential->auth_key));
-        if(memcmp(seos_emulator->credential->priv_key, empty, sizeof(empty)) != 0) {
-            FURI_LOG_I(TAG, "+ Priv Key");
-        }
-        if(memcmp(seos_emulator->credential->priv_key, empty, sizeof(empty)) != 0) {
-            FURI_LOG_I(TAG, "+ Auth Key");
-        }
-        flipper_format_read_hex(
-            file,
-            "ADF Response",
-            seos_emulator->credential->adf_response,
-            sizeof(seos_emulator->credential->adf_response));
-        parsed = true;
-    } while(false);
-
-    if(seos_emulator->loading_cb) {
-        seos_emulator->loading_cb(seos_emulator->loading_cb_ctx, false);
-    }
-
-    if((!parsed) && (show_dialog)) {
-        if(deprecated_version) {
-            dialog_message_show_storage_error(seos_emulator->dialogs, "File format deprecated");
-        } else {
-            dialog_message_show_storage_error(seos_emulator->dialogs, "Can not parse\nfile");
-        }
-    }
-
-    furi_string_free(temp_str);
-    flipper_format_free(file);
-
-    return parsed;
-}
-
-static bool seos_emulator_file_load_seader(
-    SeosEmulator* seos_emulator,
-    FuriString* path,
-    bool show_dialog) {
-    bool parsed = false;
-    FlipperFormat* file = flipper_format_file_alloc(seos_emulator->storage);
-    FuriString* reason = furi_string_alloc_set("Couldn't load file");
-    FuriString* temp_str;
-    temp_str = furi_string_alloc();
-    const char* seader_file_header = "Flipper Seader Credential";
-    const uint32_t seader_file_version = 1;
-
-    if(seos_emulator->loading_cb) {
-        seos_emulator->loading_cb(seos_emulator->loading_cb_ctx, true);
-    }
-
-    memset(
-        seos_emulator->credential->diversifier, 0, sizeof(seos_emulator->credential->diversifier));
-    memset(seos_emulator->credential->sio, 0, sizeof(seos_emulator->credential->sio));
-    do {
-        if(!flipper_format_file_open_existing(file, furi_string_get_cstr(path))) break;
-
-        // Read and verify file header
-        uint32_t version = 0;
-        if(!flipper_format_read_header(file, temp_str, &version)) break;
-        if(furi_string_cmp_str(temp_str, seader_file_header) || (version != seader_file_version)) {
-            furi_string_printf(reason, "Deprecated file format");
-            break;
-        }
-        // Don't forget, order of keys is important
-
-        if(!flipper_format_key_exist(file, "SIO")) {
-            furi_string_printf(reason, "Missing SIO");
-            break;
-        }
-        seos_emulator->credential->sio_len = 64; // Seader SIO size
-        // We can't check the return status because it will be false if less than the requested length of bytes was read.
-        flipper_format_read_hex(
-            file, "SIO", seos_emulator->credential->sio, seos_emulator->credential->sio_len);
-        seos_emulator->credential->sio_len = seos_emulator->credential->sio[1] +
-                                             4; // 2 for type and length, 2 for null after SIO data
-
-        // -------------
-        if(!flipper_format_key_exist(file, "Diversifier")) {
-            furi_string_printf(reason, "Missing Diversifier");
-            break;
-        }
-        seos_emulator->credential->diversifier_len = 8; //Seader diversifier size
-        flipper_format_read_hex(
-            file,
-            "Diversifier",
-            seos_emulator->credential->diversifier,
-            seos_emulator->credential->diversifier_len);
-        uint8_t* end = memchr(seos_emulator->credential->diversifier, 0, 8);
-        if(end) {
-            seos_emulator->credential->diversifier_len =
-                end - seos_emulator->credential->diversifier;
-        } // Returns NULL if char cannot be found
-
-        SeosCredential* cred = seos_emulator->credential;
-        char display[128 * 2 + 1];
-
-        memset(display, 0, sizeof(display));
-        for(uint8_t i = 0; i < cred->sio_len; i++) {
-            snprintf(display + (i * 2), sizeof(display), "%02x", cred->sio[i]);
-        }
-        FURI_LOG_D(TAG, "SIO: %s", display);
-
-        memset(display, 0, sizeof(display));
-        for(uint8_t i = 0; i < cred->diversifier_len; i++) {
-            snprintf(display + (i * 2), sizeof(display), "%02x", cred->diversifier[i]);
-        }
-        FURI_LOG_D(TAG, "Diversifier: %s", display);
-
-        parsed = true;
-    } while(false);
-
-    if(seos_emulator->loading_cb) {
-        seos_emulator->loading_cb(seos_emulator->loading_cb_ctx, false);
-    }
-
-    if((!parsed) && (show_dialog)) {
-        dialog_message_show_storage_error(seos_emulator->dialogs, furi_string_get_cstr(reason));
-    }
-
-    furi_string_free(reason);
-    furi_string_free(temp_str);
-    flipper_format_free(file);
-
-    return parsed;
-}
-
-bool seos_emulator_file_select_seader(SeosEmulator* seos_emulator) {
-    furi_assert(seos_emulator);
-    bool res = false;
-
-    FuriString* app_folder = furi_string_alloc_set(SEADER_PATH);
-
-    DialogsFileBrowserOptions browser_options;
-    dialog_file_browser_set_basic_options(&browser_options, SEADER_APP_EXTENSION, &I_Nfc_10px);
-    browser_options.base_path = SEADER_PATH;
-
-    res = dialog_file_browser_show(
-        seos_emulator->dialogs, seos_emulator->load_path, app_folder, &browser_options);
-
-    furi_string_free(app_folder);
-    if(res) {
-        FuriString* filename;
-        filename = furi_string_alloc();
-        path_extract_filename(seos_emulator->load_path, filename, true);
-        strncpy(seos_emulator->name, furi_string_get_cstr(filename), SEOS_FILE_NAME_MAX_LENGTH);
-        res = seos_emulator_file_load_seader(seos_emulator, seos_emulator->load_path, true);
-        furi_string_free(filename);
-    }
-
-    return res;
-}
-
-bool seos_emulator_file_select_seos(SeosEmulator* seos_emulator) {
-    furi_assert(seos_emulator);
-    bool res = false;
-
-    FuriString* seos_app_folder = furi_string_alloc_set(STORAGE_APP_DATA_PATH_PREFIX);
-
-    DialogsFileBrowserOptions browser_options;
-    dialog_file_browser_set_basic_options(&browser_options, SEOS_APP_EXTENSION, &I_Nfc_10px);
-    browser_options.base_path = STORAGE_APP_DATA_PATH_PREFIX;
-
-    res = dialog_file_browser_show(
-        seos_emulator->dialogs, seos_emulator->load_path, seos_app_folder, &browser_options);
-
-    furi_string_free(seos_app_folder);
-    if(res) {
-        FuriString* filename;
-        filename = furi_string_alloc();
-        path_extract_filename(seos_emulator->load_path, filename, true);
-        strncpy(seos_emulator->name, furi_string_get_cstr(filename), SEOS_FILE_NAME_MAX_LENGTH);
-        res = seos_emulator_file_load(seos_emulator, seos_emulator->load_path, true);
-        furi_string_free(filename);
-    }
-
-    return res;
-}
-
-bool seos_emulator_file_select(SeosEmulator* seos_emulator) {
-    if(seos_emulator->load_type == SeosLoadSeos) {
-        return seos_emulator_file_select_seos(seos_emulator);
-    } else if(seos_emulator->load_type == SeosLoadSeader) {
-        return seos_emulator_file_select_seader(seos_emulator);
-    }
-    return false;
-}
-
-bool seos_emulator_delete(SeosEmulator* seos_emulator, bool use_load_path) {
-    furi_assert(seos_emulator);
-    bool deleted = false;
-    FuriString* file_path;
-    file_path = furi_string_alloc();
-
-    do {
-        // Delete original file
-        if(use_load_path && !furi_string_empty(seos_emulator->load_path)) {
-            furi_string_set(file_path, seos_emulator->load_path);
-        } else {
-            furi_string_printf(
-                file_path, APP_DATA_PATH("%s%s"), seos_emulator->name, SEOS_APP_EXTENSION);
-        }
-        if(!storage_simply_remove(seos_emulator->storage, furi_string_get_cstr(file_path))) break;
-        deleted = true;
-    } while(0);
-
-    if(!deleted) {
-        dialog_message_show_storage_error(seos_emulator->dialogs, "Can not remove file");
-    }
-
-    furi_string_free(file_path);
-    return deleted;
 }
 
 void seos_emulator_select_aid(BitBuffer* tx_buffer) {
@@ -381,7 +85,10 @@ bool seos_emulator_general_authenticate_2(
 
     params->key_no = rx_data[3];
 
-    if(memcmp(credential->priv_key, empty, sizeof(empty)) == 0) {
+    if(credential->use_hardcoded) {
+        memcpy(params->priv_key, credential->priv_key, sizeof(params->priv_key));
+        memcpy(params->auth_key, credential->auth_key, sizeof(params->auth_key));
+    } else {
         seos_worker_diversify_key(
             SEOS_ADF1_READ,
             credential->diversifier,
@@ -393,10 +100,6 @@ bool seos_emulator_general_authenticate_2(
             params->key_no,
             true,
             params->priv_key);
-    } else {
-        memcpy(params->priv_key, credential->priv_key, sizeof(params->priv_key));
-    }
-    if(memcmp(credential->auth_key, empty, sizeof(empty)) == 0) {
         seos_worker_diversify_key(
             SEOS_ADF1_READ,
             credential->diversifier,
@@ -408,8 +111,6 @@ bool seos_emulator_general_authenticate_2(
             params->key_no,
             false,
             params->auth_key);
-    } else {
-        memcpy(params->auth_key, credential->auth_key, sizeof(params->auth_key));
     }
 
     uint8_t cmac[16];
@@ -551,18 +252,38 @@ void seos_emulator_aes_adf_payload(SeosCredential* credential, uint8_t* buffer) 
     mbedtls_aes_free(&ctx);
 }
 
-void seos_emulator_select_adf(
+bool seos_emulator_select_adf(
+    const uint8_t* oid_list,
+    size_t oid_list_len,
     AuthParameters* params,
     SeosCredential* credential,
     BitBuffer* tx_buffer) {
     FURI_LOG_D(TAG, "Select ADF");
-    // Shortcut if the credential file contained the hardcoded response
-    if(credential->adf_response[2] != 0x00 && credential->adf_response[2] == params->cipher) {
-        FURI_LOG_I(TAG, "Using hardcoded ADF Response");
-        bit_buffer_append_bytes(
-            tx_buffer, credential->adf_response, sizeof(credential->adf_response));
-        seos_log_bitbuffer(TAG, "Select ADF (0xcd02...)", tx_buffer);
-        return;
+
+    void* p = NULL;
+    if(credential->adf_oid_len > 0) {
+        p = memmem(oid_list, oid_list_len, credential->adf_oid, credential->adf_oid_len);
+        if(p) {
+            seos_log_buffer(TAG, "Select ADF OID(credential)", p, credential->adf_oid_len);
+
+            if(credential->adf_response[0] == 0xCD) {
+                FURI_LOG_I(TAG, "Using hardcoded ADF Response");
+                bit_buffer_append_bytes(
+                    tx_buffer, credential->adf_response, sizeof(credential->adf_response));
+
+                params->cipher = credential->adf_response[2];
+                params->hash = credential->adf_response[3];
+                credential->use_hardcoded = true;
+                return true;
+            }
+        }
+    }
+    // Next we try to match the ADF OID from the keys file
+    p = memmem(oid_list, oid_list_len, SEOS_ADF_OID, SEOS_ADF_OID_LEN);
+    if(p) {
+        seos_log_buffer(TAG, "Select ADF OID(keys)", p, SEOS_ADF_OID_LEN);
+    } else {
+        return false;
     }
 
     size_t prefix_len = bit_buffer_get_size_bytes(tx_buffer);
@@ -608,8 +329,7 @@ void seos_emulator_select_adf(
     uint8_t cmac_prefix[] = {0x8e, 0x08};
     bit_buffer_append_bytes(tx_buffer, cmac_prefix, sizeof(cmac_prefix));
     bit_buffer_append_bytes(tx_buffer, cmac, SEOS_WORKER_CMAC_SIZE);
-
-    seos_log_bitbuffer(TAG, "Select ADF (0xcd02...)", tx_buffer);
+    return true;
 }
 
 NfcCommand seos_worker_listener_inspect_reader(Seos* seos) {
@@ -657,6 +377,7 @@ NfcCommand seos_worker_listener_process_message(Seos* seos) {
     const uint8_t* apdu = rx_data + offset;
 
     if(memcmp(apdu, select_header, sizeof(select_header)) == 0) {
+        seos_emulator->credential->use_hardcoded = false;
         if(memcmp(apdu + sizeof(select_header) + 1, standard_seos_aid, sizeof(standard_seos_aid)) ==
            0) {
             seos_emulator_select_aid(seos_emulator->tx_buffer);
@@ -692,22 +413,17 @@ NfcCommand seos_worker_listener_process_message(Seos* seos) {
                 seos_emulator->tx_buffer, (uint8_t*)FILE_NOT_FOUND, sizeof(FILE_NOT_FOUND));
         }
     } else if(memcmp(apdu, select_adf_header, sizeof(select_adf_header)) == 0) {
-        // is our adf in the list?
         // +1 to skip APDU length byte
-        void* p = memmem(
-            apdu + sizeof(select_adf_header) + 1,
-            apdu[sizeof(select_adf_header)],
-            SEOS_ADF_OID,
-            SEOS_ADF_OID_LEN);
-        if(p) {
-            BitBuffer* tmp = bit_buffer_alloc(SEOS_ADF_OID_LEN);
-            bit_buffer_append_bytes(tmp, p, SEOS_ADF_OID_LEN);
-            seos_log_bitbuffer(TAG, "Matched ADF", tmp);
-            bit_buffer_free(tmp);
-            view_dispatcher_send_custom_event(seos->view_dispatcher, SeosCustomEventADFMatched);
+        const uint8_t* oid_list = apdu + sizeof(select_adf_header) + 1;
+        size_t oid_list_len = apdu[sizeof(select_adf_header)];
 
-            seos_emulator_select_adf(
-                &seos_emulator->params, seos_emulator->credential, seos_emulator->tx_buffer);
+        if(seos_emulator_select_adf(
+               oid_list,
+               oid_list_len,
+               &seos_emulator->params,
+               seos_emulator->credential,
+               seos_emulator->tx_buffer)) {
+            view_dispatcher_send_custom_event(seos->view_dispatcher, SeosCustomEventADFMatched);
         } else {
             FURI_LOG_W(TAG, "Failed to match any ADF OID");
         }

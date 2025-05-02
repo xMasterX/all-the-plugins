@@ -6,7 +6,6 @@
 #include <gui/view_dispatcher.h>
 #include <gui/scene_manager.h>
 #include <notification/notification_messages.h>
-#include <storage/storage.h>
 
 #include <gui/modules/submenu.h>
 #include <gui/modules/popup.h>
@@ -28,6 +27,7 @@
 #include "seos.h"
 #include "keys.h"
 #include "seos_hci.h"
+#include "seos_credential.h"
 #include "seos_characteristic.h"
 #include "seos_native_peripheral.h"
 #include "seos_central.h"
@@ -69,7 +69,6 @@ struct Seos {
     Gui* gui;
     NotificationApp* notifications;
     SceneManager* scene_manager;
-    Storage* storage;
 
     char text_store[SEOS_TEXT_STORE_SIZE + 1];
     FuriString* text_box_store;
@@ -87,7 +86,7 @@ struct Seos {
     NfcPoller* poller;
     NfcDevice* nfc_device;
 
-    SeosCredential credential;
+    SeosCredential* credential;
 
     // NFC
     SeosEmulator* seos_emulator;
@@ -98,10 +97,6 @@ struct Seos {
     SeosCharacteristic* seos_characteristic;
     SeosCentral* seos_central;
     FlowMode flow_mode;
-
-    char dev_name[SEOS_FILE_NAME_MAX_LENGTH + 1];
-    FuriString* load_path;
-    DialogsApp* dialogs;
 
     bool keys_loaded;
     Bt* bt;

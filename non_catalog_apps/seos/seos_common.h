@@ -51,16 +51,6 @@ typedef enum {
 } SeosPhase;
 
 typedef struct {
-    uint8_t diversifier[16];
-    size_t diversifier_len;
-    uint8_t sio[128];
-    size_t sio_len;
-    uint8_t priv_key[16];
-    uint8_t auth_key[16];
-    uint8_t adf_response[72];
-} SeosCredential;
-
-typedef struct {
     uint8_t rndICC[8];
     uint8_t UID[8];
     uint8_t cNonce[16];
@@ -74,8 +64,6 @@ typedef struct {
 
 void seos_log_bitbuffer(char* TAG, char* prefix, BitBuffer* buffer);
 void seos_log_buffer(char* TAG, char* prefix, uint8_t* buffer, size_t buffer_len);
-
-void seos_common_copy_credential(const SeosCredential* src, SeosCredential* dst);
 
 void seos_worker_diversify_key(
     uint8_t master_key_value[16],

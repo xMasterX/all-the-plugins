@@ -71,7 +71,7 @@ SeosNativePeripheral* seos_native_peripheral_alloc(Seos* seos) {
     memset(seos_native_peripheral, 0, sizeof(SeosNativePeripheral));
 
     seos_native_peripheral->seos = seos;
-    seos_native_peripheral->credential = &seos->credential;
+    seos_native_peripheral->credential = seos->credential;
     seos_native_peripheral->bt = furi_record_open(RECORD_BT);
 
     seos_native_peripheral->phase = SELECT_AID;
@@ -173,6 +173,7 @@ void seos_native_peripheral_stop(SeosNativePeripheral* seos_native_peripheral) {
 void seos_native_peripheral_process_message_cred(
     SeosNativePeripheral* seos_native_peripheral,
     NativePeripheralMessage message) {
+    Seos* seos = seos_native_peripheral->seos;
     BitBuffer* response = bit_buffer_alloc(128); // TODO: MTU
 
     uint8_t* data = message.buf;
@@ -191,19 +192,17 @@ void seos_native_peripheral_process_message_cred(
             bit_buffer_append_bytes(response, (uint8_t*)file_not_found, sizeof(file_not_found));
         }
     } else if(memcmp(apdu, select_adf_header, sizeof(select_adf_header)) == 0) {
-        // is our adf in the list?
         // +1 to skip APDU length byte
-        void* p = memmem(
-            apdu + sizeof(select_adf_header) + 1,
-            apdu[sizeof(select_adf_header)],
-            SEOS_ADF_OID,
-            SEOS_ADF_OID_LEN);
-        if(p) {
-            seos_log_buffer(TAG, "Matched ADF", p, SEOS_ADF_OID_LEN);
+        const uint8_t* oid_list = apdu + sizeof(select_adf_header) + 1;
+        size_t oid_list_len = apdu[sizeof(select_adf_header)];
 
-            seos_emulator_select_adf(
-                &seos_native_peripheral->params, seos_native_peripheral->credential, response);
-            bit_buffer_append_bytes(response, (uint8_t*)success, sizeof(success));
+        if(seos_emulator_select_adf(
+               oid_list,
+               oid_list_len,
+               &seos_native_peripheral->params,
+               seos_native_peripheral->credential,
+               response)) {
+            view_dispatcher_send_custom_event(seos->view_dispatcher, SeosCustomEventADFMatched);
         } else {
             FURI_LOG_W(TAG, "Failed to match any ADF OID");
         }
@@ -315,7 +314,6 @@ void seos_native_peripheral_process_message_reader(
         bit_buffer_append_bytes(response, select_adf_header, sizeof(select_adf_header));
         bit_buffer_append_bytes(response, SEOS_ADF_OID, SEOS_ADF_OID_LEN);
         seos_native_peripheral->phase = SELECT_ADF;
-
     } else if(memcmp(data + 1, cd02, sizeof(cd02)) == 0) {
         BitBuffer* attribute_value = bit_buffer_alloc(message.len);
         bit_buffer_append_bytes(attribute_value, message.buf, message.len);
@@ -380,7 +378,10 @@ void seos_native_peripheral_process_message_reader(
         view_dispatcher_send_custom_event(
             seos_native_peripheral->seos->view_dispatcher, SeosCustomEventSIORequested);
     } else if(seos_native_peripheral->phase == REQUEST_SIO) {
+        // TODO: consider seos_reader_request_sio
         SecureMessaging* secure_messaging = seos_native_peripheral->secure_messaging;
+        SeosCredential* credential = seos_native_peripheral->credential;
+        AuthParameters* params = &seos_native_peripheral->params;
 
         BitBuffer* rx_buffer = bit_buffer_alloc(message.len - 1);
         bit_buffer_append_bytes(rx_buffer, rx_data, message.len - 1);
@@ -389,18 +390,19 @@ void seos_native_peripheral_process_message_reader(
         seos_log_bitbuffer(TAG, "BLE response(clear)", rx_buffer);
 
         // Skip fileId
-        seos_native_peripheral->credential->sio_len = bit_buffer_get_byte(rx_buffer, 2);
-        if(seos_native_peripheral->credential->sio_len >
-           sizeof(seos_native_peripheral->credential->sio)) {
+        credential->sio_len = bit_buffer_get_byte(rx_buffer, 2);
+        if(credential->sio_len > sizeof(credential->sio)) {
             FURI_LOG_W(TAG, "SIO too long to save");
             bit_buffer_free(response);
             return;
         }
-        memcpy(
-            seos_native_peripheral->credential->sio,
-            bit_buffer_get_data(rx_buffer) + 3,
-            seos_native_peripheral->credential->sio_len);
-        FURI_LOG_I(TAG, "SIO Captured, %d bytes", seos_native_peripheral->credential->sio_len);
+        memcpy(credential->sio, bit_buffer_get_data(rx_buffer) + 3, credential->sio_len);
+        memcpy(credential->priv_key, params->priv_key, sizeof(credential->priv_key));
+        memcpy(credential->auth_key, params->auth_key, sizeof(credential->auth_key));
+        credential->adf_oid_len = SEOS_ADF_OID_LEN;
+        memcpy(credential->adf_oid, SEOS_ADF_OID, sizeof(credential->adf_oid));
+
+        FURI_LOG_I(TAG, "SIO Captured, %d bytes", credential->sio_len);
 
         Seos* seos = seos_native_peripheral->seos;
         view_dispatcher_send_custom_event(seos->view_dispatcher, SeosCustomEventReaderSuccess);

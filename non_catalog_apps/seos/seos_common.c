@@ -38,16 +38,6 @@ void seos_log_bitbuffer(char* TAG, char* prefix, BitBuffer* buffer) {
     }
 }
 
-void seos_common_copy_credential(const SeosCredential* src, SeosCredential* dst) {
-    furi_assert(src);
-    furi_assert(dst);
-
-    dst->diversifier_len = src->diversifier_len;
-    memcpy(dst->diversifier, src->diversifier, dst->diversifier_len);
-    dst->sio_len = src->sio_len;
-    memcpy(dst->sio, src->sio, dst->sio_len);
-}
-
 void seos_worker_diversify_key(
     uint8_t master_key_value[16],
     uint8_t* diversifier,

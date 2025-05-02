@@ -59,7 +59,7 @@ bool seos_scene_ble_peripheral_on_event(void* context, SceneManagerEvent event) 
             consumed = true;
         }
     } else if(event.type == SceneManagerEventTypeBack) {
-        if(seos->credential.sio_len > 0) {
+        if(seos->credential->sio_len > 0) {
             scene_manager_search_and_switch_to_previous_scene(
                 seos->scene_manager, SeosSceneSavedMenu);
         } else {

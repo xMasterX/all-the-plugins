@@ -14,7 +14,7 @@ void seos_scene_read_success_widget_callback(GuiButtonType result, InputType typ
 
 void seos_scene_read_success_on_enter(void* context) {
     Seos* seos = context;
-    SeosCredential credential = seos->credential;
+    SeosCredential* credential = seos->credential;
     Widget* widget = seos->widget;
 
     dolphin_deed(DolphinDeedNfcReadSuccess);
@@ -25,18 +25,18 @@ void seos_scene_read_success_on_enter(void* context) {
     FuriString* details_str = furi_string_alloc();
 
     furi_string_set(secondary_str_label, "Diversifier:");
-    for(size_t i = 0; i < credential.diversifier_len; i++) {
-        furi_string_cat_printf(secondary_str_value, "%02X", credential.diversifier[i]);
+    for(size_t i = 0; i < credential->diversifier_len; i++) {
+        furi_string_cat_printf(secondary_str_value, "%02X", credential->diversifier[i]);
     }
 
     // RID
-    if(credential.sio_len > 3 && credential.sio[2] == 0x81) {
-        size_t len = credential.sio[3];
+    if(credential->sio_len > 3 && credential->sio[2] == 0x81) {
+        size_t len = credential->sio[3];
         furi_string_set(details_str, "RID:");
         for(size_t i = 0; i < len; i++) {
-            furi_string_cat_printf(details_str, "%02X", credential.sio[4 + i]);
+            furi_string_cat_printf(details_str, "%02X", credential->sio[4 + i]);
         }
-        if(len >= 4 && credential.sio[3 + 1] == 0x01) {
+        if(len >= 4 && credential->sio[3 + 1] == 0x01) {
             furi_string_cat_printf(details_str, "(retail)");
         } else if(len == 2) {
             furi_string_cat_printf(details_str, "(ER)");
