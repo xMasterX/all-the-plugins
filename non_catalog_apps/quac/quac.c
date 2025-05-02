@@ -90,7 +90,6 @@ int32_t quac_app(void* p) {
     FURI_LOG_I(TAG, "QUAC! QUAC!");
 
     size_t free_start = memmgr_get_free_heap();
-    furi_assert(0);
 
     App* app = app_alloc();
     quac_load_settings(app);
