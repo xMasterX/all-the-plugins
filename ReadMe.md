@@ -66,6 +66,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | MIFARE Classic Editor | ![NFC Badge] | [by TollyH](https://github.com/TollyH/flipper-apps/tree/main/mfc-editor) | edit dumps on flipper | [![Author Badge]](https://lab.flipper.net/apps/mfc_editor) |
 | **RFID Fuzzer** | ![RFID Badge] | [by @gid9798](https://github.com/DarkFlippers/Multi_Fuzzer) | original by Ganapati & xMasterX | [![UFW Badge]](https://lab.flipper.net/apps/fuzzer_rfid) |
 | **iButton Fuzzer** | ![iButton Badge] | [by @gid9798](https://github.com/DarkFlippers/Multi_Fuzzer) | original by xMasterX | [![UFW Badge]](https://lab.flipper.net/apps/fuzzer_ibtn) |
+| **iButton Converter** | ![iButton Badge] | [by @Leptopt1los](https://github.com/Leptopt1los/ibutton_converter) | | [![UFW Badge]](https://lab.flipper.net/apps/ibutton_converter) |
 | IR Scope | ![IR Badge] | [by kallanreed](https://github.com/DarkFlippers/unleashed-firmware/pull/407) |  | [![UFW Badge]](https://lab.flipper.net/apps/ir_scope) |
 | MultiConverter plugin | ![Tools Badge] | [by theisolinearchip](https://github.com/theisolinearchip/flipperzero_stuff) |  | [![UFW Badge]](https://lab.flipper.net/apps/multi_converter) |
 | Barcode Generator | ![Tools Badge] | [by Kingal1337](https://github.com/Kingal1337/flipper-barcode-generator) |  | [![UFW Badge]](https://lab.flipper.net/apps/barcode_app) |
