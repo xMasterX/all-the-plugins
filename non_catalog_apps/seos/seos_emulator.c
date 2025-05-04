@@ -268,8 +268,12 @@ bool seos_emulator_select_adf(
 
             if(credential->adf_response[0] == 0xCD) {
                 FURI_LOG_I(TAG, "Using hardcoded ADF Response");
-                bit_buffer_append_bytes(
-                    tx_buffer, credential->adf_response, sizeof(credential->adf_response));
+                // 4 byte cipher/hash
+                // 2 byte cryptogram header
+                // x bytes of cryptogram
+                // 10 bytes for mac (2 byte header + 8 byte cmac)
+                size_t adf_response_len = 4 + 2 + credential->adf_response[5] + 10;
+                bit_buffer_append_bytes(tx_buffer, credential->adf_response, adf_response_len);
 
                 params->cipher = credential->adf_response[2];
                 params->hash = credential->adf_response[3];
