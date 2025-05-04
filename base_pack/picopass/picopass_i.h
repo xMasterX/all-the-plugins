@@ -118,6 +118,8 @@ struct Picopass {
     PicopassDictAttackContext dict_attack_ctx;
     PicopassWriteKeyContext write_key_context;
     PicopassLoclassContext loclass_context;
+
+    bool auto_nr_mac;
 };
 
 typedef enum {

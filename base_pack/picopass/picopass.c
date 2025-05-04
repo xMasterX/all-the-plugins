@@ -117,6 +117,8 @@ Picopass* picopass_alloc() {
         }
     }
 
+    picopass->auto_nr_mac = false;
+
     return picopass;
 }
 

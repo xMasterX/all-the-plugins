@@ -15,8 +15,10 @@ void picopass_scene_emulate_on_enter(void* context) {
     Widget* widget = picopass->widget;
     widget_reset(widget);
     widget_add_icon_element(widget, 0, 3, &I_RFIDDolphinSend_97x61);
-    widget_add_string_element(widget, 89, 32, AlignCenter, AlignTop, FontPrimary, "Emulating");
-    widget_add_string_element(widget, 89, 42, AlignCenter, AlignTop, FontPrimary, "PicoPass");
+    widget_add_string_element(widget, 92, 30, AlignCenter, AlignTop, FontPrimary, "Emulating");
+    widget_add_string_element(widget, 92, 40, AlignCenter, AlignTop, FontPrimary, "PicoPass");
+    widget_add_string_element(
+        widget, 34, 55, AlignLeft, AlignTop, FontSecondary, "Touch flipper to reader");
 
     view_dispatcher_switch_to_view(picopass->view_dispatcher, PicopassViewWidget);
     picopass_blink_emulate_start(picopass);
