@@ -1,0 +1,16 @@
+# For details & more options, see documentation/AppManifests.md in firmware repo
+
+App(
+    appid="fighterjet",  # Must be unique
+    name="Fighter Jet",  # Displayed in menus
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="fighterjet_app",
+    stack_size=2 * 1024,
+    fap_category="Games",
+    # Optional values
+    # fap_version="0.1.1",
+    fap_icon="fighterjet.png",  # 10x10 1-bit PNG
+    # fap_description="Fighter jet simulator",
+    # fap_author="Eero Prittinen",
+    # fap_weburl="https://github.com/user/fighterjet",
+)

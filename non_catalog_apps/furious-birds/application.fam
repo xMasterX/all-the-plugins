@@ -1,0 +1,14 @@
+App(
+    appid="furious_birds",
+    name="Furious Birds",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="furious_birds_app",
+    requires=["gui"],
+    stack_size=2 * 1024,
+    fap_category="Games",
+    fap_version="1.0",
+    fap_icon="furious_birds.png",
+    fap_author="Dmitry Ermashev",
+    fap_weburl="https://github.com/bmstr-ru/furious-birds",
+    fap_icon_assets="images",
+)

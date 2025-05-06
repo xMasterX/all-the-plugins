@@ -1,0 +1,14 @@
+App(
+    appid="executor_keychain",
+    name="Flipper Keyller",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="executor_keychain_app",
+    stack_size=2 * 1024,
+    fap_category="Media",
+    fap_version="0.1",
+    fap_icon="assets/executor_keychain_10px.png", 
+    fap_description="Echo Keyller/Executor Keychain",
+    fap_author="Esteban Fuentealba",
+    fap_weburl="https://github.com/EstebanFuentealba/Flipper-Keyller.git",
+    fap_icon_assets="images",  
+)

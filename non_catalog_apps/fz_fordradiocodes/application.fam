@@ -1,0 +1,20 @@
+App(
+    appid="fordradiocode",
+    name="Ford Radio Codes",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="fordradiocode_app_entry",
+    fap_version="0.1",
+    fap_category="Tools",
+    fap_description="Ford Radio 'M' & 'V' Unlock Code Generator!",
+    fap_author="DavidB",
+    stack_size=1 * 1024,
+    fap_icon_assets="resources",
+    fap_icon="resources/icon.png",  # App icon
+    requires=[
+        "gui",
+        "input",
+        "storage",
+        "stream"
+    ],
+    sources=["fordradiocode_app.c"],
+)

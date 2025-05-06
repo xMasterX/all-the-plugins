@@ -1,0 +1,17 @@
+# For details & more options, see documentation/AppManifests.md in firmware repo
+
+App(
+    appid="drifter",  # Must be unique
+    name="Drifter",  # Displayed in menus
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="drifter_app",
+    stack_size=2 * 1024,
+    fap_category="Games",
+    # Optional values
+    fap_version="0.2",
+    fap_icon="drifter.png",  # 10x10 1-bit PNG
+    fap_description="A boat game",
+    fap_author="Jed Lejosne",
+    fap_weburl="https://github.com/jean-edouard/drifter",
+    fap_icon_assets="images",  # Image assets to compile for this application
+)

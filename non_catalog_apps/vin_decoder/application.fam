@@ -1,0 +1,17 @@
+App(
+    appid="vin_decoder",
+    name="VIN decoder",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="vin_decoder_app",
+    stack_size=4 * 1024,
+    requires=[
+        "gui",
+    ],
+    order=10,
+    fap_icon="app.png",
+    fap_category="Tools",
+    fap_icon_assets="assets",
+    fap_description="Vehicle Identification Number decoder",
+    fap_author="@evillero",
+    fap_version="0.2",
+)
