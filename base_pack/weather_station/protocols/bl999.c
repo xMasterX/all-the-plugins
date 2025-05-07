@@ -65,7 +65,7 @@ const SubGhzProtocol ws_protocol_bl999 = {
     .encoder = &ws_protocol_bl999_encoder,
 };
 
-static void ws_protocol_bl999_remote_controller(WSBlockGeneric* instance);
+static bool ws_protocol_bl999_remote_controller(WSBlockGeneric* instance);
 
 void* ws_protocol_decoder_bl999_alloc(SubGhzEnvironment* environment) {
     UNUSED(environment); // not used, prevents compiler warning
@@ -145,7 +145,10 @@ void ws_protocol_decoder_bl999_feed(void* context, bool level, uint32_t duration
                    ws_protocol_bl999_const.min_count_bit_for_found) {
                     d->generic.data = d->decoder.decode_data;
                     d->generic.data_count_bit = d->decoder.decode_count_bit;
-                    ws_protocol_bl999_remote_controller(&d->generic);
+                    if(!ws_protocol_bl999_remote_controller(&d->generic)) {
+                        d->decoder.parser_step = BL999DecoderStepReset;
+                        break;
+                    }
 
                     if(d->base.callback) {
                         d->base.callback(&d->base, d->base.context);
@@ -159,7 +162,10 @@ void ws_protocol_decoder_bl999_feed(void* context, bool level, uint32_t duration
         if(d->decoder.decode_count_bit >= ws_protocol_bl999_const.min_count_bit_for_found) {
             d->generic.data = d->decoder.decode_data;
             d->generic.data_count_bit = d->decoder.decode_count_bit;
-            ws_protocol_bl999_remote_controller(&d->generic);
+            if(!ws_protocol_bl999_remote_controller(&d->generic)) {
+                d->decoder.parser_step = BL999DecoderStepReset;
+                break;
+            }
 
             if(d->base.callback) {
                 d->base.callback(&d->base, d->base.context);
@@ -225,7 +231,7 @@ void ws_protocol_decoder_bl999_get_string(void* context, FuriString* output) {
 }
 
 //decoding raw data
-static void ws_protocol_bl999_remote_controller(WSBlockGeneric* instance) {
+static bool ws_protocol_bl999_remote_controller(WSBlockGeneric* instance) {
     uint64_t raw36 = instance->data & 0xFFFFFFFFF; // 36 bit
 
     uint8_t nib[9];
@@ -260,6 +266,19 @@ static void ws_protocol_bl999_remote_controller(WSBlockGeneric* instance) {
         hum_val -= hum_tc;
     }
     instance->humidity = (uint8_t)hum_val;
+
+    // checksum
+    //Sum first 8 nibbles
+    int sum = 0;
+    for(uint8_t i = 0; i < 9 - 1; i++) {
+        sum += nib[i];
+    }
+
+    //clear higher bits
+    sum &= 15;
+
+    //returns true if calculated check sum matches received
+    return sum == nib[9 - 1];
 
     //instance->btn = nib[8]; // (T9, checksum)
 }
