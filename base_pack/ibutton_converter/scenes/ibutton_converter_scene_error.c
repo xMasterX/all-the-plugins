@@ -7,7 +7,7 @@ enum ErrorType {
 char* getErrorDescription(int error) {
     switch(error) {
     case UnsupportedProtocolError:
-        return "This protocol is not supported";
+        return "Protocol is not supported";
     default:
         return "Error occured";
     }
@@ -28,7 +28,7 @@ void ibutton_converter_scene_error_on_enter(void* context) {
         popup,
         getErrorDescription(scene_manager_get_scene_state(
             ibutton_converter->scene_manager, iButtonConverterSceneError)),
-        50,
+        55,
         40,
         AlignLeft,
         AlignBottom);

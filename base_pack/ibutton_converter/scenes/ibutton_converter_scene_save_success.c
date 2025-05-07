@@ -1,4 +1,5 @@
 #include "../ibutton_converter_i.h"
+#include <dolphin/dolphin.h>
 
 static void ibutton_converter_scene_save_success_popup_callback(void* context) {
     iButtonConverter* ibutton_converter = context;
@@ -10,8 +11,10 @@ void ibutton_converter_scene_save_success_on_enter(void* context) {
     iButtonConverter* ibutton_converter = context;
     Popup* popup = ibutton_converter->popup;
 
+    dolphin_deed(DolphinDeedIbuttonAdd);
+
     popup_set_icon(popup, 0, 9, &I_DolphinSuccess_91x55);
-    popup_set_header(popup, "Saved", 50, 19, AlignLeft, AlignBottom);
+    popup_set_header(popup, "Saved", 63, 19, AlignLeft, AlignBottom);
     popup_set_callback(popup, ibutton_converter_scene_save_success_popup_callback);
     popup_set_context(popup, ibutton_converter);
     popup_set_timeout(popup, 1500);
@@ -27,8 +30,11 @@ bool ibutton_converter_scene_save_success_on_event(void* context, SceneManagerEv
     if(event.type == SceneManagerEventTypeCustom) {
         consumed = true;
         if(event.event == iButtonConverterCustomEventBack) {
-            scene_manager_search_and_switch_to_another_scene(
-                ibutton_converter->scene_manager, iButtonConverterSceneStart);
+            const uint32_t possible_scenes[] = {
+                iButtonConverterSceneSelectMetakomConvertOption,
+                iButtonConverterSceneSelectCyfralConvertOption};
+            scene_manager_search_and_switch_to_previous_scene_one_of(
+                ibutton_converter->scene_manager, possible_scenes, COUNT_OF(possible_scenes));
         }
     }
 

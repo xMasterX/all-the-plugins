@@ -13,7 +13,7 @@ void ibutton_converter_scene_select_key_on_enter(void* context) {
             ibutton_protocols_get_id_by_name(ibutton_converter->protocols, "Cyfral");
 
         const iButtonProtocolId loaded_key_protocol_id =
-            ibutton_key_get_protocol_id(ibutton_converter->key);
+            ibutton_key_get_protocol_id(ibutton_converter->source_key);
 
         if(loaded_key_protocol_id == metakom_id) {
             scene_manager_next_scene(

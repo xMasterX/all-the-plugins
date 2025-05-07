@@ -7,11 +7,11 @@
 - Support for importing Metakom and Cyfral key dump files
 - Multiple conversion modes:
   - **Metakom**: 
-    - `direct` mode
-    - `reversed` mode
+    - Direct mode
+    - Reversed mode
   - **Cyfral**:
-    - Standard modes: `C1`, `C2`, `C3`, `C4`
-    - Extended modes: `C5`, `C6`, `C7`
+    - Standard modes: C1, C2, C3, C4
+    - Extended modes: C5, C6, C7
 - Output to Dallas iButton format
 - Custom naming for the converted output file
 
@@ -20,8 +20,8 @@
 1. Launch the **iButton Converter** application on your Flipper Zero.
 2. Select a key dump file in either Metakom or Cyfral format.
 3. Choose the desired conversion mode:
-   - For **Metakom**: `direct` or `reversed`
-   - For **Cyfral**: one of `C1`–`C7`
+   - For **Metakom**: direct or reversed
+   - For **Cyfral**: one of C1–C7
 4. Enter the desired filename for the converted key.
 5. Save the output in Dallas iButton format.
 

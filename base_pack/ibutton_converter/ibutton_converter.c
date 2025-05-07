@@ -55,7 +55,7 @@ iButtonConverter* ibutton_converter_alloc(void) {
     ibutton_converter->dialogs = furi_record_open(RECORD_DIALOGS);
 
     ibutton_converter->protocols = ibutton_protocols_alloc();
-    ibutton_converter->key =
+    ibutton_converter->source_key =
         ibutton_key_alloc(ibutton_protocols_get_max_data_size(ibutton_converter->protocols));
 
     ibutton_converter->submenu = submenu_alloc();
@@ -118,7 +118,10 @@ void ibutton_converter_free(iButtonConverter* ibutton_converter) {
     furi_record_close(RECORD_GUI);
     ibutton_converter->gui = NULL;
 
-    ibutton_key_free(ibutton_converter->key);
+    ibutton_key_free(ibutton_converter->source_key);
+    if(ibutton_converter->converted_key) {
+        ibutton_key_free(ibutton_converter->converted_key);
+    }
     ibutton_protocols_free(ibutton_converter->protocols);
 
     furi_string_free(ibutton_converter->file_path);
@@ -132,7 +135,7 @@ bool ibutton_converter_load_key(iButtonConverter* ibutton_converter, bool show_e
 
     const bool success = ibutton_protocols_load(
         ibutton_converter->protocols,
-        ibutton_converter->key,
+        ibutton_converter->source_key,
         furi_string_get_cstr(ibutton_converter->file_path));
 
     if(success) {
@@ -179,7 +182,7 @@ bool ibutton_converter_save_key(iButtonConverter* ibutton_converter) {
 
     ibutton_converter_make_ibutton_app_folder(ibutton_converter);
 
-    iButtonKey* key = ibutton_converter->key;
+    iButtonKey* key = ibutton_converter->converted_key;
     const bool success = ibutton_protocols_save(
         ibutton_converter->protocols, key, furi_string_get_cstr(ibutton_converter->file_path));
 
@@ -193,7 +196,7 @@ bool ibutton_converter_save_key(iButtonConverter* ibutton_converter) {
 void ibutton_converter_reset_key(iButtonConverter* ibutton_converter) {
     ibutton_converter->key_name[0] = '\0';
     furi_string_reset(ibutton_converter->file_path);
-    ibutton_key_reset(ibutton_converter->key);
+    ibutton_key_reset(ibutton_converter->source_key);
 }
 
 void ibutton_converter_submenu_callback(void* context, uint32_t index) {

@@ -1,7 +1,6 @@
 #include "../ibutton_converter_i.h"
 #include "ibutton_converter_scene.h"
-#include <dolphin/dolphin.h>
-#include "../ibutton_converter_utils.h"
+#include "../utils/ibutton_converter_utils.h"
 
 enum SubmenuIndex {
     SubmenuIndexDirect,
@@ -43,13 +42,15 @@ bool ibutton_converter_scene_select_metakom_convert_option_on_event(
 
     if(event.type == SceneManagerEventTypeCustom) {
         scene_manager_set_scene_state(
-            ibutton_converter->scene_manager, iButtonConverterSceneStart, event.event);
+            ibutton_converter->scene_manager,
+            iButtonConverterSceneSelectMetakomConvertOption,
+            event.event);
         consumed = true;
 
         // prepare input data
         iButtonEditableData metakom_editable_data;
         ibutton_protocols_get_editable_data(
-            ibutton_converter->protocols, ibutton_converter->key, &metakom_editable_data);
+            ibutton_converter->protocols, ibutton_converter->source_key, &metakom_editable_data);
 
         uint8_t metakom_data[4];
         memcpy(metakom_data, metakom_editable_data.ptr, 4);
@@ -72,10 +73,13 @@ bool ibutton_converter_scene_select_metakom_convert_option_on_event(
             metakom_to_dallas(metakom_data, dallas_editable_data.ptr, 1);
         }
 
-        ibutton_key_free(ibutton_converter->key);
-        ibutton_converter->key = converted_key;
+        if(ibutton_converter->converted_key) {
+            ibutton_key_free(ibutton_converter->converted_key);
+        }
+        ibutton_converter->converted_key = converted_key;
 
-        scene_manager_next_scene(ibutton_converter->scene_manager, iButtonConverterSceneSaveName);
+        scene_manager_next_scene(
+            ibutton_converter->scene_manager, iButtonConverterSceneConvertedKeyMenu);
     }
 
     return consumed;

@@ -10,7 +10,7 @@ App(
         "storage",
         "gui",
     ],
-    fap_version="1.0",
+    fap_version="1.1",
     fap_icon="assets/icon.png",
     fap_category="iButton",
     fap_author="@leptopt1los",

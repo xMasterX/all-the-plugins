@@ -37,7 +37,8 @@ struct iButtonConverter {
     Storage* storage;
     DialogsApp* dialogs;
 
-    iButtonKey* key;
+    iButtonKey* source_key;
+    iButtonKey* converted_key;
     iButtonProtocols* protocols;
 
     FuriString* file_path;

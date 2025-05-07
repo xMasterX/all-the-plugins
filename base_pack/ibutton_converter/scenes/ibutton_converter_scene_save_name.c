@@ -3,8 +3,6 @@
 #include <toolbox/name_generator.h>
 #include <toolbox/path.h>
 
-#include <dolphin/dolphin.h>
-
 static void ibutton_converter_scene_save_name_text_input_callback(void* context) {
     iButtonConverter* ibutton_converter = context;
     view_dispatcher_send_custom_event(

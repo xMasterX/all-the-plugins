@@ -1,11 +1,11 @@
 #include "../ibutton_converter_i.h"
 #include "ibutton_converter_scene.h"
-#include <dolphin/dolphin.h>
-#include "../ibutton_converter_utils.h"
+#include "../utils/ibutton_converter_utils.h"
 
 enum SubmenuIndex {
     SubmenuIndexC1,
     SubmenuIndexC2,
+    SubmenuIndexC2Alt,
     SubmenuIndexC3,
     SubmenuIndexC4,
     SubmenuIndexC5,
@@ -22,6 +22,13 @@ void ibutton_converter_scene_select_cyfral_convert_option_on_enter(void* context
 
     submenu_add_item(
         submenu, "C2", SubmenuIndexC2, ibutton_converter_submenu_callback, ibutton_converter);
+
+    submenu_add_item(
+        submenu,
+        "C2 (Alt)",
+        SubmenuIndexC2Alt,
+        ibutton_converter_submenu_callback,
+        ibutton_converter);
 
     submenu_add_item(
         submenu, "C3", SubmenuIndexC3, ibutton_converter_submenu_callback, ibutton_converter);
@@ -55,13 +62,15 @@ bool ibutton_converter_scene_select_cyfral_convert_option_on_event(
 
     if(event.type == SceneManagerEventTypeCustom) {
         scene_manager_set_scene_state(
-            ibutton_converter->scene_manager, iButtonConverterSceneStart, event.event);
+            ibutton_converter->scene_manager,
+            iButtonConverterSceneSelectCyfralConvertOption,
+            event.event);
         consumed = true;
 
         // prepare input data
         iButtonEditableData cyfral_editable_data;
         ibutton_protocols_get_editable_data(
-            ibutton_converter->protocols, ibutton_converter->key, &cyfral_editable_data);
+            ibutton_converter->protocols, ibutton_converter->source_key, &cyfral_editable_data);
 
         uint8_t cyfral_data[2];
         memcpy(cyfral_data, cyfral_editable_data.ptr, 2);
@@ -82,6 +91,8 @@ bool ibutton_converter_scene_select_cyfral_convert_option_on_event(
             cyfral_to_dallas_c1(cyfral_data, dallas_editable_data.ptr);
         } else if(event.event == SubmenuIndexC2) {
             cyfral_to_dallas_c2(cyfral_data, dallas_editable_data.ptr);
+        } else if(event.event == SubmenuIndexC2Alt) {
+            cyfral_to_dallas_c2_alt(cyfral_data, dallas_editable_data.ptr);
         } else if(event.event == SubmenuIndexC3) {
             cyfral_to_dallas_c3(cyfral_data, dallas_editable_data.ptr);
         } else if(event.event == SubmenuIndexC4) {
@@ -94,10 +105,13 @@ bool ibutton_converter_scene_select_cyfral_convert_option_on_event(
             cyfral_to_dallas_c7(cyfral_data, dallas_editable_data.ptr);
         }
 
-        ibutton_key_free(ibutton_converter->key);
-        ibutton_converter->key = converted_key;
+        if(ibutton_converter->converted_key) {
+            ibutton_key_free(ibutton_converter->converted_key);
+        }
+        ibutton_converter->converted_key = converted_key;
 
-        scene_manager_next_scene(ibutton_converter->scene_manager, iButtonConverterSceneSaveName);
+        scene_manager_next_scene(
+            ibutton_converter->scene_manager, iButtonConverterSceneConvertedKeyMenu);
     }
 
     return consumed;
