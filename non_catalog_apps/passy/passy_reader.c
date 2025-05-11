@@ -424,9 +424,8 @@ NfcCommand passy_reader_read_dg2_or_dg7(PassyReader* passy_reader) {
         dg_ext = ".jpc";
         start = (uint8_t*)jpeg2k_cs - header;
     } else {
-        furi_string_printf(path, "%s/%s%s", STORAGE_APP_DATA_PATH_PREFIX, dg_type, ".bin");
+        dg_ext = ".bin";
         start = 0;
-        passy_log_buffer(TAG, "header", header, sizeof(header));
     }
     furi_string_printf(path, "%s/%s%s", STORAGE_APP_DATA_PATH_PREFIX, dg_type, dg_ext);
     FURI_LOG_I(TAG, "Writing offset %d to %s", start, furi_string_get_cstr(path));
