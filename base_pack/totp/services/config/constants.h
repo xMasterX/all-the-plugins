@@ -27,6 +27,7 @@
 #endif
 #define TOTP_CONFIG_KEY_AUTOMATION_KB_LAYOUT "AutomationKbLayout"
 #define TOTP_CONFIG_KEY_AUTOMATION_INITIAL_DELAY "AutomationInitialDelay"
+#define TOTP_CONFIG_KEY_UI_TOKEN_DIGIT_GROUPING "UITokenDigitGrouping"
 #define TOTP_CONFIG_KEY_FONT "Font"
 #define TOTP_CONFIG_KEY_CRYPTO_VERSION "CryptoVersion"
 #define TOTP_CONFIG_KEY_CRYPTO_KEY_SLOT "CryptoKeySlot"
