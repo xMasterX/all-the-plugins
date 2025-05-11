@@ -277,6 +277,11 @@ static bool ws_protocol_bl999_remote_controller(WSBlockGeneric* instance) {
     //clear higher bits
     sum &= 15;
 
+    // limit temperature to valid range for this type of sensor
+    if (instance->temp < -40.0 || instance->temp > 50.0) {
+        return false;
+    }
+
     //returns true if calculated check sum matches received
     return sum == nib[9 - 1];
 
