@@ -175,7 +175,6 @@ void scheduler_scene_run_on_enter(void* context) {
     furi_hal_power_suppress_charge_enter();
     scheduler_reset(app->scheduler);
     scheduler_ui_run_state_alloc(app);
-    subghz_devices_init();
     view_dispatcher_switch_to_view(app->view_dispatcher, SchedulerSceneRunSchedule);
 }
 
@@ -185,7 +184,6 @@ void scheduler_scene_run_on_exit(void* context) {
         furi_thread_join(app->thread);
     }
     scheduler_reset(app->scheduler);
-    subghz_devices_deinit();
     scheduler_ui_run_state_free();
     furi_hal_power_suppress_charge_exit();
 }
