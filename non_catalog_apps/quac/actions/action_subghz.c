@@ -5,6 +5,8 @@
 #include <string.h>
 
 #include "helpers/subghz_txrx.h"
+#include <lib/subghz/blocks/custom_btn.h>
+#include <lib/subghz/protocols/raw.h>
 
 #include "action_i.h"
 #include "quac.h"
@@ -24,7 +26,7 @@ void action_subghz_need_save_callback(void* context) {
 
     Stream* ff_stream = flipper_format_get_raw_stream(ff);
     flipper_format_delete_key(ff, "Repeat");
-    flipper_format_delete_key(ff, "Manufacture");
+    //flipper_format_delete_key(ff, "Manufacture");
 
     do {
         if(!storage_simply_remove(
@@ -82,6 +84,14 @@ void action_subghz_need_save_callback(void* context) {
     furi_string_free(quac_filename);
 }
 
+static void action_subghz_raw_end_callback(void* context) {
+    FURI_LOG_I(TAG, "Stopping TX on RAW");
+    furi_assert(context);
+    App* app = context;
+
+    app->raw_file_is_tx = false;
+}
+
 void action_subghz_tx(void* context, FuriString* action_path, FuriString* error) {
     App* app = context;
     const char* file_name = furi_string_get_cstr(action_path);
@@ -98,6 +108,10 @@ void action_subghz_tx(void* context, FuriString* action_path, FuriString* error)
 
     FuriString* preset_name = furi_string_alloc();
     FuriString* protocol_name = furi_string_alloc();
+
+    subghz_custom_btns_reset();
+
+    app->raw_file_is_tx = false;
 
     FuriString* temp_str;
     temp_str = furi_string_alloc();
@@ -208,13 +222,32 @@ void action_subghz_tx(void* context, FuriString* action_path, FuriString* error)
         FURI_LOG_E(TAG, "Failed to start TX");
     }
 
-    // TODO: Should this be based on a Setting?
-    furi_delay_ms(100);
+    bool skip_extra_stop = false;
+    FURI_LOG_D(TAG, "Checking if file is RAW...");
+    if(!strcmp(furi_string_get_cstr(protocol_name), "RAW")) {
+        subghz_txrx_set_raw_file_encoder_worker_callback_end(
+            txrx, action_subghz_raw_end_callback, app);
+        app->raw_file_is_tx = true;
+        skip_extra_stop = true;
+    }
+    do {
+        furi_delay_ms(1);
+    } while(app->raw_file_is_tx);
+
+    if(!app->raw_file_is_tx && !skip_extra_stop) {
+        // TODO: Should this be based on a Setting?
+        furi_delay_ms(1500);
+        subghz_txrx_stop(txrx);
+    } else {
+        // TODO: Should this be based on a Setting?
+        furi_delay_ms(50);
+        subghz_txrx_stop(txrx);
+    }
+    skip_extra_stop = false;
 
     FURI_LOG_I(TAG, "SUBGHZ: Action complete.");
 
-    // This will call need_save_callback, if necessary
-    subghz_txrx_stop(txrx);
+    subghz_custom_btns_reset();
 
     subghz_txrx_free(txrx);
     furi_string_free(preset_name);

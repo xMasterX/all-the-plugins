@@ -7,7 +7,7 @@
 
 void action_ql_resolve(
     void* context,
-    const FuriString* action_path,
+    FuriString* action_path,
     FuriString* new_path,
     FuriString* error) {
     UNUSED(error);
@@ -20,18 +20,30 @@ void action_ql_resolve(
                 "Quac Link: Failed to open file %s", furi_string_get_cstr(action_path));
             break;
         }
-        char buffer[MAX_FILE_LEN]; // long enough?
-        size_t bytes_read = storage_file_read(file_link, buffer, MAX_FILE_LEN);
-        if(bytes_read == 0) {
+
+        furi_string_reset(new_path);
+
+        size_t ret = 0;
+        do {
+            uint8_t buffer[65] = {0};
+            ret = storage_file_read(file_link, buffer, sizeof(buffer) - 1);
+            for(size_t i = 0; i < ret; i++) {
+                furi_string_push_back(new_path, buffer[i]);
+            }
+        } while(ret > 0);
+
+        furi_string_trim(new_path);
+        if(!furi_string_size(new_path)) {
             ACTION_SET_ERROR(
                 "Quac Link: Error reading link file %s", furi_string_get_cstr(action_path));
             break;
         }
-        if(!storage_file_exists(app->storage, buffer)) {
-            ACTION_SET_ERROR("Quac Link: Linked file does not exist! %s", buffer);
+        if(!storage_file_exists(app->storage, furi_string_get_cstr(new_path))) {
+            ACTION_SET_ERROR(
+                "Quac Link: Linked file does not exist! %s", furi_string_get_cstr(new_path));
             break;
         }
-        furi_string_set_strn(new_path, buffer, bytes_read);
+
     } while(false);
     storage_file_close(file_link);
     storage_file_free(file_link);
@@ -40,7 +52,8 @@ void action_ql_resolve(
 void action_tx(void* context, Item* item, FuriString* error) {
     // FURI_LOG_I(TAG, "action_run: %s : %s", furi_string_get_cstr(item->name), item->ext);
 
-    FuriString* path = furi_string_alloc_set(item->path);
+    FuriString* path = furi_string_alloc();
+    furi_string_set(path, item->path);
     if(item->is_link) {
         // This is a Quac link, open the file and pull the real filename
         action_ql_resolve(context, item->path, path, error);
