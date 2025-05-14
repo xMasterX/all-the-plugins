@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `11 May 16:45 GMT +3`
+### Apps checked & updated at `15 May 02:39 GMT +3`
 
 
 # Default pack
@@ -55,13 +55,14 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Name | <div style="width:100px">Category</div> | Author | Remark | <div style="width:70px">Catalog</div> |
 |---|:---:|---|---|:---:|
 | **Sub-GHz bruteforcer** | ![SubGhz Badge] | [by @derskythe & xMasterX](https://github.com/derskythe/flipperzero-subbrute) | [original by Ganapati & xMasterX](https://github.com/DarkFlippers/unleashed-firmware/pull/57) | ![None Badge] |
-| **Sub-GHz playlist** | ![SubGhz Badge] | [by darmiel](https://github.com/DarkFlippers/unleashed-firmware/pull/62) |  | ![None Badge] |
+| **Sub-GHz playlist** | ![SubGhz Badge] | [by darmiel](https://github.com/DarkFlippers/unleashed-firmware/pull/62) | Remake to work with all types of keys by @xMasterX | ![None Badge] |
 | **Sub-GHz Remote** | ![SubGhz Badge] | [by @gid9798](https://github.com/gid9798) | Part of UFW as main app [sources](https://github.com/DarkFlippers/unleashed-firmware/tree/dev/applications/main/subghz_remote)<br>Using version from flipper catalog on CFW can break your .sub files | [![UFW Badge]](https://lab.flipper.net/apps/subghz_remote_ofw) |
 | Spectrum Analyzer (with changes) | ![SubGhz Badge] | [by jolcese](https://github.com/jolcese/flipperzero-firmware/tree/spectrum/applications/spectrum_analyzer) | [Ultra Narrow mode & scan channels non-consecutively](https://github.com/theY4Kman/flipperzero-firmware/commits?author=theY4Kman) + Many improvements by @ALEEF02 | [![UFW Badge]](https://lab.flipper.net/apps/spectrum_analyzer) |
 | POCSAG Pager | ![SubGhz Badge] | [by xMasterX & Shmuma](https://github.com/xMasterX/flipper-pager) | Better decoder by htotoo | [![UFW Badge]](https://lab.flipper.net/apps/pocsag_pager) |
 | **ProtoView** | ![SubGhz Badge] | [by antirez](https://github.com/antirez/protoview) |  | [![UFW Badge]](https://lab.flipper.net/apps/protoview) |
 | Rolling Flaws | ![SubGhz Badge] | [by CodeAllNight & jamisonderek](https://github.com/jamisonderek/flipper-zero-tutorials/tree/main/subghz/apps/rolling-flaws) |  | ![None Badge] |
 | Radio Scanner | ![SubGhz Badge] | [by RocketGod](https://github.com/RocketGod-git/Flipper-Zero-Radio-Scanner) | Scans frequencies available to the CC1101 and plays them over the speaker so you can hear them. | ![None Badge] |
+| Sub-GHz Scheduler | ![SubGhz Badge] | [by shalebridge](https://github.com/shalebridge/flipper-subghz-scheduler) | Remake to work with all types of keys by @xMasterX | [![Author Badge]](https://lab.flipper.net/apps/subghz_scheduler) |
 | **NFC Maker** plugin | ![NFC Badge] | [by Willy-JL](https://github.com/Flipper-XFW/Xtreme-Firmware/tree/dev/applications/external/nfc_maker) | make tags with URLs, Wifi and other things | ![None Badge] |
 | MIFARE Classic Editor | ![NFC Badge] | [by TollyH](https://github.com/TollyH/flipper-apps/tree/main/mfc-editor) | edit dumps on flipper | [![Author Badge]](https://lab.flipper.net/apps/mfc_editor) |
 | **RFID Fuzzer** | ![RFID Badge] | [by @gid9798](https://github.com/DarkFlippers/Multi_Fuzzer) | original by Ganapati & xMasterX | [![UFW Badge]](https://lab.flipper.net/apps/fuzzer_rfid) |
@@ -74,6 +75,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | HEX Viewer | ![Tools Badge] | [by QtRoS](https://github.com/QtRoS/flipper-zero-hex-viewer) |  | [![UFW Badge]](https://lab.flipper.net/apps/hex_viewer) |
 | Text Viewer | ![Tools Badge] | [by Willy-JL](https://github.com/Flipper-XFW/Xtreme-Firmware/tree/dev/applications/external/text_viewer) | original by kowalski7cc & kyhwana | [![UFW Badge]](https://lab.flipper.net/apps/text_viewer) |
 | DTMF Dolphin | ![Tools Badge] | [by litui](https://github.com/litui/dtmf_dolphin) |  | [![UFW Badge]](https://lab.flipper.net/apps/dtmf_dolphin) |
+| Quac! Remote | ![Tools Badge] | [by rdefeo](https://github.com/rdefeo/quac) | Various fixes by @Willy-JL, Last SubGHz and Link file Fixes by @xMasterX, and first subghz fixes by Dmitry | [![Author Badge]](https://lab.flipper.net/apps/quac) |
 | ESP8266 Deauther plugin | ![GPIO Badge] | [by SequoiaSan](https://github.com/SequoiaSan/FlipperZero-Wifi-ESP8266-Deauther-Module) |  | ![None Badge] |
 | WiFi Scanner plugin | ![GPIO Badge] | [by SequoiaSan](https://github.com/SequoiaSan/FlipperZero-WiFi-Scanner_Module) |  | ![None Badge] |
 | GPIO: Sentry Safe plugin | ![GPIO Badge] | [by H4ckd4ddy](https://github.com/H4ckd4ddy/flipperzero-sentry-safe-plugin) |  | [![UFW Badge]](https://lab.flipper.net/apps/gpio_sentry_safe) |
@@ -262,7 +264,6 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Music to Sub-GHz Radio Converter | ![SubGhz Badge] | [by jamisonderek](https://github.com/jamisonderek/flipper-zero-tutorials/tree/main/subghz/fmf_to_sub) |  | ![None Badge] |
 | Frequency Analyzer (External) | ![SubGhz Badge] | [by xMasterX](https://github.com/DarkFlippers) | Cut from unleashed FW subghz app directly, with external module support (no path isolate, get random signals from space!) | ![None Badge] |
 | Genie Door Recorder | ![SubGhz Badge] | [by jamisonderek](https://github.com/jamisonderek/flipper-zero-tutorials) |  | [![Author Badge]](https://lab.flipper.net/apps/genie_record) |
-| Sub-GHz Scheduler | ![SubGhz Badge] | [by shalebridge](https://github.com/shalebridge/flipper-subghz-scheduler) |  | [![Author Badge]](https://lab.flipper.net/apps/subghz_scheduler) |
 | Analog Clock | ![Tools Badge] | [by scrolltex](https://github.com/scrolltex/flipper_analog_clock) |  | [![UFW Badge]](https://lab.flipper.net/apps/analog_clock) |
 | Brainfuck interpreter | ![Tools Badge] | [by nymda](https://github.com/nymda/FlipperZeroBrainfuck) |  | [![UFW Badge]](https://lab.flipper.net/apps/brainfuck) |
 | Ceasar Cipher | ![Tools Badge] | [by panki27](https://github.com/panki27/caesar-cipher) |  | [![UFW Badge]](https://lab.flipper.net/apps/caesar_cipher) |
@@ -285,7 +286,6 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Programmer Calculator | ![Tools Badge] | [by armixz](https://github.com/armixz/Flipper-Zero-Programmer-Calculator) |  | ![None Badge] |
 | Tone Generator | ![Tools Badge] | [by GEMISIS](https://github.com/GEMISIS/tone_gen/) |  | ![None Badge] |
 | DCF77 Clock Sppof | ![Tools Badge] | [by molodos](https://github.com/molodos/dcf77-clock-spoof) | fork of [dcf77-clock-sync](https://github.com/mdaskalov/dcf77-clock-sync) | ![None Badge] |
-| Quac! Remote | ![Tools Badge] | [by rdefeo](https://github.com/rdefeo/quac) | Various fixes by @Willy-JL | [![Author Badge]](https://lab.flipper.net/apps/quac) |
 | Key Copier | ![Tools Badge] | [by zinongli](https://github.com/zinongli/KeyCopier) |  | ![None Badge] |
 | uPython | ![Tools Badge] | [by ofabel](https://github.com/ofabel/mp-flipper) | read more details in original repo | [![Author Badge]](https://lab.flipper.net/apps/upython) |
 | Nickname Generator | ![Tools Badge] | [by disaxq](https://github.com/disaxq/Nickname-Generator) |  | ![None Badge] |
