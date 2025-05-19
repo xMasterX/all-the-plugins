@@ -121,7 +121,7 @@ static void clock_render_callback(Canvas* const canvas, void* ctx) {
     //canvas_set_color(canvas, ColorBlack);
 
     //avoids a bug with the brightness being reverted after the backlight-off period
-    set_backlight_brightness((float)(brightness / 100.f));
+    //set_backlight_brightness((float)(brightness / 100.f));
 
     if(dspBrightnessBarFrames > 0) {
         elements_progress_bar_vertical(canvas, 119, 1, 62, (float)(brightness / 100.f));
@@ -309,6 +309,10 @@ int32_t clock_app(void* p) {
     float tmpBrightness = notif->settings.display_brightness;
     brightness = tmpBrightness * 100; // Keep current brightness by default
 
+    //save current user settings to tmp, disable backlight delay and force dislay always on
+    uint32_t tmp_display_off_delay_ms = notif->settings.display_off_delay_ms;
+    notif->settings.display_off_delay_ms = 0;
+
     notification_message(notif, &sequence_display_backlight_enforce_on);
     notification_message(notif, &led_off);
 
@@ -387,6 +391,9 @@ int32_t clock_app(void* p) {
     furi_message_queue_free(plugin_state->event_queue);
     furi_mutex_free(plugin_state->mutex);
     free(plugin_state);
+
+    //restore display backlight timer settings;
+    notif->settings.display_off_delay_ms = tmp_display_off_delay_ms;
 
     set_backlight_brightness(tmpBrightness);
     notification_message(notif, &sequence_display_backlight_enforce_auto);
