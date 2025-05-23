@@ -108,8 +108,7 @@ CameraSuiteViewGuide* camera_suite_view_guide_alloc() {
 void camera_suite_view_guide_free(CameraSuiteViewGuide* instance) {
     furi_assert(instance);
 
-    with_view_model(
-        instance->view, CameraSuiteViewGuideModel * model, { UNUSED(model); }, true);
+    with_view_model(instance->view, CameraSuiteViewGuideModel * model, { UNUSED(model); }, true);
     view_free(instance->view);
     free(instance);
 }

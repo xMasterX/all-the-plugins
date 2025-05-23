@@ -189,8 +189,7 @@ CameraSuiteViewStart* camera_suite_view_start_alloc() {
 void camera_suite_view_start_free(CameraSuiteViewStart* instance) {
     furi_assert(instance);
 
-    with_view_model(
-        instance->view, CameraSuiteViewStartModel * model, { UNUSED(model); }, true);
+    with_view_model(instance->view, CameraSuiteViewStartModel * model, { UNUSED(model); }, true);
     view_free(instance->view);
     free(instance);
 }
