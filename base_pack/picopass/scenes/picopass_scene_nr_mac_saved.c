@@ -27,10 +27,10 @@ bool picopass_scene_nr_mac_saved_on_event(void* context, SceneManagerEvent event
 
     if(event.type == SceneManagerEventTypeCustom) {
         if(event.event == PicopassCustomEventViewExit) {
-            if(picopass->auto_nr_mac) {
+            if(picopass->nr_mac_type == AutoNRMAC) {
                 consumed = scene_manager_search_and_switch_to_previous_scene(
                     picopass->scene_manager, PicopassSceneEliteDictAttack);
-                picopass->auto_nr_mac = false;
+                picopass->nr_mac_type = ManualNRMAC;
             } else {
                 scene_manager_set_scene_state(
                     picopass->scene_manager, PicopassSceneStart, 0); // Set back to "read card"

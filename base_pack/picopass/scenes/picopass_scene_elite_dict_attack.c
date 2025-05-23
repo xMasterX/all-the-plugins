@@ -187,7 +187,7 @@ bool picopass_scene_elite_dict_attack_on_event(void* context, SceneManagerEvent 
                    PICOPASS_BLOCK_LEN) == 0) {
                 scene_manager_next_scene(picopass->scene_manager, PicopassSceneReadFactorySuccess);
             } else {
-                if(auth == PicopassDeviceAuthMethodFailed && picopass->auto_nr_mac) {
+                if(auth == PicopassDeviceAuthMethodFailed && picopass->nr_mac_type == AutoNRMAC) {
                     // save partial as <CSN>-partial
                     picopass->dev->format = PicopassDeviceSaveFormatPartial;
                     uint8_t* csn =

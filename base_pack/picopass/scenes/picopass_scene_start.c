@@ -17,7 +17,7 @@ void picopass_scene_start_submenu_callback(void* context, uint32_t index) {
 void picopass_scene_start_on_enter(void* context) {
     Picopass* picopass = context;
     // Reset on enter
-    picopass->auto_nr_mac = false;
+    picopass->nr_mac_type = ManualNRMAC;
 
     Submenu* submenu = picopass->submenu;
     submenu_add_item(
@@ -72,7 +72,7 @@ bool picopass_scene_start_on_event(void* context, SceneManagerEvent event) {
             scene_manager_next_scene(picopass->scene_manager, PicopassSceneLoclass);
             consumed = true;
         } else if(event.event == SubmenuIndexNRMAC) {
-            picopass->auto_nr_mac = true;
+            picopass->nr_mac_type = AutoNRMAC;
             scene_manager_set_scene_state(
                 picopass->scene_manager, PicopassSceneStart, SubmenuIndexNRMAC);
             scene_manager_next_scene(picopass->scene_manager, PicopassSceneEliteDictAttack);
