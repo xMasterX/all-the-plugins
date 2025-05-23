@@ -43,6 +43,11 @@ bool passy_scene_passport_number_input_on_event(void* context, SceneManagerEvent
             }
             passy->text_store[len] = '\0';
 
+            // Capitalize the passport number
+            for(size_t i = 0; i < len; i++) {
+                passy->text_store[i] = toupper(passy->text_store[i]);
+            }
+
             strlcpy(passy->passport_number, passy->text_store, strlen(passy->text_store) + 1);
             scene_manager_next_scene(passy->scene_manager, PassySceneDoBInput);
             consumed = true;
