@@ -2,7 +2,7 @@
 
 App(
     appid="flame_rng",  # Must be unique
-    name="Flipper Flame RNG",  # Displayed in menus
+    name="Flame RNG",  # Displayed in menus
     apptype=FlipperAppType.EXTERNAL,
     entry_point="flame_rng",
     stack_size=2 * 1024,

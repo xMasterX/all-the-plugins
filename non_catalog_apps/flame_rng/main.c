@@ -9,10 +9,12 @@
 #include <stdlib.h>
 #include <time.h>
 #include <toolbox/stream/file_stream.h>
+#include <toolbox/name_generator.h>
 
 #define TAG             "flame_rng"
 #define HISTORY_SIZE    5
 #define MAX_PATH_LENGTH 256
+#define MAX_NAME_LENGTH 128
 
 typedef struct {
     uint32_t rng_value;
@@ -29,22 +31,22 @@ static uint32_t generate_rng_from_ir(InfraredWorkerSignal* signal) {
     size_t timings_cnt;
     infrared_worker_get_raw_signal(signal, &timings, &timings_cnt);
 
-    uint32_t seed = furi_hal_random_get();  // Start with hardware RNG
-    uint32_t cpu_ticks = DWT->CYCCNT;      // CPU cycle counter
-    
+    uint32_t seed = furi_hal_random_get(); // Start with hardware RNG
+    uint32_t cpu_ticks = DWT->CYCCNT; // CPU cycle counter
+
     seed ^= seed >> 16;
     seed *= 0x7feb352d;
     seed ^= seed >> 15;
     seed *= 0x846ca68b;
     seed ^= seed >> 16;
-    
+
     // More thorough mixing of entropy sources
     for(size_t i = 0; i < timings_cnt; i++) {
         seed = (seed << 7) ^ (seed >> 25) ^ timings[i];
         seed += cpu_ticks ^ (i * 0x9E3779B9);
-        cpu_ticks = DWT->CYCCNT;  // Refresh CPU ticks
+        cpu_ticks = DWT->CYCCNT; // Refresh CPU ticks
     }
-    
+
     return seed;
 }
 
@@ -61,24 +63,24 @@ static void ir_callback(void* ctx, InfraredWorkerSignal* signal) {
 
     // Combine multiple entropy sources
     uint32_t rng_number = seed ^ furi_hal_random_get();
-    rng_number ^= (uint32_t)furi_get_tick();  // System ticks
-    
+    rng_number ^= (uint32_t)furi_get_tick(); // System ticks
+
     // Improved mixing function (based on xxHash)
     rng_number ^= rng_number >> 15;
     rng_number *= 0x85EBCA77;
     rng_number ^= rng_number >> 13;
     rng_number *= 0xC2B2AE3D;
     rng_number ^= rng_number >> 16;
-    
+
     // Better range reduction without bias
     uint64_t scaled = (uint64_t)rng_number * 1000000ULL;
-    state->rng_value = (scaled >> 32);  // Take high bits
-    
+    state->rng_value = (scaled >> 32); // Take high bits
+
     state->seed = seed;
     update_history(state, state->rng_value);
     state->new_value = true;
     state->message_timestamp = furi_get_tick();
-    
+
     furi_mutex_release(state->mutex);
     FURI_LOG_I(TAG, "Generated RNG: %lu (seed: %lu)", state->rng_value, state->seed);
 }
@@ -97,7 +99,9 @@ static bool save_random_numbers(FlameRngState* state) {
 
     // Generate random filename
     char filename[MAX_PATH_LENGTH];
-    snprintf(filename, sizeof(filename), "/ext/random_gen/RANDOM-%u.rng", rand());
+    char name_buffer[MAX_NAME_LENGTH]; // You might need to define MAX_NAME_LENGTH
+    name_generator_make_auto(name_buffer, sizeof(name_buffer), "RANDOM");
+    snprintf(filename, sizeof(filename), "/ext/random_gen/%s.rng", name_buffer);
 
     file = file_stream_alloc(storage);
     if(!file_stream_open(file, filename, FSAM_WRITE, FSOM_CREATE_NEW)) {
