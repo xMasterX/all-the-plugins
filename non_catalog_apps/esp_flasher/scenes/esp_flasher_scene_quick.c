@@ -2,6 +2,7 @@
 
 // Marauder firmware source - https://github.com/justcallmekoko/ESP32Marauder
 // BlackMagic firmware source - https://github.com/flipperdevices/blackmagic-esp32-s2
+// Marauder firmware fork with LED support (wroom) - https://github.com/quen0n/ESP32Marauder_FM
 // DO NOT use as an example, you should split into different scene files for each screen
 // To keep in a single file, this is setup in an unusual and confusing way
 // You can find more info in comments throughout
