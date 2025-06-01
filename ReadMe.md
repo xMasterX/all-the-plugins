@@ -291,6 +291,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Nickname Generator | ![Tools Badge] | [by disaxq](https://github.com/disaxq/Nickname-Generator) |  | ![None Badge] |
 | Ford Radio Codes | ![Tools Badge] | [by DavidB445](https://github.com/DavidB445/fz_fordradiocodes) | Requires apps_data/fordradiocodes/radiocodes.bin (can be found in original repo) | [![Author Badge]](https://lab.flipper.net/apps/fordradiocode) |
 | VIN decoder | ![Tools Badge] | [by evillero](https://github.com/evillero/vin_decoder) |  | [![Author Badge]](https://lab.flipper.net/apps/vin_decoder) |
+| SD Info | ![Tools Badge] | [by Sladkisnovraper](https://github.com/Sladkisnovraper/SD-Info-For-Flipper-Zero) |  | ![None Badge] |
 | USB HID Autofire | ![USB Badge] | [by pbek](https://github.com/pbek/usb_hid_autofire) |  | ![None Badge] |
 | USB Consumer Control | ![USB Badge] | [by WithSecureLabs](https://github.com/WithSecureLabs/usb-consumer-control/tree/main) |  | ![None Badge] |
 | HID File Transfer | ![USB Badge] | [by Kavakuo](https://github.com/Kavakuo/HID-File-Transfer) | Get client app in [original repo](https://github.com/Kavakuo/HID-File-Transfer) | ![None Badge] |
