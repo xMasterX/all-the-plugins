@@ -12,7 +12,7 @@ typedef enum { FOCUS_CONSOLE_END = 0, FOCUS_CONSOLE_START, FOCUS_CONSOLE_TOGGLE 
 #define SHOW_STOPSCAN_TIP (true)
 #define NO_TIP (false)
 
-#define MAX_OPTIONS (10)
+#define MAX_OPTIONS (13)
 typedef struct {
     const char* item_string;
     const char* options_menu[MAX_OPTIONS];
@@ -27,9 +27,9 @@ typedef struct {
 const WifiMarauderItem items[NUM_MENU_ITEMS] = {
     {"View Log from", {"start", "end"}, 2, {"", ""}, NO_ARGS, FOCUS_CONSOLE_TOGGLE, NO_TIP},
     {"Scan",
-     {"ap", "station"},
-     2,
-     {"scanap", "scansta"},
+     {"all", "ap", "station"},
+     3,
+     {"scanall", "scanap", "scansta"},
      NO_ARGS,
      FOCUS_CONSOLE_END,
      SHOW_STOPSCAN_TIP},
@@ -46,6 +46,13 @@ const WifiMarauderItem items[NUM_MENU_ITEMS] = {
      {"list -a", "list -s", "list -c", "list -t"},
      NO_ARGS,
      FOCUS_CONSOLE_START,
+     NO_TIP},
+    {"AP Info",
+     {""},
+     1,
+     {"info -a"},
+     INPUT_ARGS,
+     FOCUS_CONSOLE_END,
      NO_TIP},
     {"Select",
      {"ap", "ssid", "station"},
@@ -127,8 +134,8 @@ const WifiMarauderItem items[NUM_MENU_ITEMS] = {
      FOCUS_CONSOLE_END,
      SHOW_STOPSCAN_TIP},
     {"Sniff",
-     {"beacon", "deauth", "pmkid", "probe", "pwn", "raw", "bt", "skim", "airtag", "flipper"},
-     10,
+     {"beacon", "deauth", "pmkid", "probe", "pwn", "raw", "bt", "skim", "airtag", "flipper", "packetcount", "pineapple", "multissid"},
+     13,
      {"sniffbeacon",
       "sniffdeauth",
       "sniffpmkid",
@@ -138,7 +145,10 @@ const WifiMarauderItem items[NUM_MENU_ITEMS] = {
       "sniffbt",
       "sniffskim",
       "sniffbt -t airtag",
-      "sniffbt -t flipper"},
+      "sniffbt -t flipper",
+      "packetcount",
+      "sniffpinescan",
+      "sniffmultissid"},
      NO_ARGS,
      FOCUS_CONSOLE_END,
      SHOW_STOPSCAN_TIP},
@@ -181,6 +191,7 @@ const WifiMarauderItem items[NUM_MENU_ITEMS] = {
     {"Update", {"sd"}, 1, {"update -s"}, NO_ARGS, FOCUS_CONSOLE_END, NO_TIP},
     {"Reboot", {""}, 1, {"reboot"}, NO_ARGS, FOCUS_CONSOLE_END, NO_TIP},
     {"Help", {""}, 1, {"help"}, NO_ARGS, FOCUS_CONSOLE_START, SHOW_STOPSCAN_TIP},
+    {"Info", {""}, 1, {"info"}, NO_ARGS, FOCUS_CONSOLE_START, NO_TIP},
     {"Scripts", {""}, 1, {""}, NO_ARGS, FOCUS_CONSOLE_END, NO_TIP},
     {"Save to flipper sdcard", // keep as last entry or change logic in callback below
      {""},

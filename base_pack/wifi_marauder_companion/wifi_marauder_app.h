@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-#define WIFI_MARAUDER_APP_VERSION "v0.7.2"
+#define WIFI_MARAUDER_APP_VERSION "v0.7.3"
 
 typedef struct WifiMarauderApp WifiMarauderApp;
 
