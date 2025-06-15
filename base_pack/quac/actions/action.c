@@ -3,11 +3,9 @@
 #include "item.h"
 #include "action_i.h"
 
-#define MAX_FILE_LEN (size_t)256
-
 void action_ql_resolve(
     void* context,
-    FuriString* action_path,
+    const FuriString* action_path,
     FuriString* new_path,
     FuriString* error) {
     UNUSED(error);
@@ -22,18 +20,19 @@ void action_ql_resolve(
         }
 
         furi_string_reset(new_path);
-
-        size_t ret = 0;
-        do {
-            uint8_t buffer[65] = {0};
-            ret = storage_file_read(file_link, buffer, sizeof(buffer) - 1);
-            for(size_t i = 0; i < ret; i++) {
-                furi_string_push_back(new_path, buffer[i]);
-            }
-        } while(ret > 0);
-
+        const size_t file_size = storage_file_size(file_link);
+        size_t bytes_read = 0;
+        while(bytes_read < file_size) {
+            char buffer[65] = {0};
+            const size_t chunk_size = MIN(file_size - bytes_read, sizeof(buffer) - 1);
+            size_t chunk_read = storage_file_read(file_link, buffer, chunk_size);
+            if(chunk_read != chunk_size) break;
+            bytes_read += chunk_read;
+            furi_string_cat_str(new_path, buffer);
+        }
         furi_string_trim(new_path);
-        if(!furi_string_size(new_path)) {
+
+        if(bytes_read != file_size) {
             ACTION_SET_ERROR(
                 "Quac Link: Error reading link file %s", furi_string_get_cstr(action_path));
             break;
@@ -43,7 +42,6 @@ void action_ql_resolve(
                 "Quac Link: Linked file does not exist! %s", furi_string_get_cstr(new_path));
             break;
         }
-
     } while(false);
     storage_file_close(file_link);
     storage_file_free(file_link);
@@ -52,8 +50,7 @@ void action_ql_resolve(
 void action_tx(void* context, Item* item, FuriString* error) {
     // FURI_LOG_I(TAG, "action_run: %s : %s", furi_string_get_cstr(item->name), item->ext);
 
-    FuriString* path = furi_string_alloc();
-    furi_string_set(path, item->path);
+    FuriString* path = furi_string_alloc_set(item->path);
     if(item->is_link) {
         // This is a Quac link, open the file and pull the real filename
         action_ql_resolve(context, item->path, path, error);

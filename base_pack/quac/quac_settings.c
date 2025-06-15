@@ -10,6 +10,7 @@ void quac_set_default_settings(App* app) {
     app->settings.layout = QUAC_APP_LANDSCAPE;
     app->settings.show_icons = true;
     app->settings.show_headers = true;
+    app->settings.subghz_duration = 1500;
     app->settings.rfid_duration = 2500;
     app->settings.nfc_duration = 1000;
     app->settings.ibutton_duration = 1000;
@@ -68,6 +69,12 @@ void quac_load_settings(App* app) {
             FURI_LOG_W(TAG, "SETTINGS: Missing 'Show Headers'");
         } else {
             app->settings.show_headers = (temp_data32 == 1) ? true : false;
+        }
+
+        if(!flipper_format_read_uint32(fff_settings, "SubGhz Duration", &temp_data32, 1)) {
+            FURI_LOG_W(TAG, "SETTINGS: Missing 'SubGhz Duration'");
+        } else {
+            app->settings.subghz_duration = temp_data32;
         }
 
         if(!flipper_format_read_uint32(fff_settings, "RFID Duration", &temp_data32, 1)) {
@@ -139,6 +146,11 @@ void quac_save_settings(App* app) {
         temp_data32 = app->settings.show_headers ? 1 : 0;
         if(!flipper_format_write_uint32(fff_settings, "Show Headers", &temp_data32, 1)) {
             FURI_LOG_E(TAG, "SETTINGS: Failed to write 'Show Headers'");
+            break;
+        }
+        if(!flipper_format_write_uint32(
+               fff_settings, "SubGhz Duration", &app->settings.subghz_duration, 1)) {
+            FURI_LOG_E(TAG, "SETTINGS: Failed to write 'SubGhz Duration'");
             break;
         }
         if(!flipper_format_write_uint32(
