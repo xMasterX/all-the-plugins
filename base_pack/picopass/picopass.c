@@ -99,11 +99,13 @@ Picopass* picopass_alloc() {
     picopass->plugin_wiegand_manager =
         plugin_manager_alloc(PLUGIN_APP_ID, PLUGIN_API_VERSION, firmware_api_interface);
     picopass->plugin_wiegand = NULL;
-    if(plugin_manager_load_single(picopass->plugin_wiegand_manager, APP_ASSETS_PATH("plugins/plugin_wiegand.fal")) !=
+    if(plugin_manager_load_single(
+           picopass->plugin_wiegand_manager, APP_ASSETS_PATH("plugins/picopass_plugin_wiegand.fal")) !=
        PluginManagerErrorNone) {
         FURI_LOG_E(TAG, "Failed to load Wiegand plugin");
-    } else if (plugin_manager_get_count(picopass->plugin_wiegand_manager)) {
-        picopass->plugin_wiegand = (PluginWiegand*)plugin_manager_get_ep(picopass->plugin_wiegand_manager, 0);
+    } else if(plugin_manager_get_count(picopass->plugin_wiegand_manager)) {
+        picopass->plugin_wiegand =
+            (PluginWiegand*)plugin_manager_get_ep(picopass->plugin_wiegand_manager, 0);
         if(strcmp(picopass->plugin_wiegand->name, "Plugin Wiegand") != 0) {
             FURI_LOG_E(TAG, "Tried to load invalid Wiegand plugin");
             picopass->plugin_wiegand = NULL;
