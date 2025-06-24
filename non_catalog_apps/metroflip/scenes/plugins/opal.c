@@ -314,7 +314,6 @@ static bool opal_on_event(Metroflip* app, SceneManagerEvent event) {
         }
     } else if(event.type == SceneManagerEventTypeBack) {
         scene_manager_search_and_switch_to_previous_scene(app->scene_manager, MetroflipSceneStart);
-        scene_manager_set_scene_state(app->scene_manager, MetroflipSceneStart, MetroflipSceneAuto);
         consumed = true;
     }
 

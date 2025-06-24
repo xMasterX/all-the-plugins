@@ -7,13 +7,20 @@
 
 void metroflip_scene_parse_on_enter(void* context) {
     Metroflip* app = context;
-    metroflip_plugin_manager_alloc(app);
+    
 
     // Check if card_type is empty or unknown
-    if((app->card_type[0] == '\0') || (strcmp(app->card_type, "unknown") == 0) ||
-       (!app->card_type)) {
+    FURI_LOG_I(TAG, "test1");
+
+    if(!app->card_type ||
+   (app->card_type[0] == '\0') ||
+   (strcmp(app->card_type, "unknown") == 0) ||
+   (strcmp(app->card_type, "Unknown Card") == 0) ||
+   (app->is_desfire && is_desfire_locked(app->card_type))) {
+        FURI_LOG_I(TAG, "bad card");
         view_dispatcher_send_custom_event(app->view_dispatcher, MetroflipCustomEventWrongCard);
     } else {
+        metroflip_plugin_manager_alloc(app);
         char path[128]; // Adjust size as needed
         snprintf(
             path, sizeof(path), "/ext/apps_assets/metroflip/plugins/%s_plugin.fal", app->card_type);
@@ -36,9 +43,7 @@ bool metroflip_scene_parse_on_event(void* context, SceneManagerEvent event) {
     Metroflip* app = context;
     if(event.type == SceneManagerEventTypeCustom) {
         if(event.event == MetroflipCustomEventWrongCard) {
-            Popup* popup = app->popup;
-            popup_set_header(popup, "card\n currently\n unsupported", 58, 31, AlignLeft, AlignTop);
-            popup_set_icon(popup, 0, 3, &I_RFIDDolphinReceive_97x61);
+            scene_manager_next_scene(app->scene_manager, MetroflipSceneUnknown);
             return true;
         }
     } else if(event.type == SceneManagerEventTypeBack) {
@@ -53,14 +58,18 @@ bool metroflip_scene_parse_on_event(void* context, SceneManagerEvent event) {
 
 void metroflip_scene_parse_on_exit(void* context) {
     Metroflip* app = context;
-    if(!((app->card_type[0] == '\0') || (strcmp(app->card_type, "unknown") == 0) ||
-         (!app->card_type))) {
+    if(!(!app->card_type ||
+   (app->card_type[0] == '\0') ||
+   (strcmp(app->card_type, "unknown") == 0) ||
+   (strcmp(app->card_type, "Unknown Card") == 0) ||
+   (app->is_desfire && is_desfire_locked(app->card_type)))) {
         // Get and run the plugin's on_exit function
         const MetroflipPlugin* plugin = plugin_manager_get_ep(app->plugin_manager, 0);
         plugin->plugin_on_exit(app);
 
         plugin_manager_free(app->plugin_manager);
         composite_api_resolver_free(app->resolver);
+        app->is_desfire = false;
     }
     app->data_loaded = false;
 }

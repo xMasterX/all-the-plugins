@@ -74,7 +74,6 @@ typedef struct {
     NfcDevice* nfc_device;
     MfClassicKeyCache* mfc_key_cache;
     NfcDetectedProtocols* detected_protocols;
-    DesfireCardType desfire_card_type;
     MfDesfireData* mfdes_data;
     MfClassicData* mfc_data;
 
@@ -98,11 +97,13 @@ typedef struct {
     bool auto_mode;
     CardType mfc_card_type;
     NfcProtocol protocol;
-    const char* file_path;
+    char file_path[256];
     char delete_file_path[256];
+    bool is_desfire;
 
     // Calypso specific context
     CalypsoContext* calypso_context;
+    FuriString* calypso_file_data;
 
     // Suica
     SuicaContext* suica_context;

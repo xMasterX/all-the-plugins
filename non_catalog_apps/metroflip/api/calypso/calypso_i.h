@@ -5,6 +5,10 @@
 
 #ifndef CALYPSO_I_H
 #define CALYPSO_I_H
+#define CALYPSO_MAX_FILE_COUNT (10U)
+#define CALYPSO_MAX_FILE_SIZE (30U)
+
+#include <lib/flipper_format/flipper_format.h>
 
 typedef enum {
     CALYPSO_CARD_MOBIB,
@@ -23,6 +27,16 @@ typedef enum {
     CALYPSO_CARD_UNKNOWN
 } CALYPSO_CARD_TYPE;
 
+/*
+typedef struct {
+    uint8_t data[30]; // max bytes per file 30 
+} CalypsoFile;
+
+typedef struct {
+    uint16_t aid; 
+    CalypsoFile files[10]; // max files per app up to 10
+} CalypsoApp;
+*/
 typedef struct {
     NavigoCardData* navigo;
     OpusCardData* opus;
@@ -37,6 +51,8 @@ typedef struct {
 
     int country_num;
     int network_num;
+    //CalypsoApp apps[10]; // max apps to 10
+    //size_t app_count;
 } CalypsoCardData;
 
 typedef struct {

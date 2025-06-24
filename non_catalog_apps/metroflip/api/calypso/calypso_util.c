@@ -3,7 +3,8 @@
 #include <string.h>
 #include "calypso_util.h"
 #include "../metroflip/metroflip_api.h"
-
+#define CALYPSO_MAX_FILE_COUNT (10U)
+#define CALYPSO_MAX_FILE_SIZE (30U)
 CalypsoElement make_calypso_final_element(
     const char* key,
     int size,
@@ -21,6 +22,35 @@ CalypsoElement make_calypso_final_element(
     return final_element;
 }
 
+uint8_t* read_calypso_data(FlipperFormat* format, const char* app_id, const char* file_id) {
+    bool found = false;
+    uint8_t* byte_array_buffer = (uint8_t*)malloc(29);
+    FuriString* entry_preamble = furi_string_alloc();
+    // Read the travel history entries
+    for(uint8_t i = 0; i < 1; i++) {
+        furi_string_printf(entry_preamble, "AID %s FID %s", app_id, file_id);
+        // For every line in the flipper format file
+        // We read the entire line's hex and store it in the byte_array_buffer
+        if(!flipper_format_read_hex(
+               format,
+               furi_string_get_cstr(entry_preamble),
+               byte_array_buffer,
+               29)) {
+            FURI_LOG_W("calypso", "app %s file %s not found. payload: %s", app_id, file_id, furi_string_get_cstr(entry_preamble));
+            found = false;
+            break;} else {
+                FURI_LOG_I("calypso", "FOUND %s", furi_string_get_cstr(entry_preamble));
+                found = true;
+            }
+    }
+    furi_string_free(entry_preamble);
+    if (found) {
+        FURI_LOG_I("calypso", "25th byte: %02X", byte_array_buffer[25]);
+        return byte_array_buffer;
+    } else {
+        return NULL;
+    }
+}
 CalypsoElement make_calypso_bitmap_element(const char* key, int size, CalypsoElement* elements) {
     CalypsoElement bitmap_element = {};
 

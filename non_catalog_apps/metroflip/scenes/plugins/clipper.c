@@ -542,7 +542,7 @@ static void furi_string_cat_timestamp(
     const char* time_hdr,
     uint32_t tmst_1900) {
     DateTime tm;
-
+    tmst_1900 -= 2208988800;
     datetime_timestamp_to_datetime(tmst_1900, &tm);
 
     FuriString* date_str = furi_string_alloc();
@@ -671,7 +671,6 @@ static bool clipper_on_event(Metroflip* app, SceneManagerEvent event) {
         }
     } else if(event.type == SceneManagerEventTypeBack) {
         scene_manager_search_and_switch_to_previous_scene(app->scene_manager, MetroflipSceneStart);
-        scene_manager_set_scene_state(app->scene_manager, MetroflipSceneStart, MetroflipSceneAuto);
         consumed = true;
     }
 

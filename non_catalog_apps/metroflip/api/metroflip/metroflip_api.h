@@ -70,10 +70,12 @@ int get_calypso_node_offset(const char* binary_string, const char* key, CalypsoA
 const char* get_network_string(CALYPSO_CARD_TYPE card_type);
 void metroflip_back_button_widget_callback(GuiButtonType result, InputType type, void* context);
 void metroflip_next_button_widget_callback(GuiButtonType result, InputType type, void* context);
+void calypso_save_button_widget_callback(GuiButtonType result, InputType type, void* context);
 bool is_calypso_node_present(const char* binary_string, const char* key, CalypsoApp* structure);
 int get_calypso_node_size(const char* key, CalypsoApp* structure);
 void free_calypso_structure(CalypsoApp* structure);
 CALYPSO_CARD_TYPE guess_card_type(int country_num, int network_num);
+uint8_t* read_calypso_data(FlipperFormat* format, const char* app_id, const char* file_id);
 
 // intercode
 

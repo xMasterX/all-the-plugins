@@ -17,7 +17,7 @@ void metroflip_scene_credits_on_enter(void* context) {
     furi_string_cat_printf(str, "Created by luu176\n");
     furi_string_cat_printf(str, "Inspired by Metrodroid\n\n");
     furi_string_cat_printf(str, "Special Thanks:\n willyjl\n");
-    furi_string_cat_printf(str, "Info Slaves:\n Equip, TheDingo8MyBaby\n\n");
+    furi_string_cat_printf(str, "Info Slaves:\n Equip, TheDingo8MyBaby\n ry4000, WillyJL\n");
     furi_string_cat_printf(str, "\e#Parser Credits:\n\n");
     furi_string_cat_printf(str, "Bip! Parser:\n rbasoalto, gornekich\n\n");
     furi_string_cat_printf(str, "CharlieCard Parser:\n zacharyweiss\n\n");

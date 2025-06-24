@@ -30,7 +30,7 @@ More coming soon!
 - **Bip! Parser**: rbasoalto, gornekich  
 - **Charliecard Parser**: zacharyweiss  
 - **Clipper Parser**: ke6jjj  
-- **Info Slaves**: equipter, TheDingo8MyBaby  
+- **Info Slaves**: equipter, TheDingo8MyBaby, ry4000, WillyJL
 - **ITSO Parser**: gsp8181, hedger, gornekich  
 - **Metromoney Parser**: Leptopt1los  
 - **myki Parser**: gornekich  
