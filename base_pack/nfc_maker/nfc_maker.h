@@ -19,6 +19,7 @@
 #define NFC_APP_FOLDER    EXT_PATH("nfc")
 #define NFC_APP_EXTENSION ".nfc"
 #include <lib/nfc/protocols/mf_ultralight/mf_ultralight.h>
+#include <lib/nfc/protocols/type_4_tag/type_4_tag.h>
 #include <lib/nfc/protocols/mf_classic/mf_classic.h>
 #include <lib/nfc/protocols/slix/slix.h>
 #include <lib/nfc/helpers/nfc_data_generator.h>
@@ -39,6 +40,12 @@ typedef enum {
     CardNtag216,
     CardNtagI2C1K,
     CardNtagI2C2K,
+
+    // Type4Tag
+    CardNtag413DNA,
+    CardNtag424DNA,
+    CardMfDesfire,
+    CardType4Generic,
 
     // MfClassic
     CardMfClassicMini,
