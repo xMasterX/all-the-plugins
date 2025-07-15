@@ -3,25 +3,26 @@ The idea behind this app is to allow for you to test multiple copies of NFC's at
 ## How it works:
 When starting the app you are greeted by a select file option where you choose the playlist you wanna run.
 
-All the playlists should be placed in ext/apps_data/nfc_playlist but can be placed in other file locations and an example of how the data in the file should look can be found below along with a example file in the repository.
+All playlists should be placed in `ext/apps_data/nfc_playlist`, but they can also be stored in other file locations. An example of the data format is shown below, and you can find an example file in the repository: [file](./playlist.txt). You are able to create your own playlists using the playlist editor in the app.
 ```txt
 /ext/nfc/link.nfc
 /ext/nfc/link2.nfc
 ```
-An example file can be found in the repository
 ## Feedback:
-Any feedback is welcome and would be very much appreciated as this is my first C project
+Any feedback is welcome and would be very much appreciated as it helps me to improve and build upon the project
 - <a href="https://github.com/acegoal07/FlipperZero_NFC_Playlist/issues/new?assignees=acegoal07&labels=enhancement&projects=&template=feature_request.md&title=%5BFEATURE%7D">Feature request</a>
 - <a href="https://github.com/acegoal07/FlipperZero_NFC_Playlist/issues/new?assignees=acegoal07&labels=bug&projects=&template=bug_report.md&title=%5BBUG%5D">Bug report</a>
 ## Supported Firmwares
 As i know these firmwares are supported and working if you know any more please let me know
-- <a href="https://github.com/Next-Flip/Momentum-Firmware">Momentum</a>
-- <a href="https://github.com/RogueMaster/flipperzero-firmware-wPlugins">RogueMaster</a>
+- <a href="https://github.com/Next-Flip/Momentum-Firmware" target="_blank">Momentum</a>
+- <a href="https://github.com/RogueMaster/flipperzero-firmware-wPlugins" target="_blank">RogueMaster</a>
+- <a href="https://github.com/DarkFlippers/unleashed-firmware" target="_blank">Unleashed</a>
 ## Settings:
 - Emulate time (How long the NFC card will be emulated for)
 - Delay time (How long the gap between the cards will be)
 - LED indicator (Whether or not the LED's will be on)
 - Skip errors (Makes it so you can make the emulation screen hide errors and skip delays between errors and emulation)
+- Loop (Makes it so the playlist will loop back to the start when it reaches the end)
 - Reset settings (Puts all the settings back to the defaults)
 ## Playlist editor:
 - Create PLaylist (Creates a new playlist with the given name)
