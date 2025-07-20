@@ -1,0 +1,16 @@
+App(
+    appid="subghz_signal_gen",
+    name="SubGHz Signal Generator",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="subghz_signal_gen_app",
+    requires=["gui", "subghz", "furi"],
+    cdefines=["APP_SUBGHZ_SIGNAL_GEN"],
+    stack_size=2 * 1024,
+    fap_category="Sub-GHz",
+    fap_version="0.1",
+    fap_icon_assets="assets",
+    fap_author="@RocketGod-git",
+    fap_description="SubGHz Signal Generator for Flipper Zero",
+    fap_icon="icons/signal_gen_icon.png",
+    fap_weburl="https://github.com/RocketGod-Git/Flipper-Zero-SubGHz-Signal-Generator",
+)

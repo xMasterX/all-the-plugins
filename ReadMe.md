@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `16 Jul 02:35 GMT +3`
+### Apps checked & updated at `20 Jul 04:20 GMT +3`
 
 
 # Default pack
@@ -264,6 +264,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Music to Sub-GHz Radio Converter | ![SubGhz Badge] | [by jamisonderek](https://github.com/jamisonderek/flipper-zero-tutorials/tree/main/subghz/fmf_to_sub) |  | ![None Badge] |
 | Frequency Analyzer (External) | ![SubGhz Badge] | [by xMasterX](https://github.com/DarkFlippers) | Cut from unleashed FW subghz app directly, with external module support (no path isolate, get random signals from space!) | ![None Badge] |
 | Genie Door Recorder | ![SubGhz Badge] | [by jamisonderek](https://github.com/jamisonderek/flipper-zero-tutorials) |  | [![Author Badge]](https://lab.flipper.net/apps/genie_record) |
+| SubGHz Signal Generator | ![SubGhz Badge] | [by RocketGod](https://github.com/RocketGod-Git/Flipper-Zero-SubGHz-Signal-Generator) |  | ![None Badge] |
 | Analog Clock | ![Tools Badge] | [by scrolltex](https://github.com/scrolltex/flipper_analog_clock) |  | [![UFW Badge]](https://lab.flipper.net/apps/analog_clock) |
 | Brainfuck interpreter | ![Tools Badge] | [by nymda](https://github.com/nymda/FlipperZeroBrainfuck) |  | [![UFW Badge]](https://lab.flipper.net/apps/brainfuck) |
 | Ceasar Cipher | ![Tools Badge] | [by panki27](https://github.com/panki27/caesar-cipher) |  | [![UFW Badge]](https://lab.flipper.net/apps/caesar_cipher) |
