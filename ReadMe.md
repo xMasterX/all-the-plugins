@@ -134,7 +134,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Mandelbrot Set | ![Games Badge] | [by Possibly-Matt](https://github.com/Possibly-Matt/flipperzero-firmware-wPlugins) |  | [![UFW Badge]](https://lab.flipper.net/apps/mandelbrotset) |
 | Monty Hall | ![Games Badge] | [by DevMilanIan](https://github.com/RogueMaster/flipperzero-firmware-wPlugins/pull/203) |  | [![UFW Badge]](https://lab.flipper.net/apps/montyhall) |
 | Nu Pogodi! (Ну, погоди!) | ![Games Badge] | [by sionyx](https://github.com/sionyx/flipper_nupogodi) |  | [![UFW Badge]](https://lab.flipper.net/apps/nupogodi) |
-| Paint | ![Games Badge] | [by n-o-T-I-n-s-a-n-e](https://github.com/n-o-T-I-n-s-a-n-e) |  | [![UFW Badge]](https://lab.flipper.net/apps/paint) |
+| Paint | ![Games Badge] | [by iinsaane](https://github.com/iinsaane) |  | [![UFW Badge]](https://lab.flipper.net/apps/paint) |
 | Race | ![Games Badge] | [by zyuhel](https://github.com/zyuhel/flipperzero-racegame) |  | [![UFW Badge]](https://lab.flipper.net/apps/racegame) |
 | Reaction test Game | ![Games Badge] | [by Milk-Cool](https://github.com/Milk-Cool/fz-reaction-game) |  | [![UFW Badge]](https://lab.flipper.net/apps/reaction) |
 | Reversi | ![Games Badge] | [by dimat](https://github.com/dimat/flipperzero-reversi) |  | [![UFW Badge]](https://lab.flipper.net/apps/reversi) |
@@ -268,7 +268,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Analog Clock | ![Tools Badge] | [by scrolltex](https://github.com/scrolltex/flipper_analog_clock) |  | [![UFW Badge]](https://lab.flipper.net/apps/analog_clock) |
 | Brainfuck interpreter | ![Tools Badge] | [by nymda](https://github.com/nymda/FlipperZeroBrainfuck) |  | [![UFW Badge]](https://lab.flipper.net/apps/brainfuck) |
 | Ceasar Cipher | ![Tools Badge] | [by panki27](https://github.com/panki27/caesar-cipher) |  | [![UFW Badge]](https://lab.flipper.net/apps/caesar_cipher) |
-| Calculator | ![Tools Badge] | [by n-o-T-I-n-s-a-n-e](https://github.com/n-o-T-I-n-s-a-n-e) |  | [![UFW Badge]](https://lab.flipper.net/apps/calculator) |
+| Calculator | ![Tools Badge] | [by iinsaane](https://github.com/iinsaane) |  | [![UFW Badge]](https://lab.flipper.net/apps/calculator) |
 | CLI-GUI Bridge | ![Tools Badge] | [by ranchordo](https://github.com/ranchordo/flipperzero-cli-bridge) | Fixes [by Willy-JL](https://github.com/Willy-JL) | ![None Badge] |
 | Count Down Timer | ![Tools Badge] | [by 0w0mewo](https://github.com/0w0mewo/fpz_cntdown_timer) |  | [![UFW Badge]](https://lab.flipper.net/apps/cntdown_tim) |
 | Counter | ![Tools Badge] | [by Krulknul](https://github.com/Krulknul/dolphin-counter) |  | [![UFW Badge]](https://lab.flipper.net/apps/counter) |
