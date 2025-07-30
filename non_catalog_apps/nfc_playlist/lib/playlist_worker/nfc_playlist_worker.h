@@ -21,11 +21,14 @@ static const int default_emulate_delay = 0;
 static const bool default_emulate_led_indicator = true;
 static const bool default_skip_error = false;
 static const bool default_loop = false;
+static const bool default_user_controls = true;
 
 typedef enum {
    NfcPlaylistWorkerState_Ready,
    NfcPlaylistWorkerState_Emulating,
    NfcPlaylistWorkerState_Delaying,
+   NfcPlaylistWorkerState_Skipping,
+   NfcPlaylistWorkerState_Rewinding,
    NfcPlaylistWorkerState_InvalidFileType,
    NfcPlaylistWorkerState_FileDoesNotExist,
    NfcPlaylistWorkerState_FailedToLoadPlaylist,
@@ -41,6 +44,7 @@ typedef struct {
    bool emulate_led_indicator;
    bool skip_error;
    bool loop;
+   bool user_controls;
 } NfcPlaylistWorkerSettings;
 
 typedef struct {
@@ -59,6 +63,8 @@ NfcPlaylistWorker* nfc_playlist_worker_alloc(NfcPlaylistWorkerSettings* settings
 void nfc_playlist_worker_free(NfcPlaylistWorker* worker);
 void nfc_playlist_worker_stop(NfcPlaylistWorker* worker);
 void nfc_playlist_worker_start(NfcPlaylistWorker* worker);
+void nfc_playlist_worker_skip(NfcPlaylistWorker* worker);
+void nfc_playlist_worker_rewind(NfcPlaylistWorker* worker);
 
 #ifdef __cplusplus
 }

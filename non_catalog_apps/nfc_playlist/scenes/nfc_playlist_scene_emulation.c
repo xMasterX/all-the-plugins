@@ -3,12 +3,31 @@
 static FuriString* header_str_static = NULL;
 static FuriString* text_str_static = NULL;
 
+static void nfc_playlist_emulation_dialog_callback(DialogExResult result, void* context) {
+   furi_assert(context);
+   NfcPlaylist* nfc_playlist = context;
+
+   switch(result) {
+   case DialogExResultLeft:
+      scene_manager_handle_custom_event(nfc_playlist->scene_manager, GuiButtonTypeLeft);
+      break;
+   case DialogExResultRight:
+      scene_manager_handle_custom_event(nfc_playlist->scene_manager, GuiButtonTypeRight);
+      break;
+   default:
+      break;
+   }
+}
+
 void nfc_playlist_emulation_scene_on_enter(void* context) {
    furi_assert(context);
    NfcPlaylist* nfc_playlist = context;
 
-   popup_set_context(nfc_playlist->views.popup, nfc_playlist);
-   view_dispatcher_switch_to_view(nfc_playlist->view_dispatcher, NfcPlaylistView_Popup);
+   dialog_ex_reset(nfc_playlist->views.dialog);
+   dialog_ex_set_context(nfc_playlist->views.dialog, nfc_playlist);
+   dialog_ex_set_result_callback(
+      nfc_playlist->views.dialog, nfc_playlist_emulation_dialog_callback);
+   view_dispatcher_switch_to_view(nfc_playlist->view_dispatcher, NfcPlaylistView_Dialog);
 
    nfc_playlist->worker_info.worker =
       nfc_playlist_worker_alloc(nfc_playlist->worker_info.settings);
@@ -23,6 +42,19 @@ bool nfc_playlist_emulation_scene_on_event(void* context, SceneManagerEvent even
    if(event.type == SceneManagerEventTypeBack) {
       nfc_playlist_worker_stop(nfc_playlist->worker_info.worker);
       consumed = true;
+   } else if(event.type == SceneManagerEventTypeCustom) {
+      switch(event.event) {
+      case GuiButtonTypeLeft:
+         nfc_playlist_worker_rewind(nfc_playlist->worker_info.worker);
+         consumed = true;
+         break;
+      case GuiButtonTypeRight:
+         nfc_playlist_worker_skip(nfc_playlist->worker_info.worker);
+         consumed = true;
+         break;
+      default:
+         break;
+      }
    } else if(event.type == SceneManagerEventTypeTick) {
       switch(nfc_playlist->worker_info.worker->state) {
       case NfcPlaylistWorkerState_Emulating: {
@@ -38,8 +70,8 @@ bool nfc_playlist_emulation_scene_on_event(void* context, SceneManagerEvent even
          furi_string_printf(
             header_str_static, "Emulating:\n%s", furi_string_get_cstr(nfc_card_name));
          furi_string_free(nfc_card_name);
-         popup_set_header(
-            nfc_playlist->views.popup,
+         dialog_ex_set_header(
+            nfc_playlist->views.dialog,
             furi_string_get_cstr(header_str_static),
             64,
             5,
@@ -47,13 +79,17 @@ bool nfc_playlist_emulation_scene_on_event(void* context, SceneManagerEvent even
             AlignTop);
          furi_string_printf(
             text_str_static, "%ds", (nfc_playlist->worker_info.worker->ms_counter / 1000));
-         popup_set_text(
-            nfc_playlist->views.popup,
+         dialog_ex_set_text(
+            nfc_playlist->views.dialog,
             furi_string_get_cstr(text_str_static),
             64,
             50,
             AlignCenter,
             AlignTop);
+         if(nfc_playlist->worker_info.settings->user_controls) {
+            dialog_ex_set_left_button_text(nfc_playlist->views.dialog, "Rewind");
+            dialog_ex_set_right_button_text(nfc_playlist->views.dialog, "Skip");
+         }
          consumed = true;
          break;
       }
@@ -63,16 +99,21 @@ bool nfc_playlist_emulation_scene_on_event(void* context, SceneManagerEvent even
                nfc_playlist->notification_app, NfcPlaylistLedState_Delaying);
          }
          if(!text_str_static) text_str_static = furi_string_alloc();
-         popup_set_header(nfc_playlist->views.popup, "Delaying", 64, 5, AlignCenter, AlignTop);
+         dialog_ex_set_header(
+            nfc_playlist->views.dialog, "Delaying", 64, 5, AlignCenter, AlignTop);
          furi_string_printf(
             text_str_static, "%ds", (nfc_playlist->worker_info.worker->ms_counter / 1000));
-         popup_set_text(
-            nfc_playlist->views.popup,
+         dialog_ex_set_text(
+            nfc_playlist->views.dialog,
             furi_string_get_cstr(text_str_static),
             64,
             50,
             AlignCenter,
             AlignTop);
+         if(nfc_playlist->worker_info.settings->user_controls) {
+            dialog_ex_set_left_button_text(nfc_playlist->views.dialog, "Rewind");
+            dialog_ex_set_right_button_text(nfc_playlist->views.dialog, "Skip");
+         }
          consumed = true;
          break;
       }
@@ -98,8 +139,8 @@ bool nfc_playlist_emulation_scene_on_event(void* context, SceneManagerEvent even
             header_str_static,
             "Failed to load:\n%s",
             furi_string_get_cstr(nfc_playlist->worker_info.worker->nfc_card_path));
-         popup_set_header(
-            nfc_playlist->views.popup,
+         dialog_ex_set_header(
+            nfc_playlist->views.dialog,
             furi_string_get_cstr(header_str_static),
             64,
             5,
@@ -107,13 +148,17 @@ bool nfc_playlist_emulation_scene_on_event(void* context, SceneManagerEvent even
             AlignTop);
          furi_string_printf(
             text_str_static, "%ds", (nfc_playlist->worker_info.worker->ms_counter / 1000));
-         popup_set_text(
-            nfc_playlist->views.popup,
+         dialog_ex_set_text(
+            nfc_playlist->views.dialog,
             furi_string_get_cstr(text_str_static),
             64,
             50,
             AlignCenter,
             AlignTop);
+         if(nfc_playlist->worker_info.settings->user_controls) {
+            dialog_ex_set_left_button_text(nfc_playlist->views.dialog, "Rewind");
+            dialog_ex_set_right_button_text(nfc_playlist->views.dialog, "Skip");
+         }
          consumed = true;
          break;
       }
@@ -128,8 +173,8 @@ bool nfc_playlist_emulation_scene_on_event(void* context, SceneManagerEvent even
             header_str_static,
             "Invalid file type:\n%s",
             furi_string_get_cstr(nfc_playlist->worker_info.worker->nfc_card_path));
-         popup_set_header(
-            nfc_playlist->views.popup,
+         dialog_ex_set_header(
+            nfc_playlist->views.dialog,
             furi_string_get_cstr(header_str_static),
             64,
             5,
@@ -137,13 +182,18 @@ bool nfc_playlist_emulation_scene_on_event(void* context, SceneManagerEvent even
             AlignTop);
          furi_string_printf(
             text_str_static, "%ds", (nfc_playlist->worker_info.worker->ms_counter / 1000));
-         popup_set_text(
-            nfc_playlist->views.popup,
+         dialog_ex_set_text(
+            nfc_playlist->views.dialog,
             furi_string_get_cstr(text_str_static),
             64,
             50,
             AlignCenter,
             AlignTop);
+
+         if(nfc_playlist->worker_info.settings->user_controls) {
+            dialog_ex_set_left_button_text(nfc_playlist->views.dialog, "Rewind");
+            dialog_ex_set_right_button_text(nfc_playlist->views.dialog, "Skip");
+         }
          consumed = true;
          break;
       }
@@ -158,8 +208,8 @@ bool nfc_playlist_emulation_scene_on_event(void* context, SceneManagerEvent even
             header_str_static,
             "File does not exist:\n%s",
             furi_string_get_cstr(nfc_playlist->worker_info.worker->nfc_card_path));
-         popup_set_header(
-            nfc_playlist->views.popup,
+         dialog_ex_set_header(
+            nfc_playlist->views.dialog,
             furi_string_get_cstr(header_str_static),
             64,
             5,
@@ -167,15 +217,18 @@ bool nfc_playlist_emulation_scene_on_event(void* context, SceneManagerEvent even
             AlignTop);
          furi_string_printf(
             text_str_static, "%ds", (nfc_playlist->worker_info.worker->ms_counter / 1000));
-         popup_set_text(
-            nfc_playlist->views.popup,
+         dialog_ex_set_text(
+            nfc_playlist->views.dialog,
             furi_string_get_cstr(text_str_static),
             64,
             50,
             AlignCenter,
             AlignTop);
+         if(nfc_playlist->worker_info.settings->user_controls) {
+            dialog_ex_set_left_button_text(nfc_playlist->views.dialog, "Rewind");
+            dialog_ex_set_right_button_text(nfc_playlist->views.dialog, "Skip");
+         }
          consumed = true;
-         break;
          break;
       }
       case NfcPlaylistWorkerState_Stopped: {
@@ -195,7 +248,7 @@ void nfc_playlist_emulation_scene_on_exit(void* context) {
    furi_assert(context);
    NfcPlaylist* nfc_playlist = context;
    nfc_playlist_led_worker_stop(nfc_playlist->notification_app);
-   popup_reset(nfc_playlist->views.popup);
+   dialog_ex_reset(nfc_playlist->views.dialog);
    nfc_playlist_worker_free(nfc_playlist->worker_info.worker);
    nfc_playlist->worker_info.worker = NULL;
    if(header_str_static) {
