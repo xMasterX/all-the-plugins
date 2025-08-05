@@ -26,5 +26,6 @@
 #include "bresser_3ch.h"
 #include "vauno_en8822c.h"
 #include "bl999.h"
+#include "solight_te44.h"
 
 extern const SubGhzProtocolRegistry weather_station_protocol_registry;

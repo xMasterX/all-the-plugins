@@ -13,7 +13,7 @@ const SubGhzProtocol* weather_station_protocol_registry_items[] = {
     &ws_protocol_auriol_ahfl,    &ws_protocol_kedsum_th,
     &ws_protocol_emose601x,      &ws_protocol_acurite_5n1,
     &ws_protocol_bresser_3ch,    &ws_protocol_vauno_en8822c,
-    &ws_protocol_bl999,
+    &ws_protocol_bl999,          &ws_protocol_solight_te44,
 };
 
 const SubGhzProtocolRegistry weather_station_protocol_registry = {
