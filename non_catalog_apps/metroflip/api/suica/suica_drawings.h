@@ -9,22 +9,71 @@
 #include <lib/nfc/protocols/felica/felica_poller.h>
 #include <lib/bit_lib/bit_lib.h>
 
-#define SUICA_STATION_LIST_PATH         APP_ASSETS_PATH("suica/line_")
-#define SUICA_IC_TYPE_CODE              0x31
-#define SERVICE_CODE_HISTORY_IN_LE      (0x090FU)
-#define SERVICE_CODE_TAPS_LOG_IN_LE     (0x108FU)
-#define BLOCK_COUNT                     1
-#define HISTORY_VIEW_PAGE_NUM           3
-#define TERMINAL_NULL                   0x02
-#define TERMINAL_BUS                    0x05
-#define TERMINAL_TICKET_VENDING_MACHINE 0x12
-#define TERMINAL_TURNSTILE              0x16
-#define TERMINAL_MOBILE_PHONE           0x1B
-#define TERMINAL_IN_CAR_SUPP_MACHINE    0x24
-#define TERMINAL_POS_AND_TAXI           0xC7
-#define TERMINAL_VENDING_MACHINE        0xC8
-#define PROCESSING_CODE_RECHARGE        0x02
-#define ARROW_ANIMATION_FRAME_MS        350
+#define SUICA_STATION_LIST_PATH     APP_ASSETS_PATH("suica/")
+#define SUICA_IC_TYPE_CODE          0x31
+#define SERVICE_CODE_HISTORY_IN_LE  (0x090FU)
+#define SERVICE_CODE_TAPS_LOG_IN_LE (0x108FU)
+#define BLOCK_COUNT                 1
+#define HISTORY_VIEW_PAGE_NUM       3
+
+#define TERMINAL_NULL                     0x02
+#define TERMINAL_FARE_ADJUST_MACHINE      0x03
+#define TERMINAL_PORTABLE                 0x04
+#define TERMINAL_BUS                      0x05
+#define TERMINAL_CARD_VENDING_MACHINE_1   0x07
+#define TERMINAL_TICKET_VENDING_MACHINE   0x08
+#define TERMINAL_QUICK_REFILL_MACHINE     0x09
+#define TERMINAL_CARD_VENDING_MACHINE_2   0x12
+#define TERMINAL_TICKET_MACHINE_TYPE_1    0x13
+#define TERMINAL_PASMO_ISSUE_MACHINE      0x14
+#define TERMINAL_COMMUTER_PASS_VENDING    0x15
+#define TERMINAL_AUTO_TICKET_GATE         0x16
+#define TERMINAL_SIMPLE_TICKET_GATE       0x17
+#define TERMINAL_STATION_EQUIPMENT        0x18
+#define TERMINAL_GREEN_WINDOW             0x19
+#define TERMINAL_TICKET_OFFICE            0x1A
+#define TERMINAL_MOBILE_PHONE             0x1B
+#define TERMINAL_CONNECT_ADJUST_MACHINE   0x1C
+#define TERMINAL_TRANSFER_ADJUST_MACHINE  0x1D
+#define TERMINAL_KANSAI_DEPOSIT_MACHINE   0x1F
+#define TERMINAL_WINDOW_TERMINAL_MEITETSU 0x20
+#define TERMINAL_CHECKOUT_MACHINE         0x21
+#define TERMINAL_KOTODEN_TICKET_GATE      0x22
+#define TERMINAL_IN_CAR_SUPP_MACHINE      0x24
+#define TERMINAL_SETAMARU_VENDING         0x34
+#define TERMINAL_SETAMARU_IN_CAR_MACHINE  0x35
+#define TERMINAL_IN_CAR_MACHINE           0x36
+#define TERMINAL_VIEW_ALTTE_ATM_TYPE_1    0x46
+#define TERMINAL_VIEW_ALTTE_ATM_TYPE_2    0x48
+#define TERMINAL_POS                      0xC7
+#define TERMINAL_VENDING_MACHINE          0xC8
+
+#define PROCESSING_AUTO_GATE_FARE               0x01
+#define PROCESSING_TOP_UP                       0x02
+#define PROCESSING_TICKET_PURCHASE              0x03
+#define PROCESSING_TICKET_SETTLEMENT            0x04
+#define PROCESSING_OVER_TRAVEL_ADJUST           0x05
+#define PROCESSING_MANNED_GATE_EXIT             0x06
+#define PROCESSING_NEW_ISSUE                    0x07
+#define PROCESSING_MANNED_GATE_DEDUCT           0x08
+#define PROCESSING_BUS_PITAPA_FLAT              0x0D
+#define PROCESSING_BUS_IRUCA_GENERAL            0x0F
+#define PROCESSING_REISSUE                      0x11
+#define PROCESSING_EXIT_PAYMENT                 0x13
+#define PROCESSING_AUTO_TOP_UP                  0x14
+#define PROCESSING_BUS_TOP_UP                   0x1F
+#define PROCESSING_SPECIAL_BUS_TICKET           0x23
+#define PROCESSING_MERCHANDISE_POS              0x46
+#define PROCESSING_BONUS_TOP_UP                 0x48
+#define PROCESSING_REGISTER_TOP_UP              0x49
+#define PROCESSING_CANCEL_POS                   0x4A
+#define PROCESSING_ENTRY_AND_POS                0x4B
+#define PROCESSING_THIRD_PARTY_PAYMENT          0x84
+#define PROCESSING_THIRD_PARTY_ADMISSION        0x85
+#define PROCESSING_POS_WITH_PART_CASH           0xC6
+#define PROCESSING_ENTRY_AND_POS_WITH_PART_CASH 0xCB
+
+#define ARROW_ANIMATION_FRAME_MS 350
 
 typedef enum {
     SuicaTrainRideEntry,
@@ -39,96 +88,7 @@ static void suica_draw_train_page_1(
     Canvas* canvas,
     SuicaHistory history,
     SuicaHistoryViewModel* model,
-    bool is_birthday) {
-    // Entry logo
-    switch(history.entry_line.type) {
-    case SuicaKeikyu:
-        canvas_draw_icon(canvas, 2, 11, &I_Suica_KeikyuLogo);
-        break;
-    case SuicaJR:
-        canvas_draw_icon(canvas, 1, 12, &I_Suica_JRLogo);
-        break;
-    case SuicaMobile:
-        canvas_draw_icon(canvas, 4, 15, &I_Suica_MobileLogo);
-        break;
-    case SuicaTokyoMetro:
-        canvas_draw_icon(canvas, 2, 12, &I_Suica_TokyoMetroLogo);
-        break;
-    case SuicaToei:
-        canvas_draw_icon(canvas, 4, 11, &I_Suica_ToeiLogo);
-        break;
-    case SuicaTWR:
-        canvas_draw_icon(canvas, 0, 12, &I_Suica_TWRLogo);
-        break;
-    case SuicaYurikamome:
-        canvas_draw_icon(canvas, 0, 12, &I_Suica_YurikamomeLogo);
-        break;
-    case SuicaTokyoMonorail:
-        canvas_draw_icon(canvas, 0, 11, &I_Suica_TokyoMonorailLogo);
-        break;
-    case SuicaRailwayTypeMax:
-        canvas_draw_icon(canvas, 5, 11, &I_Suica_QuestionMarkSmall);
-        break;
-    default:
-        break;
-    }
-
-    // Entry Text
-    if(history.entry_line.type == SuicaMobile) {
-        canvas_set_font(canvas, FontPrimary);
-        canvas_draw_str(canvas, 28, 28, "Mobile Suica");
-    } else {
-        canvas_set_font(canvas, FontPrimary);
-        canvas_draw_str(canvas, 26, 23, history.entry_line.long_name);
-
-        canvas_set_font(canvas, FontSecondary);
-        canvas_draw_str(canvas, 2, 34, furi_string_get_cstr(history.entry_station.name));
-    }
-
-    if(!is_birthday) {
-        // Exit logo
-        switch(history.exit_line.type) {
-        case SuicaKeikyu:
-            canvas_draw_icon(canvas, 2, 39, &I_Suica_KeikyuLogo);
-            break;
-        case SuicaJR:
-            canvas_draw_icon(canvas, 1, 40, &I_Suica_JRLogo);
-            break;
-        case SuicaTokyoMetro:
-            canvas_draw_icon(canvas, 2, 40, &I_Suica_TokyoMetroLogo);
-            break;
-        case SuicaToei:
-            canvas_draw_icon(canvas, 4, 39, &I_Suica_ToeiLogo);
-            break;
-        case SuicaTWR:
-            canvas_draw_icon(canvas, 0, 40, &I_Suica_TWRLogo);
-            break;
-        case SuicaYurikamome:
-            canvas_draw_icon(canvas, 0, 40, &I_Suica_YurikamomeLogo);
-            break;
-        case SuicaTokyoMonorail:
-            canvas_draw_icon(canvas, 0, 39, &I_Suica_TokyoMonorailLogo);
-            break;
-        case SuicaRailwayTypeMax:
-            canvas_draw_icon(canvas, 5, 39, &I_Suica_QuestionMarkSmall);
-            break;
-        default:
-            break;
-        }
-
-        // Exit Text
-        canvas_set_font(canvas, FontPrimary);
-        canvas_draw_str(canvas, 26, 51, history.exit_line.long_name);
-
-        canvas_set_font(canvas, FontSecondary);
-        canvas_draw_str(canvas, 2, 62, furi_string_get_cstr(history.exit_station.name));
-    } else {
-        // Birthday
-        canvas_draw_icon(canvas, 5, 42, &I_Suica_CrackingEgg);
-        canvas_set_font(canvas, FontPrimary);
-        canvas_draw_str(canvas, 28, 56, "Suica issued");
-    }
-
+    SuicaHistoryType history_type) {
     // Separator
     canvas_draw_icon(canvas, 0, 37, &I_Suica_DashLine);
 
@@ -161,6 +121,136 @@ static void suica_draw_train_page_1(
         110,
         49,
         (current_arrow_bits & 0b0001) ? &I_Suica_FilledArrowDown : &I_Suica_EmptyArrowDown);
+
+    // Entry logo
+    switch(history.entry_line.type) {
+    case SuicaKeikyu:
+        canvas_draw_icon(canvas, 2, 11, &I_Suica_KeikyuLogo);
+        break;
+    case SuicaJREast:
+    case SuicaJRCentral:
+    case SuicaJRWest:
+    case SuicaJRKyushu:
+        canvas_draw_icon(canvas, 1, 12, &I_Suica_JRLogo);
+        break;
+    case SuicaMobile:
+        canvas_draw_icon(canvas, 4, 15, &I_Suica_MobileLogo);
+        break;
+    case SuicaTokyoMetro:
+        canvas_draw_icon(canvas, 2, 12, &I_Suica_TokyoMetroLogo);
+        break;
+    case SuicaToei:
+        canvas_draw_icon(canvas, 4, 11, &I_Suica_ToeiLogo);
+        break;
+    case SuicaTWR:
+        canvas_draw_icon(canvas, 0, 12, &I_Suica_TWRLogo);
+        break;
+    case SuicaYurikamome:
+        canvas_draw_icon(canvas, 0, 12, &I_Suica_YurikamomeLogo);
+        break;
+    case SuicaTokyoMonorail:
+        canvas_draw_icon(canvas, 0, 11, &I_Suica_TokyoMonorailLogo);
+        break;
+    case SuicaTokyu:
+        canvas_draw_icon(canvas, 3, 11, &I_Suica_TokyuLogo);
+        break;
+    case SuicaRailwayTypeMax:
+        canvas_draw_icon(canvas, 5, 11, &I_Suica_QuestionMarkSmall);
+        break;
+    default:
+        break;
+    }
+
+    // Entry Text
+    if(history.entry_line.type == SuicaMobile) {
+        canvas_set_font(canvas, FontPrimary);
+        canvas_draw_str(canvas, 28, 28, "Mobile Suica");
+    } else {
+        canvas_set_font(canvas, FontPrimary);
+        canvas_draw_str(canvas, 26, 23, history.entry_line.long_name);
+
+        canvas_set_font(canvas, FontSecondary);
+        canvas_draw_str(canvas, 2, 34, furi_string_get_cstr(history.entry_station.name));
+    }
+
+    switch(history_type) {
+    case SuicaHistoryTrain:
+        // Exit Train
+        switch(history.exit_line.type) {
+        case SuicaKeikyu:
+            canvas_draw_icon(canvas, 2, 39, &I_Suica_KeikyuLogo);
+            break;
+        case SuicaJREast:
+        case SuicaJRCentral:
+        case SuicaJRWest:
+        case SuicaJRKyushu:
+            canvas_draw_icon(canvas, 1, 40, &I_Suica_JRLogo);
+            break;
+        case SuicaTokyoMetro:
+            canvas_draw_icon(canvas, 2, 40, &I_Suica_TokyoMetroLogo);
+            break;
+        case SuicaToei:
+            canvas_draw_icon(canvas, 4, 39, &I_Suica_ToeiLogo);
+            break;
+        case SuicaTWR:
+            canvas_draw_icon(canvas, 0, 40, &I_Suica_TWRLogo);
+            break;
+        case SuicaYurikamome:
+            canvas_draw_icon(canvas, 0, 40, &I_Suica_YurikamomeLogo);
+            break;
+        case SuicaTokyoMonorail:
+            canvas_draw_icon(canvas, 0, 39, &I_Suica_TokyoMonorailLogo);
+            break;
+        case SuicaTokyu:
+            canvas_draw_icon(canvas, 3, 39, &I_Suica_TokyuLogo);
+            break;
+        case SuicaRailwayTypeMax:
+            canvas_draw_icon(canvas, 5, 39, &I_Suica_QuestionMarkSmall);
+            break;
+        default:
+            break;
+        }
+
+        // Exit Text
+        canvas_set_font(canvas, FontPrimary);
+        canvas_draw_str(canvas, 26, 51, history.exit_line.long_name);
+
+        canvas_set_font(canvas, FontSecondary);
+        canvas_draw_str(canvas, 2, 62, furi_string_get_cstr(history.exit_station.name));
+        break;
+
+    case SuicaHistoryHappyBirthday:
+        // Birthday
+        canvas_draw_icon(canvas, 5, 42, &I_Suica_CrackingEgg);
+        canvas_set_font(canvas, FontPrimary);
+        canvas_draw_str(canvas, 28, 56, "Suica issued");
+        break;
+    case SuicaHistoryTopUp:
+        // Top Up
+        switch(model->animator_tick) {
+        case 0:
+            canvas_draw_icon(canvas, 1, 39, &I_Suica_MoneyStack1);
+            break;
+        case 1:
+            canvas_draw_icon(canvas, 1, 39, &I_Suica_MoneyStack2);
+            break;
+        case 2:
+            canvas_draw_icon(canvas, 1, 39, &I_Suica_MoneyStack3);
+            break;
+        case 3:
+            canvas_draw_icon(canvas, 1, 39, &I_Suica_MoneyStack4);
+            break;
+        default:
+            break;
+        }
+
+        canvas_set_font(canvas, FontPrimary);
+        canvas_draw_str(canvas, 26, 55, "Top Up");
+        break;
+    default:
+        canvas_draw_str(canvas, 5, 56, "Error: draw train incorrectly called");
+        break;
+    }
 }
 
 static void
@@ -192,7 +282,7 @@ static void
         furi_string_printf(buffer, "%02d", history.entry_station.station_number);
         canvas_draw_str(canvas, 14, 51, furi_string_get_cstr(buffer));
         break;
-    case SuicaJR:
+    case SuicaJREast:
         if(!furi_string_equal_str(history.entry_station.jr_header, "0")) {
             canvas_draw_rbox(canvas, 4, 13, 42, 51, 10);
             canvas_set_color(canvas, ColorWhite);
@@ -223,6 +313,19 @@ static void
             furi_string_printf(buffer, "%02d", history.entry_station.station_number);
             canvas_draw_str(canvas, 14, 50, furi_string_get_cstr(buffer));
         }
+        break;
+    case SuicaJRCentral:
+        canvas_set_color(canvas, ColorBlack);
+        canvas_draw_box(canvas, 8, 23, 34, 33);
+        canvas_set_color(canvas, ColorWhite);
+        canvas_set_font(canvas, FontPrimary);
+        canvas_draw_str_aligned(
+            canvas, 24, 33, AlignCenter, AlignBottom, history.entry_line.short_name);
+        canvas_draw_box(canvas, 11, 35, 28, 18);
+        canvas_set_color(canvas, ColorBlack);
+        canvas_set_font(canvas, FontBigNumbers);
+        furi_string_printf(buffer, "%02d", history.entry_station.station_number);
+        canvas_draw_str(canvas, 14, 51, furi_string_get_cstr(buffer));
         break;
     case SuicaTokyoMetro:
     case SuicaToei:
@@ -268,6 +371,17 @@ static void
         canvas_draw_str(canvas, 14, 53, furi_string_get_cstr(buffer));
         canvas_set_color(canvas, ColorBlack);
         break;
+    case SuicaTokyu:
+        canvas_draw_rbox(canvas, 8, 21, 34, 34, 7);
+        canvas_set_color(canvas, ColorWhite);
+        canvas_set_font(canvas, FontPrimary);
+        canvas_draw_str_aligned(
+            canvas, 24, 33, AlignCenter, AlignBottom, history.entry_line.short_name);
+        canvas_set_font(canvas, FontBigNumbers);
+        furi_string_printf(buffer, "%02d", history.entry_station.station_number);
+        canvas_draw_str(canvas, 14, 51, furi_string_get_cstr(buffer));
+        canvas_set_color(canvas, ColorBlack);
+        break;
     case SuicaRailwayTypeMax:
         canvas_draw_circle(canvas, 24, 38, 24);
         canvas_draw_circle(canvas, 24, 38, 19);
@@ -301,7 +415,7 @@ static void
         furi_string_printf(buffer, "%02d", history.exit_station.station_number);
         canvas_draw_str(canvas, 91, 51, furi_string_get_cstr(buffer));
         break;
-    case SuicaJR:
+    case SuicaJREast:
         if(!furi_string_equal_str(history.exit_station.jr_header, "0")) {
             canvas_draw_rbox(canvas, 81, 13, 42, 51, 10);
             canvas_set_color(canvas, ColorWhite);
@@ -332,6 +446,19 @@ static void
             furi_string_printf(buffer, "%02d", history.exit_station.station_number);
             canvas_draw_str(canvas, 91, 50, furi_string_get_cstr(buffer));
         }
+        break;
+    case SuicaJRCentral:
+        canvas_set_color(canvas, ColorBlack);
+        canvas_draw_box(canvas, 86, 23, 34, 33);
+        canvas_set_color(canvas, ColorWhite);
+        canvas_set_font(canvas, FontPrimary);
+        canvas_draw_str_aligned(
+            canvas, 102, 33, AlignCenter, AlignBottom, history.exit_line.short_name);
+        canvas_draw_box(canvas, 89, 35, 28, 18);
+        canvas_set_color(canvas, ColorBlack);
+        canvas_set_font(canvas, FontBigNumbers);
+        furi_string_printf(buffer, "%02d", history.exit_station.station_number);
+        canvas_draw_str(canvas, 92, 51, furi_string_get_cstr(buffer));
         break;
     case SuicaTokyoMetro:
     case SuicaToei:
@@ -375,6 +502,17 @@ static void
         canvas_set_font(canvas, FontBigNumbers);
         furi_string_printf(buffer, "%02d", history.exit_station.station_number);
         canvas_draw_str(canvas, 93, 53, furi_string_get_cstr(buffer));
+        canvas_set_color(canvas, ColorBlack);
+        break;
+    case SuicaTokyu:
+        canvas_draw_rbox(canvas, 86, 21, 34, 34, 7);
+        canvas_set_color(canvas, ColorWhite);
+        canvas_set_font(canvas, FontPrimary);
+        canvas_draw_str_aligned(
+            canvas, 103, 33, AlignCenter, AlignBottom, history.exit_line.short_name);
+        canvas_set_font(canvas, FontBigNumbers);
+        furi_string_printf(buffer, "%02d", history.exit_station.station_number);
+        canvas_draw_str(canvas, 92, 51, furi_string_get_cstr(buffer));
         canvas_set_color(canvas, ColorBlack);
         break;
     case SuicaRailwayTypeMax:
@@ -449,60 +587,62 @@ static void suica_draw_vending_machine_page_1(
     SuicaHistory history,
     SuicaHistoryViewModel* model) {
     FuriString* buffer = furi_string_alloc();
-    canvas_draw_icon(canvas, 0, 10, &I_Suica_VendingPage2Full);
-    furi_string_printf(buffer, "%d", history.balance_change);
-    canvas_set_font(canvas, FontPrimary);
-    canvas_draw_str_aligned(canvas, 98, 39, AlignRight, AlignBottom, furi_string_get_cstr(buffer));
-
     // Animate Bubbles and LCD Refresh
-    if(model->animator_tick > 14) {
+    if(model->animator_tick > 13) {
         // 14 steps of animation
         model->animator_tick = 0;
     }
-    canvas_set_color(canvas, ColorWhite);
-    canvas_draw_line(canvas, 88, 51 + model->animator_tick, 128, 51 + model->animator_tick);
-    switch(model->animator_tick % 7) {
+    switch(model->animator_tick) {
     case 0:
-        canvas_draw_circle(canvas, 12, 48, 1);
-        canvas_draw_circle(canvas, 23, 39, 2);
+        canvas_draw_icon(canvas, 0, 10, &I_Suica_VendingPage2Full1);
         break;
     case 1:
-        canvas_draw_circle(canvas, 11, 46, 1);
-        canvas_draw_circle(canvas, 23, 39, 2);
-        canvas_set_color(canvas, ColorBlack);
-        canvas_draw_line(canvas, 24, 37, 22, 37);
-        canvas_draw_line(canvas, 25, 40, 25, 38);
-        canvas_set_color(canvas, ColorWhite);
+        canvas_draw_icon(canvas, 0, 10, &I_Suica_VendingPage2Full2);
         break;
     case 2:
-        canvas_draw_circle(canvas, 12, 44, 1);
-        canvas_draw_circle(canvas, 24, 50, 1);
+        canvas_draw_icon(canvas, 0, 10, &I_Suica_VendingPage2Full3);
         break;
     case 3:
-        canvas_draw_icon(canvas, 12, 41, &I_Suica_SmallStar);
-        canvas_draw_circle(canvas, 25, 48, 1);
+        canvas_draw_icon(canvas, 0, 10, &I_Suica_VendingPage2Full4);
         break;
     case 4:
-        canvas_draw_icon(canvas, 14, 39, &I_Suica_SmallStar);
-        canvas_draw_circle(canvas, 26, 46, 1);
+        canvas_draw_icon(canvas, 0, 10, &I_Suica_VendingPage2Full5);
         break;
     case 5:
-        canvas_draw_icon(canvas, 24, 43, &I_Suica_SmallStar);
-        canvas_draw_circle(canvas, 16, 38, 2);
+        canvas_draw_icon(canvas, 0, 10, &I_Suica_VendingPage2Full6);
         break;
     case 6:
-        canvas_draw_icon(canvas, 23, 41, &I_Suica_SmallStar);
-        canvas_draw_circle(canvas, 16, 38, 2);
-        canvas_set_color(canvas, ColorBlack);
-        canvas_draw_line(canvas, 15, 36, 17, 36);
-        canvas_draw_line(canvas, 18, 39, 18, 37);
-        canvas_set_color(canvas, ColorWhite);
+        canvas_draw_icon(canvas, 0, 10, &I_Suica_VendingPage2Full7);
+        break;
+    case 7:
+        canvas_draw_icon(canvas, 0, 10, &I_Suica_VendingPage2Full8);
+        break;
+    case 8:
+        canvas_draw_icon(canvas, 0, 10, &I_Suica_VendingPage2Full9);
+        break;
+    case 9:
+        canvas_draw_icon(canvas, 0, 10, &I_Suica_VendingPage2Full10);
+        break;
+    case 10:
+        canvas_draw_icon(canvas, 0, 10, &I_Suica_VendingPage2Full11);
+        break;
+    case 11:
+        canvas_draw_icon(canvas, 0, 10, &I_Suica_VendingPage2Full12);
+        break;
+    case 12:
+        canvas_draw_icon(canvas, 0, 10, &I_Suica_VendingPage2Full13);
+        break;
+    case 13:
+        canvas_draw_icon(canvas, 0, 10, &I_Suica_VendingPage2Full14);
         break;
     default:
         break;
     }
+
+    furi_string_printf(buffer, "%d", history.balance_change);
+    canvas_set_font(canvas, FontPrimary);
+    canvas_draw_str_aligned(canvas, 98, 39, AlignRight, AlignBottom, furi_string_get_cstr(buffer));
     furi_string_free(buffer);
-    canvas_set_color(canvas, ColorBlack);
 }
 
 static void suica_draw_vending_machine_page_2(
@@ -511,7 +651,7 @@ static void suica_draw_vending_machine_page_2(
     SuicaHistoryViewModel* model) {
     FuriString* buffer = furi_string_alloc();
 
-    if(model->animator_tick > 42) {
+    if(model->animator_tick > 41) {
         // 6 steps of animation
         model->animator_tick = 0;
     }
@@ -531,7 +671,7 @@ static void suica_draw_vending_machine_page_2(
     furi_string_printf(buffer, "%02d:%02d", history.hour, history.minute);
     canvas_draw_line(canvas, 65, 21, 62, 18);
     canvas_set_font(canvas, FontKeyboard);
-    canvas_draw_str(canvas, 66, 19, furi_string_get_cstr(buffer));
+    canvas_draw_str(canvas, 65, 19, furi_string_get_cstr(buffer));
     canvas_draw_line(canvas, 93, 21, 96, 18);
     canvas_draw_line(canvas, 66, 21, 93, 21);
     canvas_draw_line(canvas, 96, 6, 96, 17);
@@ -539,7 +679,29 @@ static void suica_draw_vending_machine_page_2(
     canvas_draw_line(canvas, 62, 12, 59, 9);
 
     // Vending Machine
-    canvas_draw_icon(canvas, 4, 12, &I_Suica_VendingMachine);
+    switch(model->animator_tick % 6) {
+    case 0:
+        canvas_draw_icon(canvas, 4, 12, &I_Suica_VendingMachine1);
+        break;
+    case 1:
+        canvas_draw_icon(canvas, 4, 12, &I_Suica_VendingMachine2);
+        break;
+    case 2:
+        canvas_draw_icon(canvas, 4, 12, &I_Suica_VendingMachine3);
+        break;
+    case 3:
+        canvas_draw_icon(canvas, 4, 12, &I_Suica_VendingMachine4);
+        break;
+    case 4:
+        canvas_draw_icon(canvas, 4, 12, &I_Suica_VendingMachine5);
+        break;
+    case 5:
+        canvas_draw_icon(canvas, 4, 12, &I_Suica_VendingMachine6);
+        break;
+    default:
+        canvas_draw_icon(canvas, 4, 12, &I_Suica_VendingMachine1);
+        break;
+    }
 
     // Machine Code
     canvas_set_font(canvas, FontPrimary);
@@ -651,7 +813,7 @@ static void
     furi_string_printf(buffer, "%02d:%02d", history.hour, history.minute);
     canvas_draw_line(canvas, 65, 21, 62, 18);
     canvas_set_font(canvas, FontKeyboard);
-    canvas_draw_str(canvas, 66, 19, furi_string_get_cstr(buffer));
+    canvas_draw_str(canvas, 65, 19, furi_string_get_cstr(buffer));
     canvas_draw_line(canvas, 93, 21, 96, 18);
     canvas_draw_line(canvas, 66, 21, 93, 21);
     canvas_draw_line(canvas, 96, 6, 96, 17);
@@ -703,6 +865,106 @@ static void
 }
 
 static void
+    suica_draw_top_up_page_2(Canvas* canvas, SuicaHistory history, SuicaHistoryViewModel* model) {
+    FuriString* buffer = furi_string_alloc();
+    furi_string_printf(buffer, "%d", history.balance_change);
+    canvas_set_font(canvas, FontPrimary);
+    canvas_draw_str_aligned(canvas, 98, 40, AlignRight, AlignBottom, furi_string_get_cstr(buffer));
+    furi_string_free(buffer);
+
+    if(model->animator_tick > 26) {
+        // 14 steps of animation
+        model->animator_tick = 0;
+    }
+    switch(model->animator_tick) {
+    case 0:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0001);
+        break;
+    case 1:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0002);
+        break;
+    case 2:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0003);
+        break;
+    case 3:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0004);
+        break;
+    case 4:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0005);
+        break;
+    case 5:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0006);
+        break;
+    case 6:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0007);
+        break;
+    case 7:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0008);
+        break;
+    case 8:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0009);
+        break;
+    case 9:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0010);
+        break;
+    case 10:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0011);
+        break;
+    case 11:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0012);
+        break;
+    case 12:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0013);
+        break;
+    case 13:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0014);
+        break;
+    case 14:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0015);
+        break;
+    case 15:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0016);
+        break;
+    case 16:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0017);
+        break;
+    case 17:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0018);
+        break;
+    case 18:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0019);
+        break;
+    case 19:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0020);
+        break;
+    case 20:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0021);
+        break;
+    case 21:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0022);
+        break;
+    case 22:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0023);
+        break;
+    case 23:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0024);
+        break;
+    case 24:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0025);
+        break;
+    case 25:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0026);
+        break;
+    case 26:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0027);
+        break;
+    default:
+        canvas_draw_icon(canvas, 0, 0, &I_Suica_TopUpPage2_0001);
+        break;
+    }
+}
+
+static void
     suica_draw_balance_page(Canvas* canvas, SuicaHistory history, SuicaHistoryViewModel* model) {
     FuriString* buffer = furi_string_alloc();
 
@@ -729,7 +991,7 @@ static void
 
     if(history.balance_sign == SuicaBalanceAdd) {
         // Animate plus sign
-        if(model->animator_tick > 2) {
+        if(model->animator_tick > 3) {
             // 9 steps of animation
             model->animator_tick = 0;
         }
@@ -738,6 +1000,7 @@ static void
             canvas_draw_icon(canvas, 28, 28, &I_Suica_PlusSign1);
             break;
         case 1:
+        case 3:
             canvas_draw_icon(canvas, 27, 27, &I_Suica_PlusSign2);
             break;
         case 2:
@@ -792,6 +1055,7 @@ static void
     } else {
         canvas_draw_str(canvas, 30, 28, "=");
     }
+    furi_string_free(buffer);
 }
 
 static void suica_history_draw_callback(Canvas* canvas, void* model) {
@@ -830,16 +1094,20 @@ static void suica_history_draw_callback(Canvas* canvas, void* model) {
     case 0:
         switch(my_model->history.history_type) {
         case SuicaHistoryTrain:
-            suica_draw_train_page_1(canvas, my_model->history, my_model, false);
+            suica_draw_train_page_1(canvas, my_model->history, my_model, SuicaHistoryTrain);
             break;
         case SuicaHistoryHappyBirthday:
-            suica_draw_train_page_1(canvas, my_model->history, my_model, true);
+            suica_draw_train_page_1(
+                canvas, my_model->history, my_model, SuicaHistoryHappyBirthday);
             break;
         case SuicaHistoryVendingMachine:
             suica_draw_vending_machine_page_1(canvas, my_model->history, my_model);
             break;
         case SuicaHistoryPosAndTaxi:
             suica_draw_store_page_1(canvas, my_model->history, my_model);
+            break;
+        case SuicaHistoryTopUp:
+            suica_draw_train_page_1(canvas, my_model->history, my_model, SuicaHistoryTopUp);
             break;
         default:
             break;
@@ -854,10 +1122,14 @@ static void suica_history_draw_callback(Canvas* canvas, void* model) {
             suica_draw_birthday_page_2(canvas, my_model->history, my_model);
             break;
         case SuicaHistoryVendingMachine:
+
             suica_draw_vending_machine_page_2(canvas, my_model->history, my_model);
             break;
         case SuicaHistoryPosAndTaxi:
             suica_draw_store_page_2(canvas, my_model->history, my_model);
+            break;
+        case SuicaHistoryTopUp:
+            suica_draw_top_up_page_2(canvas, my_model->history, my_model);
             break;
         default:
             break;
@@ -886,6 +1158,9 @@ static void suica_history_draw_callback(Canvas* canvas, void* model) {
         break;
     case SuicaHistoryPosAndTaxi:
         canvas_draw_icon(canvas, 19, 0, &I_Suica_ShopIcon);
+        break;
+    case SuicaHistoryTopUp:
+        canvas_draw_icon(canvas, 20, 0, &I_Suica_TopUpIcon);
         break;
     default:
         canvas_draw_icon(canvas, 22, 0, &I_Suica_UnknownIcon);

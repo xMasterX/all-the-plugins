@@ -5,6 +5,7 @@
 #define SUICA_MAX_HISTORY_ENTRIES 0x15
 typedef enum {
     SuicaHistoryNull,
+    SuicaHistoryTopUp,
     SuicaHistoryBus,
     SuicaHistoryPosAndTaxi,
     SuicaHistoryVendingMachine,
@@ -15,4 +16,5 @@ typedef enum {
 typedef struct {
     View* view_history;
     FuriTimer* timer;
+    FuriString* suica_file_data;
 } SuicaContext;

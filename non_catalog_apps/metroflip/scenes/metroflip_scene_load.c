@@ -33,7 +33,7 @@ void metroflip_scene_load_on_enter(void* context) {
 
         do {
             if(!flipper_format_file_open_existing(format, furi_string_get_cstr(file_path))) break;
-            if(!flipper_format_read_string(format, "Device type", device_type)) break;
+            if(!flipper_format_read_string(format, "Device Type", device_type)) break;
 
             const char* protocol_name = furi_string_get_cstr(device_type);
 
@@ -68,6 +68,10 @@ void metroflip_scene_load_on_enter(void* context) {
                         app->card_type = "troika";
                         FURI_LOG_I(TAG, "Detected: Troika");
                         break;
+                    case CARD_TYPE_RENFE_SUM10:
+                        app->card_type = "renfe_sum10";
+                        FURI_LOG_I(TAG, "Detected: RENFE Suma 10");
+                        break;
                     case CARD_TYPE_GOCARD:
                         app->card_type = "gocard";
                         FURI_LOG_I(TAG, "Detected: GoCard");
@@ -95,11 +99,11 @@ void metroflip_scene_load_on_enter(void* context) {
 
             } else {
                 const char* card_str = furi_string_get_cstr(card_type_str);
-                if(strcmp(card_str, "suica") == 0) {
+                if(strcmp(card_str, "Japan Rail IC") == 0) {
                     app->card_type = "suica";
                     app->is_desfire = false;
                     app->data_loaded = true;
-                    FURI_LOG_I(TAG, "Detected: Suica");
+                    FURI_LOG_I(TAG, "Detected: Suica / Japan Rail IC");
                     load_suica_data(app, format);
                 } else if(strcmp(card_str, "calypso") == 0) {
                     app->card_type = "calypso";
@@ -107,6 +111,7 @@ void metroflip_scene_load_on_enter(void* context) {
                     app->data_loaded = true;
                     FURI_LOG_I(TAG, "Detected: Calypso");
                 }
+                FURI_LOG_E(TAG, "Card Type Unrecognized: %s", card_str);
             }
 
             // Set file path

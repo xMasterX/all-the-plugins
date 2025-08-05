@@ -19,6 +19,7 @@ This is a list of metro cards and transit systems that are supported.
 - **Opal**  
 - **Opus**  
 - **Rav-Kav**  
+- **RENFE**
 - **Troika**
 - **Suica**
 
@@ -37,5 +38,6 @@ More coming soon!
 - **Navigo Parser**: luu176, DocSystem  
 - **Opal Parser**: gornekich  
 - **Rav-Kav Parser**: luu176  
+- **RENFE Parser**: BocamoCM  
 - **Troika Parser**: gornekich
 - **Suica parser**: zinongli 

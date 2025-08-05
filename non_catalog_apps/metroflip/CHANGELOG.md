@@ -1,3 +1,14 @@
+## v0.9
+
+- Fix unsupported card crash
+- RENFE Suma 10 support ADDED 
+- GEG Connect AID added to DESfire list.
+- Top Up log parsing and animations.
+- 16 new rail lines, including JR lines like Chuo, Negishi, Joban, and Yamanote; and all of Tokyu's operating lines.
+- Added support for parsing area codes for future expansion on non-Tokyo areas.
+- Added saving function for Suica/Japan Rail IC readings.
+- Various bug fixes and safer memory manegements improvements.
+
 ## v0.8
 
 - Added 80+ card AIDs (most may not be fully parsed)

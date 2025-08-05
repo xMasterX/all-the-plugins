@@ -36,7 +36,7 @@ void prepare_file_data(
     if(beginning) {
         furi_string_reset(app->calypso_file_data);
         furi_string_cat_printf(
-            app->calypso_file_data, "Version: 1\nDevice type: Calypso\nCard Type: calypso\n");
+            app->calypso_file_data, "Version: 1\nDevice Type: Calypso\nCard Type: calypso\n");
         beginning = false;
     }
     char* hex_string = build_hex_string(rx_buffer);

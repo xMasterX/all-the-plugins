@@ -20,9 +20,10 @@ typedef struct {
     bool locked;
 } TransitCardInfo;
 
-TransitCardInfo cards[81] = {
+TransitCardInfo cards[82] = {
     { 0x000001, "TTP (MAD)", "CRTM", true},
     { 0x0011F2, "myki (MEL)", "DTP", false},
+    { 0x0014F2, "Connect (GEG)", "STA", true},
     { 0x002000, "Presto (YYZ)", "Metrolinx", true},
     { 0x004048, "Mi Movilidad (GDL)", "SITEUR", true},
     { 0x004055, "AT HOP (AKL)", "Auckland Transport", true},

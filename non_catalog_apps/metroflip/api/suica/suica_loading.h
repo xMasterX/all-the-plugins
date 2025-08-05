@@ -2,7 +2,14 @@
 #include <lib/nfc/protocols/felica/felica.h>
 #include "suica_structs_i.h"
 
-void suica_add_entry(SuicaHistoryViewModel* model, const uint8_t* entry) {
+static void suica_model_initialize(SuicaHistoryViewModel* model, size_t initial_capacity) {
+    model->travel_history =
+        (uint8_t*)malloc(initial_capacity * FELICA_DATA_BLOCK_SIZE); // Each entry is 16 bytes
+    model->size = 0;
+    model->capacity = initial_capacity;
+}
+
+static void suica_add_entry(SuicaHistoryViewModel* model, const uint8_t* entry) {
     if(model->size <= 0) {
         model->travel_history =
             (uint8_t*)malloc(3 * FELICA_DATA_BLOCK_SIZE); // Each entry is 16 bytes
@@ -26,7 +33,7 @@ void suica_add_entry(SuicaHistoryViewModel* model, const uint8_t* entry) {
     model->size++;
 }
 
-void load_suica_data(void* context, FlipperFormat* format) {
+static void load_suica_data(void* context, FlipperFormat* format) {
     Metroflip* app = (Metroflip*)context;
     app->suica_context = malloc(sizeof(SuicaContext));
     app->suica_context->view_history = view_alloc();
@@ -34,12 +41,12 @@ void load_suica_data(void* context, FlipperFormat* format) {
     view_allocate_model(
         app->suica_context->view_history, ViewModelTypeLockFree, sizeof(SuicaHistoryViewModel));
     SuicaHistoryViewModel* model = view_get_model(app->suica_context->view_history);
-
+    suica_model_initialize(model, 3); // Initialize with a capacity of 3 entries
     uint8_t* byte_array_buffer = (uint8_t*)malloc(FELICA_DATA_BLOCK_SIZE);
-            FuriString* entry_preamble = furi_string_alloc();
+    FuriString* entry_preamble = furi_string_alloc();
     // Read the travel history entries
     for(uint8_t i = 0; i < SUICA_MAX_HISTORY_ENTRIES; i++) {
-        furi_string_printf(entry_preamble, "Travel %02X", i);
+        furi_string_printf(entry_preamble, "Log %02X", i);
         // For every line in the flipper format file
         // We read the entire line's hex and store it in the byte_array_buffer
         if(!flipper_format_read_hex(

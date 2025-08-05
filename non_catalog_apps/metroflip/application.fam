@@ -5,7 +5,7 @@ App(
     entry_point="metroflip",
     stack_size=2 * 1024,
     fap_category="NFC",
-    fap_version="0.8",
+    fap_version="0.9",
     fap_icon="icon.png",
     fap_description="An implementation of metrodroid on the flipper",
     fap_author="luu176",
@@ -118,5 +118,14 @@ App(
     entry_point="gocard_plugin_ep",
     requires=["metroflip"],
     sources=["scenes/plugins/gocard.c"],
+    fal_embedded=True,
+)
+
+App(
+    appid="renfe_sum10_plugin",
+    apptype=FlipperAppType.PLUGIN,
+    entry_point="renfe_sum10_plugin_ep",
+    requires=["metroflip"],
+    sources=["scenes/plugins/renfe_sum10.c"],
     fal_embedded=True,
 )
