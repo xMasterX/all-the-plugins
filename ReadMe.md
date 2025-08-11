@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `6 Aug 01:31 GMT +3`
+### Apps checked & updated at `11 Aug 21:20 GMT +3`
 
 
 # Default pack
@@ -224,6 +224,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | ESP32 Ghost | ![GPIO Badge] | [by Spooks4576 & jaylikesbunda](https://github.com/Spooks4576/ghost_esp_app) | read more details in original repo, [ESP32 firmware link](https://github.com/Spooks4576/Ghost_ESP/tree/main) | ![None Badge] |
 | Longwave Clock | ![GPIO Badge] | [by m7i-org](https://github.com/m7i-org/flipper_longwave_clock) | read more details in original repo | ![None Badge] |
 | INA Meter | ![GPIO Badge] | [by cepetr](https://github.com/cepetr/flipper-tina) |  | [![Author Badge]](https://lab.flipper.net/apps/ina_meter) |
+| Nearby Files | ![GPIO Badge] | [by Stichoza](https://github.com/Stichoza/flipper-nearby-files) |  | [![Author Badge]](https://lab.flipper.net/apps/nearby_files) |
 | IR Remote | ![IR Badge] | [by Hong5489](https://github.com/Hong5489/ir_remote) | improvements [by friebel](https://github.com/RogueMaster/flipperzero-firmware-wPlugins/pull/535) - Hold Option, RAW support [by d4ve10](https://github.com/d4ve10/ir_remote/tree/infrared_hold_option) | ![None Badge] |
 | IR Intervalometer | ![IR Badge] | [by Nitepone](https://github.com/Nitepone/flipper-intervalometer) |  | [![UFW Badge]](https://lab.flipper.net/apps/sony_intervalometer) |
 | IR Xbox Controller | ![IR Badge] | [by gebeto](https://github.com/gebeto/flipper-xbox-controller) |  | [![Author Badge]](https://lab.flipper.net/apps/xbox_controller) |
