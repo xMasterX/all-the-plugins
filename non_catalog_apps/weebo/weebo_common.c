@@ -20,6 +20,7 @@ void weebo_remix(Weebo* weebo) {
     FURI_LOG_D(TAG, "Generating random UID");
     UID[0] = 0x04;
     furi_hal_random_fill_buf(UID + 1, 6);
+    UID[3] |= 0x01; // To avoid forbidden 0x88 value
     UID[7] = UID[3] ^ UID[4] ^ UID[5] ^ UID[6];
     memcpy(weebo->figure + NFC3D_UID_OFFSET, UID, 8);
     memcpy(data->iso14443_3a_data->uid, UID, 7);
