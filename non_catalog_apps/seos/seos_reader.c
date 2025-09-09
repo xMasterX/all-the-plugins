@@ -499,7 +499,7 @@ NfcCommand seos_worker_poller_callback(NfcGenericEvent event, void* context) {
             break;
         case Iso14443_4aErrorTimeout:
             break;
-        default:    
+        default:
             break;
         }
     }

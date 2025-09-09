@@ -13,6 +13,7 @@ enum SubmenuIndex {
     SubmenuIndexAbout,
     SubmenuIndexInspect,
     SubmenuIndexSavedSeader,
+    SubmenuIndexMigrateKeys,
 };
 
 void seos_scene_main_menu_submenu_callback(void* context, uint32_t index) {
@@ -63,6 +64,15 @@ void seos_scene_main_menu_on_enter(void* context) {
             submenu,
             "Saved (Seader)",
             SubmenuIndexSavedSeader,
+            seos_scene_main_menu_submenu_callback,
+            seos);
+    }
+
+    if(seos->keys_loaded && seos->keys_version == 1) {
+        submenu_add_item(
+            submenu,
+            "Migrate Keys",
+            SubmenuIndexMigrateKeys,
             seos_scene_main_menu_submenu_callback,
             seos);
     }
@@ -122,6 +132,11 @@ bool seos_scene_main_menu_on_event(void* context, SceneManagerEvent event) {
             scene_manager_set_scene_state(
                 seos->scene_manager, SeosSceneMainMenu, SubmenuIndexAbout);
             scene_manager_next_scene(seos->scene_manager, SeosSceneAbout);
+            consumed = true;
+        } else if(event.event == SubmenuIndexMigrateKeys) {
+            scene_manager_set_scene_state(
+                seos->scene_manager, SeosSceneMainMenu, SubmenuIndexMigrateKeys);
+            scene_manager_next_scene(seos->scene_manager, SeosSceneMigrateKeys);
             consumed = true;
         }
     } else if(event.type == SceneManagerEventTypeBack) {

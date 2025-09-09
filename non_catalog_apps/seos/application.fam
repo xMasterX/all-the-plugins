@@ -2,13 +2,13 @@
 
 App(
     appid="seos",  # Must be unique
-    name="Seos compatible",  # Displayed in menus
+    name="Seos Compatible",  # Displayed in menus
     apptype=FlipperAppType.EXTERNAL,
     entry_point="seos_app",
     stack_size=10 * 1024,
     fap_category="NFC",
     # Optional values
-    fap_version="1.1",
+    fap_version="1.2",
     fap_icon="seos.png",  # 10x10 1-bit PNG
     fap_description="Seos compatible reader/emulator",
     fap_author="bettse",

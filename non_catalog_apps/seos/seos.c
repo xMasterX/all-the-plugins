@@ -4,7 +4,151 @@
 
 #define SEOS_KEYS_FILENAME "keys"
 
-bool seos_load_keys(Seos* seos) {
+bool seos_migrate_keys(Seos* seos) {
+    const char* file_header = "Seos keys";
+    const uint32_t file_version = 2;
+    bool parsed = false;
+    FlipperFormat* file = flipper_format_file_alloc(seos->credential->storage);
+    FuriString* path = furi_string_alloc();
+    FuriString* temp_str = furi_string_alloc();
+    uint8_t iv[16] = {0};
+    memset(iv, 0, sizeof(iv));
+    uint8_t output[16];
+
+    if(!seos->keys_loaded) {
+        FURI_LOG_E(TAG, "Keys not loaded, can't migrate");
+        return false;
+    }
+    if(seos->keys_version == 2) {
+        FURI_LOG_I(TAG, "Keys already migrated to version 2");
+        return false; // Already migrated
+    }
+
+    do {
+        // Encrypt the keys using the per-device key
+        if(!furi_hal_crypto_enclave_ensure_key(FURI_HAL_CRYPTO_ENCLAVE_UNIQUE_KEY_SLOT)) {
+            FURI_LOG_E(TAG, "Failed to ensure unique key slot");
+            break;
+        }
+        if(!furi_hal_crypto_enclave_load_key(FURI_HAL_CRYPTO_ENCLAVE_UNIQUE_KEY_SLOT, iv)) {
+            FURI_LOG_E(TAG, "Failed to load unique key");
+            break;
+        }
+
+        furi_string_printf(
+            path, "%s/%s%s", STORAGE_APP_DATA_PATH_PREFIX, SEOS_KEYS_FILENAME, ".txt");
+        // Open file
+        if(!flipper_format_file_open_existing(file, furi_string_get_cstr(path))) break;
+        if(!flipper_format_write_header_cstr(file, file_header, file_version)) break;
+        if(!flipper_format_write_uint32(file, "SEOS_ADF_OID_LEN", (uint32_t*)&SEOS_ADF_OID_LEN, 1))
+            break;
+        if(!flipper_format_write_hex(file, "SEOS_ADF_OID", SEOS_ADF_OID, SEOS_ADF_OID_LEN)) break;
+
+        if(furi_hal_crypto_encrypt(SEOS_ADF1_PRIV_ENC, output, sizeof(output))) {
+            if(!flipper_format_write_hex(file, "SEOS_ADF1_PRIV_ENC", output, 16)) break;
+        }
+
+        if(furi_hal_crypto_encrypt(SEOS_ADF1_PRIV_MAC, output, sizeof(output))) {
+            if(!flipper_format_write_hex(file, "SEOS_ADF1_PRIV_MAC", output, 16)) break;
+        }
+        if(furi_hal_crypto_encrypt(SEOS_ADF1_READ, output, sizeof(output))) {
+            if(!flipper_format_write_hex(file, "SEOS_ADF1_READ", output, 16)) break;
+        }
+
+        if(!furi_hal_crypto_enclave_unload_key(FURI_HAL_CRYPTO_ENCLAVE_UNIQUE_KEY_SLOT)) {
+            FURI_LOG_E(TAG, "Failed to unload unique key");
+            // No break since we've already decrypted
+        }
+
+        parsed = true;
+        seos->keys_version = file_version;
+    } while(false);
+
+    if(parsed) {
+        FURI_LOG_I(TAG, "Keys migrated to V%d", seos->keys_version);
+    }
+
+    furi_string_free(path);
+    furi_string_free(temp_str);
+    flipper_format_free(file);
+
+    return parsed;
+}
+
+// Version 2 has keys that are encrypted using the per-device key in the secure enclave
+bool seos_load_keys_v2(Seos* seos) {
+    const char* file_header = "Seos keys";
+    const uint32_t file_version = 2;
+    bool parsed = false;
+    FlipperFormat* file = flipper_format_file_alloc(seos->credential->storage);
+    FuriString* path = furi_string_alloc();
+    FuriString* temp_str = furi_string_alloc();
+    uint32_t version = 0;
+    uint8_t iv[16] = {0};
+    memset(iv, 0, sizeof(iv));
+    uint8_t output[16];
+
+    do {
+        furi_string_printf(
+            path, "%s/%s%s", STORAGE_APP_DATA_PATH_PREFIX, SEOS_KEYS_FILENAME, ".txt");
+        // Open file
+        if(!flipper_format_file_open_existing(file, furi_string_get_cstr(path))) break;
+        if(!flipper_format_read_header(file, temp_str, &version)) break;
+        if(!furi_string_equal_str(temp_str, file_header) || (version != file_version)) {
+            break;
+        }
+
+        if(!flipper_format_read_uint32(file, "SEOS_ADF_OID_LEN", (uint32_t*)&SEOS_ADF_OID_LEN, 1))
+            break;
+        if(!flipper_format_read_hex(file, "SEOS_ADF_OID", SEOS_ADF_OID, SEOS_ADF_OID_LEN)) break;
+        if(!flipper_format_read_hex(file, "SEOS_ADF1_PRIV_ENC", SEOS_ADF1_PRIV_ENC, 16)) break;
+        if(!flipper_format_read_hex(file, "SEOS_ADF1_PRIV_MAC", SEOS_ADF1_PRIV_MAC, 16)) break;
+        if(!flipper_format_read_hex(file, "SEOS_ADF1_READ", SEOS_ADF1_READ, 16)) break;
+
+        // Decrypt the keys using the per-device key
+        if(!furi_hal_crypto_enclave_ensure_key(FURI_HAL_CRYPTO_ENCLAVE_UNIQUE_KEY_SLOT)) {
+            FURI_LOG_E(TAG, "Failed to ensure unique key slot");
+            break;
+        }
+        if(!furi_hal_crypto_enclave_load_key(FURI_HAL_CRYPTO_ENCLAVE_UNIQUE_KEY_SLOT, iv)) {
+            FURI_LOG_E(TAG, "Failed to load unique key");
+            break;
+        }
+
+        if(furi_hal_crypto_decrypt(SEOS_ADF1_PRIV_ENC, output, sizeof(output))) {
+            memcpy(SEOS_ADF1_PRIV_ENC, output, sizeof(SEOS_ADF1_PRIV_ENC));
+        }
+        if(furi_hal_crypto_decrypt(SEOS_ADF1_PRIV_MAC, output, sizeof(output))) {
+            memcpy(SEOS_ADF1_PRIV_MAC, output, sizeof(SEOS_ADF1_PRIV_MAC));
+        }
+        if(furi_hal_crypto_decrypt(SEOS_ADF1_READ, output, sizeof(output))) {
+            memcpy(SEOS_ADF1_READ, output, sizeof(SEOS_ADF1_READ));
+        }
+
+        if(!furi_hal_crypto_enclave_unload_key(FURI_HAL_CRYPTO_ENCLAVE_UNIQUE_KEY_SLOT)) {
+            FURI_LOG_E(TAG, "Failed to unload unique key");
+            // No break since we've already decrypted
+        }
+
+        parsed = true;
+        seos->keys_version = file_version;
+    } while(false);
+
+    if(parsed) {
+        FURI_LOG_I(TAG, "Keys loaded V%d", seos->keys_version);
+        seos_log_buffer(TAG, "Keys for ADF OID loaded", SEOS_ADF_OID, SEOS_ADF_OID_LEN);
+    } else {
+        FURI_LOG_I(TAG, "Using default keys");
+    }
+
+    furi_string_free(path);
+    furi_string_free(temp_str);
+    flipper_format_free(file);
+
+    return parsed;
+}
+
+bool seos_load_keys_v1(Seos* seos) {
     const char* file_header = "Seos keys";
     const uint32_t file_version = 1;
     bool parsed = false;
@@ -31,10 +175,11 @@ bool seos_load_keys(Seos* seos) {
         if(!flipper_format_read_hex(file, "SEOS_ADF1_READ", SEOS_ADF1_READ, 16)) break;
 
         parsed = true;
+        seos->keys_version = file_version;
     } while(false);
 
     if(parsed) {
-        FURI_LOG_I(TAG, "Keys loaded");
+        FURI_LOG_I(TAG, "Keys loaded V%d", seos->keys_version);
         seos_log_buffer(TAG, "Keys for ADF OID loaded", SEOS_ADF_OID, SEOS_ADF_OID_LEN);
     } else {
         FURI_LOG_I(TAG, "Using default keys");
@@ -122,7 +267,11 @@ Seos* seos_alloc() {
     seos->credential = seos_credential_alloc();
     seos->seos_emulator = seos_emulator_alloc(seos->credential);
 
-    seos->keys_loaded = seos_load_keys(seos);
+    seos->keys_loaded = seos_load_keys_v2(seos);
+    if(!seos->keys_loaded) {
+        // If version 2 keys failed, try loading version 1
+        seos->keys_loaded = seos_load_keys_v1(seos);
+    }
 
     return seos;
 }

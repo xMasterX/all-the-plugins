@@ -99,6 +99,7 @@ struct Seos {
     FlowMode flow_mode;
 
     bool keys_loaded;
+    uint8_t keys_version;
     Bt* bt;
     FuriHalBleProfileBase* ble_profile;
     SeosNativePeripheral* native_peripheral;
@@ -122,3 +123,5 @@ void seos_blink_start(Seos* seos);
 void seos_blink_stop(Seos* seos);
 
 void seos_show_loading_popup(void* context, bool show);
+
+bool seos_migrate_keys(Seos* seos);
