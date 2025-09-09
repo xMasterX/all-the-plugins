@@ -154,7 +154,7 @@ static bool flipper_spi_terminal_write_config_value(
     const char* key,
     const char* value,
     const char* description) {
-    if(!flipper_format_write_comment_cstr(file, "\n") ||
+    if(!flipper_format_write_empty_line(file) ||
        !flipper_spi_terminal_write_multiline_comment(file, description)) {
         SPI_TERM_LOG_E("Could not write comment for  %s!", key);
         return false;

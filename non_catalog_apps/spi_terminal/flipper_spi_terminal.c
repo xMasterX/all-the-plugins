@@ -72,9 +72,6 @@ static void flipper_spi_terminal_free(FlipperSPITerminalApp* app) {
     SPI_TERM_LOG_T("Close GUI");
     furi_record_close(RECORD_GUI);
 
-    SPI_TERM_LOG_T("Close CLI");
-    furi_record_close(RECORD_CLI);
-
     furi_string_free(app->config.debug.debug_terminal_data);
 }
 

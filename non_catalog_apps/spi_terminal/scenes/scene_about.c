@@ -19,7 +19,12 @@ const char* about_text =
     "MOSI: 2 (PA7) Master In / Slave Out\n"
     "MISO: 3 (PA6) Master Out / Salve In\n"
     "  CS: 4 (PA4, NSS) Non Slave Select\n"
-    " SCK: 5 (PB3) Serial Clock";
+    " SCK: 5 (PB3) Serial Clock\n"
+    "\n"
+    "=== Terminal View ===\n"
+    "Use the 'Up' and 'Down' keys to scroll.\n"
+    "Press 'Back' to navigate to the main menu.\n"
+    "Hold 'Back' to clear the screen buffer.";
 
 void flipper_spi_terminal_scene_about_alloc(FlipperSPITerminalApp* app) {
     app->about_screen = text_box_alloc();

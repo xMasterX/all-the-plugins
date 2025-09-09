@@ -195,6 +195,10 @@ void flipper_spi_terminal_scene_terminal_on_enter(void* context) {
     view_dispatcher_switch_to_view(app->view_dispatcher, FlipperSPITerminalAppSceneTerminal);
     app->terminal_screen.is_active = true;
 
+    if(app->config.terminal_buffer_behaviour == TerminalBufferBehaviourClear) {
+        terminal_view_reset(app->terminal_screen.view);
+    }
+
     furi_timer_start(app->terminal_screen.recv_timer, 300);
 
     if(!furi_string_empty(app->config.debug.debug_terminal_data)) {

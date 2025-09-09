@@ -1,8 +1,8 @@
 App(
     appid="flipper_spi_terminal",
-    name="SPI-Terminal",
+    name="[SPI] Terminal",
     apptype=FlipperAppType.EXTERNAL,
-    fap_version="0.1",
+    fap_version="0.4",
     fap_category="GPIO",
     fap_author="Jan Wiesemann",
     fap_description="A Terminal Application for the SPI interface",

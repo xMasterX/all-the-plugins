@@ -387,7 +387,7 @@ static void terminal_view_draw_callback(Canvas* canvas, void* context) {
     info.height = canvas_height(canvas);
     info.glyph_height = canvas_current_font_height(canvas);
     info.glyph_width =
-        info.glyph_height; // For some reason not supported with uFTB canvas_current_font_width(canvas);
+        6; // For some reason not supported with uFTB canvas_current_font_width(canvas);
     info.frame_width = info.width - 4; // 4 => scrollbar has a width of 3 + 1 space
     info.frame_height = info.height; // mainly a alias
     info.frame_padding = 2 + 1; // +1 => line with of frame
@@ -413,7 +413,8 @@ static void terminal_view_draw_callback(Canvas* canvas, void* context) {
 static bool terminal_view_input_callback(InputEvent* event, void* context) {
     TERMINAL_VIEW_CONTEXT_TO_TERMINAL_AND_VIEW(context);
 
-    if(event->type == InputTypeShort || event->type == InputTypeRepeat) {
+    if((event->key == InputKeyUp || event->key == InputKeyDown) &&
+       (event->type == InputTypeShort || event->type == InputTypeRepeat)) {
         bool handled = false;
         with_view_model(
             view,
@@ -434,6 +435,9 @@ static bool terminal_view_input_callback(InputEvent* event, void* context) {
             handled);
 
         return handled;
+    } else if(event->key == InputKeyBack && event->type == InputTypeLong) {
+        terminal_view_reset(terminal);
+        return true;
     }
 
     return false;

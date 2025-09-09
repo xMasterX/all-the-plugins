@@ -66,6 +66,22 @@ ADD_CONFIG_ENTRY(
     ("Auto", "Text", "Hex", "Binary"))
 
 ADD_CONFIG_ENTRY(
+    "Terminal Buffer behaviour",
+    FORMAT_DESCRIPTION(
+        "Configures, how the Terminal Screen buffer behaves, if you leave/enter the Terminal View.",
+        "Clear",
+        (FORMAT_VALUE_DESCRIPTION("Clear", "Terminal Buffer will be cleared")
+             FORMAT_VALUE_DESCRIPTION("Keep", "The Buffer will keep it's content"))),
+    terminal_buffer_behaviour,
+    TerminalBufferBehaviour,
+    TerminalBufferBehaviourClear,
+    value_index_buffer_behaviour,
+    terminal_buffer_behaviour,
+    2,
+    (TerminalBufferBehaviourClear, TerminalBufferBehaviourKeep),
+    ("Clear", "Keep"))
+
+ADD_CONFIG_ENTRY(
     "DMA RX Buffer size",
     FORMAT_DESCRIPTION(
         "Sets the buffer size for a SPI read request. A higher value results in a less frequent update. A higher value will result in a faster data rate."

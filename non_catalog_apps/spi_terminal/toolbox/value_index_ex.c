@@ -14,3 +14,4 @@
 
 SPI_TERMINAL_VALUE_INDEX_IMPL(value_index_display_mode, TerminalDisplayMode);
 SPI_TERMINAL_VALUE_INDEX_IMPL(value_index_size_t, size_t);
+SPI_TERMINAL_VALUE_INDEX_IMPL(value_index_buffer_behaviour, TerminalBufferBehaviour);
