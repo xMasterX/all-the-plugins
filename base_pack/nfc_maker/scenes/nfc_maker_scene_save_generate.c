@@ -60,6 +60,14 @@ static void nfc_maker_scene_save_generate_populate_ndef_buffer(NfcMaker* app) {
         furi_string_free(vcard);
         break;
     }
+    case NfcMakerSceneSaveGenerate: { // Empty
+        tnf = 0x00; // Empty
+        type = "";
+
+        payload_len = 0;
+        payload = payload_it = NULL;
+        break;
+    }
     case NfcMakerSceneHttps: {
         tnf = 0x01; // NFC Forum well-known type [NFC RTD]
         type = "U";
@@ -273,7 +281,9 @@ static void nfc_maker_scene_save_generate_populate_ndef_buffer(NfcMaker* app) {
     // Record payload
     memcpy(buf, payload, payload_len);
     buf += payload_len;
-    free(payload);
+    if(payload) {
+        free(payload);
+    }
 
     // Record terminator
     *buf++ = 0xFE;

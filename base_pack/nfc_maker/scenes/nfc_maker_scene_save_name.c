@@ -25,6 +25,7 @@ void nfc_maker_scene_save_name_on_enter(void* context) {
     furi_string_replace(prefix, " Plus", "+"); // NTAG I2C+
     furi_string_replace(prefix, " (Unknown)", "");
     furi_string_replace_all(prefix, " ", "_");
+    furi_string_replace_all(prefix, "/", "_");
     name_generator_make_auto(app->save_buf, sizeof(app->save_buf), furi_string_get_cstr(prefix));
     furi_string_free(prefix);
 
