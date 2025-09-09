@@ -18,6 +18,113 @@ static void nfc_playlist_tick_event_callback(void* context) {
    scene_manager_handle_tick_event(nfc_playlist->scene_manager);
 }
 
+void nfc_playlist_load_settings(void* context) {
+   furi_assert(context);
+   NfcPlaylist* nfc_playlist = context;
+
+   nfc_playlist->worker_info.settings->emulate_timeout = default_emulate_timeout;
+   nfc_playlist->worker_info.settings->emulate_delay = default_emulate_delay;
+   nfc_playlist->worker_info.settings->emulate_led_indicator = default_emulate_led_indicator;
+   nfc_playlist->worker_info.settings->skip_error = default_skip_error;
+   nfc_playlist->worker_info.settings->loop = default_loop;
+   nfc_playlist->worker_info.settings->user_controls = default_user_controls;
+
+   Storage* storage = furi_record_open(RECORD_STORAGE);
+
+   if(storage_file_exists(storage, SETTINGS_LOCATION)) {
+      Stream* stream = file_stream_alloc(storage);
+
+      if(file_stream_open(stream, SETTINGS_LOCATION, FSAM_READ, FSOM_OPEN_EXISTING)) {
+         FuriString* line = furi_string_alloc();
+         FuriString* key = furi_string_alloc();
+         FuriString* value = furi_string_alloc();
+
+         while(stream_read_line(stream, line)) {
+            if(furi_string_empty(line) || furi_string_start_with_str(line, "#")) continue;
+
+            size_t equal_index = furi_string_search_char(line, '=');
+            if(equal_index <= 0) continue;
+
+            furi_string_set_strn(key, furi_string_get_cstr(line), equal_index);
+            furi_string_set_str(value, furi_string_get_cstr(line) + equal_index + 1);
+
+            furi_string_trim(key);
+            furi_string_trim(value);
+
+            const char* k = furi_string_get_cstr(key);
+            const char* v = furi_string_get_cstr(value);
+
+            if(strcmp(k, "emulate_timeout") == 0) {
+               nfc_playlist->worker_info.settings->emulate_timeout = atoi(v);
+            } else if(strcmp(k, "emulate_delay") == 0) {
+               nfc_playlist->worker_info.settings->emulate_delay = atoi(v);
+            } else if(strcmp(k, "emulate_led_indicator") == 0) {
+               nfc_playlist->worker_info.settings->emulate_led_indicator =
+                  (strcasecmp(v, "true") == 0);
+            } else if(strcmp(k, "skip_error") == 0) {
+               nfc_playlist->worker_info.settings->skip_error = (strcasecmp(v, "true") == 0);
+            } else if(strcmp(k, "loop") == 0) {
+               nfc_playlist->worker_info.settings->loop = (strcasecmp(v, "true") == 0);
+            } else if(strcmp(k, "user_controls") == 0) {
+               nfc_playlist->worker_info.settings->user_controls = (strcasecmp(v, "true") == 0);
+            }
+         }
+
+         file_stream_close(stream);
+         furi_string_free(line);
+         furi_string_free(key);
+         furi_string_free(value);
+      }
+      stream_free(stream);
+   }
+
+   furi_record_close(RECORD_STORAGE);
+}
+
+void nfc_playlist_save_settings(void* context) {
+   furi_assert(context);
+   NfcPlaylist* nfc_playlist = context;
+
+   FuriString* tmp_str = furi_string_alloc();
+
+   furi_string_printf(
+      tmp_str,
+      "emulate_timeout=%d\nemulate_delay=%d\nemulate_led_indicator=%s\nskip_error=%s\nloop=%s\nuser_controls=%s",
+      nfc_playlist->worker_info.settings->emulate_timeout,
+      nfc_playlist->worker_info.settings->emulate_delay,
+      nfc_playlist->worker_info.settings->emulate_led_indicator ? "true" : "false",
+      nfc_playlist->worker_info.settings->skip_error ? "true" : "false",
+      nfc_playlist->worker_info.settings->loop ? "true" : "false",
+      nfc_playlist->worker_info.settings->user_controls ? "true" : "false");
+
+   Storage* storage = furi_record_open(RECORD_STORAGE);
+   Stream* stream = file_stream_alloc(storage);
+
+   file_stream_open(stream, SETTINGS_LOCATION, FSAM_READ_WRITE, FSOM_OPEN_ALWAYS);
+   stream_clean(stream);
+   stream_write_string(stream, tmp_str);
+   file_stream_close(stream);
+   stream_free(stream);
+   furi_record_close(RECORD_STORAGE);
+
+   furi_string_free(tmp_str);
+}
+
+void nfc_playlist_delete_settings(void* context) {
+   furi_assert(context);
+   NfcPlaylist* nfc_playlist = context;
+
+   Storage* storage = furi_record_open(RECORD_STORAGE);
+
+   if(storage_file_exists(storage, SETTINGS_LOCATION)) {
+      storage_simply_remove(storage, SETTINGS_LOCATION);
+   }
+
+   furi_record_close(RECORD_STORAGE);
+
+   nfc_playlist_load_settings(nfc_playlist);
+}
+
 static NfcPlaylist* nfc_playlist_alloc() {
    NfcPlaylist* nfc_playlist = malloc(sizeof(NfcPlaylist));
    furi_assert(nfc_playlist);
@@ -44,12 +151,11 @@ static NfcPlaylist* nfc_playlist_alloc() {
    furi_assert(nfc_playlist->worker_info.settings);
 
    nfc_playlist->worker_info.settings->playlist_path = furi_string_alloc();
-   nfc_playlist->worker_info.settings->emulate_timeout = default_emulate_timeout;
-   nfc_playlist->worker_info.settings->emulate_delay = default_emulate_delay;
-   nfc_playlist->worker_info.settings->emulate_led_indicator = default_emulate_led_indicator;
-   nfc_playlist->worker_info.settings->skip_error = default_skip_error;
-   nfc_playlist->worker_info.settings->loop = default_loop;
-   nfc_playlist->worker_info.settings->user_controls = default_user_controls;
+   nfc_playlist_load_settings(nfc_playlist);
+
+   if(!storage_dir_exists(storage, PLAYLIST_DIR)) {
+      storage_simply_mkdir(storage, PLAYLIST_DIR);
+   }
 
    view_dispatcher_set_event_callback_context(nfc_playlist->view_dispatcher, nfc_playlist);
    view_dispatcher_set_custom_event_callback(

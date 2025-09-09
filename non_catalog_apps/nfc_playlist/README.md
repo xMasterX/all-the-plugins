@@ -3,7 +3,7 @@ The idea behind this app is to allow for you to test multiple copies of NFC's at
 ## How it works:
 When starting the app you are greeted by a select file option where you choose the playlist you wanna run.
 
-All playlists should be placed in `ext/apps_data/nfc_playlist`, but they can also be stored in other file locations. An example of the data format is shown below, and you can find an example file in the repository: [file](./playlist.txt). You are able to create your own playlists using the playlist editor in the app.
+All playlists should be placed in `ext/apps_data/playlists/nfc_playlist`, but they can also be stored in other file locations. An example of the data format is shown below, and you can find an example file in the repository: [file](./playlist.txt). You are able to create your own playlists using the playlist editor in the app.
 ```txt
 /ext/nfc/link.nfc
 /ext/nfc/link2.nfc
@@ -24,9 +24,12 @@ As i know these firmwares are supported and working if you know any more please 
 - Skip errors (Makes it so you can make the emulation screen hide errors and skip delays between errors and emulation)
 - Loop (Makes it so the playlist will loop back to the start when it reaches the end)
 - User controls (Allows you to control the position of the playlist using the buttons on the flipper skipping and rewinding the playlist)
-- Reset settings (Puts all the settings back to the defaults)
+- Back to defaults (Resets all settings to their default values)
+- Save settings (Saves the current settings so they persist after reopening the app)
+- Reload settings (Reloads the settings from the saved configuration)
+- Delete settings (Deletes the saved settings)
 ## Playlist editor:
-- Create PLaylist (Creates a new playlist with the given name)
+- Create playlist (Creates a new playlist with the given name)
 - Delete playlist (Deletes the selected playlist)
 - Rename playlist (Renames the selected playlist to the new name provided)
 - Add NFC Item (Adds the selected nfc item to the currently selected playlist)

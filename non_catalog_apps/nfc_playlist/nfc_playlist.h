@@ -27,8 +27,9 @@
 extern "C" {
 #endif
 
-#define PLAYLIST_LOCATION     "/ext/apps_data/nfc_playlist/"
-#define PLAYLIST_DIR          "/ext/apps_data/nfc_playlist"
+#define PLAYLIST_LOCATION     "/ext/apps_data/nfc_playlist/playlists/"
+#define PLAYLIST_DIR          "/ext/apps_data/nfc_playlist/playlists"
+#define SETTINGS_LOCATION     "/ext/apps_data/nfc_playlist/settings.txt"
 #define NFC_ITEM_LOCATION     "/ext/nfc/"
 #define MAX_PLAYLIST_NAME_LEN 50
 
@@ -72,6 +73,24 @@ typedef struct {
    NfcPlaylistView views;
    NfcPlaylistWorkerInfo worker_info;
 } NfcPlaylist;
+
+/**
+ * Load the NFC playlist settings from persistent storage.
+ * @param context The context pointer to the NfcPlaylist instance.
+ */
+void nfc_playlist_load_settings(void* context);
+
+/**
+ * Save the NFC playlist settings to persistent storage.
+ * @param context The context pointer to the NfcPlaylist instance.
+ */
+void nfc_playlist_save_settings(void* context);
+
+/**
+ * Delete the NFC playlist settings from persistent storage.
+ * @param context The context pointer to the NfcPlaylist instance.
+ */
+void nfc_playlist_delete_settings(void* context);
 
 #ifdef __cplusplus
 }
