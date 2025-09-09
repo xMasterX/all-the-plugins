@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `11 Aug 21:20 GMT +3`
+### Apps checked & updated at `09 Sep 16:34 GMT +3`
 
 
 # Default pack
@@ -268,6 +268,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | SubGHz Signal Generator | ![SubGhz Badge] | [by RocketGod](https://github.com/RocketGod-Git/Flipper-Zero-SubGHz-Signal-Generator) |  | ![None Badge] |
 | Chief Cooker | ![SubGhz Badge] | [by denr01](https://github.com/denr01/FZ-ChiefCooker) |  | ![None Badge] |
 | SUB Analyzer | ![SubGhz Badge] | [by RocketGod](https://github.com/RocketGod-git/Flipper-Zero-SUB-Analyzer) |  | ![None Badge] |
+| SubGhz Playlist Creator | ![SubGhz Badge] | [by coolerUA](https://github.com/coolerUA/Sub-Ghz-Playlist-Creator) |  | ![None Badge] |
 | Analog Clock | ![Tools Badge] | [by scrolltex](https://github.com/scrolltex/flipper_analog_clock) |  | [![UFW Badge]](https://lab.flipper.net/apps/analog_clock) |
 | Brainfuck interpreter | ![Tools Badge] | [by nymda](https://github.com/nymda/FlipperZeroBrainfuck) |  | [![UFW Badge]](https://lab.flipper.net/apps/brainfuck) |
 | Ceasar Cipher | ![Tools Badge] | [by panki27](https://github.com/panki27/caesar-cipher) |  | [![UFW Badge]](https://lab.flipper.net/apps/caesar_cipher) |
