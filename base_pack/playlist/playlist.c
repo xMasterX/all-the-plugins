@@ -143,7 +143,7 @@ static int playlist_worker_process(PlaylistWorker* worker, const char* file_name
     FuriString* protocol_name = furi_string_alloc();
     FuriString* temp_str = furi_string_alloc();
 
-    uint8_t status = 0;
+    int status = 0;
 
     do {
         FlipperFormat* fff_data_file = flipper_format_file_alloc(worker->storage);
@@ -336,6 +336,8 @@ static int playlist_worker_process(PlaylistWorker* worker, const char* file_name
         if(subghz_txrx_tx_start(worker->txrx, subghz_txrx_get_fff_data(worker->txrx)) !=
            SubGhzTxRxStartTxStateOk) {
             FURI_LOG_E(TAG, "Failed to start TX");
+            status = -5;
+            break;
         }
 
         bool skip_extra_stop = false;
@@ -492,6 +494,7 @@ static bool playlist_worker_play_playlist_once(
                 furi_string_cat(worker->meta->prev_0_text, " FAIL");
                 furi_mutex_release(worker->meta->mutex);
                 view_port_update(worker->meta->view_port);
+                furi_delay_ms(1000);
             }
 
             // re-send file is paused mid-send
