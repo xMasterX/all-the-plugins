@@ -41,15 +41,15 @@ void passy_scene_read_success_on_enter(void* context) {
             }
 
             if(dg1->mrz.buf[0] == 'I' && dg1->mrz.buf[1] == 'P') {
-                furi_string_cat_printf(str, "Passport card\n");
+                furi_string_cat_printf(str, "Passport card (IP)\n");
             } else if(dg1->mrz.buf[0] == 'I') {
-                furi_string_cat_printf(str, "ID Card\n");
+                furi_string_cat_printf(str, "ID Card (I)\n");
             } else if(dg1->mrz.buf[0] == 'P') {
-                furi_string_cat_printf(str, "Passport book\n");
+                furi_string_cat_printf(str, "Passport book (P)\n");
             } else if(dg1->mrz.buf[0] == 'A') {
-                furi_string_cat_printf(str, "Residency Permit\n");
+                furi_string_cat_printf(str, "Residency Permit (A)\n");
             } else {
-                furi_string_cat_printf(str, "Unknown\n");
+                furi_string_cat_printf(str, "Unknown (%c%c)\n", dg1->mrz.buf[0], dg1->mrz.buf[1]);
             }
 
             uint8_t td_variant = 0;

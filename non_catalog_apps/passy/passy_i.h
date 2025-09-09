@@ -33,11 +33,11 @@
 #include "passy_common.h"
 #include "scenes/passy_scene.h"
 
-#define PASSY_TEXT_STORE_SIZE            128
-#define PASSY_FILE_NAME_MAX_LENGTH       32
-#define PASSY_PASSPORT_NUMBER_MAX_LENGTH 32
-#define PASSY_DOB_MAX_LENGTH             8
-#define PASSY_DOE_MAX_LENGTH             8
+#define PASSY_TEXT_STORE_SIZE            128 // Including NULL-terminator
+#define PASSY_FILE_NAME_MAX_LENGTH       32 // Including NULL-terminator
+#define PASSY_PASSPORT_NUMBER_MAX_LENGTH 20 // Including NULL-terminator
+#define PASSY_DOB_MAX_LENGTH             8 // YYMMDD + check digit + NULL-terminator
+#define PASSY_DOE_MAX_LENGTH             8 // YYMMDD + check digit + NULL-terminator
 
 #define PASSY_DG1_MAX_LENGTH 256
 
@@ -64,7 +64,7 @@ struct Passy {
     SceneManager* scene_manager;
     Storage* storage;
 
-    char text_store[PASSY_TEXT_STORE_SIZE + 1];
+    char text_store[PASSY_TEXT_STORE_SIZE];
     FuriString* text_box_store;
 
     // Common Views
@@ -84,11 +84,11 @@ struct Passy {
     NfcDevice* nfc_device;
 
     FuriString* load_path;
-    char file_name[PASSY_FILE_NAME_MAX_LENGTH + 1];
+    char file_name[PASSY_FILE_NAME_MAX_LENGTH];
 
-    char passport_number[PASSY_PASSPORT_NUMBER_MAX_LENGTH + 1];
-    char date_of_birth[PASSY_DOB_MAX_LENGTH + 1];
-    char date_of_expiry[PASSY_DOE_MAX_LENGTH + 1];
+    char passport_number[PASSY_PASSPORT_NUMBER_MAX_LENGTH];
+    char date_of_birth[PASSY_DOB_MAX_LENGTH];
+    char date_of_expiry[PASSY_DOE_MAX_LENGTH];
 
     BitBuffer* DG1;
     BitBuffer* COM;

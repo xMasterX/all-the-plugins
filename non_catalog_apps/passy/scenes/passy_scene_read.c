@@ -34,9 +34,11 @@ void passy_scene_read_on_enter(void* context) {
     Passy* passy = context;
     dolphin_deed(DolphinDeedNfcRead);
 
+    passy->poller = NULL;
+
     // Setup view
     Popup* popup = passy->popup;
-    popup_set_header(popup, "Reading", 68, 30, AlignLeft, AlignTop);
+    popup_set_header(popup, "Detecting...", 68, 30, AlignLeft, AlignTop);
     popup_set_icon(popup, 0, 3, &I_RFIDDolphinReceive_97x61);
     passy->scanner = nfc_scanner_alloc(passy->nfc);
     nfc_scanner_start(
@@ -96,20 +98,18 @@ bool passy_scene_read_on_event(void* context, SceneManagerEvent event) {
                 popup_set_header(popup, "Reading", 68, 30, AlignLeft, AlignTop);
             } else {
                 // Update the header with the current bytes read
-                char header[32];
                 snprintf(
-                    header,
-                    sizeof(header),
+                    passy->text_store,
+                    PASSY_TEXT_STORE_SIZE,
                     "Reading\n%d/%dk",
                     passy->offset,
                     (passy->bytes_total / 1024));
-                popup_set_header(popup, header, 68, 30, AlignLeft, AlignTop);
+                popup_set_header(popup, passy->text_store, 68, 30, AlignLeft, AlignTop);
             }
         }
     } else if(event.type == SceneManagerEventTypeBack) {
-        scene_manager_search_and_switch_to_previous_scene(
+        consumed = scene_manager_search_and_switch_to_previous_scene(
             passy->scene_manager, PassySceneMainMenu);
-        consumed = true;
     }
 
     return consumed;
@@ -118,14 +118,14 @@ bool passy_scene_read_on_event(void* context, SceneManagerEvent event) {
 void passy_scene_read_on_exit(void* context) {
     Passy* passy = context;
 
-    if(passy_reader) {
-        passy_reader_free(passy_reader);
-        passy_reader = NULL;
-    }
     if(passy->poller) {
         nfc_poller_stop(passy->poller);
         nfc_poller_free(passy->poller);
         passy->poller = NULL;
+    }
+    if(passy_reader) {
+        passy_reader_free(passy_reader);
+        passy_reader = NULL;
     }
     if(passy->scanner) {
         nfc_scanner_stop(passy->scanner);

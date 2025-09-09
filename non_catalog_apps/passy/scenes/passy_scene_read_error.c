@@ -59,8 +59,13 @@ bool passy_scene_read_error_on_event(void* context, SceneManagerEvent event) {
             consumed = scene_manager_previous_scene(passy->scene_manager);
         }
     } else if(event.type == SceneManagerEventTypeBack) {
-        scene_manager_search_and_switch_to_previous_scene(
-            passy->scene_manager, PassySceneMainMenu);
+        if(scene_manager_has_previous_scene(passy->scene_manager, PassySceneAdvancedMenu)) {
+            scene_manager_search_and_switch_to_previous_scene(
+                passy->scene_manager, PassySceneAdvancedMenu);
+        } else {
+            scene_manager_search_and_switch_to_previous_scene(
+                passy->scene_manager, PassySceneMainMenu);
+        }
         consumed = true;
     }
     return consumed;

@@ -15,6 +15,7 @@ App(
     fap_weburl="https://github.com/bettse/passy",
     fap_icon_assets="images",  # Image assets to compile for this application
     fap_libs=["mbedtls"],
+    sources=["*.c*", "!*.css"],
     fap_private_libs=[
         Lib(
             name="asn1",

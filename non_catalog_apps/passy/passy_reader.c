@@ -56,21 +56,23 @@ PassyReader* passy_reader_alloc(Passy* passy) {
     passy_reader->tx_buffer = bit_buffer_alloc(PASSY_READER_MAX_BUFFER_SIZE);
     passy_reader->rx_buffer = bit_buffer_alloc(PASSY_READER_MAX_BUFFER_SIZE);
 
-    char passport_number[11];
+    char passport_number[PASSY_PASSPORT_NUMBER_MAX_LENGTH];
     memset(passport_number, 0, sizeof(passport_number));
-    memcpy(passport_number, passy->passport_number, strlen(passy->passport_number));
+    strlcpy(passport_number, passy->passport_number, PASSY_PASSPORT_NUMBER_MAX_LENGTH - 1);
+    // strlcpy leaves at least 1 byte for check digit
+    // the next byte is already '\0' because of the memset
     passport_number[strlen(passy->passport_number)] = passy_checksum(passy->passport_number);
     FURI_LOG_I(TAG, "Passport number: %s", passport_number);
 
-    char date_of_birth[8];
+    char date_of_birth[PASSY_DOB_MAX_LENGTH];
     memset(date_of_birth, 0, sizeof(date_of_birth));
-    memcpy(date_of_birth, passy->date_of_birth, strlen(passy->date_of_birth));
+    strlcpy(date_of_birth, passy->date_of_birth, PASSY_DOB_MAX_LENGTH - 1);
     date_of_birth[strlen(passy->date_of_birth)] = passy_checksum(passy->date_of_birth);
     FURI_LOG_I(TAG, "Date of birth: %s", date_of_birth);
 
-    char date_of_expiry[8];
+    char date_of_expiry[PASSY_DOE_MAX_LENGTH];
     memset(date_of_expiry, 0, sizeof(date_of_expiry));
-    memcpy(date_of_expiry, passy->date_of_expiry, strlen(passy->date_of_expiry));
+    strlcpy(date_of_expiry, passy->date_of_expiry, PASSY_DOE_MAX_LENGTH - 1);
     date_of_expiry[strlen(passy->date_of_expiry)] = passy_checksum(passy->date_of_expiry);
     FURI_LOG_I(TAG, "Date of expiry: %s", date_of_expiry);
 

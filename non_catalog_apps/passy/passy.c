@@ -27,14 +27,14 @@ bool passy_load_mrz_info(Passy* passy) {
         // doe
 
         if(!flipper_format_read_string(file, "Passport Number", temp_str)) break;
-        strncpy(
+        strlcpy(
             passy->passport_number,
             furi_string_get_cstr(temp_str),
             PASSY_PASSPORT_NUMBER_MAX_LENGTH);
         if(!flipper_format_read_string(file, "Date of Birth", temp_str)) break;
-        strncpy(passy->date_of_birth, furi_string_get_cstr(temp_str), PASSY_DOB_MAX_LENGTH);
+        strlcpy(passy->date_of_birth, furi_string_get_cstr(temp_str), PASSY_DOB_MAX_LENGTH);
         if(!flipper_format_read_string(file, "Date of Expiry", temp_str)) break;
-        strncpy(passy->date_of_expiry, furi_string_get_cstr(temp_str), PASSY_DOE_MAX_LENGTH);
+        strlcpy(passy->date_of_expiry, furi_string_get_cstr(temp_str), PASSY_DOE_MAX_LENGTH);
 
         parsed = true;
     } while(false);
