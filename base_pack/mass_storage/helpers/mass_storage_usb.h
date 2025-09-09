@@ -5,8 +5,5 @@
 
 typedef struct MassStorageUsb MassStorageUsb;
 
-MassStorageUsb* mass_storage_usb_start(
-    const char* filename,
-    SCSIDeviceFunc fn,
-    const MassStorageConfig* config);
+MassStorageUsb* mass_storage_usb_start(const char* filename, SCSIDeviceFunc fn);
 void mass_storage_usb_stop(MassStorageUsb* mass);
