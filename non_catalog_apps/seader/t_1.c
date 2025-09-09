@@ -31,6 +31,12 @@ uint8_t seader_next_cpcb() {
     return cPCB;
 }
 
+void seader_t_1_reset() {
+    NAD = 0x00;
+    dPCB = 0x40;
+    cPCB = 0x00;
+}
+
 void seader_t_1_set_IFSD(Seader* seader) {
     SeaderWorker* seader_worker = seader->worker;
     SeaderUartBridge* seader_uart = seader_worker->uart;

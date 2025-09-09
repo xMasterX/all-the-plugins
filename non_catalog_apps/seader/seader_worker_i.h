@@ -15,7 +15,13 @@
 #include <SamVersion.h>
 
 #define SEADER_POLLER_MAX_FWT         (200000U)
-#define SEADER_POLLER_MAX_BUFFER_SIZE (255U)
+// Maximum basic rAPDU size is 256 bytes of data + 2 byte SW
+#define SEADER_POLLER_MAX_BUFFER_SIZE (258U)
+
+// ATS bit definitions
+#define ISO14443_4A_ATS_T0_TA1 (1U << 4)
+#define ISO14443_4A_ATS_T0_TB1 (1U << 5)
+#define ISO14443_4A_ATS_T0_TC1 (1U << 6)
 
 struct SeaderWorker {
     FuriThread* thread;

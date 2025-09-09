@@ -42,7 +42,7 @@ typedef struct {
     uint8_t diversifier[8];
     uint8_t diversifier_len;
     uint8_t sio_start_block; // for iClass SE vs iClass SR
-    bool isDesfire;
+    bool isDesfireEV2;
     SeaderCredentialType type;
     SeaderCredentialSaveFormat save_format;
     char name[SEADER_CRED_NAME_MAX_LEN + 1];

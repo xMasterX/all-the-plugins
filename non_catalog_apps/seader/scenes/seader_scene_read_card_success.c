@@ -51,6 +51,11 @@ void seader_scene_read_card_success_on_enter(void* context) {
         }
     } else {
         furi_string_set(type_str, "Read error");
+
+        SeaderWorker* seader_worker = seader->worker;
+        SeaderUartBridge* seader_uart = seader_worker->uart;
+        seader_t_1_reset();
+        seader_ccid_check_for_sam(seader_uart);
     }
 
     widget_add_button_element(
