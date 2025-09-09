@@ -63,6 +63,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Rolling Flaws | ![SubGhz Badge] | [by CodeAllNight & jamisonderek](https://github.com/jamisonderek/flipper-zero-tutorials/tree/main/subghz/apps/rolling-flaws) |  | ![None Badge] |
 | Radio Scanner | ![SubGhz Badge] | [by RocketGod](https://github.com/RocketGod-git/Flipper-Zero-Radio-Scanner) | Scans frequencies available to the CC1101 and plays them over the speaker so you can hear them. | ![None Badge] |
 | Sub-GHz Scheduler | ![SubGhz Badge] | [by shalebridge](https://github.com/shalebridge/flipper-subghz-scheduler) | Remake to work with all types of keys by @xMasterX | [![Author Badge]](https://lab.flipper.net/apps/subghz_scheduler) |
+| Flipper Share | ![SubGhz Badge] | [by lomalkin](https://github.com/lomalkin/flipper-zero-apps/blob/-/flipper_share) | | [![Author Badge]](https://lab.flipper.net/apps/flipper_share) |
 | **NFC Maker** plugin | ![NFC Badge] | [by Willy-JL](https://github.com/Flipper-XFW/Xtreme-Firmware/tree/dev/applications/external/nfc_maker) | make tags with URLs, Wifi and other things | ![None Badge] |
 | MIFARE Classic Editor | ![NFC Badge] | [by TollyH](https://github.com/TollyH/flipper-apps/tree/main/mfc-editor) | edit dumps on flipper | [![Author Badge]](https://lab.flipper.net/apps/mfc_editor) |
 | **RFID Fuzzer** | ![RFID Badge] | [by @gid9798](https://github.com/DarkFlippers/Multi_Fuzzer) | original by Ganapati & xMasterX | [![UFW Badge]](https://lab.flipper.net/apps/fuzzer_rfid) |
