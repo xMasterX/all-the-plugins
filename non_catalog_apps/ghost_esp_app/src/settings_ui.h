@@ -18,8 +18,8 @@ typedef struct {
 } SettingsConfirmContext;
 
 // Function declarations
-void clear_log_files(void* context); 
+void clear_log_files(void* context);
 void settings_setup_gui(VariableItemList* list, SettingsUIContext* context);
 bool settings_set(Settings* settings, SettingKey key, uint8_t value, void* context);
 uint8_t settings_get(const Settings* settings, SettingKey key);
-bool settings_custom_event_callback(void* context, uint32_t event_id);
+bool settings_custom_event_callback(void* context, uint32_t event);

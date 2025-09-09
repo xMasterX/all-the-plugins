@@ -3,8 +3,6 @@
 #include "uart_storage.h"
 static Storage* storage = NULL;
 
-
-
 // Forward declarations of static functions
 static bool write_header(File* file);
 static bool verify_header(File* file);
@@ -25,10 +23,18 @@ bool settings_storage_init() {
     }
 
     // Attempt to create directory without checking if it exists
-    storage_simply_mkdir(storage, GHOST_ESP_APP_FOLDER);
+    if(!storage_simply_mkdir(storage, GHOST_ESP_APP_FOLDER)) {
+        furi_crash("Can't mkdir! Fuck this SD card!");
+    }
 
     uint32_t duration = furi_get_tick() - start_time;
-    FURI_LOG_I("SettingsStorage", "Storage initialization complete (Time taken: %lu ms)", duration);
+    FURI_LOG_I(
+        "SettingsStorage", "Storage initialization complete (Time taken: %lu ms)", duration);
+
+    if(!storage) {
+        FURI_LOG_E("Storage", "Storage system failure!");
+        furi_crash("Storage fucked");
+    }
 
     return true;
 }
@@ -43,8 +49,7 @@ static bool write_header(File* file) {
     SettingsHeader header = {
         .magic = SETTINGS_HEADER_MAGIC,
         .version = SETTINGS_FILE_VERSION,
-        .settings_count = SETTINGS_COUNT
-    };
+        .settings_count = SETTINGS_COUNT};
     return storage_file_write(file, &header, sizeof(header)) == sizeof(header);
 }
 
@@ -53,14 +58,13 @@ static bool verify_header(File* file) {
     if(storage_file_read(file, &header, sizeof(header)) != sizeof(header)) {
         return false;
     }
-    return header.magic == SETTINGS_HEADER_MAGIC &&
-           header.version == SETTINGS_FILE_VERSION &&
+    return header.magic == SETTINGS_HEADER_MAGIC && header.version == SETTINGS_FILE_VERSION &&
            header.settings_count == SETTINGS_COUNT;
 }
 
 SettingsResult settings_storage_save(Settings* settings, const char* path) {
     FURI_LOG_I("SettingsStorage", "Starting to save settings to %s", path);
-    
+
     if(!storage) {
         FURI_LOG_E("SettingsStorage", "Storage not initialized");
         return SETTINGS_FILE_ERROR;
@@ -93,7 +97,7 @@ SettingsResult settings_storage_save(Settings* settings, const char* path) {
 
 SettingsResult settings_storage_load(Settings* settings, const char* path) {
     FURI_LOG_D("SettingsStorage", "Loading settings from %s", path);
-    
+
     if(!storage) {
         FURI_LOG_E("SettingsStorage", "Storage not initialized");
         return SETTINGS_FILE_ERROR;

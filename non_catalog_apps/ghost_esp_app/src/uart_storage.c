@@ -6,7 +6,7 @@
 #include <storage/storage.h>
 #include "sequential_file.h"
 
-#define COMMAND_BUFFER_SIZE 128
+#define COMMAND_BUFFER_SIZE   128
 #define PCAP_WRITE_CHUNK_SIZE 1024u
 
 // Define directories in an array for loop-based creation
@@ -14,17 +14,16 @@ static const char* GHOST_DIRECTORIES[] = {
     GHOST_ESP_APP_FOLDER,
     GHOST_ESP_APP_FOLDER_PCAPS,
     GHOST_ESP_APP_FOLDER_LOGS,
-    GHOST_ESP_APP_FOLDER_WARDRIVE
-};
+    GHOST_ESP_APP_FOLDER_WARDRIVE};
 
 // Helper macro for error handling and cleanup
 #define CLEANUP_AND_RETURN(ctx, msg, retval) \
-    do { \
-        FURI_LOG_E("Storage", msg); \
-        if (ctx) { \
-            uart_storage_free(ctx); \
-        } \
-        return retval; \
+    do {                                     \
+        FURI_LOG_E("Storage", msg);          \
+        if(ctx) {                            \
+            uart_storage_free(ctx);          \
+        }                                    \
+        return retval;                       \
     } while(0)
 
 void uart_storage_safe_cleanup(UartStorageContext* ctx) {
@@ -57,7 +56,8 @@ UartStorageContext* uart_storage_init(UartContext* parentContext) {
     UartStorageContext* ctx = malloc(sizeof(UartStorageContext));
     uint32_t elapsed_step = furi_get_tick() - step_start;
     if(!ctx) {
-        FURI_LOG_E("Storage", "Failed to allocate UartStorageContext (Time taken: %lu ms)", elapsed_step);
+        FURI_LOG_E(
+            "Storage", "Failed to allocate UartStorageContext (Time taken: %lu ms)", elapsed_step);
         return NULL;
     }
     FURI_LOG_I("Storage", "Allocated UartStorageContext (Time taken: %lu ms)", elapsed_step);
@@ -67,7 +67,8 @@ UartStorageContext* uart_storage_init(UartContext* parentContext) {
     memset(ctx, 0, sizeof(UartStorageContext));
     ctx->parentContext = parentContext;
     elapsed_step = furi_get_tick() - step_start;
-    FURI_LOG_I("Storage", "Initialized UartStorageContext fields (Time taken: %lu ms)", elapsed_step);
+    FURI_LOG_I(
+        "Storage", "Initialized UartStorageContext fields (Time taken: %lu ms)", elapsed_step);
 
     // Open storage API
     step_start = furi_get_tick();
@@ -86,11 +87,13 @@ UartStorageContext* uart_storage_init(UartContext* parentContext) {
     ctx->log_file = storage_file_alloc(ctx->storage_api);
     elapsed_step = furi_get_tick() - step_start;
     if(!ctx->current_file || !ctx->log_file) {
-        FURI_LOG_E("Storage", "Failed to allocate file handles (Time taken: %lu ms)", elapsed_step);
+        FURI_LOG_E(
+            "Storage", "Failed to allocate file handles (Time taken: %lu ms)", elapsed_step);
         uart_storage_free(ctx);
         return NULL;
     }
-    FURI_LOG_I("Storage", "Allocated current_file and log_file (Time taken: %lu ms)", elapsed_step);
+    FURI_LOG_I(
+        "Storage", "Allocated current_file and log_file (Time taken: %lu ms)", elapsed_step);
 
     // Create directories
     step_start = furi_get_tick();
@@ -98,13 +101,22 @@ UartStorageContext* uart_storage_init(UartContext* parentContext) {
     for(size_t i = 0; i < num_directories; i++) {
         uint32_t dir_step_start = furi_get_tick();
         if(!storage_simply_mkdir(ctx->storage_api, GHOST_DIRECTORIES[i])) {
-            FURI_LOG_W("Storage", "Failed to create or confirm directory: %s (Time taken: %lu ms)", GHOST_DIRECTORIES[i], furi_get_tick() - dir_step_start);
+            FURI_LOG_W(
+                "Storage",
+                "Failed to create or confirm directory: %s (Time taken: %lu ms)",
+                GHOST_DIRECTORIES[i],
+                furi_get_tick() - dir_step_start);
         } else {
-            FURI_LOG_I("Storage", "Created/Confirmed directory: %s (Time taken: %lu ms)", GHOST_DIRECTORIES[i], furi_get_tick() - dir_step_start);
+            FURI_LOG_I(
+                "Storage",
+                "Created/Confirmed directory: %s (Time taken: %lu ms)",
+                GHOST_DIRECTORIES[i],
+                furi_get_tick() - dir_step_start);
         }
     }
     elapsed_step = furi_get_tick() - step_start;
-    FURI_LOG_I("Storage", "Directory creation/confirmation completed (Time taken: %lu ms)", elapsed_step);
+    FURI_LOG_I(
+        "Storage", "Directory creation/confirmation completed (Time taken: %lu ms)", elapsed_step);
 
     // Ensure all directories are accessible
     step_start = furi_get_tick();
@@ -132,39 +144,43 @@ UartStorageContext* uart_storage_init(UartContext* parentContext) {
         for(size_t i = 0; i < num_directories; i++) {
             uint32_t retry_dir_start = furi_get_tick();
             storage_simply_mkdir(ctx->storage_api, GHOST_DIRECTORIES[i]);
-            FURI_LOG_I("Storage", "Retried creating directory: %s (Time taken: %lu ms)", GHOST_DIRECTORIES[i], furi_get_tick() - retry_dir_start);
+            FURI_LOG_I(
+                "Storage",
+                "Retried creating directory: %s (Time taken: %lu ms)",
+                GHOST_DIRECTORIES[i],
+                furi_get_tick() - retry_dir_start);
         }
         elapsed_step = furi_get_tick() - step_start;
-        FURI_LOG_I("Storage", "Retry directory creation completed (Time taken: %lu ms)", elapsed_step);
+        FURI_LOG_I(
+            "Storage", "Retry directory creation completed (Time taken: %lu ms)", elapsed_step);
     }
 
     // Initialize log file
     step_start = furi_get_tick();
     ctx->HasOpenedFile = sequential_file_open(
-        ctx->storage_api,
-        ctx->log_file,
-        GHOST_ESP_APP_FOLDER_LOGS,
-        "ghost_logs",
-        "txt"
-    );
+        ctx->storage_api, ctx->log_file, GHOST_ESP_APP_FOLDER_LOGS, "ghost_logs", "txt");
     elapsed_step = furi_get_tick() - step_start;
     if(!ctx->HasOpenedFile) {
-        FURI_LOG_W("Storage", "Failed to open log file, attempting cleanup (Time taken: %lu ms)", elapsed_step);
+        FURI_LOG_W(
+            "Storage",
+            "Failed to open log file, attempting cleanup (Time taken: %lu ms)",
+            elapsed_step);
         uart_storage_safe_cleanup(ctx);
         // Retry log file creation
         step_start = furi_get_tick();
         ctx->HasOpenedFile = sequential_file_open(
-            ctx->storage_api,
-            ctx->log_file,
-            GHOST_ESP_APP_FOLDER_LOGS,
-            "ghost_logs",
-            "txt"
-        );
+            ctx->storage_api, ctx->log_file, GHOST_ESP_APP_FOLDER_LOGS, "ghost_logs", "txt");
         elapsed_step = furi_get_tick() - step_start;
         if(!ctx->HasOpenedFile) {
-            FURI_LOG_W("Storage", "Log init failed after cleanup, continuing without logging (Time taken: %lu ms)", elapsed_step);
+            FURI_LOG_W(
+                "Storage",
+                "Log init failed after cleanup, continuing without logging (Time taken: %lu ms)",
+                elapsed_step);
         } else {
-            FURI_LOG_I("Storage", "Successfully opened log file after retry (Time taken: %lu ms)", elapsed_step);
+            FURI_LOG_I(
+                "Storage",
+                "Successfully opened log file after retry (Time taken: %lu ms)",
+                elapsed_step);
         }
     } else {
         FURI_LOG_I("Storage", "Opened log file successfully (Time taken: %lu ms)", elapsed_step);
@@ -180,14 +196,18 @@ UartStorageContext* uart_storage_init(UartContext* parentContext) {
     return ctx;
 }
 
+void uart_storage_rx_callback(uint8_t* buf, size_t len, void* context) {
+    UartContext* app = (UartContext*)context;
 
-void uart_storage_rx_callback(uint8_t *buf, size_t len, void *context) {
-    UartContext *app = (UartContext *)context;
-    
     // Basic sanity checks with detailed logging
     if(!app || !app->storageContext || !buf || len == 0) {
-        FURI_LOG_E("Storage", "Invalid parameters in storage callback: app=%p, storageContext=%p, buf=%p, len=%zu",
-                  (void*)app, (void*)app->storageContext, (void*)buf, len);
+        FURI_LOG_E(
+            "Storage",
+            "Invalid parameters in storage callback: app=%p, storageContext=%p, buf=%p, len=%zu",
+            (void*)app,
+            (void*)app->storageContext,
+            (void*)buf,
+            len);
         return;
     }
 
@@ -212,20 +232,21 @@ void uart_storage_rx_callback(uint8_t *buf, size_t len, void *context) {
     // Write data and verify with detailed logging
     size_t written = storage_file_write(app->storageContext->current_file, buf, len);
     if(written != len) {
-        FURI_LOG_E("Storage", "Failed to write PCAP data: Expected %zu, Written %zu", len, written);
-        app->pcap = false;  // Reset PCAP state on write failure
+        FURI_LOG_E(
+            "Storage", "Failed to write PCAP data: Expected %zu, Written %zu", len, written);
+        app->pcap = false; // Reset PCAP state on write failure
         return;
     }
 
     FURI_LOG_D("Storage", "Successfully wrote %zu bytes to PCAP file", written);
-    
+
     // Optionally, calculate and log a checksum for data integrity
     uint8_t checksum = 0;
     for(size_t i = 0; i < len; i++) {
         checksum ^= buf[i];
     }
     FURI_LOG_D("Storage", "Data Checksum (XOR): 0x%02X", checksum);
-    
+
     // Periodic sync every ~8KB to balance between safety and performance with detailed logging
     static size_t bytes_since_sync = 0;
     bytes_since_sync += len;
@@ -237,9 +258,7 @@ void uart_storage_rx_callback(uint8_t *buf, size_t len, void *context) {
     }
 }
 
-
-
-void uart_storage_reset_logs(UartStorageContext *ctx) {
+void uart_storage_reset_logs(UartStorageContext* ctx) {
     if(!ctx || !ctx->storage_api) return;
 
     if(ctx->log_file) {
@@ -249,36 +268,40 @@ void uart_storage_reset_logs(UartStorageContext *ctx) {
     }
 
     ctx->HasOpenedFile = sequential_file_open(
-        ctx->storage_api,
-        ctx->log_file,
-        GHOST_ESP_APP_FOLDER_LOGS,
-        "ghost_logs",
-        "txt"
-    );
-        
+        ctx->storage_api, ctx->log_file, GHOST_ESP_APP_FOLDER_LOGS, "ghost_logs", "txt");
+
     if(!ctx->HasOpenedFile) {
         FURI_LOG_E("Storage", "Failed to reset log file");
     }
 }
 
-void uart_storage_free(UartStorageContext *ctx) {
+void uart_storage_free(UartStorageContext* ctx) {
     if(!ctx) return;
 
     // Do safe cleanup first
+    FURI_LOG_I("Storage", "Safe cleanup: closing open files");
     uart_storage_safe_cleanup(ctx);
 
-    // Free resources
+    // Free file handles
+    FURI_LOG_I("Storage", "Freeing file handles");
     if(ctx->current_file) {
         storage_file_free(ctx->current_file);
+        ctx->current_file = NULL;
     }
 
     if(ctx->log_file) {
         storage_file_free(ctx->log_file);
+        ctx->log_file = NULL;
     }
 
+    // Close storage record at the very end
     if(ctx->storage_api) {
+        FURI_LOG_I("Storage", "Closing RECORD_STORAGE");
         furi_record_close(RECORD_STORAGE);
+        ctx->storage_api = NULL;
     }
 
+    FURI_LOG_I("Storage", "Freeing storage context memory");
     free(ctx);
+    FURI_LOG_I("Storage", "Storage context freed");
 }

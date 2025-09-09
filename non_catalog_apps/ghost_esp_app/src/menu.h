@@ -8,9 +8,8 @@
 #include <gui/modules/variable_item_list.h>
 #include "app_state.h"
 
-
 // Function declarations
-void send_uart_command(const char* command, void* state);  // Changed from AppState* to void*
+void send_uart_command(const char* command, void* state); // Changed from AppState* to void*
 void send_uart_command_with_text(const char* command, char* text, AppState* state);
 void send_uart_command_with_bytes(
     const char* command,
@@ -27,7 +26,17 @@ void handle_ble_menu(AppState* state, uint32_t index);
 void handle_gps_menu(AppState* state, uint32_t index);
 
 void show_wifi_menu(AppState* state);
+void show_wifi_scanning_menu(AppState* state);
+void show_wifi_capture_menu(AppState* state);
+void show_wifi_attack_menu(AppState* state);
+void show_wifi_network_menu(AppState* state);
+void show_wifi_settings_menu(AppState* state);
+
 void show_ble_menu(AppState* state);
+void show_ble_scanning_menu(AppState* state);
+void show_ble_capture_menu(AppState* state);
+void show_ble_attack_menu(AppState* state);
+
 void show_gps_menu(AppState* state);
 
 // 6675636B796F7564656B69

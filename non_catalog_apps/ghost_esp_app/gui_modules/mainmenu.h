@@ -119,7 +119,6 @@ void main_menu_set_orientation(MainMenu* main_menu, ViewOrientation orientation)
 
 void main_menu_set_help_callback(MainMenu* main_menu, MainMenuItemCallback callback, void* context);
 
-
 #ifdef __cplusplus
 }
 #endif

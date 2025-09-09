@@ -11,6 +11,9 @@
 #include "menu.h"
 #include "uart_storage.h"
 #include <stdbool.h>
+#define UART_CH_ESP FuriHalSerialIdUsart
+#define UART_CH_GPS FuriHalSerialIdLpuart
+#define BAUDRATE (115200)
 #define TEXT_BOX_STORE_SIZE           (4096) // 4KB text box buffer size
 #define RX_BUF_SIZE                   2048
 #define PCAP_BUF_SIZE                 4096
@@ -26,9 +29,6 @@
 #define PCAP_GLOBAL_HEADER_SIZE       24
 #define PCAP_PACKET_HEADER_SIZE       16
 #define PCAP_TEMP_BUFFER_SIZE         4096
-#define UART_CH_ESP                   FuriHalSerialIdUsart
-//#define UART_CH_GPS                   FuriHalSerialIdUsart
-#define BAUDRATE                      (115200)
 
 void update_text_box_view(AppState* state);
 void handle_uart_rx_data(uint8_t* buf, size_t len, void* context);

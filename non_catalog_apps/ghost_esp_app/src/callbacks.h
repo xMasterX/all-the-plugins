@@ -7,8 +7,6 @@
 #include "utils.h"
 #include <storage/storage.h>
 
-
-
 // Function declarations
 void update_settings_and_write(AppState* app, Settings* settings);
 void on_rgb_mode_changed(VariableItem* item);
@@ -30,3 +28,4 @@ void wardrive_clear_confirmed_callback(void* context);
 void wardrive_clear_cancelled_callback(void* context);
 void pcap_clear_confirmed_callback(void* context);
 void pcap_clear_cancelled_callback(void* context);
+void on_disable_esp_check_changed(VariableItem* item);

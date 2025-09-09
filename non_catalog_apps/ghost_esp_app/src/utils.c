@@ -20,9 +20,8 @@ void show_confirmation_dialog_ex(
     const char* text,
     ConfirmationViewCallback ok_callback,
     ConfirmationViewCallback cancel_callback) {
-
     FURI_LOG_D("ConfDialog", "Starting dialog, context: %p", context);
-    
+
     AppState* state = (AppState*)context;
     if(!state) {
         FURI_LOG_E("ConfDialog", "Null state");
@@ -35,8 +34,11 @@ void show_confirmation_dialog_ex(
         return;
     }
 
-    FURI_LOG_D("ConfDialog", "Previous view: %d, Current view: %d", 
-        state->previous_view, state->current_view);
+    FURI_LOG_D(
+        "ConfDialog",
+        "Previous view: %d, Current view: %d",
+        state->previous_view,
+        state->current_view);
 
     // Allocate new context
     SettingsConfirmContext* confirm_ctx = malloc(sizeof(SettingsConfirmContext));
@@ -44,7 +46,7 @@ void show_confirmation_dialog_ex(
         FURI_LOG_E("ConfDialog", "Failed to allocate context");
         return;
     }
-    
+
     confirm_ctx->state = state;
 
     // Set up the confirmation dialog
@@ -66,9 +68,14 @@ void show_confirmation_dialog_ex(
 }
 
 void show_confirmation_view_wrapper(void* context, ConfirmationView* view) {
-    (void)view;  // Mark parameter as unused to avoid compiler warning
+    (void)view; // Mark parameter as unused to avoid compiler warning
     // Redirect to show_confirmation_dialog_ex with the stored dialog data
-    show_confirmation_dialog_ex(context, current_dialog.header, current_dialog.text, current_dialog.ok_callback, current_dialog.cancel_callback);
+    show_confirmation_dialog_ex(
+        context,
+        current_dialog.header,
+        current_dialog.text,
+        current_dialog.ok_callback,
+        current_dialog.cancel_callback);
 }
 
 // 6675636B796F7564656B69

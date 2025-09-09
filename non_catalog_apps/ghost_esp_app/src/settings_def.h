@@ -10,7 +10,7 @@ typedef enum {
     SETTING_ENABLE_CHANNEL_HOPPING,
     SETTING_ENABLE_RANDOM_BLE_MAC,
     SETTING_STOP_ON_BACK,
-    SETTING_ENABLE_FILTERING,  // Keep for settings file compatibility
+    SETTING_ENABLE_FILTERING, // Keep for settings file compatibility
     SETTING_VIEW_LOGS_FROM_START,
     SETTING_SHOW_INFO,
     SETTING_REBOOT_ESP,
@@ -18,9 +18,9 @@ typedef enum {
     SETTING_CLEAR_NVS,
     SETTING_CLEAR_PCAPS,
     SETTING_CLEAR_WARDRIVE,
+    SETTING_DISABLE_ESP_CHECK,
     SETTINGS_COUNT
 } SettingKey;
-
 
 // Settings operations result
 typedef enum {
@@ -54,17 +54,18 @@ typedef struct {
     uint8_t enable_random_ble_mac_index;
     uint8_t stop_on_back_index;
     uint8_t enable_filtering_index;
-    uint8_t view_logs_from_start_index; 
+    uint8_t view_logs_from_start_index;
     uint8_t reboot_esp_index;
     uint8_t clear_logs_index;
     uint8_t clear_nvs_index;
+    uint8_t disable_esp_check_index;
 } Settings;
 
 // Add this to settings_def.h
 typedef struct {
     const char* name;
     const char* command;
-    void (*callback)(void* context);  // Function pointer for the action
+    void (*callback)(void* context); // Function pointer for the action
 } SettingAction;
 
 typedef struct {
@@ -79,8 +80,6 @@ typedef struct {
     } data;
     bool is_action;
 } SettingMetadata;
-
-
 
 // Value name arrays
 extern const char* const SETTING_VALUE_NAMES_RGB_MODE[];
@@ -101,7 +100,6 @@ bool setting_is_visible(SettingKey key);
 
 #define SETTINGS_HEADER_MAGIC 0xDEADBEEF
 #define SETTINGS_FILE_VERSION 1
-
 
 // SettingsHeader structure
 typedef struct {

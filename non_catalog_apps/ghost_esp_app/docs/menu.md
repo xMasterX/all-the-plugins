@@ -105,7 +105,7 @@ static const MenuCommand wifi_commands[] = {
     GHOST_ESP_APP_FOLDER_PCAPS, false, NULL, false, NULL, NULL},
 
    // Interactive Operations
-   {"Connect WiFi", "connect", NULL, NULL, NULL, true, "SSID,Password", 
+   {"Connect WiFi", "connect", NULL, NULL, NULL, true, "SSID Password", 
     false, NULL, NULL},
 
    // Dangerous Operations

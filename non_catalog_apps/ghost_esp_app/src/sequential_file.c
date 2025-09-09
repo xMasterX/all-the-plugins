@@ -5,7 +5,6 @@
 #include <string.h>
 #include <stdio.h>
 
-
 char* sequential_file_resolve_path(
     Storage* storage,
     const char* dir,
@@ -82,7 +81,8 @@ char* sequential_file_resolve_path(
 
     // Construct the new file path
     char file_path[256];
-    int snprintf_result = snprintf(file_path, sizeof(file_path), "%s/%s_%d.%s", dir, prefix, new_index, extension);
+    int snprintf_result =
+        snprintf(file_path, sizeof(file_path), "%s/%s_%d.%s", dir, prefix, new_index, extension);
     if(snprintf_result < 0 || (size_t)snprintf_result >= sizeof(file_path)) {
         FURI_LOG_E("SequentialFile", "snprintf failed or output truncated in resolve_path");
         return NULL;
@@ -92,7 +92,6 @@ char* sequential_file_resolve_path(
 
     return strdup(file_path);
 }
-
 
 bool sequential_file_open(
     Storage* storage,
