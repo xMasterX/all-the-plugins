@@ -299,6 +299,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | VIN decoder | ![Tools Badge] | [by evillero](https://github.com/evillero/vin_decoder) |  | [![Author Badge]](https://lab.flipper.net/apps/vin_decoder) |
 | SD Info | ![Tools Badge] | [by Sladkisnovraper](https://github.com/Sladkisnovraper/SD-Info-For-Flipper-Zero) |  | ![None Badge] |
 | Segment Clock | ![Tools Badge] | [by Sladkisnovraper](https://github.com/Sladkisnovraper/Segment-Clock-For-Flipper-Zero) |  | ![None Badge] |
+| Combo Cracker | ![Tools Badge] | [by CharlesTheGreat77](https://github.com/CharlesTheGreat77/ComboCracker-FZ) |  | ![None Badge] |
 | USB HID Autofire | ![USB Badge] | [by pbek](https://github.com/pbek/usb_hid_autofire) |  | ![None Badge] |
 | USB Consumer Control | ![USB Badge] | [by WithSecureLabs](https://github.com/WithSecureLabs/usb-consumer-control/tree/main) |  | ![None Badge] |
 | HID File Transfer | ![USB Badge] | [by Kavakuo](https://github.com/Kavakuo/HID-File-Transfer) | Get client app in [original repo](https://github.com/Kavakuo/HID-File-Transfer) | ![None Badge] |
