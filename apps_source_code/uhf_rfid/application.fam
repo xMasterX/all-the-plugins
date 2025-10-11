@@ -14,5 +14,7 @@ App(
     fap_category="GPIO",
     fap_icon_assets="icons",
     fap_version="1.0",
+    fap_author="@frux-c",
+    fap_weburl="https://github.com/frux-c/uhf_rfid",
     fap_icon_assets_symbol="uhf_rfid",
 )

@@ -9,6 +9,8 @@ App(
     order=50,
     fap_icon="tpms_10px.png",
     fap_version="1.0",
+    fap_author="@wosk",
+    fap_weburl="https://github.com/wosk/flipperzero-tpms",
     fap_category="Sub-GHz",
     fap_icon_assets="images",
 )
