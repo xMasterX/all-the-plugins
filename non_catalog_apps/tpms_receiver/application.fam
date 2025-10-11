@@ -8,6 +8,7 @@ App(
     stack_size=4 * 1024,
     order=50,
     fap_icon="tpms_10px.png",
+    fap_version="1.0",
     fap_category="Sub-GHz",
     fap_icon_assets="images",
 )

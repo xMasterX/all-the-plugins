@@ -1,0 +1,1 @@
+Display simple segment clock on Flipper screen.
