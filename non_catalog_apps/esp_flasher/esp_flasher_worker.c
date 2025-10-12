@@ -403,12 +403,12 @@ void loader_port_enter_bootloader(void) {
     if(furi_hal_power_is_otg_enabled()) {
         furi_hal_power_disable_otg();
     }
-    loader_port_delay_ms(100);
+    loader_port_delay_ms(1000);
     if(!furi_hal_power_is_otg_enabled()) {
         furi_hal_power_enable_otg();
     }
     furi_hal_gpio_init_simple(&gpio_swclk, GpioModeAnalog);
-    loader_port_delay_ms(100);
+    loader_port_delay_ms(1000);
 
     // adapted from custom usb-jtag-serial reset in esptool
     // (works on official wifi dev board)
