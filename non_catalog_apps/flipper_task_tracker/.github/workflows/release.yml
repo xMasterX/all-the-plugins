@@ -1,0 +1,59 @@
+name: "Release Application"
+
+on:
+  push:
+    tags:
+      - "v*.*.*" # Triggers the workflow on version tags
+  workflow_dispatch: # Allows the workflow to be run on demand
+
+permissions:
+  contents: write # Grants write permissions
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    name: "Build and Release Application"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Install ufbt
+        run: pip install ufbt
+
+      - name: Build with ufbt
+        uses: flipperdevices/flipperzero-ufbt-action@v0.1
+        id: build-app
+        with:
+          sdk-channel: rc
+
+      - name: Upload app artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name }}-${{ steps.build-app.outputs.suffix }}
+          path: ${{ steps.build-app.outputs.fap-artifacts }}
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ steps.build-app.outputs.fap-artifacts }}
+          asset_name: ${{ github.event.repository.name }}-${{ steps.build-app.outputs.suffix }}.fap
+          asset_content_type: application/octet-stream

@@ -1,0 +1,16 @@
+# For details & more options, see documentation/AppManifests.md in firmware repo
+
+App(
+    appid="trackerflipx",  # Must be unique
+    name="Flipper Time Tracker",  # Displayed in menus
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="app",
+    stack_size=2 * 1024,
+    fap_category="Tools",
+    fap_version=(0, 1),
+    fap_icon="flipper_time_tracker.png",  # 10x10 1-bit PNG
+    fap_description="Flipper Time Tracker is an application for flipperzero device that allows the user to track multiple tasks at the same time. Application uses csv file to store and handle task data that can be easily exported to excel or similar for further analysis. This also allows to track tasks time in the background or even if the device is switched off !",
+    fap_author="MassivDash (hhtps://spaceout.pl)",
+    fap_weburl="https://github.com/MassivDash/flipper-tracker",
+    fap_icon_assets="images",  # Image assets to compile for this application
+)

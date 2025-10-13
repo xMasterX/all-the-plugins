@@ -1,0 +1,30 @@
+{
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build",
+      "type": "shell",
+      "command": "./scripts/build.sh",
+      "problemMatcher": ["$armcc5"]
+    },
+    {
+      "label": "Sync",
+      "type": "shell",
+      "command": "./scripts/syncmcd.sh"
+    },
+    {
+      "label": "Run",
+      "type": "shell",
+      "command": "./scripts/deploy.sh",
+      "problemMatcher": ["$armcc5"]
+    },
+    {
+      "label": "Build and Run",
+      "dependsOn": ["Build", "Sync", "Run"],
+      "problemMatcher": ["$armcc5"],
+      "dependsOrder": "sequence"
+    }
+  ]
+}
