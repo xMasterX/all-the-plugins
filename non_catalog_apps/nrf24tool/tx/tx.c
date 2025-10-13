@@ -393,7 +393,7 @@ int32_t nrf24_tx(void* ctx) {
             }
             buffer[tx_payload_size] = '\0';
             // decrease repeat counter
-            if(repeat > 0) {
+            if(tx_payload_type != TX_PAYLOAD_TYPE_FILE && repeat > 0) {
                 repeat--;
             }
         }
