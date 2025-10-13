@@ -1,7 +1,7 @@
 #ifndef KEY_FORMATS_H
 #define KEY_FORMATS_H
 
-#define FORMAT_NUM 22
+#define FORMAT_NUM 23
 
 typedef struct {
     char* manufacturer;

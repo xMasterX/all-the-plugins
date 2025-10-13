@@ -1,3 +1,6 @@
+## 1.5 
+* Added Suzuki SUZ18 key format support by @RIcePatrol
+
 ## 1.4
 * Added Weiser WR3 key format support by @lightos
 

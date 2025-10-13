@@ -254,7 +254,7 @@ const KeyFormat all_formats[] = {
      .max_depth_ind = 6,
      .macs = 5,
      .clearance = 3},
-
+     
     {.manufacturer = "Weiser",
      .format_name = "WR3",
      .format_link = "https://www.lockwiki.com/index.php/Weiser_Classic",
@@ -350,6 +350,26 @@ const KeyFormat all_formats[] = {
      .drill_angle = 90,
      .uncut_depth_inch = 0.258,
      .deepest_depth_inch = 0.198,
+     .depth_step_inch = 0.020,
+     .min_depth_ind = 1,
+     .max_depth_ind = 4,
+     .macs = 4,
+     .clearance = 3},
+
+    {.manufacturer = "Suzuki",
+     .format_name = "SUZ18",
+     .sides = 2,
+     .format_link = "X241",
+     .first_pin_inch = 0.16,
+     .last_pin_inch = 0.73,
+     .pin_increment_inch = 0.095,
+     .pin_num = 7,
+     .pin_width_inch = 0.045,
+     .elbow_inch = 0.1, // this should be equal to first pin inch for tip
+     // stopped key line
+     .drill_angle = 90,
+     .uncut_depth_inch = 0.28,
+     .deepest_depth_inch = 0.22,
      .depth_step_inch = 0.020,
      .min_depth_ind = 1,
      .max_depth_ind = 4,
