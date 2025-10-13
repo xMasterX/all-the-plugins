@@ -1,4 +1,14 @@
-## v0.7.3
+## v0.7.6
+
+New command support for firmware v1.8.5 and v1.8.6!
+
+
+## v0.7.5
+
+New features for firmware v1.8.4
+
+
+## v0.7.4
 
 Thanks to @justcallmekoko for adding app support for the new features in Marauder firmware v1.8.0! See the additions and grab the firmware for your wifi board here: https://github.com/justcallmekoko/ESP32Marauder/releases/latest
 
