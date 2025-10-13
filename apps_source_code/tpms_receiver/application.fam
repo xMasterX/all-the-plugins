@@ -11,6 +11,7 @@ App(
     fap_version="1.0",
     fap_author="@wosk",
     fap_weburl="https://github.com/wosk/flipperzero-tpms",
+    fap_description="Use SubGHz and RFID to read or activate TPMS sensors",
     fap_category="Sub-GHz",
     fap_icon_assets="images",
 )

@@ -13,5 +13,6 @@ App(
     fap_author="sergo",
     fap_version="1.0",
     fap_weburl="https://github.com/Sladkisnovraper/Segment-Clock-For-Flipper-Zero",
+    fap_description="Display simple segment clock on Flipper screen",
     sources=["*.c"]
 ) 
