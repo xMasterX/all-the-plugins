@@ -34,12 +34,11 @@ const MfClassicKeyPair metromoney_1k_verify_key[] = {
 };
 const MfClassicKeyPair renfe_suma10_1k_keys[] = {
     {.a = 0xA8844B0BCA06}, // Sector 0 - RENFE specific key from dumps
-    {.a = 0xCB5ED0E57B08}, // Sector 1 - RENFE specific key from dumps  
+    {.a = 0xCB5ED0E57B08}, // Sector 1 - RENFE specific key from dumps
     {.a = 0xffffffffffff}, // Default key for other sectors
     {.a = 0xa0a1a2a3a4a5}, // Alternative common key
     {.a = 0xC0C1C2C3C4C5}, // Key for sectors 10-15 from dumps
 };
-
 
 const uint8_t gocard_verify_data[1][14] = {
     {0x16, 0x18, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x5A, 0x5B, 0x20, 0x21, 0x22, 0x23}};
@@ -258,7 +257,6 @@ static bool troika_verify(Nfc* nfc, MfClassicData* mfc_data, bool data_loaded) {
            troika_verify_type(nfc, mfc_data, data_loaded, MfClassicType4k);
 }
 
-
 static bool gocard_verify(MfClassicData* mfc_data, bool data_loaded) {
     bool verified = false;
     FURI_LOG_I(TAG, "verifying charliecard..");
@@ -288,115 +286,118 @@ static bool gocard_verify(MfClassicData* mfc_data, bool data_loaded) {
 static bool renfe_suma10_verify(Nfc* nfc, MfClassicData* mfc_data, bool data_loaded) {
     FURI_LOG_I(TAG, "renfe_suma10_verify: ENTRY - data_loaded=%s", data_loaded ? "true" : "false");
     bool verified = false;
-    
+
     do {
         if(!data_loaded) {
-           
             if(!nfc) {
                 FURI_LOG_E(TAG, "renfe_suma10_verify: NFC is null, failing");
                 break;
             }
-            
-            FURI_LOG_I(TAG, "renfe_suma10_verify: LIVE MODE - trying RENFE Suma 10 authentication...");
-            
-            const uint8_t block_num = 0; 
+
+            FURI_LOG_I(
+                TAG, "renfe_suma10_verify: LIVE MODE - trying RENFE Suma 10 authentication...");
+
+            const uint8_t block_num = 0;
             MfClassicKey key = {0};
             bit_lib_num_to_bytes_be(renfe_suma10_1k_keys[0].a, COUNT_OF(key.data), key.data);
 
             MfClassicAuthContext auth_context;
             MfClassicError error = mf_classic_poller_sync_auth(
                 nfc, block_num, &key, MfClassicKeyTypeA, &auth_context);
-            
+
             if(error != MfClassicErrorNone) {
-                FURI_LOG_I(TAG, "renfe_suma10_verify: RENFE key authentication failed on sector 0: %d", error);
-                
+                FURI_LOG_I(
+                    TAG,
+                    "renfe_suma10_verify: RENFE key authentication failed on sector 0: %d",
+                    error);
+
                 bit_lib_num_to_bytes_be(renfe_suma10_1k_keys[1].a, COUNT_OF(key.data), key.data);
-                error = mf_classic_poller_sync_auth(
-                    nfc, 4, &key, MfClassicKeyTypeA, &auth_context); 
-                
+                error =
+                    mf_classic_poller_sync_auth(nfc, 4, &key, MfClassicKeyTypeA, &auth_context);
+
                 if(error != MfClassicErrorNone) {
-                    FURI_LOG_I(TAG, "renfe_suma10_verify: RENFE sector 1 key also failed: %d", error);
-                    
-              
-                    bit_lib_num_to_bytes_be(0xffffffffffff, COUNT_OF(key.data), key.data);
-                    error = mf_classic_poller_sync_auth(
-                        nfc, block_num, &key, MfClassicKeyTypeA, &auth_context);
-                    
-                    if(error != MfClassicErrorNone) {
-                        FURI_LOG_I(TAG, "renfe_suma10_verify: Default key also failed: %d", error);
-                        break;
-                    }
-                    
-                    FURI_LOG_I(TAG, "renfe_suma10_verify: Default key worked, but not specific enough for RENFE");
-                    
+                    FURI_LOG_I(TAG, "renfe_suma10_verify: RENFE sector 1 key failed: %d", error);
+
                     break;
                 } else {
-                    FURI_LOG_I(TAG, "renfe_suma10_verify: RENFE sector 1 key authentication SUCCESS!");
+                    FURI_LOG_I(
+                        TAG, "renfe_suma10_verify: RENFE sector 1 key authentication SUCCESS!");
                     verified = true;
                 }
             } else {
                 FURI_LOG_I(TAG, "renfe_suma10_verify: RENFE sector 0 key authentication SUCCESS!");
                 verified = true;
             }
-            
-            FURI_LOG_I(TAG, "renfe_suma10_verify: Live verification result = %s", verified ? "true" : "false");
-            
+
+            FURI_LOG_I(
+                TAG,
+                "renfe_suma10_verify: Live verification result = %s",
+                verified ? "true" : "false");
+
         } else {
             if(!mfc_data) {
                 FURI_LOG_E(TAG, "RENFE Suma 10 - mfc_data is null");
                 break;
             }
-            
+
             FURI_LOG_I(TAG, "RENFE Suma 10 - analyzing loaded data patterns");
-            
+
             // RENFE Suma 10 cards should be treated as 1K even if they're Mifare Plus 2K
             // Force them to be treated as 1K cards for compatibility
             if(mfc_data->type != MfClassicType1k) {
-                FURI_LOG_I(TAG, "RENFE Suma 10 - card type is %d, but RENFE Suma 10 should be treated as 1K", mfc_data->type);
+                FURI_LOG_I(
+                    TAG,
+                    "RENFE Suma 10 - card type is %d, but RENFE Suma 10 should be treated as 1K",
+                    mfc_data->type);
                 // For RENFE Suma 10, we'll accept any type but treat it as 1K
                 // This handles Mifare Plus 2K configured as 1K
             }
-            
-            FURI_LOG_I(TAG, "RENFE Suma 10 - found card (actual type: %d), treating as 1K for RENFE compatibility...", mfc_data->type);
-            
+
+            FURI_LOG_I(
+                TAG,
+                "RENFE Suma 10 - found card (actual type: %d), treating as 1K for RENFE compatibility...",
+                mfc_data->type);
+
             bool has_renfe_sector0_key = false;
             bool has_renfe_sector1_key = false;
             bool has_renfe_block5_pattern = false;
-            
+
             MfClassicSectorTrailer* sec_tr0 = mf_classic_get_sector_trailer_by_sector(mfc_data, 0);
             if(sec_tr0) {
                 uint64_t key0 = bit_lib_bytes_to_num_be(sec_tr0->key_a.data, 6);
                 FURI_LOG_I(TAG, "RENFE Suma 10 - sector 0 key: %012llX", key0);
-                
+
                 if(key0 == 0xA8844B0BCA06) {
                     FURI_LOG_I(TAG, "RENFE Suma 10 - sector 0 has RENFE key!");
                     has_renfe_sector0_key = true;
                 }
             }
-            
+
             MfClassicSectorTrailer* sec_tr1 = mf_classic_get_sector_trailer_by_sector(mfc_data, 1);
             if(sec_tr1) {
                 uint64_t key1 = bit_lib_bytes_to_num_be(sec_tr1->key_a.data, 6);
                 FURI_LOG_I(TAG, "RENFE Suma 10 - sector 1 key: %012llX", key1);
-                
+
                 if(key1 == 0xCB5ED0E57B08) {
                     FURI_LOG_I(TAG, "RENFE Suma 10 - sector 1 has RENFE key!");
                     has_renfe_sector1_key = true;
                 }
             }
-            
-            FURI_LOG_I(TAG, "RENFE Suma 10 - checking block 5 pattern: %02X %02X %02X %02X", 
-                       mfc_data->block[5].data[0], mfc_data->block[5].data[1], 
-                       mfc_data->block[5].data[2], mfc_data->block[5].data[3]);
-                       
-            if(mfc_data->block[5].data[0] == 0x01 && 
-               mfc_data->block[5].data[1] == 0x00 && 
-               mfc_data->block[5].data[2] == 0x00 && 
-               mfc_data->block[5].data[3] == 0x00) {
+
+            FURI_LOG_I(
+                TAG,
+                "RENFE Suma 10 - checking block 5 pattern: %02X %02X %02X %02X",
+                mfc_data->block[5].data[0],
+                mfc_data->block[5].data[1],
+                mfc_data->block[5].data[2],
+                mfc_data->block[5].data[3]);
+
+            if(mfc_data->block[5].data[0] == 0x01 && mfc_data->block[5].data[1] == 0x00 &&
+               mfc_data->block[5].data[2] == 0x00 && mfc_data->block[5].data[3] == 0x00) {
                 FURI_LOG_I(TAG, "RENFE Suma 10 - block 5 has RENFE value pattern!");
                 has_renfe_block5_pattern = true;
             }
-            
+
             if((has_renfe_sector0_key || has_renfe_sector1_key) && has_renfe_block5_pattern) {
                 FURI_LOG_I(TAG, "RENFE Suma 10 - VERIFIED! Has RENFE keys and block 5 pattern");
                 verified = true;
@@ -404,10 +405,12 @@ static bool renfe_suma10_verify(Nfc* nfc, MfClassicData* mfc_data, bool data_loa
                 FURI_LOG_I(TAG, "RENFE Suma 10 - VERIFIED! Has both RENFE sector keys");
                 verified = true;
             } else {
-                FURI_LOG_I(TAG, "RENFE Suma 10 - NOT VERIFIED: missing RENFE patterns (sector0_key=%s, sector1_key=%s, block5_pattern=%s)",
-                           has_renfe_sector0_key ? "YES" : "NO",
-                           has_renfe_sector1_key ? "YES" : "NO", 
-                           has_renfe_block5_pattern ? "YES" : "NO");
+                FURI_LOG_I(
+                    TAG,
+                    "RENFE Suma 10 - NOT VERIFIED: missing RENFE patterns (sector0_key=%s, sector1_key=%s, block5_pattern=%s)",
+                    has_renfe_sector0_key ? "YES" : "NO",
+                    has_renfe_sector1_key ? "YES" : "NO",
+                    has_renfe_block5_pattern ? "YES" : "NO");
                 verified = false;
             }
         }
@@ -427,14 +430,14 @@ CardType determine_card_type(Nfc* nfc, MfClassicData* mfc_data, bool data_loaded
         return CARD_TYPE_METROMONEY;
     } else if(smartrider_verify(nfc, mfc_data, data_loaded)) {
         return CARD_TYPE_SMARTRIDER;
-    } else if(renfe_suma10_verify(nfc, mfc_data, data_loaded)) {
-        return CARD_TYPE_RENFE_SUM10;
     } else if(troika_verify(nfc, mfc_data, data_loaded)) {
         return CARD_TYPE_TROIKA;
     } else if(charliecard_verify(nfc, mfc_data, data_loaded)) {
         return CARD_TYPE_CHARLIECARD;
     } else if(gocard_verify(mfc_data, data_loaded)) {
         return CARD_TYPE_GOCARD;
+    } else if(renfe_suma10_verify(nfc, mfc_data, data_loaded)) {
+        return CARD_TYPE_RENFE_SUM10;
     } else {
         FURI_LOG_I(TAG, "its unknown");
         return CARD_TYPE_UNKNOWN;
