@@ -305,12 +305,13 @@ int32_t clock_app(void* p) {
 
     clock_state_init(plugin_state);
 
+    //save current user settings to Saved_, disable backlight delay and force dislay always on
     notif = furi_record_open(RECORD_NOTIFICATION);
-    float tmpBrightness = notif->settings.display_brightness;
-    brightness = tmpBrightness * 100; // Keep current brightness by default
 
-    //save current user settings to tmp, disable backlight delay and force dislay always on
-    uint32_t tmp_display_off_delay_ms = notif->settings.display_off_delay_ms;
+    float SavedBrightness = notif->settings.display_brightness;
+    brightness = SavedBrightness * 100; // Keep current brightness by default
+
+    uint32_t Saved_display_off_delay_ms = notif->settings.display_off_delay_ms;
     notif->settings.display_off_delay_ms = 0;
 
     notification_message(notif, &sequence_display_backlight_enforce_on);
@@ -393,10 +394,10 @@ int32_t clock_app(void* p) {
     free(plugin_state);
 
     //restore display backlight timer settings;
-    notif->settings.display_off_delay_ms = tmp_display_off_delay_ms;
+    notif->settings.display_off_delay_ms = Saved_display_off_delay_ms;
 
-    set_backlight_brightness(tmpBrightness);
     notification_message(notif, &sequence_display_backlight_enforce_auto);
+    set_backlight_brightness(SavedBrightness);
     notification_message(notif, &led_reset);
 
     return 0;
