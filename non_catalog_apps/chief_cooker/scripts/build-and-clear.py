@@ -6,7 +6,7 @@ UFBT_PATH = pathlib.Path.home() / ".ufbt"
 
 FAP_LOCATION_AFTER_BUILD = "dist/chief_cooker.fap"
 FAP_LOCATION_ON_FLIPPER = "/ext/apps/Sub-GHz/chief_cooker.fap"
-OBJCOPY_PATH = UFBT_PATH / "toolchain/x86_64-windows/bin/arm-none-eabi-objcopy.exe"
+OBJCOPY_PATH = UFBT_PATH / "toolchain/current/bin/arm-none-eabi-objcopy"
 
 
 def clearSections():

@@ -39,7 +39,7 @@ Please, read the [instructions](instructions/instructions.md) before using the a
 ## Supported pager encodings
 - Retekess TD157
 - Retekess TD165/T119
-- Retekess TD74
+- Retekess TD174
 - L8R / Retekess T111 (not tested)
 - L8S / iBells ZJ-68 (check [source code](app/pager/decoder/L8SDecoder.hpp#L8) for description)
 
