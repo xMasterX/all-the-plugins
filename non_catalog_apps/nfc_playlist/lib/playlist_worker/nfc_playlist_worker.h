@@ -21,6 +21,7 @@ static const int default_emulate_delay = 0;
 static const bool default_emulate_led_indicator = true;
 static const bool default_skip_error = false;
 static const bool default_loop = false;
+static const bool default_time_controls = true;
 static const bool default_user_controls = true;
 
 typedef enum {
@@ -44,6 +45,7 @@ typedef struct {
    bool emulate_led_indicator;
    bool skip_error;
    bool loop;
+   bool time_controls;
    bool user_controls;
 } NfcPlaylistWorkerSettings;
 

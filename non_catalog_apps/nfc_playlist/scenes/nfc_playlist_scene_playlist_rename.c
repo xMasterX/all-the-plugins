@@ -1,6 +1,6 @@
 #include "../nfc_playlist.h"
 
-static void nfc_playlist_playlist_rename_menu_callback(void* context) {
+static void nfc_playlist_playlist_rename_scene_menu_callback(void* context) {
    furi_assert(context);
    NfcPlaylist* nfc_playlist = context;
 
@@ -50,7 +50,7 @@ void nfc_playlist_playlist_rename_scene_on_enter(void* context) {
    text_input_set_minimum_length(nfc_playlist->views.text_input.view, 1);
    text_input_set_result_callback(
       nfc_playlist->views.text_input.view,
-      nfc_playlist_playlist_rename_menu_callback,
+      nfc_playlist_playlist_rename_scene_menu_callback,
       nfc_playlist,
       nfc_playlist->views.text_input.output,
       MAX_PLAYLIST_NAME_LEN,

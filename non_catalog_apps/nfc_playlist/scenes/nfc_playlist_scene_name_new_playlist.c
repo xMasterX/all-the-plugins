@@ -1,6 +1,6 @@
 #include "../nfc_playlist.h"
 
-void nfc_playlist_name_new_playlist_menu_callback(void* context) {
+void nfc_playlist_name_new_playlist_scene_menu_callback(void* context) {
    NfcPlaylist* nfc_playlist = context;
 
    FuriString* file_name = furi_string_alloc_printf(
@@ -36,7 +36,7 @@ void nfc_playlist_name_new_playlist_scene_on_enter(void* context) {
    text_input_set_minimum_length(nfc_playlist->views.text_input.view, 1);
    text_input_set_result_callback(
       nfc_playlist->views.text_input.view,
-      nfc_playlist_name_new_playlist_menu_callback,
+      nfc_playlist_name_new_playlist_scene_menu_callback,
       nfc_playlist,
       nfc_playlist->views.text_input.output,
       MAX_PLAYLIST_NAME_LEN,

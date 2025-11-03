@@ -1,7 +1,9 @@
 #include "../nfc_playlist.h"
 
-static void
-   nfc_playlist_confirm_delete_menu_callback(GuiButtonType result, InputType type, void* context) {
+static void nfc_playlist_confirm_delete_scene_menu_callback(
+   GuiButtonType result,
+   InputType type,
+   void* context) {
    furi_assert(context);
    NfcPlaylist* nfc_playlist = context;
    if(type == InputTypeShort) {
@@ -34,13 +36,13 @@ void nfc_playlist_confirm_delete_scene_on_enter(void* context) {
       nfc_playlist->views.widget,
       GuiButtonTypeLeft,
       "Cancel",
-      nfc_playlist_confirm_delete_menu_callback,
+      nfc_playlist_confirm_delete_scene_menu_callback,
       nfc_playlist);
    widget_add_button_element(
       nfc_playlist->views.widget,
       GuiButtonTypeRight,
       "Delete",
-      nfc_playlist_confirm_delete_menu_callback,
+      nfc_playlist_confirm_delete_scene_menu_callback,
       nfc_playlist);
 
    furi_string_free(temp_str);

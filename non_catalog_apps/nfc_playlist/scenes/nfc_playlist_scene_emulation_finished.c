@@ -1,6 +1,6 @@
 #include "../nfc_playlist.h"
 
-static void nfc_playlist_emulation_finished_menu_callback(
+static void nfc_playlist_emulation_finished_scene_menu_callback(
    GuiButtonType result,
    InputType type,
    void* context) {
@@ -29,13 +29,13 @@ void nfc_playlist_emulation_finished_scene_on_enter(void* context) {
       nfc_playlist->views.widget,
       GuiButtonTypeLeft,
       "Again",
-      nfc_playlist_emulation_finished_menu_callback,
+      nfc_playlist_emulation_finished_scene_menu_callback,
       nfc_playlist);
    widget_add_button_element(
       nfc_playlist->views.widget,
       GuiButtonTypeRight,
       "Main Menu",
-      nfc_playlist_emulation_finished_menu_callback,
+      nfc_playlist_emulation_finished_scene_menu_callback,
       nfc_playlist);
 
    view_dispatcher_switch_to_view(nfc_playlist->view_dispatcher, NfcPlaylistView_Widget);

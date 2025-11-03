@@ -39,7 +39,7 @@ typedef enum {
    NfcPlaylistView_FileBrowser,
    NfcPlaylistView_VariableItemList,
    NfcPlaylistView_TextInput,
-   NfcPlaylistView_Dialog
+   NfcPlaylistView_DialogEx
 } NfcPlaylistViews;
 
 typedef struct {
@@ -58,7 +58,7 @@ typedef struct {
    NfcPlaylistFileBrowserView file_browser;
    NfcPlaylistTextInputView text_input;
    VariableItemList* variable_item_list;
-   DialogEx* dialog;
+   DialogEx* dialog_ex;
 } NfcPlaylistView;
 
 typedef struct {

@@ -10,7 +10,7 @@ typedef enum {
    NfcPlaylistPlaylistEdit_ViewPlaylistContent
 } NfcPlaylistPlaylistEditMenuSelection;
 
-static void nfc_playlist_playlist_edit_menu_callback(void* context, uint32_t index) {
+static void nfc_playlist_playlist_edit_scene_menu_callback(void* context, uint32_t index) {
    furi_assert(context);
    NfcPlaylist* nfc_playlist = context;
    scene_manager_handle_custom_event(nfc_playlist->scene_manager, index);
@@ -27,14 +27,14 @@ void nfc_playlist_playlist_edit_scene_on_enter(void* context) {
       nfc_playlist->views.submenu,
       "Create Playlist",
       NfcPlaylistPlaylistEdit_CreatePlaylist,
-      nfc_playlist_playlist_edit_menu_callback,
+      nfc_playlist_playlist_edit_scene_menu_callback,
       nfc_playlist);
 
    submenu_add_lockable_item(
       nfc_playlist->views.submenu,
       "Delete Playlist",
       NfcPlaylistPlaylistEdit_DeletePlaylist,
-      nfc_playlist_playlist_edit_menu_callback,
+      nfc_playlist_playlist_edit_scene_menu_callback,
       nfc_playlist,
       playlist_path_empty,
       "No\nplaylist\nselected");
@@ -43,7 +43,7 @@ void nfc_playlist_playlist_edit_scene_on_enter(void* context) {
       nfc_playlist->views.submenu,
       "Rename Playlist",
       NfcPlaylistPlaylistEdit_RenamePlaylist,
-      nfc_playlist_playlist_edit_menu_callback,
+      nfc_playlist_playlist_edit_scene_menu_callback,
       nfc_playlist,
       playlist_path_empty,
       "No\nplaylist\nselected");
@@ -52,7 +52,7 @@ void nfc_playlist_playlist_edit_scene_on_enter(void* context) {
       nfc_playlist->views.submenu,
       "Add NFC Item",
       NfcPlaylistPlaylistEdit_AddNfcItem,
-      nfc_playlist_playlist_edit_menu_callback,
+      nfc_playlist_playlist_edit_scene_menu_callback,
       nfc_playlist,
       playlist_path_empty,
       "No\nplaylist\nselected");
@@ -61,7 +61,7 @@ void nfc_playlist_playlist_edit_scene_on_enter(void* context) {
       nfc_playlist->views.submenu,
       "Remove NFC Item",
       NfcPlaylistPlaylistEdit_RemoveNfcItem,
-      nfc_playlist_playlist_edit_menu_callback,
+      nfc_playlist_playlist_edit_scene_menu_callback,
       nfc_playlist,
       playlist_path_empty,
       "No\nplaylist\nselected");
@@ -70,7 +70,7 @@ void nfc_playlist_playlist_edit_scene_on_enter(void* context) {
       nfc_playlist->views.submenu,
       "Move NFC Item",
       NfcPlaylistPlaylistEdit_MoveNfcItem,
-      nfc_playlist_playlist_edit_menu_callback,
+      nfc_playlist_playlist_edit_scene_menu_callback,
       nfc_playlist,
       playlist_path_empty,
       "No\nplaylist\nselected");
@@ -79,7 +79,7 @@ void nfc_playlist_playlist_edit_scene_on_enter(void* context) {
       nfc_playlist->views.submenu,
       "View Playlist Content",
       NfcPlaylistPlaylistEdit_ViewPlaylistContent,
-      nfc_playlist_playlist_edit_menu_callback,
+      nfc_playlist_playlist_edit_scene_menu_callback,
       nfc_playlist,
       playlist_path_empty,
       "No\nplaylist\nselected");

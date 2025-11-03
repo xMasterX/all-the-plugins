@@ -7,7 +7,7 @@ typedef enum {
 
 static uint8_t selected_line;
 
-static void nfc_playlist_nfc_remove_menu_callback(void* context, uint32_t index) {
+static void nfc_playlist_nfc_remove_scene_menu_callback(void* context, uint32_t index) {
    furi_assert(context);
    NfcPlaylist* nfc_playlist = context;
    scene_manager_handle_custom_event(nfc_playlist->scene_manager, index);
@@ -66,7 +66,9 @@ void nfc_playlist_nfc_remove_scene_on_enter(void* context) {
       "Playlist\nis empty");
 
    variable_item_list_set_enter_callback(
-      nfc_playlist->views.variable_item_list, nfc_playlist_nfc_remove_menu_callback, nfc_playlist);
+      nfc_playlist->views.variable_item_list,
+      nfc_playlist_nfc_remove_scene_menu_callback,
+      nfc_playlist);
 
    view_dispatcher_switch_to_view(nfc_playlist->view_dispatcher, NfcPlaylistView_VariableItemList);
 }
