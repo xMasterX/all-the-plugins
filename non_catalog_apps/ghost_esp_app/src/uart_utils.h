@@ -48,6 +48,7 @@ typedef enum {
     WorkerEvtRxDone = (1 << 1),
     WorkerEvtPcapDone = (1 << 2),
     WorkerEvtStorage = (1 << 3),
+    WorkerEvtCsvDone = (1 << 4),
 } WorkerEvtFlags;
 
 typedef struct {
@@ -68,12 +69,17 @@ typedef struct UartContext {
     FuriThread* rx_thread;
     FuriStreamBuffer* rx_stream;
     FuriStreamBuffer* pcap_stream;
+    FuriStreamBuffer* csv_stream;
     bool pcap;
+    bool csv;
+    bool pcap_flush_pending;
     uint8_t mark_test_buf[11]; // Fixed size for markers
     uint8_t mark_test_idx;
+    uint8_t mark_candidate_mask;
     uint8_t rx_buf[RX_BUF_SIZE + 1]; // Add +1 for null termination
     void (*handle_rx_data_cb)(uint8_t* buf, size_t len, void* context);
     void (*handle_rx_pcap_cb)(uint8_t* buf, size_t len, void* context);
+    void (*handle_rx_csv_cb)(uint8_t* buf, size_t len, void* context);
     AppState* state;
     UartStorageContext* storageContext;
     bool is_serial_active;

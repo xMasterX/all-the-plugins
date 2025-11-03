@@ -1,56 +1,119 @@
-# Ghost ESP 👻
-A Flipper Zero application for interfacing with the Ghost ESP32 firmware
+# GhostESP Flipper Zero App
+
+A Flipper Zero application for interfacing with the [GhostESP: Revival firmware](https://github.com/jaylikesbunda/Ghost_ESP).
 
 ## Preview
-![image](https://github.com/user-attachments/assets/dbff6546-24ed-4d20-af6e-0e01e1643385)
+
+<img width="512" height="256" alt="mainmenu" src="https://github.com/user-attachments/assets/84d4cd50-b981-4d42-bee4-7d1cda8fb387" />
 
 ## Download Latest Release [Here](https://github.com/jaylikesbunda/ghost_esp_app/releases/latest)
 
 ## Features
 
-### 📶 WiFi Operations
-- **Scan and List**: Discover WiFi access points and stations, list APs and stations, and select targets
-- **Advanced Probing**: Pineapple detection, channel congestion, port scanning, and probe listening (hop/channel)
-- **Beacon Spam**: Cycle between random, rickroll, list, or custom beacon spamming
-- **Deauthentication & Attacks**: Perform deauth, EAPOL logoff, SAE handshake flood, and DHCP starve attacks
-- **Packet Capture**: Variable sniffing (WPS, Raw, Probe, Deauth, Beacon, EAPOL, Pwn), with cycling menu
-- **Evil Portal**: Create a captive portal, list available portals, and stop portal operations
-- **Network Tools**: Connect to WiFi, cast random video, printer power control, scan local network, TP-Link smart plug control
-- **Beacon List Management**: Add, remove, clear, show, and spam custom SSID lists
-- **WebUI Credentials**: Set/reset WebUI AP credentials
-- **Stop Operations**: Stop all WiFi operations, attacks, scans, and portal
+### WiFi Operations
 
-### 📡 Bluetooth (BLE) Operations
-- **Scanning & Detection**: Skimmer detection, Flipper discovery, AirTag scanning, BLE spam detection, view all BLE traffic, stop scanning
-- **Device Management**: List/select AirTags and Flippers
-- **BLE Spam**: Cycle between Apple, Microsoft, Samsung, Google, and random BLE spam modes
-- **Packet Capture**: Raw BLE packet capture
-- **Spoofing**: Spoof selected AirTag, stop spoofing
-- **Stop Operations**: Stop all BLE operations
+- **Scanning & Probing**
+  - Scan and list WiFi APs and stations
+  - Select targets by AP or station number
+  - Listen for probe requests with channel hopping or fixed channel
+  - Pineapple detection
+  - Channel congestion analysis
+  - Port scanning on local network or specific IP
+  - ARP scanning on local network
+  - SSH scanning on target IP
 
-### 🌍 GPS
-- **GPS Information**: View real-time GPS data including position, altitude, speed, and signal quality
-- **Wardriving Capabilities**: Start/stop WiFi and BLE wardriving with GPS logging
-- **Stop Operations**: Stop all GPS-related operations
+- **Packet Capture**
+  - Variable sniffing modes (WPS, Raw, Probe, Deauth, Beacon, EAPOL, Pwn)
+  - Cycling menu to switch between capture types
+  - PCAP file export
 
-### ⚙️ Configuration & System
-- **RGB LED Control**: Cycle and set RGB LED effects and pins
-- **SD Card Pin Config**: Show, set, and save SD pin configuration (MMC/SPI)
-- **Timezone & Country**: Set timezone and WiFi country code
-- **Web Auth**: Enable/disable WebUI authentication
-- **AP Control**: Enable/disable AP across reboots
-- **Chip Info**: Show chip and memory info
-- **Help & Reboot**: Show help, reboot ESP, and more
+- **Beacon Spam & Attacks**
+  - Beacon spam modes: List, Random, Rickroll, Custom SSID
+  - Deauthentication attacks
+  - EAPOL logoff attacks
+  - SAE handshake flood attacks (WPA3)
+  - Karma rogue AP (with custom SSID support)
+  - DHCP starvation attacks
+  - Beacon list management (add, remove, clear, show, spam)
+
+- **Evil Portal & Network**
+  - Create captive portal
+  - List available portal HTML files
+  - Set/clear custom evil portal HTML
+  - Connect to WiFi networks
+  - Disconnect from WiFi
+  - Scan local network for devices
+  - Cast random videos to Cast/DIAL devices
+  - Control network printers
+  - TP-Link smart plug control
+  - WebUI credentials configuration
+
+### Bluetooth (BLE) Operations
+
+- **Scanning & Detection**
+  - Skimmer detection
+  - Flipper discovery
+  - AirTag scanning and listing
+  - BLE spam detection
+  - View all BLE traffic
+  - Track Flipper RSSI strength
+
+- **Attacks & Spoofing**
+  - BLE spam modes: Apple, Microsoft, Samsung, Google, Random
+  - Spoof selected AirTag
+  - AirTag and Flipper device selection
+
+- **Packet Capture**
+  - Raw BLE packet capture
+  - PCAP file export
+
+### GPS
+
+- **GPS Information**
+  - Real-time position (Latitude/Longitude)
+  - Altitude and speed monitoring
+  - Direction and signal quality
+  - Satellite status
+
+- **Wardriving Capabilities**
+  - WiFi wardriving with GPS logging (CSV export)
+  - BLE wardriving with GPS logging (CSV export)
+  - Combined mapping of networks and devices
+
+### Configuration & System
+
+- **LED Control**
+  - LED effects: Rainbow, Police, Strobe, fixed colors (Red, Green, Blue, Yellow, Purple, Cyan, Orange, White, Pink)
+  - LED off mode
+  - Set custom RGB pins
+  - NeoPixel brightness control (0-100%)
+
+- **SD Card Configuration**
+  - Show current SD pin configuration
+  - Set SD pins for MMC mode
+  - Set SD pins for SPI mode
+  - Save configuration to SD card
+
+- **System Settings**
+  - Timezone configuration
+  - WiFi country code setting
+  - Web authentication (enable/disable)
+  - Access Point enable/disable across reboots
+  - RGB profile selection (normal, rainbow, stealth)
+
+- **Device Management**
+  - Show chip info and memory details
+  - Settings management (list, get, set, reset)
+  - Device reboot
+  - Help documentation
 
 ---
 
-## Credits 🙏
-- Made by [Spooky](https://github.com/Spooks4576)
-- Additional contributions by [Jay Candel](https://github.com/jaylikesbunda)
+## Credits
+
+- Made by Spooky (<https://github.com/Spooks4576>)
+- Additional contributions by Jay Candel (<https://github.com/jaylikesbunda>) and @tototo31 (<https://github.com/tototo31>)
 
 ## Support
-- For support, please open an [issue](https://github.com/jaylikesbunda/ghost_esp_app/issues) on the repository or contact [Jay](https://github.com/jaylikesbunda) (@fuckyoudeki on [Discord](https://discord.gg/5cyNmUMgwh)).
 
-
-
-
+- For support, please open an issue (<https://github.com/jaylikesbunda/ghost_esp_app/issues>) on the repository or contact Jay (<https://github.com/jaylikesbunda>) (@fuckyoudeki on Discord - <https://discord.gg/5cyNmUMgwh>).

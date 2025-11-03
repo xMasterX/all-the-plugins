@@ -87,7 +87,8 @@ const SettingMetadata SETTING_METADATA[SETTINGS_COUNT] = {
         .is_action = false}};
 
 bool setting_is_visible(SettingKey key) {
-    if(key == SETTING_ENABLE_FILTERING) {
+    if(key == SETTING_ENABLE_FILTERING || key == SETTING_CHANNEL_HOP_DELAY ||
+       key == SETTING_ENABLE_CHANNEL_HOPPING || key == SETTING_ENABLE_RANDOM_BLE_MAC) {
         return false;
     }
     return true;
