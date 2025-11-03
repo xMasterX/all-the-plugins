@@ -1,4 +1,4 @@
-#include <notification/notification_messages.h>
+#include "notifications.h"
 
 const NotificationSequence work_start_notification = {
     &message_display_backlight_on,
@@ -46,4 +46,10 @@ const NotificationSequence rest_start_notification = {
     &message_delay_1000,
 
     NULL,
+};
+
+const NotificationSequence* stage_start_notification_sequence_map[] = {
+    [FlippPomodoroStageFocus] = &work_start_notification,
+    [FlippPomodoroStageRest] = &rest_start_notification,
+    [FlippPomodoroStageLongBreak] = &rest_start_notification,
 };

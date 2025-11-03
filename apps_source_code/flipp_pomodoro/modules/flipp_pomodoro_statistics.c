@@ -23,4 +23,4 @@ void flipp_pomodoro_statistics__increase_focus_stages_completed(
 void flipp_pomodoro_statistics__destroy(FlippPomodoroStatistics* statistics) {
     furi_assert(statistics);
     free(statistics);
-};
+}
