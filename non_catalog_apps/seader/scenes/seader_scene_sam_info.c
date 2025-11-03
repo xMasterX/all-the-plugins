@@ -15,7 +15,8 @@ void seader_scene_sam_info_on_enter(void* context) {
     SeaderWorker* seader_worker = seader->worker;
     Widget* widget = seader->widget;
 
-    FuriString* fw_str = furi_string_alloc();
+    // Use reusable string instead of allocating new one
+    FuriString* fw_str = seader->temp_string1;
 
     furi_string_cat_printf(
         fw_str, "FW %d.%d", seader_worker->sam_version[0], seader_worker->sam_version[1]);
@@ -26,7 +27,7 @@ void seader_scene_sam_info_on_enter(void* context) {
     widget_add_string_element(
         widget, 64, 5, AlignCenter, AlignCenter, FontSecondary, furi_string_get_cstr(fw_str));
 
-    furi_string_free(fw_str);
+    // No need to free fw_str as it's reused from seader struct
 
     view_dispatcher_switch_to_view(seader->view_dispatcher, SeaderViewWidget);
 }

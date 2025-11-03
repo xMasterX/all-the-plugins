@@ -22,6 +22,7 @@ typedef enum {
     // Might need to make 14a into "javacard" and add Desfire
     SeaderCredentialTypeMifareClassic,
     SeaderCredentialTypeVirtual,
+    SeaderCredentialTypeConfig,
 } SeaderCredentialType;
 
 typedef enum {

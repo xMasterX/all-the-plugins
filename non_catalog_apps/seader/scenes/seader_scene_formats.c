@@ -10,14 +10,16 @@ void seader_scene_formats_on_enter(void* context) {
     furi_string_reset(str);
 
     if(plugin) {
-        FuriString* description = furi_string_alloc();
+        // Use reusable string instead of allocating new one
+        FuriString* description = seader->temp_string1;
+        furi_string_reset(description);
         size_t format_count = plugin->count(credential->bit_length, credential->credential);
         for(size_t i = 0; i < format_count; i++) {
             plugin->description(credential->bit_length, credential->credential, i, description);
 
             furi_string_cat_printf(str, "%s\n", furi_string_get_cstr(description));
         }
-        furi_string_free(description);
+        // No need to free description as it's reused from seader struct
     }
 
     text_box_set_font(seader->text_box, TextBoxFontHex);

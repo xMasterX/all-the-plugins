@@ -32,7 +32,8 @@ void seader_scene_save_name_on_enter(void* context) {
         SEADER_CRED_NAME_MAX_LEN,
         cred_name_empty);
 
-    FuriString* folder_path = furi_string_alloc();
+    // Use reusable string instead of allocating new one
+    FuriString* folder_path = seader->temp_string1;
     if(furi_string_end_with(seader->credential->load_path, SEADER_APP_EXTENSION)) {
         path_extract_dirname(furi_string_get_cstr(seader->credential->load_path), folder_path);
     } else {
@@ -45,7 +46,7 @@ void seader_scene_save_name_on_enter(void* context) {
 
     view_dispatcher_switch_to_view(seader->view_dispatcher, SeaderViewTextInput);
 
-    furi_string_free(folder_path);
+    // No need to free folder_path as it's reused from seader struct
 }
 
 bool seader_scene_save_name_on_event(void* context, SceneManagerEvent event) {

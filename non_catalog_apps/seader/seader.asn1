@@ -25,7 +25,9 @@ SamCommand ::= CHOICE {
   requestPacs [1] IMPLICIT RequestPacs,
   version [2] IMPLICIT NULL,
   cardDetected [13] IMPLICIT CardDetected,
-  serialNumber [22] IMPLICIT NoArguments
+  serialNumber [22] IMPLICIT NoArguments,
+  requestPacs2 [30] IMPLICIT RequestPacs,
+  processConfigCard [26] IMPLICIT NoArguments
 }
 
 CardDetected ::= SEQUENCE {
@@ -39,9 +41,20 @@ CardDetails ::= SEQUENCE {
   sak [3] IMPLICIT OCTET STRING OPTIONAL
 }
 
+Pacs2 ::= SEQUENCE {
+  bits [0] IMPLICIT OCTET STRING OPTIONAL,
+  oid [1] IMPLICIT OCTET STRING OPTIONAL,
+  type [2] IMPLICIT INTEGER OPTIONAL
+}
+
+SamResponse2 ::= CHOICE {
+  pacs [0] IMPLICIT Pacs2
+}
+
 Response ::= CHOICE {
   nfcResponse [0] NFCResponse,
-  samResponse [10] IMPLICIT SamResponse
+  samResponse [10] IMPLICIT SamResponse,
+  samResponse2 [19] SamResponse2
 }
 
 NFCResponse ::= CHOICE {
@@ -68,7 +81,8 @@ NFCSend ::= SEQUENCE {
 
 -- omnikey_5326_dfr_softwaredeveloperguide 4.2
 RequestPacs ::= SEQUENCE {
-  contentElementTag [0] IMPLICIT ContentElementTag
+  contentElementTag [0] IMPLICIT ContentElementTag,
+  oid [4] IMPLICIT OCTET STRING OPTIONAL
 }
 
 -- omnikey_5326_dfr_softwaredeveloperguide 4.2

@@ -47,7 +47,7 @@ bool seader_apdu_runner_send_next_line(Seader* seader) {
     FURI_LOG_I(
         TAG,
         "APDU Runner => (%d/%d): %s",
-        apdu_runner_ctx->current_line,
+        apdu_runner_ctx->current_line + 1,
         apdu_runner_ctx->total_lines,
         furi_string_get_cstr(line));
 
@@ -115,7 +115,7 @@ bool seader_apdu_runner_response(Seader* seader, uint8_t* r_apdu, size_t r_len) 
         FURI_LOG_I(
             TAG,
             "APDU Runner <=: (%d/%d): %s",
-            apdu_runner_ctx->current_line,
+            apdu_runner_ctx->current_line + 1,
             apdu_runner_ctx->total_lines,
             display);
         free(display);

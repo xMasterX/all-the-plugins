@@ -5,38 +5,39 @@
  * 	`asn1c -D ./lib/asn1 -no-gen-example -no-gen-OER -no-gen-PER -pdu=all`
  */
 
-#ifndef	_RequestPacs_H_
-#define	_RequestPacs_H_
+#ifndef	_Pacs2_H_
+#define	_Pacs2_H_
 
 
 #include <asn_application.h>
 
 /* Including external dependencies */
-#include "ContentElementTag.h"
 #include <OCTET_STRING.h>
+#include <NativeInteger.h>
 #include <constr_SEQUENCE.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* RequestPacs */
-typedef struct RequestPacs {
-	ContentElementTag_t	 contentElementTag;
+/* Pacs2 */
+typedef struct Pacs2 {
+	OCTET_STRING_t	*bits	/* OPTIONAL */;
 	OCTET_STRING_t	*oid	/* OPTIONAL */;
+	long	*type	/* OPTIONAL */;
 	
 	/* Context for parsing across buffer boundaries */
 	asn_struct_ctx_t _asn_ctx;
-} RequestPacs_t;
+} Pacs2_t;
 
 /* Implementation */
-extern asn_TYPE_descriptor_t asn_DEF_RequestPacs;
-extern asn_SEQUENCE_specifics_t asn_SPC_RequestPacs_specs_1;
-extern asn_TYPE_member_t asn_MBR_RequestPacs_1[2];
+extern asn_TYPE_descriptor_t asn_DEF_Pacs2;
+extern asn_SEQUENCE_specifics_t asn_SPC_Pacs2_specs_1;
+extern asn_TYPE_member_t asn_MBR_Pacs2_1[3];
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif	/* _RequestPacs_H_ */
+#endif	/* _Pacs2_H_ */
 #include <asn_internal.h>

@@ -1,32 +1,21 @@
-lib_LTLIBRARIES=libsomething.la
-libsomething_la_SOURCES=$(ASN_MODULE_SOURCES) $(ASN_MODULE_HEADERS)
 
-ASN_CONVERTER_SOURCES+=test/parse.c
-ASN_MODULE_SOURCES=$(wildcard lib/asn1/*.c)
-ASN_MODULE_HEADERS=$(wildcard lib/asn1/*.h)
 
-TARGET = parse
-CFLAGS += -I. -Ilib/asn1
-OBJS=${ASN_MODULE_SOURCES:.c=.o} ${ASN_CONVERTER_SOURCES:.c=.o}
+all: gitsub asn1 build
 
-all: regen
+gitsub:
+	git submodule update --init --recursive
 
-test: $(TARGET)
+asn1:
+	asn1c -D ./lib/asn1 -no-gen-example -no-gen-OER -no-gen-PER -pdu=all seader.asn1
 
-$(TARGET): regen ${OBJS}
-	$(CC) $(CFLAGS) -o $(TARGET) ${OBJS} $(LDFLAGS) $(LIBS)
+build:
+	ufbt
 
-.SUFFIXES:
-.SUFFIXES: .c .o
+launch:
+	ufbt launch
 
-.c.o:
-	$(CC) $(CFLAGS) -o $@ -c $<
-
-regen: regenerate-from-asn1-source
-
-regenerate-from-asn1-source:
-	@asn1c -D lib/asn1 -no-gen-example -pdu=all seader.asn1
+format:
+	ufbt format
 
 clean:
-	rm -f $(TARGET)
-	rm -f $(OBJS)
+	rm -rf dist

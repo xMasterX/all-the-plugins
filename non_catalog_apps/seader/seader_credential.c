@@ -14,6 +14,41 @@ static const char* seader_file_header = "Flipper Seader Credential";
 static const uint32_t seader_file_version = 1;
 extern const uint8_t picopass_iclass_key[];
 
+// Static const arrays to optimize stack usage - moved from functions to reduce stack allocation
+static const uint8_t seader_manuf_block[16] =
+    {0xDF, 0xC6, 0x9C, 0x05, 0x80, 0x08, 0x04, 0x00, 0x00, 0x00, 0x73, 0x65, 0x61, 0x64, 0x65, 0x72};
+
+static const uint8_t seader_sector0_trailer[16] =
+    {0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0x78, 0x77, 0x88, 0xc1, 0x89, 0xec, 0xa9, 0x7f, 0x8c, 0x2a};
+
+static const uint8_t seader_sector1_trailer[16] =
+    {0x48, 0x49, 0x44, 0x20, 0x49, 0x53, 0x78, 0x77, 0x88, 0xaa, 0x20, 0x47, 0x52, 0x45, 0x41, 0x54};
+
+static const uint8_t seader_section_trailer[16] =
+    {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x07, 0x80, 0x69, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+
+static const uint8_t seader_mad_block[16] =
+    {0x1b, 0x01, 0x4d, 0x48, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+static const uint8_t seader_empty_block[16] =
+    {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+// Picopass constants
+static const uint8_t seader_picopass_fake_csn[PICOPASS_BLOCK_LEN] =
+    {0x7a, 0xf5, 0x31, 0x13, 0xfe, 0xff, 0x12, 0xe0};
+
+static const uint8_t seader_picopass_cfg[PICOPASS_BLOCK_LEN] =
+    {0x12, 0xff, 0xff, 0xff, 0x7f, 0x1f, 0xff, 0x3c};
+
+static const uint8_t seader_picopass_epurse[PICOPASS_BLOCK_LEN] =
+    {0xff, 0xff, 0xff, 0xff, 0xe3, 0xff, 0xff, 0xff};
+
+static const uint8_t seader_picopass_aia[PICOPASS_BLOCK_LEN] =
+    {0xFF, 0xff, 0xff, 0xff, 0xFF, 0xFf, 0xff, 0xFF};
+
+static const uint8_t seader_picopass_zero[PICOPASS_BLOCK_LEN] =
+    {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
 SeaderCredential* seader_credential_alloc() {
     SeaderCredential* seader_dev = malloc(sizeof(SeaderCredential));
     seader_dev->credential = 0;
@@ -112,92 +147,6 @@ bool seader_credential_save_mfc(SeaderCredential* cred, const char* name) {
     uint8_t uid[4] = {0xDF, 0xC6, 0x9C, 0x05};
     uint8_t atqa[2] = {0x00, 0x04};
     uint8_t sak = 0x08;
-    uint8_t manuf_block[16] = {
-        0xDF,
-        0xC6,
-        0x9C,
-        0x05,
-        0x80,
-        0x08,
-        0x04,
-        0x00,
-        0x00,
-        0x00,
-        0x73,
-        0x65,
-        0x61,
-        0x64,
-        0x65,
-        0x72};
-    uint8_t sector0_trailer[16] = {
-        0xa0,
-        0xa1,
-        0xa2,
-        0xa3,
-        0xa4,
-        0xa5,
-        0x78,
-        0x77,
-        0x88,
-        0xc1,
-        0x89,
-        0xec,
-        0xa9,
-        0x7f,
-        0x8c,
-        0x2a};
-    uint8_t sector1_trailer[16] = {
-        0x48,
-        0x49,
-        0x44,
-        0x20,
-        0x49,
-        0x53,
-        0x78,
-        0x77,
-        0x88,
-        0xaa,
-        0x20,
-        0x47,
-        0x52,
-        0x45,
-        0x41,
-        0x54};
-    uint8_t section_trailer[16] = {
-        0xff,
-        0xff,
-        0xff,
-        0xff,
-        0xff,
-        0xff,
-        0xff,
-        0x07,
-        0x80,
-        0x69,
-        0xff,
-        0xff,
-        0xff,
-        0xff,
-        0xff,
-        0xff};
-    uint8_t mad_block[16] = {
-        0x1b,
-        0x01,
-        0x4d,
-        0x48,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00};
-    uint8_t empty_block[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     uint8_t pacs_block[16] = {0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     bool saved = false;
@@ -251,13 +200,19 @@ bool seader_credential_save_mfc(SeaderCredential* cred, const char* name) {
             switch(i) {
             case 0:
                 if(!flipper_format_write_hex(
-                       file, furi_string_get_cstr(temp_str), manuf_block, sizeof(manuf_block))) {
+                       file,
+                       furi_string_get_cstr(temp_str),
+                       seader_manuf_block,
+                       sizeof(seader_manuf_block))) {
                     block_saved = false;
                 }
                 break;
             case 1:
                 if(!flipper_format_write_hex(
-                       file, furi_string_get_cstr(temp_str), mad_block, sizeof(mad_block))) {
+                       file,
+                       furi_string_get_cstr(temp_str),
+                       seader_mad_block,
+                       sizeof(seader_mad_block))) {
                     block_saved = false;
                 }
                 break;
@@ -265,8 +220,8 @@ bool seader_credential_save_mfc(SeaderCredential* cred, const char* name) {
                 if(!flipper_format_write_hex(
                        file,
                        furi_string_get_cstr(temp_str),
-                       sector0_trailer,
-                       sizeof(sector0_trailer))) {
+                       seader_sector0_trailer,
+                       sizeof(seader_sector0_trailer))) {
                     block_saved = false;
                 }
                 break;
@@ -280,8 +235,8 @@ bool seader_credential_save_mfc(SeaderCredential* cred, const char* name) {
                 if(!flipper_format_write_hex(
                        file,
                        furi_string_get_cstr(temp_str),
-                       sector1_trailer,
-                       sizeof(sector1_trailer))) {
+                       seader_sector1_trailer,
+                       sizeof(seader_sector1_trailer))) {
                     block_saved = false;
                 }
                 break;
@@ -303,14 +258,17 @@ bool seader_credential_save_mfc(SeaderCredential* cred, const char* name) {
                 if(!flipper_format_write_hex(
                        file,
                        furi_string_get_cstr(temp_str),
-                       section_trailer,
-                       sizeof(section_trailer))) {
+                       seader_section_trailer,
+                       sizeof(seader_section_trailer))) {
                     block_saved = false;
                 }
                 break;
             default:
                 if(!flipper_format_write_hex(
-                       file, furi_string_get_cstr(temp_str), empty_block, sizeof(empty_block))) {
+                       file,
+                       furi_string_get_cstr(temp_str),
+                       seader_empty_block,
+                       sizeof(seader_empty_block))) {
                     block_saved = false;
                 }
                 break;
@@ -381,12 +339,7 @@ bool seader_credential_save_agnostic(SeaderCredential* cred, const char* name) {
 }
 
 bool seader_credential_save_picopass(SeaderCredential* cred, const char* name) {
-    uint8_t zero[PICOPASS_BLOCK_LEN] = {0};
-    uint8_t fake_csn[PICOPASS_BLOCK_LEN] = {0x7a, 0xf5, 0x31, 0x13, 0xfe, 0xff, 0x12, 0xe0};
-    uint8_t cfg[PICOPASS_BLOCK_LEN] = {0x12, 0xff, 0xff, 0xff, 0x7f, 0x1f, 0xff, 0x3c};
-    uint8_t epurse[PICOPASS_BLOCK_LEN] = {0xff, 0xff, 0xff, 0xff, 0xe3, 0xff, 0xff, 0xff};
     uint8_t debit_key[PICOPASS_BLOCK_LEN] = {0xe3, 0xf3, 0x07, 0x84, 0x4a, 0x0b, 0x62, 0x04};
-    uint8_t aia[PICOPASS_BLOCK_LEN] = {0xFF, 0xff, 0xff, 0xff, 0xFF, 0xFf, 0xff, 0xFF};
     uint8_t pacs_cfg[PICOPASS_BLOCK_LEN] = {0x03, 0x03, 0x03, 0x03, 0x00, 0x03, 0xe0, 0x14};
 
     bool saved = false;
@@ -416,10 +369,13 @@ bool seader_credential_save_picopass(SeaderCredential* cred, const char* name) {
             furi_string_printf(temp_str, "Block %d", i);
             switch(i) {
             case CSN_INDEX:
-                if(memcmp(cred->diversifier, zero, PICOPASS_BLOCK_LEN) == 0) {
+                if(memcmp(cred->diversifier, seader_picopass_zero, PICOPASS_BLOCK_LEN) == 0) {
                     // when doing a downgrade from a non-picopass, we need to use a fake csn
                     if(!flipper_format_write_hex(
-                           file, furi_string_get_cstr(temp_str), fake_csn, sizeof(fake_csn))) {
+                           file,
+                           furi_string_get_cstr(temp_str),
+                           seader_picopass_fake_csn,
+                           sizeof(seader_picopass_fake_csn))) {
                         block_saved = false;
                     }
                 } else {
@@ -434,7 +390,10 @@ bool seader_credential_save_picopass(SeaderCredential* cred, const char* name) {
                 break;
             case EPURSE_INDEX:
                 if(!flipper_format_write_hex(
-                       file, furi_string_get_cstr(temp_str), epurse, PICOPASS_BLOCK_LEN)) {
+                       file,
+                       furi_string_get_cstr(temp_str),
+                       seader_picopass_epurse,
+                       PICOPASS_BLOCK_LEN)) {
                     block_saved = false;
                 }
                 break;
@@ -446,13 +405,19 @@ bool seader_credential_save_picopass(SeaderCredential* cred, const char* name) {
                 break;
             case AIA_INDEX:
                 if(!flipper_format_write_hex(
-                       file, furi_string_get_cstr(temp_str), aia, PICOPASS_BLOCK_LEN)) {
+                       file,
+                       furi_string_get_cstr(temp_str),
+                       seader_picopass_aia,
+                       PICOPASS_BLOCK_LEN)) {
                     block_saved = false;
                 }
                 break;
             case CFG_INDEX:
                 if(!flipper_format_write_hex(
-                       file, furi_string_get_cstr(temp_str), cfg, sizeof(cfg))) {
+                       file,
+                       furi_string_get_cstr(temp_str),
+                       seader_picopass_cfg,
+                       sizeof(seader_picopass_cfg))) {
                     block_saved = false;
                 }
                 break;
@@ -492,14 +457,20 @@ bool seader_credential_save_picopass(SeaderCredential* cred, const char* name) {
                     }
                 } else {
                     if(!flipper_format_write_hex(
-                           file, furi_string_get_cstr(temp_str), zero, sizeof(zero))) {
+                           file,
+                           furi_string_get_cstr(temp_str),
+                           seader_picopass_zero,
+                           sizeof(seader_picopass_zero))) {
                         block_saved = false;
                     }
                 }
                 break;
             default:
                 if(!flipper_format_write_hex(
-                       file, furi_string_get_cstr(temp_str), zero, sizeof(zero))) {
+                       file,
+                       furi_string_get_cstr(temp_str),
+                       seader_picopass_zero,
+                       sizeof(seader_picopass_zero))) {
                     block_saved = false;
                 }
                 break;

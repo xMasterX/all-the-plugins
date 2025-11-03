@@ -46,7 +46,7 @@ bool seader_scene_apdu_runner_on_event(void* context, SceneManagerEvent event) {
                 seader_scene_apdu_runner_update_text,
                 sizeof(seader_scene_apdu_runner_update_text),
                 "APDU Runner\n%d/%d",
-                apdu_runner_ctx.current_line,
+                apdu_runner_ctx.current_line + 1,
                 apdu_runner_ctx.total_lines);
             popup_set_header(
                 popup, seader_scene_apdu_runner_update_text, 68, 30, AlignLeft, AlignTop);

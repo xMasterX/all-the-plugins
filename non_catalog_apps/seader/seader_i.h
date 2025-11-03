@@ -111,6 +111,12 @@ struct Seader {
     char text_store[SEADER_TEXT_STORE_SIZE + 1];
     FuriString* text_box_store;
 
+    // Reusable strings to optimize scene string allocations
+    FuriString* temp_string1;
+    FuriString* temp_string2;
+    FuriString* temp_string3;
+    FuriString* temp_string4;
+
     // Common Views
     Submenu* submenu;
     Popup* popup;

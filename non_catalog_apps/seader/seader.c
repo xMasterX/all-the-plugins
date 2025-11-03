@@ -91,6 +91,12 @@ Seader* seader_alloc() {
     view_dispatcher_add_view(
         seader->view_dispatcher, SeaderViewWidget, widget_get_view(seader->widget));
 
+    // Allocate reusable strings for scene optimization
+    seader->temp_string1 = furi_string_alloc();
+    seader->temp_string2 = furi_string_alloc();
+    seader->temp_string3 = furi_string_alloc();
+    seader->temp_string4 = furi_string_alloc();
+
     seader->plugin_manager =
         plugin_manager_alloc(PLUGIN_APP_ID, PLUGIN_API_VERSION, firmware_api_interface);
 
@@ -157,6 +163,12 @@ void seader_free(Seader* seader) {
     // Custom Widget
     view_dispatcher_remove_view(seader->view_dispatcher, SeaderViewWidget);
     widget_free(seader->widget);
+
+    // Free reusable strings
+    furi_string_free(seader->temp_string1);
+    furi_string_free(seader->temp_string2);
+    furi_string_free(seader->temp_string3);
+    furi_string_free(seader->temp_string4);
 
     // Worker
     seader_worker_stop(seader->worker);

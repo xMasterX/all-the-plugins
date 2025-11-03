@@ -3,6 +3,7 @@ enum SubmenuIndex {
     SubmenuIndexReadPicopass,
     SubmenuIndexRead14a,
     SubmenuIndexReadMfc,
+    SubmenuIndexReadConfigCard,
     SubmenuIndexSaved,
     SubmenuIndexAPDURunner,
     SubmenuIndexSamInfo,
@@ -44,6 +45,15 @@ void seader_scene_sam_present_on_update(void* context) {
     submenu_add_item(
         submenu, "Saved", SubmenuIndexSaved, seader_scene_sam_present_submenu_callback, seader);
 
+    if(seader->is_debug_enabled) {
+        submenu_add_item(
+            submenu,
+            "Read Config Card",
+            SubmenuIndexReadConfigCard,
+            seader_scene_sam_present_submenu_callback,
+            seader);
+    }
+
     if(apdu_log_check_presence(SEADER_APDU_RUNNER_FILE_NAME)) {
         submenu_add_item(
             submenu,
@@ -53,7 +63,9 @@ void seader_scene_sam_present_on_update(void* context) {
             seader);
     }
     if(seader_worker->sam_version[0] != 0 && seader_worker->sam_version[1] != 0) {
-        FuriString* fw_str = furi_string_alloc();
+        // Use reusable string instead of allocating new one
+        FuriString* fw_str = seader->temp_string1;
+        furi_string_reset(fw_str);
         furi_string_cat_printf(
             fw_str, "FW %d.%d", seader_worker->sam_version[0], seader_worker->sam_version[1]);
         submenu_add_item(
@@ -62,7 +74,7 @@ void seader_scene_sam_present_on_update(void* context) {
             SubmenuIndexFwVersion,
             seader_scene_sam_present_submenu_callback,
             seader);
-        furi_string_free(fw_str);
+        // No need to free fw_str as it's reused from seader struct
         fwChecks = 0;
     }
 
@@ -91,6 +103,10 @@ bool seader_scene_sam_present_on_event(void* context, SceneManagerEvent event) {
             consumed = true;
         } else if(event.event == SubmenuIndexReadMfc) {
             scene_manager_next_scene(seader->scene_manager, SeaderSceneReadMfc);
+        } else if(event.event == SubmenuIndexReadConfigCard) {
+            scene_manager_set_scene_state(
+                seader->scene_manager, SeaderSceneSamPresent, SubmenuIndexReadConfigCard);
+            scene_manager_next_scene(seader->scene_manager, SeaderSceneReadConfigCard);
             consumed = true;
         } else if(event.event == SubmenuIndexSamInfo) {
             scene_manager_next_scene(seader->scene_manager, SeaderSceneSamInfo);
