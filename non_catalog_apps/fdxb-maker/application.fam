@@ -1,0 +1,14 @@
+App(
+    appid="fdxb_maker",
+    name="FDX-B Maker",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="fdxb_maker",
+    requires=["gui"],
+    stack_size=2 * 1024,
+    fap_icon="icons/FdxbMaker_10px.png",
+    fap_category="RFID",
+    fap_icon_assets="icons",
+    fap_description="FDX-B format file maker for animal microchips",
+    fap_author="Skye Gibbs",
+    fap_version="1.0"
+)
