@@ -1,6 +1,8 @@
 #include "../seader_i.h"
 #include <dolphin/dolphin.h>
 
+#define TAG "SeaderSceneReadCardSuccess"
+
 void seader_scene_read_card_success_widget_callback(
     GuiButtonType result,
     InputType type,
@@ -96,7 +98,18 @@ void seader_scene_read_card_success_on_enter(void* context) {
         FontSecondary,
         furi_string_get_cstr(credential_str));
     if(credential->sio[0] == 0x30) {
-        furi_string_set(sio_str, "+SIO");
+        switch(credential->sio_start_block) {
+        case 6:
+            furi_string_set(sio_str, "+SIO(SE)");
+            break;
+        case 10:
+            furi_string_set(sio_str, "+SIO(SR)");
+            break;
+        default:
+            FURI_LOG_E(TAG, "Unknown SIO start block: %d", credential->sio_start_block);
+            furi_string_set(sio_str, "+SIO(?)");
+            break;
+        }
         widget_add_string_element(
             widget, 64, 48, AlignCenter, AlignCenter, FontSecondary, furi_string_get_cstr(sio_str));
     }

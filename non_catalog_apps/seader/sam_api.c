@@ -84,7 +84,7 @@ PicopassError seader_worker_fake_epurse_update(BitBuffer* tx_buffer, BitBuffer* 
     return PicopassErrorNone;
 }
 
-void seader_picopass_state_machine(Seader* seader, uint8_t* buffer, size_t len) {
+void seader_virtual_picopass_state_machine(Seader* seader, uint8_t* buffer, size_t len) {
     BitBuffer* tx_buffer = bit_buffer_alloc(len);
     bit_buffer_append_bytes(tx_buffer, buffer, len);
     BitBuffer* rx_buffer = bit_buffer_alloc(SEADER_POLLER_MAX_BUFFER_SIZE);
@@ -1100,7 +1100,7 @@ void seader_parse_nfc_command_transmit(
 #endif
 
     if(seader->credential->type == SeaderCredentialTypeVirtual) {
-        seader_picopass_state_machine(seader, nfcSend->data.buf, nfcSend->data.size);
+        seader_virtual_picopass_state_machine(seader, nfcSend->data.buf, nfcSend->data.size);
     } else if(frameProtocol == FrameProtocol_iclass) {
         seader_iso15693_transmit(
             seader, spc->picopass_poller, nfcSend->data.buf, nfcSend->data.size);
