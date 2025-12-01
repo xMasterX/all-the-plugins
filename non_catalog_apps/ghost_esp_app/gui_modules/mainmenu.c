@@ -15,6 +15,8 @@
 #define ICON_PADDING       3
 #define TEXT_BOTTOM_MARGIN 8
 #define BUTTON_HEIGHT      12
+#define MAX_VISIBLE_CARDS  4
+#define SCROLL_ARROW_SIZE  4
 
 typedef struct {
     uint8_t x;
@@ -84,6 +86,7 @@ typedef struct {
     FuriString* header;
     size_t position;
     size_t window_position;
+    float scroll_offset; // 0.0 to 1.0 for smooth animation
     bool locked_message_visible;
     bool is_vertical;
 } MainMenuModel;
@@ -94,8 +97,7 @@ static void main_menu_process_ok(MainMenu* main_menu);
 
 static size_t main_menu_items_on_screen(MainMenuModel* model) {
     UNUSED(model);
-    size_t res = 8;
-    return res;
+    return MAX_VISIBLE_CARDS;
 }
 
 static bool is_valid_icon_index(size_t position) {
@@ -140,6 +142,8 @@ static CardLayout calculate_card_layout(
     size_t total_cards,
     size_t visible_cards,
     size_t position,
+    size_t window_position,
+    float scroll_offset,
     bool is_selected) {
     UNUSED(total_cards);
     CardLayout layout = {0};
@@ -148,9 +152,17 @@ static CardLayout calculate_card_layout(
         return layout;
     }
 
-    const uint8_t total_width = visible_cards * CARD_WIDTH + (visible_cards - 1) * CARD_MARGIN;
+    // Calculate relative position within the visible window
+    int32_t relative_pos = (int32_t)position - (int32_t)window_position;
+
+    // Apply scroll offset for smooth animation
+    const uint8_t actual_visible = visible_cards < MAX_VISIBLE_CARDS ? visible_cards :
+                                                                       MAX_VISIBLE_CARDS;
+    const uint8_t total_width = actual_visible * CARD_WIDTH + (actual_visible - 1) * CARD_MARGIN;
+    const int32_t scroll_pixels = (int32_t)(scroll_offset * (CARD_WIDTH + CARD_MARGIN));
+
     layout.x = (canvas_width(canvas) - total_width) / 2 +
-               (position < visible_cards ? position : 0) * (CARD_WIDTH + CARD_MARGIN);
+               relative_pos * (CARD_WIDTH + CARD_MARGIN) - scroll_pixels;
 
     layout.y = is_selected ? BASE_Y_POSITION - SELECTED_OFFSET : BASE_Y_POSITION;
     layout.width = CARD_WIDTH;
@@ -212,48 +224,61 @@ static void draw_card_label(
 static void main_menu_view_draw_callback(Canvas* canvas, void* _model) {
     MainMenuModel* model = _model;
     const size_t total_cards = MainMenuItemArray_size(model->items);
-    const size_t visible_cards = total_cards;
+    const size_t visible_cards = total_cards < MAX_VISIBLE_CARDS ? total_cards : MAX_VISIBLE_CARDS;
 
     canvas_clear(canvas);
 
-    // Draw all menu items first
+    // Draw only visible menu items (within the window)
     size_t position = 0;
     MainMenuItemArray_it_t it;
     for(MainMenuItemArray_it(it, model->items); !MainMenuItemArray_end_p(it);
         MainMenuItemArray_next(it)) {
-        const bool is_selected = (position == model->position);
-        const bool is_last_card = position + 1 == total_cards;
+        // Only draw cards within visible window (with one card buffer for smooth animation)
+        if(position >= model->window_position &&
+           position < model->window_position + MAX_VISIBLE_CARDS + 1) {
+            const bool is_selected = (position == model->position);
+            const bool is_last_card = position + 1 == total_cards;
 
-        CardLayout layout =
-            calculate_card_layout(canvas, total_cards, visible_cards, position, is_selected);
+            CardLayout layout = calculate_card_layout(
+                canvas,
+                total_cards,
+                visible_cards,
+                position,
+                model->window_position,
+                model->scroll_offset,
+                is_selected);
 
-        draw_card_background(canvas, &layout, is_selected);
+            draw_card_background(canvas, &layout, is_selected);
 
-        const Icon* icon = NULL;
-        if(is_valid_icon_index(position)) {
-            switch(position) {
-            case 0:
-                icon = &I_Wifi_icon;
-                break;
-            case 1:
-                icon = &I_BLE_icon;
-                break;
-            case 2:
-                icon = &I_GPS;
-                break; // Use GPS icon for position 2
-            case 3:
-                icon = &I_Cog;
-                break; // Use Settings icon for position 3
+            const Icon* icon = NULL;
+            if(is_valid_icon_index(position)) {
+                switch(position) {
+                case 0:
+                    icon = &I_Wifi_icon;
+                    break;
+                case 1:
+                    icon = &I_BLE_icon;
+                    break;
+                case 2:
+                    icon = &I_GPS;
+                    break; // Use GPS icon for position 2
+                case 3:
+                    icon = &I_infrared;
+                    break; // Use Infrared icon for position 3
+                case 4:
+                    icon = &I_Cog;
+                    break; // Use Settings icon for position 4
+                }
             }
-        }
 
-        if(icon) {
-            draw_card_icon(canvas, &layout, icon, is_selected);
-        }
+            if(icon) {
+                draw_card_icon(canvas, &layout, icon, is_selected);
+            }
 
-        FuriString* disp_str = furi_string_alloc_set(MainMenuItemArray_cref(it)->label);
-        draw_card_label(canvas, &layout, disp_str, is_selected, is_last_card);
-        furi_string_free(disp_str);
+            FuriString* disp_str = furi_string_alloc_set(MainMenuItemArray_cref(it)->label);
+            draw_card_label(canvas, &layout, disp_str, is_selected, is_last_card);
+            furi_string_free(disp_str);
+        }
 
         position++;
     }
@@ -347,6 +372,7 @@ MainMenu* main_menu_alloc(void) {
             MainMenuItemArray_init(model->items);
             model->position = 0;
             model->window_position = 0;
+            model->scroll_offset = 0.0f;
             model->header = furi_string_alloc();
         },
         true);
@@ -448,6 +474,7 @@ void main_menu_reset(MainMenu* main_menu) {
             MainMenuItemArray_reset(model->items);
             model->position = 0;
             model->window_position = 0;
+            model->scroll_offset = 0.0f;
             model->is_vertical = false;
             furi_string_reset(model->header);
         },
@@ -526,14 +553,20 @@ void main_menu_process_up(MainMenu* main_menu) {
 
             if(model->position > 0) {
                 model->position--;
-                if((model->position == model->window_position) && (model->window_position > 0)) {
-                    model->window_position--;
+                // Adjust window if we're moving left and at the left edge of visible area
+                if(model->position < model->window_position) {
+                    model->window_position = model->position;
                 }
+                model->scroll_offset = 0.0f; // Reset for instant movement (can be animated later)
             } else {
+                // Wrap to end
                 model->position = items_size - 1;
-                if(model->position > items_on_screen - 1) {
-                    model->window_position = model->position - (items_on_screen - 1);
+                if(items_size > items_on_screen) {
+                    model->window_position = items_size - items_on_screen;
+                } else {
+                    model->window_position = 0;
                 }
+                model->scroll_offset = 0.0f;
             }
         },
         true);
@@ -549,13 +582,16 @@ void main_menu_process_down(MainMenu* main_menu) {
 
             if(model->position < items_size - 1) {
                 model->position++;
-                if((model->position - model->window_position > items_on_screen - 2) &&
-                   (model->window_position < items_size - items_on_screen)) {
-                    model->window_position++;
+                // Adjust window if we're moving right and at the right edge of visible area
+                if(model->position >= model->window_position + items_on_screen) {
+                    model->window_position = model->position - items_on_screen + 1;
                 }
+                model->scroll_offset = 0.0f; // Reset for instant movement (can be animated later)
             } else {
+                // Wrap to beginning
                 model->position = 0;
                 model->window_position = 0;
+                model->scroll_offset = 0.0f;
             }
         },
         true);

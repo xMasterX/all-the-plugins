@@ -11,7 +11,9 @@
 #include <storage/storage.h>
 #include <toolbox/path.h>
 
-#define GHOST_APP_FOLDER_HTML "/ext/apps_data/ghost/html"
+#define GHOST_APP_FOLDER_HTML  "/ext/apps_data/ghost/html"
+#define GHOST_IR_FOLDER        "/ext/infrared"
+#define GHOST_IR_MAX_FILE_SIZE (8 * 1024)
 
 bool ghost_esp_ep_read_html_file(AppState* app, uint8_t** the_html, size_t* html_size) {
     // Initialize output parameters to safe defaults
@@ -87,6 +89,89 @@ bool ghost_esp_ep_read_html_file(AppState* app, uint8_t** the_html, size_t* html
     if(index_html) {
         storage_file_close(index_html);
         storage_file_free(index_html);
+    }
+    if(storage) {
+        furi_record_close(RECORD_STORAGE);
+    }
+    furi_string_free(selected_filepath);
+    furi_string_free(predefined_filepath);
+
+    return success;
+}
+
+bool ghost_esp_ep_read_ir_file(AppState* app, uint8_t** ir_data, size_t* ir_size) {
+    *ir_data = NULL;
+    *ir_size = 0;
+
+    FuriString* predefined_filepath = furi_string_alloc_set_str(GHOST_IR_FOLDER);
+    FuriString* selected_filepath = furi_string_alloc();
+    DialogsFileBrowserOptions browser_options;
+    dialog_file_browser_set_basic_options(&browser_options, ".ir", NULL);
+
+    bool success = false;
+    File* ir_file = NULL;
+    Storage* storage = NULL;
+
+    do {
+        if(!dialog_file_browser_show(
+               app->dialogs, selected_filepath, predefined_filepath, &browser_options)) {
+            break;
+        }
+
+        storage = furi_record_open(RECORD_STORAGE);
+        ir_file = storage_file_alloc(storage);
+        if(!storage_file_open(
+               ir_file, furi_string_get_cstr(selected_filepath), FSAM_READ, FSOM_OPEN_EXISTING)) {
+            dialog_message_show_storage_error(app->dialogs, "Cannot open file");
+            break;
+        }
+
+        uint64_t size = storage_file_size(ir_file);
+        if(size == 0) {
+            dialog_message_show_storage_error(app->dialogs, "File is empty");
+            break;
+        }
+
+        if(size > GHOST_IR_MAX_FILE_SIZE) {
+            dialog_message_show_storage_error(app->dialogs, "IR file too large");
+            break;
+        }
+
+        *ir_data = malloc((size_t)size);
+        if(!*ir_data) {
+            dialog_message_show_storage_error(app->dialogs, "Memory allocation failed");
+            break;
+        }
+
+        uint8_t* buf_ptr = *ir_data;
+        size_t read = 0;
+        bool read_success = true;
+        while(read < size) {
+            size_t to_read = size - read;
+            if(to_read > UINT16_MAX) to_read = UINT16_MAX;
+            uint16_t now_read = storage_file_read(ir_file, buf_ptr, (uint16_t)to_read);
+            if(now_read == 0) {
+                read_success = false;
+                break;
+            }
+            read += now_read;
+            buf_ptr += now_read;
+        }
+
+        if(!read_success) {
+            free(*ir_data);
+            *ir_data = NULL;
+            dialog_message_show_storage_error(app->dialogs, "Error reading file");
+            break;
+        }
+
+        *ir_size = read;
+        success = true;
+    } while(false);
+
+    if(ir_file) {
+        storage_file_close(ir_file);
+        storage_file_free(ir_file);
     }
     if(storage) {
         furi_record_close(RECORD_STORAGE);

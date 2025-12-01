@@ -83,6 +83,82 @@ static void text_buffer_add(TextBufferManager* manager, const char* data, size_t
 
     furi_mutex_release(manager->mutex);
 }
+void uart_reset_text_buffers(UartContext* uart) {
+    if(!uart || !uart->text_manager) return;
+
+    if(furi_mutex_acquire(uart->text_manager->mutex, 300) != FuriStatusOk) {
+        return;
+    }
+
+    memset(uart->text_manager->ring_buffer, 0, RING_BUFFER_SIZE);
+    memset(uart->text_manager->view_buffer, 0, VIEW_BUFFER_SIZE);
+    uart->text_manager->ring_read_index = 0;
+    uart->text_manager->ring_write_index = 0;
+    uart->text_manager->buffer_full = false;
+    uart->text_manager->view_buffer_len = 0;
+
+    furi_mutex_release(uart->text_manager->mutex);
+}
+bool uart_copy_text_buffer(UartContext* uart, char* out, size_t out_size, size_t* out_len) {
+    if(out_len) *out_len = 0;
+    if(!uart || !uart->text_manager || !out || out_size == 0) {
+        return false;
+    }
+
+    if(furi_mutex_acquire(uart->text_manager->mutex, 300) != FuriStatusOk) {
+        return false;
+    }
+
+    size_t len = uart->text_manager->view_buffer_len;
+    if(len >= out_size) {
+        len = out_size - 1;
+    }
+
+    if(len > 0) {
+        memcpy(out, uart->text_manager->view_buffer, len);
+    }
+    out[len] = '\0';
+    if(out_len) *out_len = len;
+
+    furi_mutex_release(uart->text_manager->mutex);
+
+    return true;
+}
+
+bool uart_copy_text_buffer_tail(UartContext* uart, char* out, size_t out_size, size_t* out_len) {
+    if(out_len) *out_len = 0;
+    if(!uart || !uart->text_manager || !out || out_size == 0) {
+        return false;
+    }
+
+    if(furi_mutex_acquire(uart->text_manager->mutex, 300) != FuriStatusOk) {
+        return false;
+    }
+
+    TextBufferManager* mgr = uart->text_manager;
+    size_t available;
+    if(mgr->buffer_full) {
+        available = RING_BUFFER_SIZE;
+    } else if(mgr->ring_write_index >= mgr->ring_read_index) {
+        available = mgr->ring_write_index - mgr->ring_read_index;
+    } else {
+        available = RING_BUFFER_SIZE - mgr->ring_read_index + mgr->ring_write_index;
+    }
+
+    size_t copy_size = (available >= out_size) ? (out_size - 1) : available;
+    size_t skip = (available > copy_size) ? (available - copy_size) : 0;
+    size_t start = (mgr->ring_read_index + skip) % RING_BUFFER_SIZE;
+
+    for(size_t i = 0; i < copy_size; i++) {
+        out[i] = mgr->ring_buffer[(start + i) % RING_BUFFER_SIZE];
+    }
+    out[copy_size] = '\0';
+    if(out_len) *out_len = copy_size;
+
+    furi_mutex_release(uart->text_manager->mutex);
+    return true;
+}
+
 static void text_buffer_update_view(TextBufferManager* manager, bool view_from_start) {
     if(!manager) return;
 
@@ -306,12 +382,19 @@ void handle_uart_rx_data(uint8_t* buf, size_t len, void* context) {
 
     // Update text display
     text_buffer_add(state->uart_context->text_manager, (char*)buf, len);
-    text_buffer_update_view(
-        state->uart_context->text_manager, state->settings.view_logs_from_start_index);
 
-    bool view_from_start = state->settings.view_logs_from_start_index;
-    text_box_set_text(state->text_box, state->uart_context->text_manager->view_buffer);
-    text_box_set_focus(state->text_box, view_from_start ? TextBoxFocusStart : TextBoxFocusEnd);
+    if(!state->text_box_user_scrolled) {
+        text_buffer_update_view(
+            state->uart_context->text_manager, state->settings.view_logs_from_start_index);
+
+        bool view_from_start = state->settings.view_logs_from_start_index;
+        if(state->text_box) {
+            text_box_set_text(state->text_box, state->uart_context->text_manager->view_buffer);
+            text_box_set_focus(
+                state->text_box,
+                view_from_start ? TextBoxFocusStart : TextBoxFocusEnd);
+        }
+    }
 }
 
 static int32_t uart_worker(void* context) {
@@ -690,9 +773,25 @@ bool uart_receive_data(
 
     FURI_LOG_I("UART", "[INIT] Reset RX logging counters for new session");
 
-    // Clear display before switching view
-    text_box_set_text(state->text_box, "");
-    text_box_set_focus(state->text_box, TextBoxFocusEnd);
+    state->text_box_user_scrolled = false;
+
+    if(uart->text_manager) {
+        const char* hint = "Press Right to resume.\nPress OK to STOP.\n";
+        text_buffer_add(uart->text_manager, hint, strlen(hint));
+        text_buffer_update_view(uart->text_manager, state->settings.view_logs_from_start_index);
+
+        if(state->text_box) {
+            bool view_from_start = state->settings.view_logs_from_start_index;
+            text_box_set_text(state->text_box, uart->text_manager->view_buffer);
+            text_box_set_focus(
+                state->text_box, view_from_start ? TextBoxFocusStart : TextBoxFocusEnd);
+        }
+    } else if(state->text_box) {
+        const char* hint = "Press Right to resume.\nPress OK to STOP.\n";
+        text_box_set_text(state->text_box, hint);
+        bool view_from_start = state->settings.view_logs_from_start_index;
+        text_box_set_focus(state->text_box, view_from_start ? TextBoxFocusStart : TextBoxFocusEnd);
+    }
 
     // Open new file if needed
     if(prefix && extension && TargetFolder && strlen(prefix) > 1) {

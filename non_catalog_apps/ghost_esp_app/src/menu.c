@@ -6,6 +6,27 @@
 #include "uart_utils.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <storage/storage.h>
+#include <dialogs/dialogs.h>
+
+struct View {
+    ViewDrawCallback draw_callback;
+    ViewInputCallback input_callback;
+    ViewCustomCallback custom_callback;
+
+    ViewModelType model_type;
+    ViewNavigationCallback previous_callback;
+    ViewCallback enter_callback;
+    ViewCallback exit_callback;
+    ViewOrientation orientation;
+
+    ViewUpdateCallback update_callback;
+    void* update_callback_context;
+
+    void* model;
+    void* context;
+};
 
 typedef struct {
     const char* label; // Display label in menu
@@ -61,8 +82,26 @@ static void text_input_result_callback(void* context);
 static void confirmation_ok_callback(void* context);
 static void confirmation_cancel_callback(void* context);
 static void app_info_ok_callback(void* context);
+static void ir_sweep_stop_callback(void* context);
 static void execute_menu_command(AppState* state, const MenuCommand* command);
 static void error_callback(void* context);
+static bool ir_query_and_parse_list(AppState* state);
+static bool ir_query_and_parse_show(AppState* state, uint32_t remote_index);
+static bool ir_query_and_parse_universals(AppState* state);
+static bool ir_query_and_parse_universal_buttons(AppState* state, const char* filename);
+static void ir_show_remotes_menu(AppState* state);
+static void ir_show_buttons_menu(AppState* state);
+static void ir_show_universals_menu(AppState* state);
+static void ir_show_error(AppState* state, const char* text);
+static void show_result_dialog(AppState* state, const char* header, const char* text);
+static bool handle_ir_command_feedback_ex(
+    AppState* state,
+    const char* cmd,
+    bool send_cmd,
+    bool reset_buffers);
+static bool handle_ir_command_feedback(AppState* state, const char* cmd);
+static bool ir_parse_buttons_from_ir_buffer(AppState* state, const uint8_t* buf, size_t len);
+static void ir_send_button_from_file(AppState* state, uint32_t button_index);
 
 // Sniff command definitions
 static const SniffCommandDef sniff_commands[] = {
@@ -837,6 +876,37 @@ static const MenuCommand wifi_stop_command = {
                     "- Evil Portal\n",
 };
 
+static const MenuCommand status_idle_commands[] = {
+    {
+        .label = "Life (Game of Life)",
+        .command = "statusidle set life\n",
+        .details_header = "Life Animation",
+        .details_text = "Set idle status display to\n"
+                        "Game of Life animation.",
+    },
+    {
+        .label = "Ghost (Sprite)",
+        .command = "statusidle set ghost\n",
+        .details_header = "Ghost Animation",
+        .details_text = "Set idle status display to\n"
+                        "ghost sprite animation.",
+    },
+    {
+        .label = "Starfield",
+        .command = "statusidle set starfield\n",
+        .details_header = "Starfield Animation",
+        .details_text = "Set idle status display to\n"
+                        "starfield effect.",
+    },
+    {
+        .label = "HUD",
+        .command = "statusidle set hud\n",
+        .details_header = "HUD Animation",
+        .details_text = "Set idle status display to\n"
+                        "HUD-style overlay.",
+    },
+};
+
 // BLE menu command definitions
 static const MenuCommand ble_scanning_commands[] = {
     {
@@ -1032,6 +1102,533 @@ static const MenuCommand gps_commands[] = {
     },
 };
 
+// IR menu command definitions
+static const MenuCommand ir_commands[] = {
+    {
+        .label = "Browse IR Remotes",
+        .command = "ir list\n",
+        .details_header = "Browse IR Remotes",
+        .details_text = "Browse IR remotes on ESP\n",
+    },
+    {
+        .label = "Browse Universals",
+        .command = "ir universals list\n",
+        .details_header = "Browse Universals",
+        .details_text = "Browse built-in universal IR\n",
+    },
+    {
+        .label = "Send from Flipper",
+        .command = "send_ir_file",
+        .details_header = "Send from Flipper",
+        .details_text = "Browse Flipper IR files and\nsend signals to ESP.\n",
+    },
+    {
+        .label = "IR Learn (Auto File)",
+        .command = "ir learn\n",
+        .details_header = "Learn IR (Auto)",
+        .details_text = "Capture IR signal (10s wait).\n"
+                        "Auto-create a new IR file.\n",
+    },
+    {
+        .label = "IR Learn (Path)",
+        .command = "ir learn",
+        .needs_input = true,
+        .input_text = "Path (optional)",
+        .details_header = "Learn IR (Path)",
+        .details_text = "Capture IR signal (10s wait).\n"
+                        "Leave blank to auto-create,\n"
+                        "or specify path to append.\n",
+    },
+    {
+        .label = "IR Receive",
+        .command = "ir rx",
+        .needs_input = true,
+        .input_text = "Timeout (default 60)",
+        .details_header = "Receive IR",
+        .details_text = "Wait for single IR signal.\n"
+                        "Prints decoded or RAW data.\n",
+    },
+    {
+        .label = "IR List Files (Raw)",
+        .command = "ir list\n",
+        .details_header = "List IR Files",
+        .details_text = "List all .ir/.json files in\n"
+                        "remote directories.\n",
+    },
+    {
+        .label = "IR Show File (Raw)",
+        .command = "ir show",
+        .needs_input = true,
+        .input_text = "Path or Index",
+        .details_header = "Show IR File",
+        .details_text = "Display signals from an IR file.\n",
+    },
+    {
+        .label = "IR Send (Raw)",
+        .command = "ir send",
+        .needs_input = true,
+        .input_text = "Index [Button]",
+        .details_header = "Send IR (Raw)",
+        .details_text = "Transmit using raw indices.\n",
+    },
+    {
+        .label = "Stop IR",
+        .command = "stop\n",
+        .details_header = "Stop IR",
+        .details_text = "Stop all active IR operations.\n",
+    },
+};
+
+#define IR_UART_PARSE_BUF_SIZE 1024
+
+static char* next_line(char* buf, size_t* offset) {
+    if(!buf || !offset) return NULL;
+    char* p = buf + *offset;
+    while(*p == '\r' || *p == '\n')
+        p++;
+    if(*p == '\0') return NULL;
+    char* start = p;
+    while(*p && *p != '\r' && *p != '\n')
+        p++;
+    if(*p) {
+        *p++ = '\0';
+    }
+    *offset = (size_t)(p - buf);
+    return start;
+}
+
+static bool ir_query_and_parse_list(AppState* state) {
+    if(!state || !state->uart_context) return false;
+
+    uart_reset_text_buffers(state->uart_context);
+    send_uart_command("ir list\n", state);
+
+    char* buffer = malloc(IR_UART_PARSE_BUF_SIZE);
+    if(!buffer) return false;
+
+    size_t len = 0;
+    uint32_t start = furi_get_tick();
+    const uint32_t timeout_ms = 2000;
+    while(furi_get_tick() - start < timeout_ms) {
+        furi_delay_ms(100);
+        if(uart_copy_text_buffer(state->uart_context, buffer, IR_UART_PARSE_BUF_SIZE, &len) &&
+           len > 0) {
+            if(strstr(buffer, "IR files in ") || strstr(buffer, "(none)") ||
+               strstr(buffer, "(none).") || strchr(buffer, '[')) {
+                break;
+            }
+        }
+    }
+
+    if(len == 0) {
+        free(buffer);
+        return false;
+    }
+
+    state->ir_remote_count = 0;
+
+    size_t pos = 0;
+    char* line = NULL;
+    while((line = next_line(buffer, &pos))) {
+        while(*line == ' ' || *line == '\t')
+            line++;
+        if(strncmp(line, "IR files in ", 12) == 0) {
+            continue;
+        }
+        if(strncmp(line, "(none).", 7) == 0 || strncmp(line, "(none)", 6) == 0) {
+            continue;
+        }
+        if(line[0] == '[') {
+            unsigned int idx = 0;
+            char name[64] = {0};
+            if(sscanf(line, "[%u] %63s", &idx, name) == 2) {
+                if(state->ir_remote_count < COUNT_OF(state->ir_remotes)) {
+                    IrRemoteEntry* e = &state->ir_remotes[state->ir_remote_count++];
+                    e->index = idx;
+                    strncpy(e->name, name, sizeof(e->name) - 1);
+                    e->name[sizeof(e->name) - 1] = '\0';
+                }
+            }
+        }
+    }
+
+    free(buffer);
+    return state->ir_remote_count > 0;
+}
+
+static bool ir_query_and_parse_show(AppState* state, uint32_t remote_index) {
+    if(!state || !state->uart_context) return false;
+
+    uart_reset_text_buffers(state->uart_context);
+
+    char cmd[32];
+    snprintf(cmd, sizeof(cmd), "ir show %lu\n", (unsigned long)remote_index);
+    send_uart_command(cmd, state);
+
+    char* buffer = malloc(IR_UART_PARSE_BUF_SIZE);
+    if(!buffer) return false;
+
+    size_t len = 0;
+    uint32_t start = furi_get_tick();
+    const uint32_t timeout_ms = 3000;
+    while(furi_get_tick() - start < timeout_ms) {
+        furi_delay_ms(100);
+        if(uart_copy_text_buffer(state->uart_context, buffer, IR_UART_PARSE_BUF_SIZE, &len) &&
+           len > 0) {
+            if(strstr(buffer, "Signals in ") || strstr(buffer, "Unique buttons in ") ||
+               strchr(buffer, '[')) {
+                break;
+            }
+        }
+    }
+
+    if(len == 0) {
+        free(buffer);
+        return false;
+    }
+
+    state->ir_signal_count = 0;
+
+    size_t pos = 0;
+    char* line = NULL;
+    while((line = next_line(buffer, &pos))) {
+        while(*line == ' ' || *line == '\t')
+            line++;
+        if(strncmp(line, "Signals in ", 11) == 0) {
+            continue;
+        }
+        if(strncmp(line, "IR: ", 4) == 0) {
+            continue;
+        }
+        if(line[0] == '[') {
+            unsigned int idx = 0;
+            char name[32] = {0};
+            char proto[16] = {0};
+            int n = sscanf(line, "[%u] %31s (%15[^)])", &idx, name, proto);
+            if(n >= 2) {
+                if(state->ir_signal_count < COUNT_OF(state->ir_signals)) {
+                    IrSignalEntry* e = &state->ir_signals[state->ir_signal_count++];
+                    e->index = idx;
+                    strncpy(e->name, name, sizeof(e->name) - 1);
+                    e->name[sizeof(e->name) - 1] = '\0';
+                    if(n == 3 && proto[0]) {
+                        strncpy(e->proto, proto, sizeof(e->proto) - 1);
+                        e->proto[sizeof(e->proto) - 1] = '\0';
+                    } else {
+                        e->proto[0] = '\0';
+                    }
+                }
+            }
+        }
+    }
+
+    free(buffer);
+    return state->ir_signal_count > 0;
+}
+
+static bool ir_query_and_parse_universals(AppState* state) {
+    if(!state || !state->uart_context) return false;
+
+    uart_reset_text_buffers(state->uart_context);
+    send_uart_command("ir universals list\n", state);
+    furi_delay_ms(200);
+
+    char* buffer = malloc(IR_UART_PARSE_BUF_SIZE);
+    if(!buffer) return false;
+
+    size_t len = 0;
+    if(!uart_copy_text_buffer(
+           state->uart_context, buffer, IR_UART_PARSE_BUF_SIZE, &len) ||
+       len == 0) {
+        free(buffer);
+        return false;
+    }
+
+    state->ir_universal_count = 0;
+    bool in_files_section = false;
+
+    size_t pos = 0;
+    char* line = NULL;
+    while((line = next_line(buffer, &pos))) {
+        while(*line == ' ' || *line == '\t')
+            line++;
+
+        if(strncmp(line, "IR: ", 4) == 0) {
+            line += 4;
+            while(*line == ' ' || *line == '\t')
+                line++;
+        }
+
+        if(strncmp(line, "Universal Files in ", 19) == 0) {
+            in_files_section = true;
+            continue;
+        }
+
+        if(in_files_section) {
+            if(line[0] == '\0') {
+                continue;
+            }
+
+            if(strncmp(line, "Built-in Universal Signals", 26) == 0 ||
+               strncmp(line, "Use 'ir universals list", 23) == 0) {
+                in_files_section = false;
+                continue;
+            }
+
+            if(strncmp(line, "(none)", 6) == 0) {
+                continue;
+            }
+
+            if(state->ir_universal_count < COUNT_OF(state->ir_universals)) {
+                IrUniversalEntry* e = &state->ir_universals[state->ir_universal_count];
+                e->index = state->ir_universal_count;
+                strncpy(e->name, line, sizeof(e->name) - 1);
+                e->name[sizeof(e->name) - 1] = '\0';
+                e->proto[0] = '\0';
+                state->ir_universal_count++;
+            }
+        }
+    }
+
+    free(buffer);
+    return state->ir_universal_count > 0;
+}
+
+static bool ir_query_and_parse_universal_buttons(AppState* state, const char* filename) {
+    if(!state || !state->uart_context || !filename || !filename[0]) return false;
+
+    uart_reset_text_buffers(state->uart_context);
+
+    char path[128];
+    snprintf(path, sizeof(path), "/mnt/ghostesp/infrared/universals/%s", filename);
+
+    char cmd[192];
+    snprintf(cmd, sizeof(cmd), "ir show %s\n", path);
+    send_uart_command(cmd, state);
+
+    char* buffer = malloc(IR_UART_PARSE_BUF_SIZE);
+    if(!buffer) return false;
+
+    size_t len = 0;
+
+    uint32_t start = furi_get_tick();
+    const uint32_t timeout_ms = 5000;
+    while(furi_get_tick() - start < timeout_ms) {
+        furi_delay_ms(100);
+        if(uart_copy_text_buffer(state->uart_context, buffer, IR_UART_PARSE_BUF_SIZE, &len) &&
+           len > 0) {
+            if(strstr(buffer, "Unique buttons in ") || strstr(buffer, "Signals in ")) {
+                break;
+            }
+        }
+    }
+
+    if(len == 0) {
+        free(buffer);
+        return false;
+    }
+
+    state->ir_signal_count = 0;
+
+    size_t pos = 0;
+    char* line = NULL;
+    while((line = next_line(buffer, &pos))) {
+        while(*line == ' ' || *line == '\t')
+            line++;
+
+        if(strncmp(line, "Signals in ", 11) == 0) {
+            continue;
+        }
+        if(strncmp(line, "IR: ", 4) == 0) {
+            continue;
+        }
+
+        if(line[0] == '[') {
+            unsigned int idx = 0;
+            char name[32] = {0};
+            char proto[16] = {0};
+            int n = sscanf(line, "[%u] %31s (%15[^)])", &idx, name, proto);
+            if(n < 2) {
+                proto[0] = '\0';
+                n = sscanf(line, "[%u] %31s", &idx, name);
+            }
+            if(n >= 2) {
+                bool exists = false;
+                for(size_t i = 0; i < state->ir_signal_count; i++) {
+                    if(strcmp(state->ir_signals[i].name, name) == 0) {
+                        exists = true;
+                        break;
+                    }
+                }
+                if(!exists && state->ir_signal_count < COUNT_OF(state->ir_signals)) {
+                    IrSignalEntry* e = &state->ir_signals[state->ir_signal_count++];
+                    e->index = idx;
+                    strncpy(e->name, name, sizeof(e->name) - 1);
+                    e->name[sizeof(e->name) - 1] = '\0';
+                    if(n == 3) {
+                        strncpy(e->proto, proto, sizeof(e->proto) - 1);
+                        e->proto[sizeof(e->proto) - 1] = '\0';
+                    } else {
+                        e->proto[0] = '\0';
+                    }
+                }
+            }
+        }
+    }
+
+    bool result = state->ir_signal_count > 0;
+    free(buffer);
+    return result;
+}
+
+static bool ir_parse_buttons_from_ir_buffer(AppState* state, const uint8_t* buf, size_t len) {
+    if(!state || !buf || len == 0) return false;
+
+    state->ir_signal_count = 0;
+
+    size_t pos = 0;
+    while(pos < len && state->ir_signal_count < COUNT_OF(state->ir_signals)) {
+        while(pos < len &&
+              (buf[pos] == '\r' || buf[pos] == '\n' || buf[pos] == ' ' || buf[pos] == '\t')) {
+            pos++;
+        }
+
+        if(pos >= len) break;
+
+        if(buf[pos] == '#') {
+            while(pos < len && buf[pos] != '\n' && buf[pos] != '\r')
+                pos++;
+            continue;
+        }
+
+        if(len - pos >= 9 && memcmp(buf + pos, "Filetype:", 9) == 0) {
+            while(pos < len && buf[pos] != '\n' && buf[pos] != '\r')
+                pos++;
+            continue;
+        }
+        if(len - pos >= 8 && memcmp(buf + pos, "Version:", 8) == 0) {
+            while(pos < len && buf[pos] != '\n' && buf[pos] != '\r')
+                pos++;
+            continue;
+        }
+
+        if(len - pos >= 5 && memcmp(buf + pos, "name:", 5) == 0) {
+            size_t line_start = pos;
+            size_t line_end = pos;
+            while(line_end < len && buf[line_end] != '\n' && buf[line_end] != '\r')
+                line_end++;
+
+            size_t val_start = pos + 5;
+            while(val_start < line_end && (buf[val_start] == ' ' || buf[val_start] == '\t')) {
+                val_start++;
+            }
+            size_t val_end = line_end;
+            while(val_end > val_start && (buf[val_end - 1] == ' ' || buf[val_end - 1] == '\t')) {
+                val_end--;
+            }
+
+            IrSignalEntry* e = &state->ir_signals[state->ir_signal_count];
+            size_t name_len = (val_end > val_start) ? (val_end - val_start) : 0;
+            if(name_len >= sizeof(e->name)) name_len = sizeof(e->name) - 1;
+            if(name_len > 0) {
+                memcpy(e->name, buf + val_start, name_len);
+                e->name[name_len] = '\0';
+            } else {
+                e->name[0] = '\0';
+            }
+
+            e->index = (uint32_t)line_start;
+            e->proto[0] = '\0';
+
+            state->ir_signal_count++;
+            pos = line_end;
+            continue;
+        }
+
+        while(pos < len && buf[pos] != '\n' && buf[pos] != '\r')
+            pos++;
+    }
+
+    return state->ir_signal_count > 0;
+}
+
+static void ir_show_remotes_menu(AppState* state) {
+    if(!state || !state->ir_remotes_menu) return;
+
+    submenu_reset(state->ir_remotes_menu);
+    submenu_set_header(state->ir_remotes_menu, "IR Remotes");
+
+    uint32_t selected = 0;
+    for(size_t i = 0; i < state->ir_remote_count; i++) {
+        submenu_add_item(
+            state->ir_remotes_menu, state->ir_remotes[i].name, i, submenu_callback, state);
+        if(state->ir_remotes[i].index == state->ir_current_remote_index) {
+            selected = i;
+        }
+    }
+
+    if(state->ir_remote_count > 0) {
+        submenu_set_selected_item(state->ir_remotes_menu, selected);
+    }
+
+    view_dispatcher_switch_to_view(state->view_dispatcher, 31);
+    state->current_view = 31;
+}
+
+static void ir_show_buttons_menu(AppState* state) {
+    if(!state || !state->ir_buttons_menu) return;
+
+    submenu_reset(state->ir_buttons_menu);
+    if(state->ir_universal_buttons_mode) {
+        submenu_set_header(state->ir_buttons_menu, "Universal Buttons");
+    } else {
+        submenu_set_header(state->ir_buttons_menu, "IR Buttons");
+    }
+
+    for(size_t i = 0; i < state->ir_signal_count; i++) {
+        const char* label = state->ir_signals[i].name;
+        submenu_add_item(state->ir_buttons_menu, label, i, submenu_callback, state);
+    }
+
+    if(state->ir_signal_count > 0) {
+        submenu_set_selected_item(state->ir_buttons_menu, 0);
+    }
+
+    view_dispatcher_switch_to_view(state->view_dispatcher, 32);
+    state->current_view = 32;
+}
+
+static void ir_show_universals_menu(AppState* state) {
+    if(!state || !state->ir_universals_menu) return;
+
+    submenu_reset(state->ir_universals_menu);
+    submenu_set_header(state->ir_universals_menu, "IR Universals");
+
+    for(size_t i = 0; i < state->ir_universal_count; i++) {
+        const char* label = state->ir_universals[i].name;
+        submenu_add_item(state->ir_universals_menu, label, i, submenu_callback, state);
+    }
+
+    if(state->ir_universal_count > 0) {
+        submenu_set_selected_item(state->ir_universals_menu, 0);
+    }
+
+    view_dispatcher_switch_to_view(state->view_dispatcher, 33);
+    state->current_view = 33;
+}
+
+static void ir_show_error(AppState* state, const char* text) {
+    if(!state || !state->confirmation_view) return;
+
+    state->previous_view = state->current_view;
+    confirmation_view_set_header(state->confirmation_view, "IR Error");
+    confirmation_view_set_text(state->confirmation_view, text ? text : "IR error");
+    confirmation_view_set_ok_callback(state->confirmation_view, app_info_ok_callback, state);
+    confirmation_view_set_cancel_callback(state->confirmation_view, app_info_ok_callback, state);
+    view_dispatcher_switch_to_view(state->view_dispatcher, 7);
+    state->current_view = 7;
+}
+
 static bool cycle_menu_item(
     CyclingMenuDef* cycling_array,
     size_t cycling_count,
@@ -1180,6 +1777,298 @@ static void error_callback(void* context) {
     state->current_view = state->previous_view;
 }
 
+static void show_result_dialog(AppState* state, const char* header, const char* text) {
+    if(!state || !state->confirmation_view) return;
+
+    state->previous_view = state->current_view;
+    confirmation_view_set_header(state->confirmation_view, header ? header : "Result");
+    confirmation_view_set_text(state->confirmation_view, text ? text : "");
+    confirmation_view_set_ok_callback(state->confirmation_view, app_info_ok_callback, state);
+    confirmation_view_set_cancel_callback(state->confirmation_view, app_info_ok_callback, state);
+    view_dispatcher_switch_to_view(state->view_dispatcher, 7);
+    state->current_view = 7;
+}
+
+static void ir_sweep_stop_callback(void* context) {
+    AppState* state = (AppState*)context;
+    if(!state) return;
+    send_uart_command("stop\n", state);
+    app_info_ok_callback(state);
+}
+
+static bool handle_ir_command_feedback_ex(
+    AppState* state,
+    const char* cmd,
+    bool send_cmd,
+    bool reset_buffers) {
+    if(!state || !state->uart_context || !cmd) return false;
+
+    bool is_send = strncmp(cmd, "ir send", 7) == 0;
+    bool is_uni_send = strncmp(cmd, "ir universals send ", 20) == 0;
+    bool is_uni_sendall = strncmp(cmd, "ir universals sendall", 21) == 0;
+    bool is_inline = strncmp(cmd, "ir inline", 9) == 0;
+
+    if(!is_send && !is_uni_send && !is_uni_sendall && !is_inline) return false;
+
+    if(reset_buffers) {
+        uart_reset_text_buffers(state->uart_context);
+    }
+    if(send_cmd) {
+        send_uart_command(cmd, state);
+    }
+
+    if(is_uni_sendall) {
+        state->previous_view = state->current_view;
+        confirmation_view_set_header(state->confirmation_view, "IR Sweep");
+        confirmation_view_set_text(state->confirmation_view, "Transmitting sweep...\nOK = Stop");
+        confirmation_view_set_ok_callback(state->confirmation_view, ir_sweep_stop_callback, state);
+        confirmation_view_set_cancel_callback(
+            state->confirmation_view, app_info_ok_callback, state);
+        view_dispatcher_switch_to_view(state->view_dispatcher, 7);
+        state->current_view = 7;
+    } else {
+        show_result_dialog(state, "IR", "Transmitting...");
+    }
+
+    char buffer[512];
+    char raw_buffer[512];
+    size_t len = 0;
+    char message[128];
+    char summary[96];
+    message[0] = '\0';
+    summary[0] = '\0';
+    raw_buffer[0] = '\0';
+    bool have_output = false;
+    bool saw_ok = false;
+
+    uint32_t start = furi_get_tick();
+    const uint32_t timeout_ms = 5000;
+
+    while(furi_get_tick() - start < timeout_ms) {
+        furi_delay_ms(100);
+
+        if(!uart_copy_text_buffer_tail(state->uart_context, buffer, sizeof(buffer), &len) ||
+           len == 0) {
+            continue;
+        }
+
+        have_output = true;
+        memcpy(raw_buffer, buffer, len < sizeof(raw_buffer) ? len : sizeof(raw_buffer) - 1);
+        raw_buffer[len < sizeof(raw_buffer) ? len : sizeof(raw_buffer) - 1] = '\0';
+
+        size_t pos = 0;
+        char* line = NULL;
+        while((line = next_line(buffer, &pos))) {
+            while(*line == ' ' || *line == '\t')
+                line++;
+
+            if(is_send || is_uni_send || is_inline) {
+                if(strncmp(line, "IR: signal ", 11) == 0) {
+                    const char* p = line + 11;
+                    char name[16] = {0};
+                    char proto[16] = {0};
+                    char addr[16] = {0};
+                    char cmd[16] = {0};
+                    char len_str[8] = {0};
+                    char freq_str[24] = {0};
+                    char duty_str[16] = {0};
+
+                    if(strstr(p, " raw ") || strstr(p, " raw len=")) {
+                        if(sscanf(
+                               line,
+                               "IR: signal raw len=%15s freq=%31s duty=%15s",
+                               len_str,
+                               freq_str,
+                               duty_str) == 3) {
+                            snprintf(
+                                summary,
+                                sizeof(summary),
+                                "Raw len=%s\nFreq: %s\nDuty: %s",
+                                len_str,
+                                freq_str,
+                                duty_str);
+                        }
+                    } else {
+                        if(strchr(p, '[')) {
+                            if(sscanf(
+                                   line,
+                                   "IR: signal [%15[^]]] protocol=%15s addr=%15s cmd=%15s",
+                                   name,
+                                   proto,
+                                   addr,
+                                   cmd) >= 4) {
+                                if(cmd[0] == '\0') {
+                                    cmd[0] = '-';
+                                    cmd[1] = '\0';
+                                }
+                                snprintf(
+                                    summary,
+                                    sizeof(summary),
+                                    "%s (%s)\nAddr: %s\nCmd: %s",
+                                    name,
+                                    proto,
+                                    addr,
+                                    cmd);
+                            }
+                        } else {
+                            if(sscanf(
+                                   line,
+                                   "IR: signal protocol=%15s addr=%15s cmd=%15s",
+                                   proto,
+                                   addr,
+                                   cmd) >= 3) {
+                                snprintf(
+                                    summary,
+                                    sizeof(summary),
+                                    "Proto: %s\nAddr: %s\nCmd: %s",
+                                    proto,
+                                    addr,
+                                    cmd);
+                            }
+                        }
+                    }
+
+                    if(saw_ok && summary[0] && !message[0]) {
+                        snprintf(message, sizeof(message), "Send OK%s%s", "\n", summary);
+                        start = timeout_ms + start;
+                        break;
+                    }
+                    continue;
+                }
+            }
+
+            if(is_inline && strstr(line, "IR inline parse failed")) {
+                strncpy(message, "Inline parse failed", sizeof(message) - 1);
+                message[sizeof(message) - 1] = '\0';
+                start = timeout_ms + start;
+                break;
+            }
+
+            if(is_send || is_uni_send || is_inline) {
+                if(strstr(line, "send OK") || strstr(line, "status: OK") ||
+                   strstr(line, "status OK") || strstr(line, "ir signal transmission complete")) {
+                    saw_ok = true;
+                    if(summary[0]) {
+                        snprintf(message, sizeof(message), "Send OK%s%s", "\n", summary);
+                        start = timeout_ms + start;
+                        break;
+                    }
+                }
+                if(strstr(line, "send FAIL") || strstr(line, "status: FAIL") ||
+                   strstr(line, "status FAIL") || strstr(line, "status: ERROR")) {
+                    strncpy(message, "Send failed", sizeof(message) - 1);
+                    message[sizeof(message) - 1] = '\0';
+                    start = timeout_ms + start;
+                    break;
+                }
+                if(strstr(line, "failed to read list")) {
+                    strncpy(message, "Failed to read list", sizeof(message) - 1);
+                    message[sizeof(message) - 1] = '\0';
+                    start = timeout_ms + start;
+                    break;
+                }
+                if(strstr(line, "no signals in")) {
+                    strncpy(message, "No signals in list", sizeof(message) - 1);
+                    message[sizeof(message) - 1] = '\0';
+                    start = timeout_ms + start;
+                    break;
+                }
+                if(strstr(line, "remote index out of range")) {
+                    strncpy(message, "Remote index out of range", sizeof(message) - 1);
+                    message[sizeof(message) - 1] = '\0';
+                    start = timeout_ms + start;
+                    break;
+                }
+                if(strstr(line, "index out of range")) {
+                    strncpy(message, "Button index out of range", sizeof(message) - 1);
+                    message[sizeof(message) - 1] = '\0';
+                    start = timeout_ms + start;
+                    break;
+                }
+                if(strstr(line, "invalid universal index")) {
+                    strncpy(message, "Invalid universal index", sizeof(message) - 1);
+                    message[sizeof(message) - 1] = '\0';
+                    start = timeout_ms + start;
+                    break;
+                }
+            } else if(is_uni_sendall) {
+                if(strstr(line, "universal sendall already running")) {
+                    strncpy(
+                        message,
+                        "Universal sweep already running; use 'stop' to cancel.",
+                        sizeof(message) - 1);
+                    message[sizeof(message) - 1] = '\0';
+                    start = timeout_ms + start;
+                    break;
+                }
+                if(strstr(line, "universal sendall started")) {
+                    strncpy(
+                        message,
+                        "Universal sending\nPress OK to stop and exit",
+                        sizeof(message) - 1);
+                    message[sizeof(message) - 1] = '\0';
+                    start = timeout_ms + start;
+                    break;
+                }
+                if(strstr(line, "no builtin signals named")) {
+                    strncpy(message, "No builtin signals with that name.", sizeof(message) - 1);
+                    message[sizeof(message) - 1] = '\0';
+                    start = timeout_ms + start;
+                    break;
+                }
+                if(strstr(line, "no signals named")) {
+                    strncpy(message, "No file signals with that name.", sizeof(message) - 1);
+                    message[sizeof(message) - 1] = '\0';
+                    start = timeout_ms + start;
+                    break;
+                }
+                if(strstr(line, "universal sendall finished")) {
+                    strncpy(message, "Universal sweep finished.", sizeof(message) - 1);
+                    message[sizeof(message) - 1] = '\0';
+                    start = timeout_ms + start;
+                    break;
+                }
+                if(strstr(line, "universal sendall stopped")) {
+                    strncpy(message, "Universal sweep stopped.", sizeof(message) - 1);
+                    message[sizeof(message) - 1] = '\0';
+                    start = timeout_ms + start;
+                    break;
+                }
+            }
+        }
+
+        if(message[0]) break;
+    }
+
+    if(!message[0] && saw_ok) {
+        strncpy(message, "Send OK", sizeof(message) - 1);
+        message[sizeof(message) - 1] = '\0';
+    }
+
+    if(message[0]) {
+        if(strncmp(message, "Send OK", 7) == 0) {
+            const char* body = message + 7;
+            if(*body == '\n') body++;
+            confirmation_view_set_header(state->confirmation_view, "Sent Successfully");
+            confirmation_view_set_text(state->confirmation_view, body);
+        } else {
+            confirmation_view_set_text(state->confirmation_view, message);
+        }
+    } else if(have_output) {
+        char display[256];
+        snprintf(display, sizeof(display), "No match.\nRaw:\n%.180s", raw_buffer);
+        confirmation_view_set_text(state->confirmation_view, display);
+    } else {
+        confirmation_view_set_text(state->confirmation_view, "No response from ESP.");
+    }
+
+    return true;
+}
+
+static bool handle_ir_command_feedback(AppState* state, const char* cmd) {
+    return handle_ir_command_feedback_ex(state, cmd, true, true);
+}
+
 // Text input callback implementation
 static void text_input_result_callback(void* context) {
     AppState* input_state = (AppState*)context;
@@ -1222,6 +2111,93 @@ static void text_input_result_callback(void* context) {
     if(input_state->input_buffer) memset(input_state->input_buffer, 0, INPUT_BUFFER_SIZE);
 }
 
+static void send_ir_file(AppState* state) {
+    uint8_t* ir_data = NULL;
+    size_t ir_size = 0;
+
+    if(!ghost_esp_ep_read_ir_file(state, &ir_data, &ir_size)) {
+        return;
+    }
+
+    if(!ir_data || ir_size == 0) {
+        if(ir_data) free(ir_data);
+        return;
+    }
+
+    if(state->ir_file_buffer) {
+        free(state->ir_file_buffer);
+    }
+
+    state->ir_file_buffer = ir_data;
+    state->ir_file_buffer_size = ir_size;
+    state->ir_universal_buttons_mode = false;
+    state->ir_file_buttons_mode = true;
+
+    if(!ir_parse_buttons_from_ir_buffer(state, state->ir_file_buffer, state->ir_file_buffer_size)) {
+        state->ir_file_buttons_mode = false;
+        ir_show_error(state, "No IR buttons found.");
+        return;
+    }
+
+    ir_show_buttons_menu(state);
+}
+
+static void ir_send_button_from_file(AppState* state, uint32_t button_index) {
+    if(!state || !state->uart_context || !state->ir_file_buffer) return;
+    if(button_index >= state->ir_signal_count) return;
+
+    IrSignalEntry* sig = &state->ir_signals[button_index];
+    size_t start = sig->index;
+    if(start >= state->ir_file_buffer_size) return;
+
+    const uint8_t* buf = state->ir_file_buffer;
+    size_t len = state->ir_file_buffer_size;
+
+    size_t pos = start;
+    size_t block_end = start;
+    bool first_line = true;
+
+    while(pos < len) {
+        size_t line_start = pos;
+        size_t line_end = line_start;
+        while(line_end < len && buf[line_end] != '\n' && buf[line_end] != '\r')
+            line_end++;
+
+        size_t t = line_start;
+        while(t < line_end && (buf[t] == ' ' || buf[t] == '\t'))
+            t++;
+
+        if(!first_line) {
+            if(t < line_end) {
+                if(buf[t] == '#') break;
+                if(line_end - t >= 5 && memcmp(buf + t, "name:", 5) == 0) break;
+            }
+        }
+
+        block_end = line_end;
+        while(block_end < len && (buf[block_end] == '\n' || buf[block_end] == '\r'))
+            block_end++;
+
+        pos = block_end;
+        first_line = false;
+    }
+
+    if(block_end <= start) return;
+
+    size_t payload_len = block_end - start;
+    const char* ir_begin_marker = "[IR/BEGIN]";
+    const char* ir_close_marker = "[IR/CLOSE]";
+
+    uart_reset_text_buffers(state->uart_context);
+    uart_send(state->uart_context, (const uint8_t*)ir_begin_marker, 10);
+    uart_send(state->uart_context, (const uint8_t*)"\n", 1);
+    uart_send(state->uart_context, buf + start, payload_len);
+    uart_send(state->uart_context, (const uint8_t*)ir_close_marker, 10);
+    uart_send(state->uart_context, (const uint8_t*)"\n", 1);
+
+    handle_ir_command_feedback_ex(state, "ir inline", false, false);
+}
+
 static void send_evil_portal_html(AppState* state) {
     uint8_t* the_html = NULL;
     size_t html_size = 0;
@@ -1242,6 +2218,7 @@ static void send_evil_portal_html(AppState* state) {
             // End HTML block
             const char* html_close_marker = "[HTML/CLOSE]";
             uart_send(state->uart_context, (const uint8_t*)html_close_marker, 12);
+            uart_send(state->uart_context, (const uint8_t*)"\n", 1);
 
             free(the_html);
         }
@@ -1249,9 +2226,12 @@ static void send_evil_portal_html(AppState* state) {
 }
 
 static void execute_menu_command(AppState* state, const MenuCommand* command) {
-    // Special handler for setting the evil portal HTML
     if(strcmp(command->command, "set_evil_portal_html") == 0) {
         send_evil_portal_html(state);
+        return;
+    }
+    if(strcmp(command->command, "send_ir_file") == 0) {
+        send_ir_file(state);
         return;
     }
     if(!uart_is_esp_connected(state->uart_context)) {
@@ -1268,6 +2248,13 @@ static void execute_menu_command(AppState* state, const MenuCommand* command) {
         view_dispatcher_switch_to_view(state->view_dispatcher, 7);
         state->current_view = 7;
         return;
+    }
+
+    if(!command->needs_input && !command->needs_confirmation && !command->capture_prefix &&
+       !command->file_ext && !command->folder) {
+        if(handle_ir_command_feedback(state, command->command)) {
+            return;
+        }
     }
 
     if(command->needs_input && strcmp(command->command, "connect") == 0) {
@@ -1597,6 +2584,16 @@ void show_wifi_settings_menu(AppState* state) {
         state->wifi_settings_menu, 0, rgbmode_commands[current_rgb_index].label);
 }
 
+void show_status_idle_menu(AppState* state) {
+    show_menu(
+        state,
+        status_idle_commands,
+        COUNT_OF(status_idle_commands),
+        "Select an animation",
+        state->status_idle_menu,
+        40);
+}
+
 void show_ble_scanning_menu(AppState* state) {
     show_menu(
         state,
@@ -1663,6 +2660,10 @@ void show_ble_menu(AppState* state) {
 void show_gps_menu(AppState* state) {
     state->came_from_settings = false;
     show_menu(state, gps_commands, COUNT_OF(gps_commands), "GPS Commands:", state->gps_menu, 3);
+}
+
+void show_ir_menu(AppState* state) {
+    show_menu(state, ir_commands, COUNT_OF(ir_commands), "IR Commands:", state->ir_menu, 30);
 }
 
 // Menu command handlers
@@ -1743,31 +2744,61 @@ void handle_gps_menu(AppState* state, uint32_t index) {
     }
 }
 
+void handle_ir_menu(AppState* state, uint32_t index) {
+    if(index >= COUNT_OF(ir_commands)) return;
+
+    state->last_ir_index = index;
+
+    switch(index) {
+    case 0:
+        if(ir_query_and_parse_list(state)) {
+            ir_show_remotes_menu(state);
+        } else {
+            ir_show_error(state, "No IR remotes found.");
+        }
+        break;
+    case 1:
+        if(ir_query_and_parse_universals(state)) {
+            ir_show_universals_menu(state);
+        } else {
+            ir_show_error(state, "No universal signals found.");
+        }
+        break;
+    default:
+        execute_menu_command(state, &ir_commands[index]);
+        break;
+    }
+}
+
 void submenu_callback(void* context, uint32_t index) {
     AppState* state = (AppState*)context;
     state->current_index = index; // Track current selection
 
     switch(state->current_view) {
-    case 0: // Main Menu
+    case 0:
         switch(index) {
         case 0:
             show_wifi_menu(state);
+            state->last_wifi_category_index = 0;
             break;
         case 1:
             show_ble_menu(state);
+            state->last_ble_category_index = 0;
             break;
         case 2:
             show_gps_menu(state);
             break;
-        case 3: // Settings button
+        case 3:
+            show_ir_menu(state);
+            break;
+        case 4:
             view_dispatcher_switch_to_view(state->view_dispatcher, 8);
             state->current_view = 8;
-            state->previous_view = 8;
             break;
         }
         break;
-    case 1: // WiFi Categories
-        // Save selected category
+    case 1:
+        // Save which WiFi category was selected
         state->last_wifi_category_index = index;
         switch(index) {
         case 0:
@@ -1787,8 +2818,8 @@ void submenu_callback(void* context, uint32_t index) {
             break;
         }
         break;
-    case 2: // BLE Categories
-        // Save selected category
+    case 2:
+        // Save which BLE category was selected
         state->last_ble_category_index = index;
         switch(index) {
         case 0:
@@ -1812,6 +2843,66 @@ void submenu_callback(void* context, uint32_t index) {
     case 21:
     case 22:
         handle_ble_menu(state, index);
+        break;
+    case 31:
+        if(index < state->ir_remote_count) {
+            state->ir_universal_buttons_mode = false;
+            state->ir_file_buttons_mode = false;
+            state->ir_current_remote_index = state->ir_remotes[index].index;
+            if(ir_query_and_parse_show(state, state->ir_current_remote_index)) {
+                ir_show_buttons_menu(state);
+            } else {
+                ir_show_error(state, "No IR buttons found.");
+            }
+        }
+        break;
+    case 32:
+        if(index < state->ir_signal_count) {
+            if(state->ir_file_buttons_mode) {
+                ir_send_button_from_file(state, index);
+            } else {
+                IrSignalEntry* sig = &state->ir_signals[index];
+                char cmd[128];
+                if(state->ir_universal_buttons_mode) {
+                    snprintf(
+                        cmd,
+                        sizeof(cmd),
+                        "ir universals sendall %s %s\n",
+                        state->ir_current_universal_file,
+                        sig->name);
+                } else {
+                    snprintf(
+                        cmd,
+                        sizeof(cmd),
+                        "ir send %lu %lu\n",
+                        (unsigned long)state->ir_current_remote_index,
+                        (unsigned long)sig->index);
+                }
+                MenuCommand dyn = {0};
+                dyn.command = cmd;
+                execute_menu_command(state, &dyn);
+            }
+        }
+        break;
+    case 33:
+        if(index < state->ir_universal_count) {
+            IrUniversalEntry* uni = &state->ir_universals[index];
+            strncpy(
+                state->ir_current_universal_file,
+                uni->name,
+                sizeof(state->ir_current_universal_file) - 1);
+            state->ir_current_universal_file[sizeof(state->ir_current_universal_file) - 1] = '\0';
+            state->ir_universal_buttons_mode = true;
+            state->ir_file_buttons_mode = false;
+            if(ir_query_and_parse_universal_buttons(state, state->ir_current_universal_file)) {
+                ir_show_buttons_menu(state);
+            } else {
+                ir_show_error(state, "No universal buttons found.");
+            }
+        }
+        break;
+    case 30:
+        handle_ir_menu(state, index);
         break;
     }
 }
@@ -1947,6 +3038,19 @@ bool back_event_callback(void* context) {
                 show_gps_menu(state);
                 submenu_set_selected_item(state->gps_menu, state->last_gps_index);
                 break;
+            case 30:
+                show_ir_menu(state);
+                submenu_set_selected_item(state->ir_menu, state->last_ir_index);
+                break;
+            case 31:
+                ir_show_remotes_menu(state);
+                break;
+            case 32:
+                ir_show_buttons_menu(state);
+                break;
+            case 33:
+                ir_show_universals_menu(state);
+                break;
             default:
                 show_main_menu(state);
                 break;
@@ -1970,6 +3074,17 @@ bool back_event_callback(void* context) {
         show_main_menu(state);
         state->current_view = 0;
     }
+    // Handle IR submenus (31-33)
+    else if(current_view >= 31 && current_view <= 33) {
+        show_ir_menu(state);
+        submenu_set_selected_item(state->ir_menu, state->last_ir_index);
+        state->current_view = 30;
+    }
+    // Handle IR menu (view 30)
+    else if(current_view == 30) {
+        show_main_menu(state);
+        state->current_view = 0;
+    }
     // Handle WiFi sub-category menus
     else if(current_view >= 10 && current_view <= 14) {
         if(state->came_from_settings) {
@@ -1981,6 +3096,11 @@ bool back_event_callback(void* context) {
             submenu_set_selected_item(state->wifi_menu, state->last_wifi_category_index);
             state->current_view = 1;
         }
+    }
+    // Handle Status Idle submenu (view 40)
+    else if(current_view == 40) {
+        view_dispatcher_switch_to_view(state->view_dispatcher, 8);
+        state->current_view = 8;
     }
     // Handle BLE sub-category menus
     else if(current_view >= 20 && current_view <= 22) {
@@ -2046,6 +3166,10 @@ bool back_event_callback(void* context) {
             show_gps_menu(state);
             submenu_set_selected_item(state->gps_menu, state->last_gps_index);
             break;
+        case 30:
+            show_ir_menu(state);
+            submenu_set_selected_item(state->ir_menu, state->last_ir_index);
+            break;
         default:
             show_main_menu(state);
             break;
@@ -2068,7 +3192,8 @@ void show_main_menu(AppState* state) {
     main_menu_add_item(state->main_menu, "WiFi", 0, submenu_callback, state);
     main_menu_add_item(state->main_menu, "BLE", 1, submenu_callback, state);
     main_menu_add_item(state->main_menu, "GPS", 2, submenu_callback, state);
-    main_menu_add_item(state->main_menu, " SET", 3, submenu_callback, state);
+    main_menu_add_item(state->main_menu, "  IR", 3, submenu_callback, state);
+    main_menu_add_item(state->main_menu, " SET", 4, submenu_callback, state);
 
     // Set up help callback
     main_menu_set_help_callback(state->main_menu, show_menu_help, state);
@@ -2076,6 +3201,56 @@ void show_main_menu(AppState* state) {
     state->came_from_settings = false;
     view_dispatcher_switch_to_view(state->view_dispatcher, 0);
     state->current_view = 0;
+}
+
+bool text_view_input_handler(InputEvent* event, void* context) {
+    AppState* state = (AppState*)context;
+    if(!state || !event) return false;
+
+    bool consumed = false;
+
+    if(event->type == InputTypeShort && event->key == InputKeyOk) {
+        send_uart_command(wifi_stop_command.command, state);
+        consumed = true;
+    } else if(event->type == InputTypeShort && event->key == InputKeyRight) {
+        state->text_box_user_scrolled = false;
+        update_text_box_view(state);
+        consumed = true;
+    } else {
+        if((event->type == InputTypeShort || event->type == InputTypeRepeat) &&
+           (event->key == InputKeyUp || event->key == InputKeyDown)) {
+            state->text_box_user_scrolled = true;
+
+            if(!state->text_box_pause_hint_shown) {
+                state->text_box_pause_hint_shown = true;
+                show_result_dialog(
+                    state,
+                    "Tip",
+                    "Scroll paused.\nPress Right arrow to resume.\nPress OK to send stop.");
+            }
+        }
+
+        if(state->text_box_original_input && state->text_box_original_context) {
+            consumed = state->text_box_original_input(event, state->text_box_original_context);
+        }
+    }
+
+    return consumed;
+}
+
+void text_view_attach_input_handler(AppState* state) {
+    if(!state || !state->text_box) return;
+
+    View* text_view = text_box_get_view(state->text_box);
+    if(!text_view) return;
+
+    state->text_box_original_input = text_view->input_callback;
+    state->text_box_original_context = text_view->context;
+
+    view_set_context(text_view, state);
+    view_set_input_callback(text_view, text_view_input_handler);
+
+    state->text_box_user_scrolled = false;
 }
 
 static bool menu_input_handler(InputEvent* event, void* context) {
@@ -2118,6 +3293,11 @@ static bool menu_input_handler(InputEvent* event, void* context) {
         commands = gps_commands;
         commands_count = COUNT_OF(gps_commands);
         break;
+    case 30:
+        current_menu = state->ir_menu;
+        commands = ir_commands;
+        commands_count = COUNT_OF(ir_commands);
+        break;
     case 10:
         current_menu = state->wifi_scanning_menu;
         commands = wifi_scanning_commands;
@@ -2142,6 +3322,11 @@ static bool menu_input_handler(InputEvent* event, void* context) {
         current_menu = state->wifi_settings_menu;
         commands = wifi_settings_commands;
         commands_count = COUNT_OF(wifi_settings_commands);
+        break;
+    case 40:
+        current_menu = state->status_idle_menu;
+        commands = status_idle_commands;
+        commands_count = COUNT_OF(status_idle_commands);
         break;
     default:
         return false;
@@ -2176,49 +3361,57 @@ static bool menu_input_handler(InputEvent* event, void* context) {
 
         case InputKeyOk:
             if(current_index < commands_count) {
-                state->current_index = current_index;
-                // Save last selection for proper restore on exit
-                if(state->current_view >= 10 && state->current_view <= 14) {
-                    switch(state->current_view) {
-                    case 10:
-                        state->last_wifi_scanning_index = current_index;
-                        break;
-                    case 11:
-                        state->last_wifi_capture_index = current_index;
-                        break;
-                    case 12:
-                        state->last_wifi_attack_index = current_index;
-                        break;
-                    case 13:
-                        state->last_wifi_network_index = current_index;
-                        break;
-                    case 14:
-                        state->last_wifi_settings_index = current_index;
-                        break;
+                if(state->current_view == 30) {
+                    submenu_callback(state, current_index);
+                } else {
+                    state->current_index = current_index;
+                    // Save last selection for proper restore on exit
+                    if(state->current_view >= 10 && state->current_view <= 14) {
+                        switch(state->current_view) {
+                        case 10:
+                            state->last_wifi_scanning_index = current_index;
+                            break;
+                        case 11:
+                            state->last_wifi_capture_index = current_index;
+                            break;
+                        case 12:
+                            state->last_wifi_attack_index = current_index;
+                            break;
+                        case 13:
+                            state->last_wifi_network_index = current_index;
+                            break;
+                        case 14:
+                            state->last_wifi_settings_index = current_index;
+                            break;
+                        }
+                    } else if(state->current_view >= 20 && state->current_view <= 22) {
+                        switch(state->current_view) {
+                        case 20:
+                            state->last_ble_scanning_index = current_index;
+                            break;
+                        case 21:
+                            state->last_ble_capture_index = current_index;
+                            break;
+                        case 22:
+                            state->last_ble_attack_index = current_index;
+                            break;
+                        }
+                    } else if(state->current_view == 3) {
+                        state->last_gps_index = current_index;
                     }
-                } else if(state->current_view >= 20 && state->current_view <= 22) {
-                    switch(state->current_view) {
-                    case 20:
-                        state->last_ble_scanning_index = current_index;
-                        break;
-                    case 21:
-                        state->last_ble_capture_index = current_index;
-                        break;
-                    case 22:
-                        state->last_ble_attack_index = current_index;
-                        break;
-                    }
-                } else if(state->current_view == 3) {
-                    state->last_gps_index = current_index;
+                    execute_menu_command(state, &commands[current_index]);
                 }
-                execute_menu_command(state, &commands[current_index]);
                 consumed = true;
             }
             break;
 
         case InputKeyBack:
-            // Back from WiFi subcategory menus returns to WiFi categories
-            if(state->current_view >= 10 && state->current_view <= 14) {
+            if(state->current_view == 40) {
+                view_dispatcher_switch_to_view(state->view_dispatcher, 8);
+                state->current_view = 8;
+            }
+            // Back from WiFi subcategory menus returns to WiFi categories (or settings)
+            else if(state->current_view >= 10 && state->current_view <= 14) {
                 if(state->came_from_settings) {
                     // came from settings hardware menu; return to settings actions
                     view_dispatcher_switch_to_view(state->view_dispatcher, 8);
@@ -2234,7 +3427,9 @@ static bool menu_input_handler(InputEvent* event, void* context) {
                 show_ble_menu(state);
                 submenu_set_selected_item(state->ble_menu, state->last_ble_category_index);
                 state->current_view = 2;
-            } else if(state->current_view >= 1 && state->current_view <= 3) {
+            } else if(
+                (state->current_view >= 1 && state->current_view <= 3) ||
+                state->current_view == 30) {
                 // Back from a top-level menu returns to main menu
                 show_main_menu(state);
                 state->current_view = 0;

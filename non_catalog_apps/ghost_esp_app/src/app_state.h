@@ -24,6 +24,23 @@ typedef struct {
     bool add_prefixes; // Whether to add [BLE], [WIFI] etc prefixes
 } FilterConfig;
 
+typedef struct {
+    uint32_t index;
+    char name[64];
+} IrRemoteEntry;
+
+typedef struct {
+    uint32_t index;
+    char name[32];
+    char proto[16];
+} IrSignalEntry;
+
+typedef struct {
+    uint32_t index;
+    char name[32];
+    char proto[16];
+} IrUniversalEntry;
+
 struct AppState {
     // Views
     ViewDispatcher* view_dispatcher;
@@ -35,11 +52,16 @@ struct AppState {
     Submenu* wifi_attack_menu;
     Submenu* wifi_network_menu;
     Submenu* wifi_settings_menu;
+    Submenu* status_idle_menu;
     Submenu* ble_menu;
     Submenu* ble_scanning_menu;
     Submenu* ble_capture_menu;
     Submenu* ble_attack_menu;
     Submenu* gps_menu;
+    Submenu* ir_menu;
+    Submenu* ir_remotes_menu;
+    Submenu* ir_buttons_menu;
+    Submenu* ir_universals_menu;
     VariableItemList* settings_menu;
     TextBox* text_box;
     TextInput* text_input;
@@ -58,6 +80,10 @@ struct AppState {
     uint32_t current_index;
     uint8_t current_view;
     uint8_t previous_view;
+    bool text_box_user_scrolled;
+    bool text_box_pause_hint_shown;
+    ViewInputCallback text_box_original_input;
+    void* text_box_original_context;
     uint32_t last_wifi_category_index;
     uint32_t last_wifi_scanning_index;
     uint32_t last_wifi_capture_index;
@@ -69,6 +95,19 @@ struct AppState {
     uint32_t last_ble_capture_index;
     uint32_t last_ble_attack_index;
     uint32_t last_gps_index;
+    uint32_t last_ir_index;
+    uint32_t ir_current_remote_index;
+    IrRemoteEntry ir_remotes[32];
+    size_t ir_remote_count;
+    IrSignalEntry ir_signals[64];
+    size_t ir_signal_count;
+    IrUniversalEntry ir_universals[64];
+    size_t ir_universal_count;
+    char ir_current_universal_file[64];
+    bool ir_universal_buttons_mode;
+    bool ir_file_buttons_mode;
+    uint8_t* ir_file_buffer;
+    size_t ir_file_buffer_size;
     char* input_buffer;
     const char* uart_command;
     char* textBoxBuffer;

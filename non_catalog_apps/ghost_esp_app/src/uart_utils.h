@@ -104,6 +104,9 @@ bool uart_receive_data(
 bool uart_is_esp_connected(UartContext* uart);
 void uart_storage_reset_logs(UartStorageContext* ctx);
 void uart_storage_safe_cleanup(UartStorageContext* ctx);
+void uart_reset_text_buffers(UartContext* uart);
+bool uart_copy_text_buffer(UartContext* uart, char* out, size_t out_size, size_t* out_len);
+bool uart_copy_text_buffer_tail(UartContext* uart, char* out, size_t out_size, size_t* out_len);
 
 #endif
 

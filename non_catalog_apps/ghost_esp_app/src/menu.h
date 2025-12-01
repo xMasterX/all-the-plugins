@@ -31,6 +31,7 @@ void show_wifi_capture_menu(AppState* state);
 void show_wifi_attack_menu(AppState* state);
 void show_wifi_network_menu(AppState* state);
 void show_wifi_settings_menu(AppState* state);
+void show_status_idle_menu(AppState* state);
 
 void show_ble_menu(AppState* state);
 void show_ble_scanning_menu(AppState* state);
@@ -38,5 +39,8 @@ void show_ble_capture_menu(AppState* state);
 void show_ble_attack_menu(AppState* state);
 
 void show_gps_menu(AppState* state);
+
+bool text_view_input_handler(InputEvent* event, void* context);
+void text_view_attach_input_handler(AppState* state);
 
 // 6675636B796F7564656B69

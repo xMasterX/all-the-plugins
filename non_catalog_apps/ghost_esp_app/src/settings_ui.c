@@ -2,6 +2,7 @@
 #include "settings_ui_types.h"
 #include "settings_def.h"
 #include "app_state.h"
+#include "menu.h"
 #include "sequential_file.h"
 #include "uart_utils.h"
 #include <furi.h>
@@ -410,12 +411,21 @@ static void settings_action_callback(void* context, uint32_t index) {
 }
 
 // submenu callback to open wifi hardware settings menu from settings actions
-#define WIFI_SETTINGS_MENU_ID 200
+#define WIFI_SETTINGS_MENU_ID   200
+#define STATUS_IDLE_MENU_ID     201
 static void wifi_settings_menu_callback(void* context, uint32_t index) {
     UNUSED(index);
     AppState* state = (AppState*)context;
     if(!state) return;
     show_wifi_settings_menu(state);
+    state->came_from_settings = true;
+}
+
+static void status_idle_menu_callback(void* context, uint32_t index) {
+    UNUSED(index);
+    AppState* state = (AppState*)context;
+    if(!state) return;
+    show_status_idle_menu(state);
     state->came_from_settings = true;
 }
 
@@ -437,6 +447,14 @@ void settings_setup_gui(VariableItemList* list, SettingsUIContext* context) {
         "Hardware  >",
         WIFI_SETTINGS_MENU_ID,
         wifi_settings_menu_callback,
+        app_state);
+
+    // add status idle animation submenu item
+    submenu_add_item(
+        app_state->settings_actions_menu,
+        "Status display animation  >",
+        STATUS_IDLE_MENU_ID,
+        status_idle_menu_callback,
         app_state);
 
     // Iterate over all settings
@@ -559,7 +577,7 @@ bool settings_custom_event_callback(void* context, uint32_t event_id) {
                                 "Built with <3\n"
                                 "github.com/jaylikesbunda/ghost_esp\n\n";
 
-        confirmation_view_set_header(app_state->confirmation_view, "Ghost ESP v1.5.1");
+        confirmation_view_set_header(app_state->confirmation_view, "Ghost ESP v1.6");
         confirmation_view_set_text(app_state->confirmation_view, info_text);
 
         // Save current view before switching

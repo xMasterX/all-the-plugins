@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.0
+
+- Added IR menu
+- Added option in settings to change status display animation
+- Text view has been reworked and scrolling will now pause output, you can resume by pressing right arrow and press the center button to send a stop command to the ESP32
+
 ## v1.5.1
 
 - Fixed issue where the command label could be wrong when exiting a command

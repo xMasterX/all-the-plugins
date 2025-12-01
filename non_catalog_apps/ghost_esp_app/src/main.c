@@ -68,6 +68,7 @@ int32_t ghost_esp_app(void* p) {
     state->last_ble_capture_index = 0;
     state->last_ble_attack_index = 0;
     state->last_gps_index = 0;
+    state->last_ir_index = 0;
     state->current_index = 0;
     state->current_view = 0;
     state->previous_view = 0;
@@ -104,11 +105,16 @@ int32_t ghost_esp_app(void* p) {
     state->wifi_attack_menu = submenu_alloc();
     state->wifi_network_menu = submenu_alloc();
     state->wifi_settings_menu = submenu_alloc();
+    state->status_idle_menu = submenu_alloc();
     state->ble_menu = submenu_alloc();
     state->ble_scanning_menu = submenu_alloc();
     state->ble_capture_menu = submenu_alloc();
     state->ble_attack_menu = submenu_alloc();
     state->gps_menu = submenu_alloc();
+    state->ir_menu = submenu_alloc();
+    state->ir_remotes_menu = submenu_alloc();
+    state->ir_buttons_menu = submenu_alloc();
+    state->ir_universals_menu = submenu_alloc();
     state->text_box = text_box_alloc();
     state->settings_menu = variable_item_list_alloc();
     state->text_input = text_input_alloc();
@@ -120,6 +126,10 @@ int32_t ghost_esp_app(void* p) {
     if(state->wifi_menu) submenu_set_header(state->wifi_menu, "Select a Wifi Utility");
     if(state->ble_menu) submenu_set_header(state->ble_menu, "Select a Bluetooth Utility");
     if(state->gps_menu) submenu_set_header(state->gps_menu, "Select a GPS Utility");
+    if(state->ir_menu) submenu_set_header(state->ir_menu, "Select an IR Utility");
+    if(state->ir_remotes_menu) submenu_set_header(state->ir_remotes_menu, "IR Remotes");
+    if(state->ir_buttons_menu) submenu_set_header(state->ir_buttons_menu, "IR Buttons");
+    if(state->ir_universals_menu) submenu_set_header(state->ir_universals_menu, "IR Universals");
     if(state->text_input) text_input_set_header_text(state->text_input, "Enter Your Text");
     if(state->settings_actions_menu) submenu_set_header(state->settings_actions_menu, "Settings");
 
@@ -203,6 +213,9 @@ int32_t ghost_esp_app(void* p) {
         if(state->wifi_settings_menu)
             view_dispatcher_add_view(
                 state->view_dispatcher, 14, submenu_get_view(state->wifi_settings_menu));
+        if(state->status_idle_menu)
+            view_dispatcher_add_view(
+                state->view_dispatcher, 40, submenu_get_view(state->status_idle_menu));
         if(state->ble_scanning_menu)
             view_dispatcher_add_view(
                 state->view_dispatcher, 20, submenu_get_view(state->ble_scanning_menu));
@@ -212,6 +225,17 @@ int32_t ghost_esp_app(void* p) {
         if(state->ble_attack_menu)
             view_dispatcher_add_view(
                 state->view_dispatcher, 22, submenu_get_view(state->ble_attack_menu));
+        if(state->ir_menu)
+            view_dispatcher_add_view(state->view_dispatcher, 30, submenu_get_view(state->ir_menu));
+        if(state->ir_remotes_menu)
+            view_dispatcher_add_view(
+                state->view_dispatcher, 31, submenu_get_view(state->ir_remotes_menu));
+        if(state->ir_buttons_menu)
+            view_dispatcher_add_view(
+                state->view_dispatcher, 32, submenu_get_view(state->ir_buttons_menu));
+        if(state->ir_universals_menu)
+            view_dispatcher_add_view(
+                state->view_dispatcher, 33, submenu_get_view(state->ir_universals_menu));
 
         view_dispatcher_set_custom_event_callback(
             state->view_dispatcher, settings_custom_event_callback);
@@ -221,6 +245,8 @@ int32_t ghost_esp_app(void* p) {
         FURI_LOG_E("Main", "Text box allocation failed!");
         return -1; // Don't try to fuck with broken UI
     }
+
+    text_view_attach_input_handler(state);
 
     // Show main menu immediately
     show_main_menu(state);
@@ -283,9 +309,14 @@ int32_t ghost_esp_app(void* p) {
         if(state->wifi_attack_menu) view_dispatcher_remove_view(state->view_dispatcher, 12);
         if(state->wifi_network_menu) view_dispatcher_remove_view(state->view_dispatcher, 13);
         if(state->wifi_settings_menu) view_dispatcher_remove_view(state->view_dispatcher, 14);
+        if(state->status_idle_menu) view_dispatcher_remove_view(state->view_dispatcher, 40);
         if(state->ble_scanning_menu) view_dispatcher_remove_view(state->view_dispatcher, 20);
         if(state->ble_capture_menu) view_dispatcher_remove_view(state->view_dispatcher, 21);
         if(state->ble_attack_menu) view_dispatcher_remove_view(state->view_dispatcher, 22);
+        if(state->ir_menu) view_dispatcher_remove_view(state->view_dispatcher, 30);
+        if(state->ir_remotes_menu) view_dispatcher_remove_view(state->view_dispatcher, 31);
+        if(state->ir_buttons_menu) view_dispatcher_remove_view(state->view_dispatcher, 32);
+        if(state->ir_universals_menu) view_dispatcher_remove_view(state->view_dispatcher, 33);
         FURI_LOG_I("Ghost_ESP", "Views removed.");
         view_dispatcher_free(state->view_dispatcher);
         state->view_dispatcher = NULL;
@@ -310,11 +341,16 @@ int32_t ghost_esp_app(void* p) {
     if(state && state->wifi_attack_menu) submenu_free(state->wifi_attack_menu);
     if(state && state->wifi_network_menu) submenu_free(state->wifi_network_menu);
     if(state && state->wifi_settings_menu) submenu_free(state->wifi_settings_menu);
+    if(state && state->status_idle_menu) submenu_free(state->status_idle_menu);
     if(state && state->ble_menu) submenu_free(state->ble_menu);
     if(state && state->ble_scanning_menu) submenu_free(state->ble_scanning_menu);
     if(state && state->ble_capture_menu) submenu_free(state->ble_capture_menu);
     if(state && state->ble_attack_menu) submenu_free(state->ble_attack_menu);
     if(state && state->gps_menu) submenu_free(state->gps_menu);
+    if(state && state->ir_menu) submenu_free(state->ir_menu);
+    if(state && state->ir_remotes_menu) submenu_free(state->ir_remotes_menu);
+    if(state && state->ir_buttons_menu) submenu_free(state->ir_buttons_menu);
+    if(state && state->ir_universals_menu) submenu_free(state->ir_universals_menu);
     if(state && state->main_menu) main_menu_free(state->main_menu);
     FURI_LOG_I("Ghost_ESP", "UI components freed.");
     // Close GUI record after all GUI-related components are freed
@@ -326,6 +362,7 @@ int32_t ghost_esp_app(void* p) {
     if(state && state->input_buffer) free(state->input_buffer);
     if(state && state->textBoxBuffer) free(state->textBoxBuffer);
     if(state && state->filter_config) free(state->filter_config);
+    if(state && state->ir_file_buffer) free(state->ir_file_buffer);
     FURI_LOG_I("Ghost_ESP", "Buffers freed.");
 
     // Final state cleanup
