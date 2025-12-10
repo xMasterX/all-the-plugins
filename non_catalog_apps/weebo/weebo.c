@@ -76,6 +76,7 @@ bool weebo_load_figure(Weebo* weebo, FuriString* path, bool show_dialog) {
         }
 
         if(!mf_ultralight_is_all_data_read(data)) {
+            //TODO: check is the missing data is the PWD and/or PACK and fill that in
             furi_string_printf(reason, "Incomplete data");
             break;
         }

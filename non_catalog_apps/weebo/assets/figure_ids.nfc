@@ -14,13 +14,17 @@ Version: 1
 000a: Toad
 0013: Daisy
 0014: Waluigi
+0015: Goomba
 0017: Boo
+0023: Koopa Troopa
 0024: Piranha Plant
 0080: Poochy
+00c0: King K. Rool
 0100: Link
 0101: Zelda
 0102: Ganondorf
 0103: Midna & Wolf Link
+0105: Daruk
 0106: Urbosa
 0107: Mipha
 0108: Revali
@@ -39,7 +43,7 @@ Version: 1
 0186: Tommy
 0187: Sable
 0188: Mabel
-0189: Labelle
+0189: Label
 018a: Reese
 018b: Cyrus
 018c: Digby
@@ -54,7 +58,7 @@ Version: 1
 0195: Porter
 0196: Kapp'n
 0197: Leilani
-0198: Lelia
+0198: Leila
 0199: Grams
 019a: Chip
 019b: Nat
@@ -67,8 +71,8 @@ Version: 1
 01a2: Gulliver
 01a3: Joan
 01a4: Pascal
-01a5: Katarina
-01a6: Sahara
+01a5: Katrina
+01a6: Saharah
 01a7: Wendell
 01a8: Redd
 01a9: Gracie
@@ -79,7 +83,7 @@ Version: 1
 01ae: Franklin
 01af: Jingle
 01b0: Tortimer
-01b1: Dr. Shrunk
+01b1: Shrunk
 01b3: Blanca
 01b4: Leif
 01b5: Luna
@@ -114,7 +118,7 @@ Version: 1
 0232: Piper
 0233: Admiral
 0235: Midge
-0238: Jakey
+0238: Jacob
 023c: Lucha
 023d: Jacques
 023e: Peck
@@ -292,7 +296,7 @@ Version: 1
 03a5: Victoria
 03a6: Savannah
 03a7: Elmer
-03a8: Rosco
+03a8: Roscoe
 03a9: Winnie
 03aa: Ed
 03ab: Cleo
@@ -425,7 +429,7 @@ Version: 1
 04b4: Spike
 04b6: Hornsby
 04b9: Merengue
-04ba: Renée
+04ba: Renee
 04c5: Vesta
 04c6: Baabara
 04c7: Eunice
@@ -478,9 +482,14 @@ Version: 1
 0581: Falco
 0584: Wolf
 05c0: Samus
+05c1: Metroid
 05c2: Ridley
+05c3: Dark Samus
+05c4: E.M.M.I.
+05c5: Sylux
 0600: Captain Falcon
 0640: Olimar
+0642: Pikmin
 06c0: Little Mac
 0700: Wii Fit Trainer
 0740: Pit
@@ -489,12 +498,73 @@ Version: 1
 0780: Mr. G&W
 0781: R.O.B., Famicom
 0782: Duck Hunt
-07c0: Mii Figure
+078f: Ice Climbers
+07c0: Mii
 0800: Inkling
 0801: Callie
 0802: Marie
+0803: Pearl
+0804: Marina
+0805: Octoling
+0806: Smallfry
+0807: Shiver
+0808: Frye
+0809: Big Man
+09c0: Mario
+09c1: Luigi
+09c2: Peach
+09c3: Daisy
+09c4: Yoshi
+09c5: Wario
+09c6: Waluigi
+09c7: Donkey Kong
+09c8: Diddy Kong
+09c9: Bowser
+09ca: Bowser Jr.
+09cb: Boo
+09cc: Baby Mario
+09cd: Baby Luigi
+09ce: Birdo
+09cf: Rosalina
+09d0: Metal Mario
+09d1: Pink Gold Peach
+0a00: Orville
+0a01: Wilbur
+0a02: C.J.
+0a03: Flick
+0a04: Daisy Mae
+0a05: Harvey
+0a06: Wisp
+0a07: Niko
+0a08: Wardell
+0a09: Sherb
+0a0a: Megan
+0a0b: Dom
+0a0c: Audie
+0a0d: Cyd
+0a0e: Judy
+0a0f: Raymond
+0a10: Reneigh
+0a11: Sasha
+0a12: Ione
+0a13: Tiansheng
+0a14: Shino
+0a15: Marlo
+0a16: Petri
+0a17: Cephalobot
+0a18: Quinn
+0a19: Chabwick
+0a1a: Zoe
+0a1b: Ace
+0a1c: Rio
+0a1d: Frett
+0a1e: Azalea
+0a1f: Roswell
+0a20: Faith
 0a40: Min Min
+1902: Ivysaur
 1906: Charizard
+1907: Squirtle
 1919: Pikachu
 1927: Jigglypuff
 1996: Mewtwo
@@ -503,47 +573,107 @@ Version: 1
 1b92: Greninja
 1bd7: Incineroar
 1d00: Shadow Mewtwo
+1d01: Detective Pikachu
+1d40: Pokemon Trainer
 1f00: Kirby
 1f01: Meta Knight
 1f02: King Dedede
 1f03: Waddle Dee
+1f40: Qbby
 2100: Marth
 2101: Ike
 2102: Lucina
 2103: Robin
 2104: Roy
 2105: Corrin
+2106: Alm
+2107: Celica
 2108: Chrom
+2109: Tiki
 210b: Byleth
 2240: Shulk
+2241: Pyra
 2242: Mythra
 2243: Noah
 2244: Mio
 2280: Ness
 2281: Lucas
-22c0: Chibi Robo
+22c0: Chibi-Robo
 3200: Sonic
 3240: Bayonetta
-3340: Pac-man
+3340: PAC-MAN
+3380: Solaire of Astora
 33c0: Kazuya
-3480: Megaman
+3480: Mega Man
 34c0: Ryu
 34c1: Ken
-3500: Male Hunter
+34c2: Luke
+34c3: Jamie
+34c4: Kimberly
+34c5: Chun-Li
+34c6: Guile
+34c7: Juri
+34c8: Blanka
+34c9: Dhalsim
+34ca: E. Honda
+34cb: Dee Jay
+34cc: Manon
+34cd: Marisa
+34ce: JP
+34cf: Zangief
+34d0: Lily
+34d1: Cammy
+34d2: Rashid
+34d3: A.K.I
+34d4: Ed
+34d5: Akuma
+34d6: M. Bison
+34d8: Elena
+34d9: Sagat
+34da: C. Viper
+34db: Alex
+34dc: Ingrid
+3500: One-Eyed Rathalos
 3501: Nabiru
-3502: Rathian/Cheval
-3503: Barioth/Ayuria
-3504: Qurupeco/Dan
+3502: Rathian
+3503: Barioth
+3504: Qurupeco
+3505: Razewing Ratha
+3506: Ena
+3507: Tsukino
+3508: Magnamalo
+3509: Palico
+350a: Palamute
+350b: Malzeno
 35c0: Shovel Knight
+35c1: Plague Knight
+35c2: Specter Knight
+35c3: King Knight
 3600: Cloud Strife
 3601: Sephiroth
 3640: Hero
 3740: Super Mario Cereal
+3780: Snake
+37c0: Simon
 37c1: Richter
-3840: Cloud Strife
-3980: Bayonetta
+3800: Pawapuro
+3801: Ikari
+3802: Yabe
+3803: Hayakawa
+3804: Ganda
+3805: Daijobu
+3840: Yuga Ohdo
+3841: Tatsuhisa "Luke" Kamijo
+3842: Gakuto Sogetsu
+3843: Romin Kirishima
+3844: Roa Kirishima
+3845: Nail Saionji
+3846: Asana Mutsuba
+38c0: Loot Goblin
 3a00: Joker
-3b40: Banjo Kazooie
+3b40: Banjo
 3c80: Terry
+3c81: Mai
 3dc0: Steve
 3dc1: Alex
+3f00: Sora
