@@ -29,18 +29,19 @@ typedef enum {
     MARKER_STATE_CLOSE
 } MarkerState;
 
-static TextBufferManager* text_buffer_alloc(void) {
+static TextBufferManager* text_buffer_alloc(char* view_buffer) {
+    if(!view_buffer) return NULL;
+
     TextBufferManager* manager = malloc(sizeof(TextBufferManager));
     if(!manager) return NULL;
 
     manager->ring_buffer = malloc(RING_BUFFER_SIZE);
-    manager->view_buffer = malloc(VIEW_BUFFER_SIZE);
+    manager->view_buffer = view_buffer;
     manager->mutex = furi_mutex_alloc(FuriMutexTypeNormal);
 
-    if(!manager->ring_buffer || !manager->view_buffer || !manager->mutex) {
+    if(!manager->ring_buffer || !manager->mutex) {
         free(manager->ring_buffer);
-        free(manager->view_buffer);
-        free(manager->mutex);
+        if(manager->mutex) furi_mutex_free(manager->mutex);
         free(manager);
         return NULL;
     }
@@ -59,7 +60,6 @@ static void text_buffer_free(TextBufferManager* manager) {
     if(!manager) return;
     if(manager->mutex) furi_mutex_free(manager->mutex);
     free(manager->ring_buffer);
-    free(manager->view_buffer);
     free(manager);
 }
 
@@ -391,8 +391,7 @@ void handle_uart_rx_data(uint8_t* buf, size_t len, void* context) {
         if(state->text_box) {
             text_box_set_text(state->text_box, state->uart_context->text_manager->view_buffer);
             text_box_set_focus(
-                state->text_box,
-                view_from_start ? TextBoxFocusStart : TextBoxFocusEnd);
+                state->text_box, view_from_start ? TextBoxFocusStart : TextBoxFocusEnd);
         }
     }
 }
@@ -536,7 +535,7 @@ UartContext* uart_init(AppState* state) {
     }
 
     // Initialize text manager
-    uart->text_manager = text_buffer_alloc();
+    uart->text_manager = text_buffer_alloc(state->textBoxBuffer);
     if(!uart->text_manager) {
         FURI_LOG_E("UART", "Failed to allocate text manager");
         uart_free(uart);
