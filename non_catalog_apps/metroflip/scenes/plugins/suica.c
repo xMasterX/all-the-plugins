@@ -28,7 +28,9 @@
 
 // Probably not needed after upstream include this in their suica_i.h
 
-#define TAG "Metroflip:Scene:Suica"
+#define TAG                  "Metroflip:Scene:Suica"
+#define JAPAN_IC_SYSTEM_CODE 0x0003
+#define OCTOPUS_SYSTEM_CODE  0x8008
 
 const char* suica_service_names[] = {
     "Travel History",
@@ -110,11 +112,10 @@ static void suica_parse_train_code(
     FuriString* station_num_candidate = furi_string_alloc_set("0");
     FuriString* station_JR_header_candidate = furi_string_alloc_set("0");
     FuriString* line_copy = furi_string_alloc();
-    FuriString* file_name = furi_string_alloc();    
+    FuriString* file_name = furi_string_alloc();
 
     furi_string_printf(line_code_str, "0x%02X", line_code);
     furi_string_printf(line_and_station_code_str, "0x%02X,0x%02X", line_code, station_code);
-
 
     size_t line_comma_ind = 0;
     size_t station_comma_ind = 0;
@@ -216,7 +217,7 @@ static void suica_parse_train_code(
     furi_string_free(station_num_candidate);
     furi_string_free(station_JR_header_candidate);
     furi_string_free(file_name);
-    
+
     file_stream_close(stream);
     stream_free(stream);
     furi_record_close(RECORD_STORAGE);
@@ -306,6 +307,84 @@ static void suica_parse(SuicaHistoryViewModel* my_model) {
     }
 }
 
+static bool suica_model_pack_data(
+    SuicaHistoryViewModel* model,
+    const FelicaSystem* suica_system,
+    FuriString* parsed_data) {
+    uint32_t public_block_count = simple_array_get_count(suica_system->public_blocks);
+    bool found = false;
+    furi_string_printf(parsed_data, "\e#Japan Transit IC\n\n");
+    for(uint16_t i = 0; i < public_block_count; i++) {
+        FelicaPublicBlock* public_block = simple_array_get(suica_system->public_blocks, i);
+        if(public_block->service_code == SERVICE_CODE_HISTORY_IN_LE) {
+            suica_add_entry(model, public_block->block.data);
+            furi_string_cat_printf(parsed_data, "Log %02X: ", i);
+            for(size_t j = 0; j < FELICA_DATA_BLOCK_SIZE; j++) {
+                furi_string_cat_printf(parsed_data, "%02X ", public_block->block.data[j]);
+            }
+            furi_string_cat_printf(parsed_data, "\n");
+            found = true;
+        }
+    }
+    return found;
+}
+
+static bool suica_help_with_octopus(const FelicaSystem* suica_system, FuriString* parsed_data) {
+    bool found = false;
+    for(uint16_t i = 0; i < simple_array_get_count(suica_system->public_blocks); i++) {
+        FelicaPublicBlock* public_block = simple_array_get(suica_system->public_blocks, i);
+        if(public_block->service_code == SERVICE_CODE_OCTOPUS_IN_LE) {
+            uint16_t unsigned_balance = ((uint16_t)public_block->block.data[2] << 8) |
+                                        (uint16_t)public_block->block.data[3]; // 0x0000..0xFFFF
+
+            int32_t older_balance_ten_cents = (int32_t)unsigned_balance - 350;
+            int32_t newer_balance_ten_cents = (int32_t)unsigned_balance - 500;
+
+            uint16_t older_abs_ten_cents =
+                (uint16_t)(older_balance_ten_cents < 0 ? -older_balance_ten_cents : older_balance_ten_cents);
+            uint16_t newer_abs_ten_cents =
+                (uint16_t)(newer_balance_ten_cents < 0 ? -newer_balance_ten_cents : newer_balance_ten_cents);
+
+            uint16_t older_dollars = (uint16_t)(older_abs_ten_cents / 10);
+            uint8_t older_cents = (uint8_t)((older_abs_ten_cents % 10) * 10 );
+
+            uint16_t newer_dollars = (uint16_t)(newer_abs_ten_cents / 10);
+            uint8_t newer_cents = (uint8_t)((newer_abs_ten_cents % 10) * 10);
+            furi_string_printf(parsed_data, "\e#Octopus Card\n");
+            furi_string_cat_str(
+                parsed_data, "::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n");
+
+            furi_string_cat_printf(
+                parsed_data, "If this card was issued \nbefore 2017 October 1st:\n");
+            furi_string_cat_printf(
+                parsed_data,
+                "Balance: %sHK$ %d.%02d\n",
+                older_balance_ten_cents < 0 ? "-" : "",
+                older_dollars,
+                older_cents);
+
+            furi_string_cat_str(
+                parsed_data, "::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n");
+
+            furi_string_cat_printf(
+                parsed_data, "If this card was issued \nafter 2017 October 1st:\n");
+            furi_string_cat_printf(
+                parsed_data,
+                "Balance: %sHK$ %d.%02d\n",
+                newer_balance_ten_cents < 0 ? "-" : "",
+                newer_dollars,
+                newer_cents);
+
+            furi_string_cat_str(
+                parsed_data, "::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::");
+
+            found = true;
+            break; // Octopus only has one public block
+        }
+    }
+    return found;
+}
+
 static void suica_parse_detail_callback(GuiButtonType result, InputType type, void* context) {
     Metroflip* app = context;
     UNUSED(result);
@@ -320,108 +399,78 @@ static void suica_parse_detail_callback(GuiButtonType result, InputType type, vo
 static NfcCommand suica_poller_callback(NfcGenericEvent event, void* context) {
     furi_assert(event.protocol == NfcProtocolFelica);
     NfcCommand command = NfcCommandContinue;
-    MetroflipPollerEventType stage = MetroflipPollerEventTypeStart;
-
     Metroflip* app = context;
-    FuriString* parsed_data = furi_string_alloc();
-    SuicaHistoryViewModel* model = view_get_model(app->suica_context->view_history);
-
-    Widget* widget = app->widget;
-
-    const uint16_t service_code[2] = {SERVICE_CODE_HISTORY_IN_LE, SERVICE_CODE_TAPS_LOG_IN_LE};
-
     const FelicaPollerEvent* felica_event = event.event_data;
-    FelicaPoller* felica_poller = event.instance;
-    const FelicaData* felica_data = nfc_poller_get_data(app->poller);
-    FURI_LOG_I(TAG, "Poller set");
-    if(felica_event->type == FelicaPollerEventTypeRequestAuthContext) {
-        view_dispatcher_send_custom_event(app->view_dispatcher, MetroflipCustomEventCardDetected);
-        command = NfcCommandContinue;
+    FURI_LOG_I(TAG, "Felica event: %d", felica_event->type);
 
-        if(stage == MetroflipPollerEventTypeStart) {
-            nfc_device_set_data(
-                app->nfc_device, NfcProtocolFelica, nfc_poller_get_data(app->poller));
-            furi_string_printf(parsed_data, "\e#Japan Rail IC\n");
+    felica_event->data->auth_context->skip_auth = true;
 
-            // Authenticate with the card
-            // Iterate through the two services
-            for(int service_code_index = 0; service_code_index < 2; service_code_index++) {
-                furi_string_cat_printf(
-                    parsed_data, "%s: \n", suica_service_names[service_code_index]);
-                FelicaError error = FelicaErrorNone;
-                FelicaPollerReadCommandResponse* rx_resp;
-                uint8_t blocks[1] = {0x00}; // firmware api requires this to be a list
+    if(felica_event->type == FelicaPollerEventTypeReady) {
+        SuicaHistoryViewModel* model = view_get_model(app->suica_context->view_history);
+        Widget* widget = app->widget;
+        FuriString* parsed_data = furi_string_alloc();
 
-                do {
-                    uint8_t block_data[16] = {0};
-                    error = felica_poller_read_blocks(
-                        felica_poller, 1, blocks, service_code[service_code_index], &rx_resp);
-                    if(error != FelicaErrorNone) {
-                        view_dispatcher_send_custom_event(
-                            app->view_dispatcher, MetroflipCustomEventCardLost);
-                        command = NfcCommandStop;
-                        break;
-                    }
-                    furi_string_cat_printf(parsed_data, "Log %02X: ", blocks[0]);
-                    if(service_code_index == 0) {
-                        furi_string_cat_printf(app->suica_file_data, "Log %02X: ", blocks[0]);
-                    }
-                    blocks[0]++;
-                    for(size_t i = 0; i < FELICA_DATA_BLOCK_SIZE; i++) {
-                        furi_string_cat_printf(parsed_data, "%02X ", rx_resp->data[i]);
-                        if(service_code_index == 0) {
-                            furi_string_cat_printf(
-                                app->suica_file_data, "%02X ", rx_resp->data[i]);
-                        }
-                        block_data[i] = rx_resp->data[i];
-                    }
-                    furi_string_cat_printf(parsed_data, "\n");
-                    if(service_code_index == 0) {
-                        FURI_LOG_I(
-                            TAG,
-                            "Service code %d, adding entry %x",
-                            service_code_index,
-                            model->size);
-                        suica_add_entry(model, block_data);
-                        furi_string_cat_printf(app->suica_file_data, "\n");
-                    }
-                } while((rx_resp->SF1 + rx_resp->SF2) == 0 &&
-                        blocks[0] < SUICA_MAX_HISTORY_ENTRIES && error == FelicaErrorNone);
-                if(error != FelicaErrorNone) {
+        dolphin_deed(DolphinDeedNfcRead);
 
-                    break;
-                }
+        FURI_LOG_I(TAG, "Read complete");
+        view_dispatcher_send_custom_event(app->view_dispatcher, MetroflipCustomEventPollerSuccess);
+        command = NfcCommandStop;
+
+        nfc_device_set_data(app->nfc_device, NfcProtocolFelica, nfc_poller_get_data(app->poller));
+        const FelicaData* felica_data = nfc_poller_get_data(app->poller);
+
+        metroflip_app_blink_stop(app);
+
+        uint32_t system_count = simple_array_get_count(felica_data->systems);
+        bool suica_found = false;
+        bool octopus_found = false;
+        uint8_t suica_system_index = 0;
+        uint8_t octopus_system_index = 0;
+        for(uint8_t i = 0; i < system_count; i++) {
+            FelicaSystem* system = simple_array_get(felica_data->systems, i);
+            if(system->system_code == JAPAN_IC_SYSTEM_CODE) {
+                suica_found = true;
+                suica_system_index = i;
+            } else if(system->system_code == OCTOPUS_SYSTEM_CODE) {
+                octopus_found = true;
+                octopus_system_index = i;
             }
-            metroflip_app_blink_stop(app);
-
-            if(model->size == 1) { // Have to let the poller run once before knowing we failed
-                furi_string_printf(
-                    parsed_data,
-                    "\e#Japan Rail IC\nSorry, no data found.\nPlease let the developers know and we will add support.");
-            }
-
-            if(model->size == 1 && felica_data->pmm.data[1] != SUICA_IC_TYPE_CODE) {
-                furi_string_printf(
-                    parsed_data,
-                    "\e#Felica\nSorry, unrecorded IC type.\nIs this Octopus?\nPlease let the developers know and we will add support.");
-            }
-            widget_add_text_scroll_element(
-                widget, 0, 0, 128, 64, furi_string_get_cstr(parsed_data));
-
-            widget_add_button_element(
-                widget, GuiButtonTypeRight, "Exit", metroflip_exit_widget_callback, app);
-            widget_add_button_element(
-                widget, GuiButtonTypeLeft, "Save", metroflip_save_widget_callback, app);
-
-            if(model->size > 1) {
-                widget_add_button_element(
-                    widget, GuiButtonTypeCenter, "Parse", suica_parse_detail_callback, app);
-            }
-            view_dispatcher_switch_to_view(app->view_dispatcher, MetroflipViewWidget);
         }
+
+        do {
+            if(suica_found) {
+                FelicaSystem* suica_system =
+                    simple_array_get(felica_data->systems, suica_system_index);
+                furi_string_printf(parsed_data, "\e#Japan Transit IC\n");
+                suica_model_pack_data(model, suica_system, parsed_data);
+                break;
+            } else if(octopus_found) {
+                FelicaSystem* octopus_system =
+                    simple_array_get(felica_data->systems, octopus_system_index);
+                suica_help_with_octopus(octopus_system, parsed_data);
+                break;
+            } else {
+                furi_string_printf(
+                    parsed_data,
+                    "\e#FeliCa\nSorry, unrecorded service code.\nPlease let the developers know and we will add support.");
+            }
+        } while(false);
+
+        widget_add_text_scroll_element(widget, 0, 0, 128, 64, furi_string_get_cstr(parsed_data));
+
+        if(suica_found) {
+            widget_add_button_element(
+                widget, GuiButtonTypeCenter, "Parse", suica_parse_detail_callback, app);
+        }
+
+        widget_add_button_element(
+            widget, GuiButtonTypeRight, "Exit", metroflip_exit_widget_callback, app);
+        widget_add_button_element(
+            widget, GuiButtonTypeLeft, "Save", metroflip_save_widget_callback, app);
+
+        view_dispatcher_switch_to_view(app->view_dispatcher, MetroflipViewWidget);
+        furi_string_free(parsed_data);
     }
-    furi_string_free(parsed_data);
-    command = NfcCommandStop;
     return command;
 }
 
@@ -487,26 +536,11 @@ static bool suica_history_input_callback(InputEvent* event, void* context) {
             // Handle other keys or do nothing
             break;
         }
-        // with_view_model(
-        //     app->suica_context->view_history,
-        //     SuicaHistoryViewModel * model,
-        //     {
-        //         if((model->history.history_type == SuicaHistoryTopUp) && model->page == 1) {
-        //             model->animator_tick = 0;
-        //         }
-        //     },
-        //     false);
     }
-
     return false;
 }
 
 static void suica_on_enter(Metroflip* app) {
-    // Gui* gui = furi_record_open(RECORD_GUI);
-    dolphin_deed(DolphinDeedNfcRead);
-    furi_string_reset(app->suica_file_data);
-    furi_string_cat_str(app->suica_file_data, "\n");
-
     if(app->data_loaded == false) {
         app->suica_context = malloc(sizeof(SuicaContext));
         app->suica_context->view_history = view_alloc();
@@ -540,34 +574,87 @@ static void suica_on_enter(Metroflip* app) {
 
         metroflip_app_blink_start(app);
     } else {
-        SuicaHistoryViewModel* model = view_get_model(app->suica_context->view_history);
-        suica_model_initialize_after_load(model);
-        Widget* widget = app->widget;
-        FuriString* parsed_data = furi_string_alloc();
-        furi_string_printf(parsed_data, "\e#Japan Rail IC\n");
+        FURI_LOG_I(TAG, "Loading FeliCa data");
+        Storage* storage = furi_record_open(RECORD_STORAGE);
+        FlipperFormat* ff = flipper_format_file_alloc(storage);
+        if(flipper_format_file_open_existing(ff, app->file_path)) {
+            FURI_LOG_I(TAG, "File path: %s", app->file_path);
+            FelicaData* felica_data = felica_alloc();
+            bool is_stock_nfc_file = felica_load(felica_data, ff, 4);
 
-        for(uint8_t i = 0; i < model->size; i++) {
-            furi_string_cat_printf(app->suica_file_data, "Log %02X: ", i);
-            for(size_t j = 0; j < FELICA_DATA_BLOCK_SIZE; j++) {
-                furi_string_cat_printf(
-                    app->suica_file_data, "%02X ", model->travel_history[i * 16 + j]);
-            }
-            furi_string_cat_printf(app->suica_file_data, "\n");
-        }
-        furi_string_cat(parsed_data, app->suica_file_data);
-        widget_add_text_scroll_element(widget, 0, 0, 128, 64, furi_string_get_cstr(parsed_data));
+            SuicaHistoryViewModel* model = view_get_model(app->suica_context->view_history);
+            suica_model_initialize_after_load(model);
+            Widget* widget = app->widget;
+            FuriString* parsed_data = furi_string_alloc();
+            bool suica_found = false;
+            do {
+                if(is_stock_nfc_file) { // loading from stock NFC file (API 87.0+)
+                    FURI_LOG_I(TAG, "Loading from stock NFC file");
+                    uint32_t system_count = simple_array_get_count(felica_data->systems);
+                    bool octopus_found = false;
+                    uint8_t suica_system_index = 0;
+                    uint8_t octopus_system_index = 0;
+                    for(uint8_t i = 0; i < system_count; i++) {
+                        FelicaSystem* system = simple_array_get(felica_data->systems, i);
+                        if(system->system_code == JAPAN_IC_SYSTEM_CODE) {
+                            suica_found = true;
+                            suica_system_index = i;
+                        } else if(system->system_code == OCTOPUS_SYSTEM_CODE) {
+                            octopus_found = true;
+                            octopus_system_index = i;
+                        }
+                    }
 
-        widget_add_button_element(
-            widget, GuiButtonTypeRight, "Exit", metroflip_exit_widget_callback, app);
-        widget_add_button_element(
-            widget, GuiButtonTypeLeft, "Save", metroflip_save_widget_callback, app);
+                    if(suica_found) {
+                        FelicaSystem* suica_system =
+                            simple_array_get(felica_data->systems, suica_system_index);
+                        furi_string_printf(parsed_data, "\e#Japan Transit IC\n\n");
+                        suica_model_pack_data(model, suica_system, parsed_data);
+                        break;
+                    } else if(octopus_found) {
+                        FelicaSystem* octopus_system =
+                            simple_array_get(felica_data->systems, octopus_system_index);
+                        suica_help_with_octopus(octopus_system, parsed_data);
+                        break;
+                    }
+                } else { // loading from legacy saved file (pre API 87.0)
+                    suica_found = true;
+                    furi_string_printf(parsed_data, "\e#Japan Transit IC\n\n");
+                    for(uint8_t i = 0; i < model->size; i++) {
+                        furi_string_cat_printf(parsed_data, "Log %02X: ", i);
+                        for(size_t j = 0; j < FELICA_DATA_BLOCK_SIZE; j++) {
+                            furi_string_cat_printf(
+                                parsed_data, "%02X ", model->travel_history[i * 16 + j]);
+                        }
+                        furi_string_cat_printf(parsed_data, "\n");
+                    }
+                    break;
+                }
 
-        if(model->size > 1) {
+                furi_string_printf(
+                    parsed_data,
+                    "\e#FeliCa\nSorry, unrecorded service code.\nPlease let the developers know and we will add support.");
+            } while(false);
+
+            // Text scroll must be added before buttons to prevent overlay
+            widget_add_text_scroll_element(
+                widget, 0, 0, 128, 64, furi_string_get_cstr(parsed_data));
+
             widget_add_button_element(
-                widget, GuiButtonTypeCenter, "Parse", suica_parse_detail_callback, app);
+                widget, GuiButtonTypeRight, "Exit", metroflip_exit_widget_callback, app);
+
+            if(suica_found) {
+                widget_add_button_element(
+                    widget, GuiButtonTypeCenter, "Parse", suica_parse_detail_callback, app);
+            }
+
+            // No reason to put a save button here if the data is loaded from an existing file
+
+            view_dispatcher_switch_to_view(app->view_dispatcher, MetroflipViewWidget);
+            furi_string_free(parsed_data);
+            felica_free(felica_data);
         }
-        view_dispatcher_switch_to_view(app->view_dispatcher, MetroflipViewWidget);
-        furi_string_free(parsed_data);
+        flipper_format_free(ff);
     }
 }
 
@@ -580,10 +667,6 @@ static bool suica_on_event(Metroflip* app, SceneManagerEvent event) {
             consumed = true;
         } else if(event.event == MetroflipCustomEventCardLost) {
             popup_set_header(popup, "Card \n lost", 68, 30, AlignLeft, AlignTop);
-            // popup_set_timeout(popup, 2000);
-            // popup_enable_timeout(popup);
-            // view_dispatcher_switch_to_view(app->view_dispatcher, SuicaViewPopup);
-            // popup_disable_timeout(popup);
             scene_manager_search_and_switch_to_previous_scene(
                 app->scene_manager, MetroflipSceneStart);
             consumed = true;

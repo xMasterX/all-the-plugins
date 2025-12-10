@@ -1,4 +1,5 @@
 #include "../metroflip_i.h"
+#include <nfc/protocols/mf_classic/mf_classic.h>
 
 void metroflip_scene_start_submenu_callback(void* context, uint32_t index) {
     Metroflip* app = context;
@@ -8,6 +9,12 @@ void metroflip_scene_start_submenu_callback(void* context, uint32_t index) {
 void metroflip_scene_start_on_enter(void* context) {
     Metroflip* app = context;
     Submenu* submenu = app->submenu;
+
+    // Clean up any previously loaded MFC data when returning to start
+    if(app->mfc_data) {
+        mf_classic_free(app->mfc_data);
+        app->mfc_data = NULL;
+    }
 
     submenu_set_header(submenu, "Metroflip");
 
@@ -40,6 +47,7 @@ void metroflip_scene_start_on_enter(void* context) {
     submenu_set_selected_item(
         submenu, scene_manager_get_scene_state(app->scene_manager, MetroflipSceneStart));
 
+    notification_message(app->notifications, &sequence_display_backlight_on);
     view_dispatcher_switch_to_view(app->view_dispatcher, MetroflipViewSubmenu);
 }
 

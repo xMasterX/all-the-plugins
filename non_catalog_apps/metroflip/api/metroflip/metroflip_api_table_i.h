@@ -123,6 +123,7 @@ static constexpr auto metroflip_api_table = sort(create_array_t<sym_entry>(
     API_VARIABLE(I_Suica_NambokuN, Icon),
     API_VARIABLE(I_Suica_Nothing, Icon),
     API_VARIABLE(I_Suica_OedoE, Icon),
+    API_VARIABLE(I_Suica_OsakaMetroLogo, Icon),
     API_VARIABLE(I_Suica_PenguinHappyBirthday, Icon),
     API_VARIABLE(I_Suica_PenguinTodaysVIP, Icon),
     API_VARIABLE(I_Suica_PlusSign1, Icon),
@@ -220,8 +221,6 @@ static constexpr auto metroflip_api_table = sort(create_array_t<sym_entry>(
     API_VARIABLE(I_Suica_BdayCakeIcon, Icon),
     API_VARIABLE(I_Suica_UnknownIcon, Icon),
     
-    API_METHOD(render_section_header, void, (FuriString*, const char*, uint8_t, uint8_t)),
-    API_METHOD(mosgortrans_parse_transport_block, bool, (const MfClassicBlock*, FuriString*)),
     API_VARIABLE(I_WarningDolphinFlip_45x42, Icon),
     API_VARIABLE(I_DolphinDone_80x58, Icon),
     API_VARIABLE(I_DolphinMafia_119x62, Icon)));

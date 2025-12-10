@@ -100,6 +100,9 @@ typedef struct {
     char file_path[256];
     char delete_file_path[256];
     bool is_desfire;
+    uint8_t hist_bytes[32];
+    uint32_t hist_bytes_count;
+
 
     // Calypso specific context
     CalypsoContext* calypso_context;
@@ -107,7 +110,6 @@ typedef struct {
 
     // Suica
     SuicaContext* suica_context;
-    FuriString* suica_file_data;
 
     DialogsApp* dialogs;
 

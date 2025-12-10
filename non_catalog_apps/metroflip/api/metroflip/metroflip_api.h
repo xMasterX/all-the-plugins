@@ -143,12 +143,6 @@ extern const Icon I_DolphinDone_80x58;
 extern const Icon I_WarningDolphinFlip_45x42;
 extern const Icon I_DolphinMafia_119x62;
 
-void render_section_header(
-    FuriString* str,
-    const char* name,
-    uint8_t prefix_separator_cnt,
-    uint8_t suffix_separator_cnt);
-bool mosgortrans_parse_transport_block(const MfClassicBlock* block, FuriString* result);
 
 extern const Icon I_Suica_AsakusaA;
 extern const Icon I_Suica_BigStar;
@@ -195,6 +189,7 @@ extern const Icon I_Suica_MoneyStack4;
 extern const Icon I_Suica_NambokuN;
 extern const Icon I_Suica_Nothing;
 extern const Icon I_Suica_OedoE;
+extern const Icon I_Suica_OsakaMetroLogo;
 extern const Icon I_Suica_PenguinHappyBirthday;
 extern const Icon I_Suica_PenguinTodaysVIP;
 extern const Icon I_Suica_PlusSign1;

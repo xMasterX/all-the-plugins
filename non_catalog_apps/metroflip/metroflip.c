@@ -34,9 +34,6 @@ Metroflip* metroflip_alloc() {
     // calypso data
     app->calypso_file_data = furi_string_alloc();
 
-    // suica data
-    app->suica_file_data = furi_string_alloc();
-
     // key cache
     app->mfc_key_cache = mf_classic_key_cache_alloc();
 
@@ -100,9 +97,6 @@ void metroflip_free(Metroflip* app) {
 
     //calypso data
     furi_string_free(app->calypso_file_data);
-
-    // suica data
-    furi_string_free(app->suica_file_data);
 
     // key cache
     mf_classic_key_cache_free(app->mfc_key_cache);
