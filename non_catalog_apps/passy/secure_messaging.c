@@ -102,13 +102,13 @@ void secure_messaging_increment_context(SecureMessaging* secure_messaging) {
     } while(++context[--context_len] == 0 && context_len > 0);
 }
 
-void secure_messaging_wrap_apdu(
-    SecureMessaging* secure_messaging,
-    uint8_t* message,
-    size_t message_len,
-    BitBuffer* tx_buffer) {
+void secure_messaging_wrap_apdu(SecureMessaging* secure_messaging, BitBuffer* tx_buffer) {
     furi_assert(secure_messaging);
     secure_messaging_increment_context(secure_messaging);
+
+    // Read tx_buffer to wrap the apdu in secure messaging
+    size_t message_len = bit_buffer_get_size_bytes(tx_buffer);
+    const uint8_t* message = bit_buffer_get_data(tx_buffer);
 
     uint8_t payload_length = 0;
     bool has_le = false;
@@ -126,7 +126,7 @@ void secure_messaging_wrap_apdu(
 
     uint8_t D087[3 + 8];
     if(payload_length > 0) {
-        uint8_t* payload = message + 5;
+        const uint8_t* payload = message + 5;
         if(payload_length > 7) {
             FURI_LOG_W(TAG, "secure_messaging_wrap_apdu payload length too large to handle");
             return;
@@ -202,6 +202,8 @@ void secure_messaging_wrap_apdu(
     D08E[0] = 0x8E;
     D08E[1] = sizeof(mac);
     memcpy(D08E + 2, mac, sizeof(mac));
+
+    bit_buffer_reset(tx_buffer);
 
     bit_buffer_append_bytes(tx_buffer, cmd_header, 4);
 

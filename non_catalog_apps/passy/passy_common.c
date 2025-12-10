@@ -37,7 +37,7 @@ void passy_log_bitbuffer(char* tag, char* prefix, BitBuffer* buffer) {
     }
 }
 
-void passy_log_buffer(char* tag, char* prefix, uint8_t* buffer, size_t buffer_len) {
+void passy_log_buffer(char* tag, char* prefix, const uint8_t* buffer, size_t buffer_len) {
     char display[PASSY_WORKER_MAX_BUFFER_SIZE * 2 + 1];
 
     size_t limit = MIN((size_t)PASSY_WORKER_MAX_BUFFER_SIZE, buffer_len);
@@ -120,4 +120,22 @@ char passy_checksum(char* str) {
         sum += value * weight;
     }
     return 0x30 + (sum % 10);
+}
+
+size_t furi_string_filename_safe(FuriString* string) {
+    FuriString* safe = furi_string_alloc();
+
+    size_t len = furi_string_size(string);
+    for(size_t ri = 0; ri < len; ++ri) {
+        char c = furi_string_get_char(string, ri);
+
+        if((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
+           c == '_' || c == '-' || '/' || '.') {
+            furi_string_push_back(safe, c);
+        }
+    }
+
+    furi_string_set(string, safe);
+    furi_string_free(safe);
+    return furi_string_size(string);
 }

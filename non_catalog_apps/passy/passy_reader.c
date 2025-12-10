@@ -21,6 +21,7 @@ static const uint8_t jpeg2k_header[6] = {0x00, 0x00, 0x00, 0x0C, 0x6A, 0x50};
 static const uint8_t jpeg2k_cs_header[4] = {0xFF, 0x4F, 0xFF, 0x51};
 
 static bool print_logs = true;
+static bool use_secure_messaging = false;
 
 size_t asn1_length(uint8_t data[3]) {
     if(data[0] <= 0x7F) {
@@ -97,6 +98,15 @@ NfcCommand passy_reader_send(PassyReader* passy_reader) {
     Passy* passy = passy_reader->passy;
     BitBuffer* tx_buffer = passy_reader->tx_buffer;
     BitBuffer* rx_buffer = passy_reader->rx_buffer;
+
+    if(print_logs) {
+        passy_log_bitbuffer(TAG, "Send APDU", tx_buffer);
+    }
+
+    if(use_secure_messaging) {
+        secure_messaging_wrap_apdu(passy_reader->secure_messaging, passy_reader->tx_buffer);
+    }
+
     if(strcmp(passy->proto, "4a") == 0) {
         Iso14443_4aPoller* iso14443_4a_poller = passy_reader->iso14443_4a_poller;
         Iso14443_4aError error;
@@ -143,6 +153,10 @@ NfcCommand passy_reader_send(PassyReader* passy_reader) {
         return NfcCommandStop;
     }
 
+    if(use_secure_messaging) {
+        secure_messaging_unwrap_rapdu(passy_reader->secure_messaging, passy_reader->rx_buffer);
+    }
+
     return ret;
 }
 
@@ -179,7 +193,7 @@ NfcCommand passy_reader_get_challenge(PassyReader* passy_reader) {
     return ret;
 }
 
-NfcCommand passy_reader_authenticate(PassyReader* passy_reader) {
+NfcCommand passy_reader_external_authenticate(PassyReader* passy_reader) {
     NfcCommand ret = NfcCommandContinue;
     BitBuffer* tx_buffer = passy_reader->tx_buffer;
 
@@ -275,15 +289,13 @@ NfcCommand passy_reader_select_file(PassyReader* passy_reader, uint16_t file_id)
     select_0101[5] = (file_id >> 8) & 0xFF;
     select_0101[6] = file_id & 0xFF;
 
-    secure_messaging_wrap_apdu(
-        passy_reader->secure_messaging, select_0101, sizeof(select_0101), passy_reader->tx_buffer);
+    bit_buffer_append_bytes(passy_reader->tx_buffer, select_0101, sizeof(select_0101));
 
     ret = passy_reader_send(passy_reader);
     if(ret != NfcCommandContinue) {
         return ret;
     }
 
-    secure_messaging_unwrap_rapdu(passy_reader->secure_messaging, passy_reader->rx_buffer);
     if(print_logs) {
         passy_log_bitbuffer(TAG, "NFC response (decrypted)", passy_reader->rx_buffer);
     }
@@ -303,15 +315,13 @@ NfcCommand passy_reader_read_binary(
     }
     uint8_t read_binary[] = {0x00, 0xB0, (offset >> 8) & 0xff, (offset >> 0) & 0xff, Le};
 
-    secure_messaging_wrap_apdu(
-        passy_reader->secure_messaging, read_binary, sizeof(read_binary), passy_reader->tx_buffer);
+    bit_buffer_append_bytes(passy_reader->tx_buffer, read_binary, sizeof(read_binary));
 
     ret = passy_reader_send(passy_reader);
     if(ret != NfcCommandContinue) {
         return ret;
     }
 
-    secure_messaging_unwrap_rapdu(passy_reader->secure_messaging, passy_reader->rx_buffer);
     if(print_logs) {
         passy_log_bitbuffer(TAG, "NFC response (decrypted)", passy_reader->rx_buffer);
     }
@@ -429,7 +439,10 @@ NfcCommand passy_reader_read_dg2_or_dg7(PassyReader* passy_reader) {
         dg_ext = ".bin";
         start = 0;
     }
-    furi_string_printf(path, "%s/%s%s", STORAGE_APP_DATA_PATH_PREFIX, dg_type, dg_ext);
+
+    furi_string_printf(
+        path, "%s/%s-%s%s", STORAGE_APP_DATA_PATH_PREFIX, passy->passport_number, dg_type, dg_ext);
+    furi_string_filename_safe(path);
     FURI_LOG_I(TAG, "Writing offset %d to %s", start, furi_string_get_cstr(path));
 
     Storage* storage = furi_record_open(RECORD_STORAGE);
@@ -466,6 +479,8 @@ NfcCommand passy_reader_state_machine(PassyReader* passy_reader) {
     Passy* passy = passy_reader->passy;
     NfcCommand ret = NfcCommandContinue;
 
+    use_secure_messaging = false;
+
     do {
         ret = passy_reader_select_application(passy_reader);
         if(ret != NfcCommandContinue) {
@@ -477,13 +492,14 @@ NfcCommand passy_reader_state_machine(PassyReader* passy_reader) {
             view_dispatcher_send_custom_event(passy->view_dispatcher, PassyCustomEventReaderError);
             break;
         }
-        ret = passy_reader_authenticate(passy_reader);
+        ret = passy_reader_external_authenticate(passy_reader);
         if(ret != NfcCommandContinue) {
             view_dispatcher_send_custom_event(passy->view_dispatcher, PassyCustomEventReaderError);
             break;
         }
         FURI_LOG_I(TAG, "Mututal authentication success");
         secure_messaging_calculate_session_keys(passy_reader->secure_messaging);
+        use_secure_messaging = true;
         view_dispatcher_send_custom_event(
             passy->view_dispatcher, PassyCustomEventReaderAuthenticated);
 

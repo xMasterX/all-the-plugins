@@ -38,10 +38,6 @@ void secure_messaging_free(SecureMessaging* secure_messaging);
 
 void secure_messaging_calculate_session_keys(SecureMessaging* secure_messaging);
 
-void secure_messaging_wrap_apdu(
-    SecureMessaging* secure_messaging,
-    uint8_t* message,
-    size_t message_len,
-    BitBuffer* tx_buffer);
+void secure_messaging_wrap_apdu(SecureMessaging* secure_messaging, BitBuffer* tx_buffer);
 
 void secure_messaging_unwrap_rapdu(SecureMessaging* secure_messaging, BitBuffer* rx_buffer);
