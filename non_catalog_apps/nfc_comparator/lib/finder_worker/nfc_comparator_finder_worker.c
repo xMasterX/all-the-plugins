@@ -159,8 +159,8 @@ void nfc_comparator_finder_worker_compare_cards(
                 }
             }
 
-            char ext[6];
-            path_extract_extension(compare_checks->nfc_card_path, ext, 6);
+            char ext[8];
+            path_extract_extension(compare_checks->nfc_card_path, ext, sizeof(ext));
 
             if(strcmp(ext, ".nfc") == 0) {
                 if(nfc_device_load(
