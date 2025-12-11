@@ -255,6 +255,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Weebo | ![NFC Badge] | [by bettse](https://github.com/bettse/weebo) |  | [![Author Badge]](https://lab.flipper.net/apps/weebo) |
 | Seos | ![NFC Badge] | [by bettse](https://gitlab.com/bettse/flipper_seos) |  | [![Author Badge]](https://lab.flipper.net/apps/seos) |
 | SaFlip | ![NFC Badge] | [by aaronjamt](https://github.com/aaronjamt/saflip) |  | ![None Badge] |
+| NFC Comparator | ![NFC Badge] | [by acegoal07](https://github.com/acegoal07/FlipperZero_NFC_Comparator) |  | ![None Badge] |
 | RFID Beacon | ![RFID Badge] | [by nmrr](https://github.com/nmrr/flipperzero-rfidbeacon)  | `A letter/number Morse beacon on 125 kHz` | ![None Badge] |
 | EM4100 universal keys generator (for RFID Fuzzer) | ![RFID Badge] | [by Milk-Cool](https://github.com/Milk-Cool/fz-em4100-generator) |  | [![Author Badge]](https://lab.flipper.net/apps/key_generator) |
 | (Q)M100 UHF RFID | ![RFID Badge] | [by frux-c](https://github.com/frux-c/uhf_rfid) | WIP -> (+Added icon by @xMasterX) | [![UFW Badge]](https://lab.flipper.net/apps/uhf_rfid) |
