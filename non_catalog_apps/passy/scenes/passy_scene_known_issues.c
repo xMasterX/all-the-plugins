@@ -3,7 +3,8 @@
 static const char* known_issues_text = "Passy only uses BAC, not PACE for auth\n"
                                        "PACE-only:\n"
                                        "  - German Personalausweis\n"
-                                       "  - German Aufenthaltstitel post 2015\n";
+                                       "  - German Aufenthaltstitel post 2015\n"
+                                       "  - Dutch passport post 2022\n";
 
 void passy_scene_known_issues_on_enter(void* context) {
     Passy* passy = context;

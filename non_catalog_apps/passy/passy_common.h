@@ -28,6 +28,6 @@ void passy_log_bitbuffer(char* tag, char* prefix, BitBuffer* buffer);
 void passy_log_buffer(char* tag, char* prefix, const uint8_t* buffer, size_t buffer_len);
 void passy_mac(uint8_t* key, uint8_t* data, size_t data_length, uint8_t* mac, bool prepadded);
 char passy_checksum(char* str);
-int print_struct_callback(const void* buffer, size_t size, void* app_key);
+int passy_print_struct_callback(const void* buffer, size_t size, void* app_key);
 
-size_t furi_string_filename_safe(FuriString* string);
+size_t passy_furi_string_filename_safe(FuriString* string);

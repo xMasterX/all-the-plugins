@@ -77,7 +77,7 @@ void passy_scene_advanced_menu_on_enter(void* context) {
 
         char payloadDebug[384] = {0};
         memset(payloadDebug, 0, sizeof(payloadDebug));
-        (&asn_DEF_COM)->op->print_struct(&asn_DEF_COM, com, 1, print_struct_callback, payloadDebug);
+        (&asn_DEF_COM)->op->print_struct(&asn_DEF_COM, com, 1, passy_print_struct_callback, payloadDebug);
         if(strlen(payloadDebug) > 0) {
             FURI_LOG_D(TAG, "COM: %s", payloadDebug);
         } else {

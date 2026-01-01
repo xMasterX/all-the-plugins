@@ -5,7 +5,7 @@
 uint8_t padding[16] =
     {0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-void secure_messaging_adjust_parity(uint8_t key[16]) {
+void passy_secure_messaging_adjust_parity(uint8_t key[16]) {
     for(size_t i = 0; i < 16; i++) {
         // Set the parity bit to 1 if the number of 1 bits is even
         for(size_t j = 0; j < 8; j++) {
@@ -17,7 +17,7 @@ void secure_messaging_adjust_parity(uint8_t key[16]) {
     }
 }
 
-void secure_messaging_key_diversification(uint8_t input[20], size_t input_len, uint8_t* output) {
+void passy_secure_messaging_key_diversification(uint8_t input[20], size_t input_len, uint8_t* output) {
     uint8_t sha[20];
     mbedtls_sha1_context ctx;
     mbedtls_sha1_init(&ctx);
@@ -26,10 +26,10 @@ void secure_messaging_key_diversification(uint8_t input[20], size_t input_len, u
     mbedtls_sha1_finish(&ctx, sha);
 
     memcpy(output, sha, 16);
-    secure_messaging_adjust_parity(output);
+    passy_secure_messaging_adjust_parity(output);
 }
 
-SecureMessaging* secure_messaging_alloc(
+SecureMessaging* passy_secure_messaging_alloc(
     uint8_t* passport_number,
     uint8_t* date_of_birth,
     uint8_t* date_of_expiry) {
@@ -62,22 +62,22 @@ SecureMessaging* secure_messaging_alloc(
     memcpy(D, sha, 16);
 
     D[19] = 0x01;
-    secure_messaging_key_diversification(D, sizeof(D), secure_messaging->KENC);
+    passy_secure_messaging_key_diversification(D, sizeof(D), secure_messaging->KENC);
 
     D[19] = 0x02;
-    secure_messaging_key_diversification(D, sizeof(D), secure_messaging->KMAC);
+    passy_secure_messaging_key_diversification(D, sizeof(D), secure_messaging->KMAC);
 
     mbedtls_sha1_free(&ctx);
     return secure_messaging;
 }
 
-void secure_messaging_free(SecureMessaging* secure_messaging) {
+void passy_secure_messaging_free(SecureMessaging* secure_messaging) {
     furi_assert(secure_messaging);
     // Nothing to free;
     free(secure_messaging);
 }
 
-void secure_messaging_calculate_session_keys(SecureMessaging* secure_messaging) {
+void passy_secure_messaging_calculate_session_keys(SecureMessaging* secure_messaging) {
     uint8_t Kseed[16];
     for(size_t i = 0; i < sizeof(Kseed); i++) {
         Kseed[i] = secure_messaging->Kifd[i] ^ secure_messaging->Kicc[i];
@@ -89,22 +89,22 @@ void secure_messaging_calculate_session_keys(SecureMessaging* secure_messaging) 
     memcpy(D, Kseed, sizeof(Kseed));
 
     D[19] = 0x01;
-    secure_messaging_key_diversification(D, sizeof(D), secure_messaging->KSenc);
+    passy_secure_messaging_key_diversification(D, sizeof(D), secure_messaging->KSenc);
 
     D[19] = 0x02;
-    secure_messaging_key_diversification(D, sizeof(D), secure_messaging->KSmac);
+    passy_secure_messaging_key_diversification(D, sizeof(D), secure_messaging->KSmac);
 }
 
-void secure_messaging_increment_context(SecureMessaging* secure_messaging) {
+void passy_secure_messaging_increment_context(SecureMessaging* secure_messaging) {
     uint8_t* context = secure_messaging->SSC;
     size_t context_len = sizeof(secure_messaging->SSC);
     do {
     } while(++context[--context_len] == 0 && context_len > 0);
 }
 
-void secure_messaging_wrap_apdu(SecureMessaging* secure_messaging, BitBuffer* tx_buffer) {
+void passy_secure_messaging_wrap_apdu(SecureMessaging* secure_messaging, BitBuffer* tx_buffer) {
     furi_assert(secure_messaging);
-    secure_messaging_increment_context(secure_messaging);
+    passy_secure_messaging_increment_context(secure_messaging);
 
     // Read tx_buffer to wrap the apdu in secure messaging
     size_t message_len = bit_buffer_get_size_bytes(tx_buffer);
@@ -231,8 +231,8 @@ void secure_messaging_wrap_apdu(SecureMessaging* secure_messaging, BitBuffer* tx
     bit_buffer_append_byte(tx_buffer, 0x00); // Le
 }
 
-void secure_messaging_unwrap_rapdu(SecureMessaging* secure_messaging, BitBuffer* rx_buffer) {
-    secure_messaging_increment_context(secure_messaging);
+void passy_secure_messaging_unwrap_rapdu(SecureMessaging* secure_messaging, BitBuffer* rx_buffer) {
+    passy_secure_messaging_increment_context(secure_messaging);
 
     size_t length = bit_buffer_get_size_bytes(rx_buffer);
     const uint8_t* data = bit_buffer_get_data(rx_buffer);
