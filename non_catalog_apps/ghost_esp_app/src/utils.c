@@ -48,6 +48,7 @@ void show_confirmation_dialog_ex(
     }
 
     confirm_ctx->state = state;
+    state->active_confirm_context = confirm_ctx;
 
     // Set up the confirmation dialog
     confirmation_view_set_header(state->confirmation_view, header);

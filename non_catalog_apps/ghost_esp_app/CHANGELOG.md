@@ -1,9 +1,26 @@
 # Changelog
 
+## v1.6.3
+
+- Fixed an issue where the text view would be empty
+- Fixed a memory leak when showing the confirmation dialog
+- Fixed a memory leak when opening the settings menu
+- Fixed a potential memory leak on app exit
+- Added a warning to the IR Dazzler menu option for the Poltergeist board from rabbit-labs
+- Miscellaneous memory optimisations
+
+## v1.6.2
+
+- Close dialogs record during cleanup to avoid leaks
+- Added Aerial Detection and Spoofing commands
+- Improved IR memory handling to prevent "File too large" errors
+- Optimised the text view to hold more data before discarding
+
 ## v1.6.1
 
 - Added multiple status display animations from @tototo31
 - Added IR Dazzler menu option
+- Added new commands
 
 ## v1.6.0
 

@@ -57,6 +57,7 @@ struct AppState {
     Submenu* ble_scanning_menu;
     Submenu* ble_capture_menu;
     Submenu* ble_attack_menu;
+    Submenu* aerial_menu;
     Submenu* gps_menu;
     Submenu* ir_menu;
     Submenu* ir_remotes_menu;
@@ -69,7 +70,8 @@ struct AppState {
     FuriMutex* buffer_mutex;
     // UART Context
     UartContext* uart_context;
-    FilterConfig* filter_config;
+    // FilterConfig is small enough to embed directly
+    FilterConfig filter_config;
 
     // Settings
     Settings settings;
@@ -94,6 +96,7 @@ struct AppState {
     uint32_t last_ble_scanning_index;
     uint32_t last_ble_capture_index;
     uint32_t last_ble_attack_index;
+    uint32_t last_aerial_category_index;
     uint32_t last_gps_index;
     uint32_t last_ir_index;
     uint32_t ir_current_remote_index;
@@ -108,6 +111,9 @@ struct AppState {
     bool ir_file_buttons_mode;
     uint8_t* ir_file_buffer;
     size_t ir_file_buffer_size;
+    char ir_file_path[128];
+    size_t ir_signal_block_offsets[64];
+    size_t ir_signal_block_lengths[64];
     char* input_buffer;
     const char* uart_command;
     char* textBoxBuffer;
@@ -116,5 +122,7 @@ struct AppState {
     size_t buffer_size;
     uint8_t connect_input_stage;
     char connect_ssid[128];
+    char confirmation_message[256];
     bool came_from_settings;
+    void* active_confirm_context; // To track confirmation context for cleanup
 };

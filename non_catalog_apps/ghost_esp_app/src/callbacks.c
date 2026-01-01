@@ -89,6 +89,7 @@ void logs_clear_confirmed_callback(void* context) {
     confirmation_view_set_cancel_callback(app_state->confirmation_view, NULL, NULL);
 
     // Free context first
+    if(app_state) app_state->active_confirm_context = NULL;
     free(ctx);
 
     // Switch view last and update current_view
@@ -123,6 +124,7 @@ void logs_clear_cancelled_callback(void* context) {
     confirmation_view_set_cancel_callback(app_state->confirmation_view, NULL, NULL);
 
     // Free context
+    if(app_state) app_state->active_confirm_context = NULL;
     free(ctx);
 
     // Switch view last and update current_view
@@ -172,6 +174,7 @@ void nvs_clear_confirmed_callback(void* context) {
         confirmation_view_set_ok_callback(app_state->confirmation_view, NULL, NULL);
         confirmation_view_set_cancel_callback(app_state->confirmation_view, NULL, NULL);
 
+        if(app_state) app_state->active_confirm_context = NULL;
         free(ctx);
 
         view_dispatcher_switch_to_view(app_state->view_dispatcher, prev_view);
@@ -188,6 +191,7 @@ void nvs_clear_cancelled_callback(void* context) {
         confirmation_view_set_ok_callback(app_state->confirmation_view, NULL, NULL);
         confirmation_view_set_cancel_callback(app_state->confirmation_view, NULL, NULL);
 
+        if(app_state) app_state->active_confirm_context = NULL;
         free(ctx);
 
         view_dispatcher_switch_to_view(app_state->view_dispatcher, prev_view);
@@ -251,6 +255,7 @@ void app_info_ok_callback(void* context) {
     confirmation_view_set_cancel_callback(app_state->confirmation_view, NULL, NULL);
 
     // Free the context
+    if(app_state) app_state->active_confirm_context = NULL;
     free(ctx);
 
     // Return to previous view
@@ -289,6 +294,7 @@ void wardrive_clear_confirmed_callback(void* context) {
     confirmation_view_set_ok_callback(app_state->confirmation_view, NULL, NULL);
     confirmation_view_set_cancel_callback(app_state->confirmation_view, NULL, NULL);
 
+    if(app_state) app_state->active_confirm_context = NULL;
     free(ctx);
 
     view_dispatcher_switch_to_view(app_state->view_dispatcher, prev_view);
@@ -310,6 +316,7 @@ void wardrive_clear_cancelled_callback(void* context) {
     confirmation_view_set_ok_callback(app_state->confirmation_view, NULL, NULL);
     confirmation_view_set_cancel_callback(app_state->confirmation_view, NULL, NULL);
 
+    if(app_state) app_state->active_confirm_context = NULL;
     free(ctx);
 
     view_dispatcher_switch_to_view(app_state->view_dispatcher, prev_view);
@@ -340,6 +347,7 @@ void pcap_clear_confirmed_callback(void* context) {
     confirmation_view_set_ok_callback(app_state->confirmation_view, NULL, NULL);
     confirmation_view_set_cancel_callback(app_state->confirmation_view, NULL, NULL);
 
+    if(app_state) app_state->active_confirm_context = NULL;
     free(ctx);
 
     view_dispatcher_switch_to_view(app_state->view_dispatcher, prev_view);
@@ -361,6 +369,7 @@ void pcap_clear_cancelled_callback(void* context) {
     confirmation_view_set_ok_callback(app_state->confirmation_view, NULL, NULL);
     confirmation_view_set_cancel_callback(app_state->confirmation_view, NULL, NULL);
 
+    if(app_state) app_state->active_confirm_context = NULL;
     free(ctx);
 
     view_dispatcher_switch_to_view(app_state->view_dispatcher, prev_view);
