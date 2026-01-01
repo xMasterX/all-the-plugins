@@ -256,6 +256,8 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Seos | ![NFC Badge] | [by bettse](https://gitlab.com/bettse/flipper_seos) |  | [![Author Badge]](https://lab.flipper.net/apps/seos) |
 | SaFlip | ![NFC Badge] | [by aaronjamt](https://github.com/aaronjamt/saflip) |  | ![None Badge] |
 | NFC Comparator | ![NFC Badge] | [by acegoal07](https://github.com/acegoal07/FlipperZero_NFC_Comparator) |  | ![None Badge] |
+| Ami Toolkit | ![NFC Badge] | [by Firefox2100](https://github.com/Firefox2100/flipper-amiibo-toolkit) |  | ![None Badge] |
+| NFC PC Login | ![NFC Badge] | [by Play2BReal](https://github.com/Play2BReal/NFC-Login) |  | ![None Badge] |
 | RFID Beacon | ![RFID Badge] | [by nmrr](https://github.com/nmrr/flipperzero-rfidbeacon)  | `A letter/number Morse beacon on 125 kHz` | ![None Badge] |
 | EM4100 universal keys generator (for RFID Fuzzer) | ![RFID Badge] | [by Milk-Cool](https://github.com/Milk-Cool/fz-em4100-generator) |  | [![Author Badge]](https://lab.flipper.net/apps/key_generator) |
 | (Q)M100 UHF RFID | ![RFID Badge] | [by frux-c](https://github.com/frux-c/uhf_rfid) | WIP -> (+Added icon by @xMasterX) | [![UFW Badge]](https://lab.flipper.net/apps/uhf_rfid) |
@@ -306,10 +308,12 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | FlipCrypt | ![Tools Badge] | [by Tyl3rA](https://github.com/Tyl3rA/FlipCrypt) |  | ![None Badge] |
 | Flipper Time Tracker | ![Tools Badge] | [by MassivDash](https://github.com/MassivDash/flipper-tracker) |  | [![Author Badge]](https://lab.flipper.net/apps/trackerflipx) |
 | IconEdit | ![Tools Badge] | [by rdefeo](https://github.com/rdefeo/iconedit) |  | [![Author Badge]](https://lab.flipper.net/apps/iconedit) |
+| CAN Tools | ![Tools Badge] | [by MatthewKuKanich](https://github.com/MatthewKuKanich/FlipperCANTools/tree/main/can_tools) |  | ![None Badge] |
 | USB HID Autofire | ![USB Badge] | [by pbek](https://github.com/pbek/usb_hid_autofire) |  | [![UFW Badge]](https://lab.flipper.net/apps/usb_hid_autofire) |
 | USB Consumer Control | ![USB Badge] | [by WithSecureLabs](https://github.com/WithSecureLabs/usb-consumer-control/tree/main) |  | ![None Badge] |
 | HID File Transfer | ![USB Badge] | [by Kavakuo](https://github.com/Kavakuo/HID-File-Transfer) | Get client app in [original repo](https://github.com/Kavakuo/HID-File-Transfer) | ![None Badge] |
 | USB Game Controller (Xbox360) | ![USB Badge] | [by expected-ingot](https://github.com/expected-ingot/flipper-xinput) |  | ![None Badge] |
+| Lego Dimensions ToyPad Emu | ![USB Badge] | [by SegerEnd](https://github.com/SegerEnd/Flipper-Zero-LD-Toypad-Emulator) |  | [![Author Badge]](https://lab.flipper.net/apps/ldtoypad) |
 
 
 #### Catalog links checked at `13 Oct 2025 21:35 GMT +3`

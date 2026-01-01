@@ -1,0 +1,16 @@
+App(
+    appid="ami_tool",
+    name="Ami Toolkit",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="ami_tool_app",
+    requires=["gui"],
+    stack_size=2 * 1024,
+    fap_category="NFC",
+    fap_icon="ami_tool.png",
+    fap_description="An Ameebo toolkit for Flipper Zero",
+    fap_author="Firefox2100",
+    fap_weburl="https://github.com/Firefox2100/flipper-amiibo-toolkit",
+    fap_file_assets="files",
+    fap_libs=["mbedtls"],
+    fap_version="0.2.0",
+)
