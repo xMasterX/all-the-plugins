@@ -1,7 +1,7 @@
 SIO DEFINITIONS ::=
 BEGIN
 
--- Black Hate Asia 25: Dismantling-the-seos-protocol.
+-- Black Hat Asia 25: Dismantling-the-seos-protocol.
 
 Key ::= SEQUENCE {
   referenceId [1] IMPLICIT OCTET STRING,

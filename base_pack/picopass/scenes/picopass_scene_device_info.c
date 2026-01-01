@@ -23,7 +23,6 @@ void picopass_scene_device_info_on_enter(void* context) {
     // Setup view
     PicopassBlock* card_data = picopass->dev->dev_data.card_data;
     PicopassPacs* pacs = &picopass->dev->dev_data.pacs;
-    PluginWiegand* plugin = picopass->plugin_wiegand;
     Widget* widget = picopass->widget;
 
     uint8_t csn[PICOPASS_BLOCK_LEN] = {0};
@@ -79,22 +78,17 @@ void picopass_scene_device_info_on_enter(void* context) {
         picopass_scene_device_info_widget_callback,
         picopass);
 
-    if(plugin) {
-        // Convert from byte array to uint64_t
-        uint64_t credential = 0;
-        memcpy(&credential, pacs->credential, sizeof(uint64_t));
-        credential = __builtin_bswap64(credential);
-
-        size_t format_count = plugin->count(pacs->bitLength, credential);
-        if(format_count > 0) {
-            widget_add_button_element(
-                picopass->widget,
-                GuiButtonTypeCenter,
-                "Parse",
-                picopass_scene_device_info_widget_callback,
-                picopass);
-        }
+    wiegand_message_t wiegand_msg = picopass_pacs_extract_wmo(pacs);
+    size_t format_count = picopass_wiegand_format_count(&wiegand_msg);
+    if(format_count > 0) {
+        widget_add_button_element(
+            picopass->widget,
+            GuiButtonTypeCenter,
+            "Parse",
+            picopass_scene_device_info_widget_callback,
+            picopass);
     }
+
     widget_add_button_element(
         picopass->widget,
         GuiButtonTypeRight,
