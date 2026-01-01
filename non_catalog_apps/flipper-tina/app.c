@@ -1,16 +1,16 @@
-/* 
+/*
  * This file is part of the INA Meter application for Flipper Zero (https://github.com/cepetr/flipper-tina).
-  * 
- * This program is free software: you can redistribute it and/or modify  
- * it under the terms of the GNU General Public License as published by  
+  *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, version 3.
  *
- * This program is distributed in the hope that it will be useful, but 
- * WITHOUT ANY WARRANTY; without even the implied warranty of 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License 
+ * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
@@ -23,6 +23,9 @@
 #include "sensor/ina219_driver.h"
 #include "sensor/ina226_driver.h"
 #include "sensor/ina228_driver.h"
+
+#define TICK_EVENT_PERIOD    5 // Sensor read period in ms
+#define SCREEN_UPDATE_PERIOD 200 // Screen update period in ms
 
 static bool app_custom_event_callback(void* context, uint32_t event) {
     App* app = (App*)context;
@@ -63,6 +66,8 @@ static void app_tick_event_callback(void* context) {
     App* app = (App*)context;
     furi_assert(app != NULL);
 
+    static int tick_counter = 1;
+
     if(app->sensor != NULL) {
         app->sensor->tick(app->sensor);
 
@@ -79,12 +84,16 @@ static void app_tick_event_callback(void* context) {
 
             if(app->datalog != NULL) {
                 datalog_append_record(app->datalog, &sensor_state);
-                datalog_screen_update(app->datalog_screen, app->datalog);
+                // datalog_screen_update(app->datalog_screen, app->datalog);
             }
         }
     }
 
-    scene_manager_handle_tick_event(app->scene_manager);
+    if(--tick_counter == 0) {
+        tick_counter = SCREEN_UPDATE_PERIOD / TICK_EVENT_PERIOD;
+        scene_manager_handle_tick_event(app->scene_manager);
+        datalog_screen_update(app->datalog_screen, app->datalog);
+    }
 }
 
 void app_restart_sensor_driver(App* app) {
@@ -118,10 +127,14 @@ void app_restart_sensor_driver(App* app) {
             [SensorPrecision_High] = Ina226ConvTime_2116us,
             [SensorPrecision_Max] = Ina226ConvTime_8244us,
         };
+        Ina226Averaging ina226_averaging[SensorAveraging_count] = {
+            [SensorAveraging_Medium] = Ina226Averaging_256,
+            [SensorAveraging_Max] = Ina226Averaging_1024,
+        };
         Ina226Config ina226_config = {
             .i2c_address = app->config.i2c_address,
             .shunt_resistor = app->config.shunt_resistor,
-            .averaging = Ina226Averaging_1024,
+            .averaging = ina226_averaging[app->config.sensor_averaging],
             .vbus_conv_time = ina226_conv_time[app->config.voltage_precision],
             .vshunt_conv_time = ina226_conv_time[app->config.current_precision],
         };
@@ -134,10 +147,14 @@ void app_restart_sensor_driver(App* app) {
             [SensorPrecision_High] = Ina228ConvTime_1052us,
             [SensorPrecision_Max] = Ina228ConvTime_4120us,
         };
+        Ina228Averaging ina228_averaging[SensorAveraging_count] = {
+            [SensorAveraging_Medium] = Ina228Averaging_256,
+            [SensorAveraging_Max] = Ina228Averaging_1024,
+        };
         Ina228Config ina228_config = {
             .i2c_address = app->config.i2c_address,
             .shunt_resistor = app->config.shunt_resistor,
-            .averaging = Ina228Averaging_1024,
+            .averaging = ina228_averaging[app->config.sensor_averaging],
             .vbus_conv_time = ina228_conv_time[app->config.voltage_precision],
             .vshunt_conv_time = ina228_conv_time[app->config.current_precision],
             .adc_range = Ina228AdcRange_160mV,
@@ -178,7 +195,8 @@ static App* app_alloc() {
     view_dispatcher_set_event_callback_context(app->view_dispatcher, app);
     view_dispatcher_set_custom_event_callback(app->view_dispatcher, app_custom_event_callback);
     view_dispatcher_set_navigation_event_callback(app->view_dispatcher, app_back_event_callback);
-    view_dispatcher_set_tick_event_callback(app->view_dispatcher, app_tick_event_callback, 100);
+    view_dispatcher_set_tick_event_callback(
+        app->view_dispatcher, app_tick_event_callback, TICK_EVENT_PERIOD);
 
     // Attach view dispatcher to the GUI
     view_dispatcher_attach_to_gui(app->view_dispatcher, app->gui, ViewDispatcherTypeFullscreen);

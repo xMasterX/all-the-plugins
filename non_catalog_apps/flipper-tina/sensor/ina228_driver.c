@@ -1,27 +1,25 @@
-/* 
+/*
  * This file is part of the INA Meter application for Flipper Zero (https://github.com/cepetr/flipper-tina).
- * 
- * This program is free software: you can redistribute it and/or modify  
- * it under the terms of the GNU General Public License as published by  
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, version 3.
  *
- * This program is distributed in the hope that it will be useful, but 
- * WITHOUT ANY WARRANTY; without even the implied warranty of 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License 
+ * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <furi.h>
 #include <furi_hal.h>
 
-#include "app_common.h"
+#include "../app_common.h"
 #include "sensor_driver.h"
 #include "ina228_driver.h"
-
-#define TAG "INA228Driver"
 
 #define INA228_I2C_TIMEOUT 10 // ms
 

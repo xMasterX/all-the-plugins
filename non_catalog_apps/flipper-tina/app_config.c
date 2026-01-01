@@ -1,17 +1,17 @@
-/* 
+/*
  * This file is part of the INA Meter application for Flipper Zero (https://github.com/cepetr/flipper-tina).
  * Copyright (c) 2025
- * 
- * This program is free software: you can redistribute it and/or modify  
- * it under the terms of the GNU General Public License as published by  
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, version 3.
  *
- * This program is distributed in the hope that it will be useful, but 
- * WITHOUT ANY WARRANTY; without even the implied warranty of 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License 
+ * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
@@ -32,6 +32,7 @@
 #define KEY_SHUNT_RESISTOR_ALT "altShuntResistor"
 #define KEY_VOLTAGE_PRECISION  "voltagePrecision"
 #define KEY_CURRENT_PRECISION  "currentPrecision"
+#define KEY_SENSOR_AVERAGING   "sensorAveraging"
 #define KEY_LED_BLINKING       "ledBlinking"
 
 void app_config_init(AppConfig* config) {
@@ -42,6 +43,7 @@ void app_config_init(AppConfig* config) {
     config->shunt_resistor_alt = 100000; // 100mOhm
     config->voltage_precision = SensorPrecision_Medium;
     config->current_precision = SensorPrecision_Medium;
+    config->sensor_averaging = SensorAveraging_Max;
     config->led_blinking = true;
 }
 
@@ -73,6 +75,17 @@ const char* sensor_precision_name(SensorPrecision sensor_mode) {
     }
 }
 
+const char* sensor_averaging_name(SensorAveraging sensor_averaging) {
+    switch(sensor_averaging) {
+    case SensorAveraging_Medium:
+        return "Medium";
+    case SensorAveraging_Max:
+        return "Max";
+    default:
+        return "Unknown";
+    }
+}
+
 #define ini_add_comment(s, comment)      furi_string_cat_printf(s, "# %s\n", comment)
 #define ini_add_section(s, section)      furi_string_cat_printf(s, "[%s]\n", section)
 #define ini_add_keyval(s, key, fmt, val) furi_string_cat_printf(s, "%s = " fmt "\n", key, val)
@@ -94,6 +107,7 @@ static FuriString* app_config_build(const AppConfig* config) {
         s, KEY_VOLTAGE_PRECISION, "%s", sensor_precision_name(config->voltage_precision));
     ini_add_keyval(
         s, KEY_CURRENT_PRECISION, "%s", sensor_precision_name(config->current_precision));
+    ini_add_keyval(s, KEY_SENSOR_AVERAGING, "%s", sensor_averaging_name(config->sensor_averaging));
 
     return s;
 }
@@ -187,7 +201,24 @@ static void app_config_set(AppConfig* config, Slice section, Slice key, Slice va
             } else {
                 FURI_LOG_E(TAG, "Unknown current precision");
             }
-        } else {
+        } else if(key(KEY_SENSOR_AVERAGING)) {
+            bool found = false;
+            for(SensorAveraging i = 0; i < SensorAveraging_count; i++) {
+                if(slice_equals_cstr(value, sensor_averaging_name(i))) {
+                    config->sensor_averaging = i;
+                    found = true;
+                    break;
+                }
+            }
+            if(found) {
+                FURI_LOG_I(
+                    TAG, "sensor_averaging=%s", sensor_averaging_name(config->sensor_averaging));
+            } else {
+                FURI_LOG_E(TAG, "Unknown sensor averaging");
+            }
+        }
+
+        else {
             FURI_LOG_E(TAG, "Unknown key");
         }
     }

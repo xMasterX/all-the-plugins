@@ -38,6 +38,8 @@ The application provides a simple way to configure conversion time and sample av
 
 The precision can be set independently for VBUS and shunt voltage measurements.
 
+For INA226 and INA228 devices, the number of averaged samples can be reduced from 1024 down to 256 by changing the Averaging setting from Max to Medium.
+
 ## Measurement Range and Resolution
 
 Each sensor operates within a fixed voltage range, with a defined resolution for both bus voltage (VBUS) and shunt voltage (VSHUNT) measurements. The values below indicate the maximum measurable voltage and the smallest detectable voltage step for each parameter.

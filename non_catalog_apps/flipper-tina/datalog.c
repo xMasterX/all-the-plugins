@@ -1,17 +1,17 @@
 
-/* 
+/*
  * This file is part of the INA Meter application for Flipper Zero (https://github.com/cepetr/flipper-tina).
-  * 
- * This program is free software: you can redistribute it and/or modify  
- * it under the terms of the GNU General Public License as published by  
+  *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, version 3.
  *
- * This program is distributed in the hope that it will be useful, but 
- * WITHOUT ANY WARRANTY; without even the implied warranty of 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License 
+ * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
@@ -34,7 +34,7 @@ struct Datalog {
     PipeSideBundle pipe;
 
     // Flag to stop the worker thread
-    bool stopped;
+    volatile bool stopped;
     // Unix timestamp of the first record
     uint32_t start_time;
     uint32_t start_ticks;
@@ -49,14 +49,15 @@ static int32_t datalog_worker(void* context) {
     while(!log->stopped) {
         uint8_t buffer[512];
         size_t nrecved = pipe_receive(log->pipe.bobs_side, buffer, sizeof(buffer));
-
-        size_t nwritten = storage_file_write(log->file, buffer, nrecved);
-        if(nrecved != nwritten) {
-            FURI_LOG_D(
-                TAG,
-                "Failed to write %d bytes to %s",
-                nrecved,
-                furi_string_get_cstr(log->file_name));
+        if(nrecved > 0) {
+            size_t nwritten = storage_file_write(log->file, buffer, nrecved);
+            if(nrecved != nwritten) {
+                FURI_LOG_D(
+                    TAG,
+                    "Failed to write %d bytes to %s",
+                    nrecved,
+                    furi_string_get_cstr(log->file_name));
+            }
         }
     }
     return 0;
@@ -106,15 +107,16 @@ Datalog* datalog_open(Storage* storage, const char* file_name) {
 
 void datalog_close(Datalog* log) {
     if(log != NULL) {
+        FURI_LOG_I(TAG, "Closing datalog file...");
         log->stopped = true;
-        furi_thread_flags_set(furi_thread_get_id(log->thread), DATALOG_WORKER_STOP);
+        pipe_free(log->pipe.alices_side);
         furi_thread_join(log->thread);
         furi_thread_free(log->thread);
         storage_file_close(log->file);
         storage_file_free(log->file);
-        pipe_free(log->pipe.alices_side);
         pipe_free(log->pipe.bobs_side);
         furi_string_free(log->file_name);
+        free(log);
     }
 }
 
