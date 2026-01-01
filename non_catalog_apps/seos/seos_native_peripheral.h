@@ -11,6 +11,7 @@ typedef struct {
     FuriHalBleProfileBase* ble_profile;
 
     uint8_t event_buffer[128];
+    BitBuffer* rx_buffer;
 
     SeosPhase phase;
     AuthParameters params;

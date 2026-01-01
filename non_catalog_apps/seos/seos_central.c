@@ -1,4 +1,5 @@
 #include "seos_central_i.h"
+#include "seos_common.h"
 
 #define TAG "SeosCentral"
 
@@ -32,12 +33,15 @@ SeosCentral* seos_central_alloc(Seos* seos) {
     seos_central->seos_att = seos_att_alloc(seos);
     seos_att_set_notify_callback(seos_central->seos_att, seos_central_notify, seos_central);
 
+    seos_central->rx_buffer = bit_buffer_alloc(128); // TODO: MTU
+
     return seos_central;
 }
 
 void seos_central_free(SeosCentral* seos_central) {
     furi_assert(seos_central);
     seos_att_free(seos_central->seos_att);
+    bit_buffer_free(seos_central->rx_buffer);
     free(seos_central);
 }
 
@@ -52,35 +56,48 @@ void seos_central_stop(SeosCentral* seos_central) {
 void seos_central_notify(void* context, const uint8_t* buffer, size_t buffer_len) {
     SeosCentral* seos_central = (SeosCentral*)context;
     seos_log_buffer(TAG, "notify", (uint8_t*)buffer, buffer_len);
-    const uint8_t* data = buffer;
-    if(data[0] == 0xe1) {
-        FURI_LOG_W(TAG, "Reader BLE Error code: %02x", data[1]);
+    
+    uint8_t flags = buffer[0];
+
+    // Check for error flag
+    if((flags & BLE_FLAG_ERR) == BLE_FLAG_ERR) {
+        seos_log_buffer(TAG, "Received error response", (uint8_t*)(buffer + 1), buffer_len - 1);
         return;
     }
 
+    // Check for start-of-message flag
+    if((flags & BLE_FLAG_SOM) == BLE_FLAG_SOM) {
+        bit_buffer_reset(seos_central->rx_buffer);
+    } else {
+        if (bit_buffer_get_size_bytes(seos_central->rx_buffer) == 0) {
+            FURI_LOG_W(TAG, "Expected start of BLE packet");
+            return;
+        }
+    }
+
+    bit_buffer_append_bytes(seos_central->rx_buffer, buffer + 1, buffer_len - 1);
+    
+    // Only parse if end-of-message flag found
+    if((flags & BLE_FLAG_EOM) == BLE_FLAG_EOM) return;
+
     BitBuffer* response = bit_buffer_alloc(128);
 
-    if(data[0] != BLE_START) {
-        FURI_LOG_W(TAG, "Unexpected start of BLE packet");
-    }
-    const uint8_t* apdu = data + 1; // Match name to nfc version for easier copying
+    // Match name to nfc version for easier copying
+    const uint8_t *apdu = bit_buffer_get_data(seos_central->rx_buffer);
+    const size_t apdu_len = bit_buffer_get_size_bytes(seos_central->rx_buffer);
 
     if(memcmp(apdu, select_header, sizeof(select_header)) == 0) {
         if(memcmp(apdu + sizeof(select_header) + 1, standard_seos_aid, sizeof(standard_seos_aid)) ==
            0) {
-            bit_buffer_append_byte(response, BLE_START);
             seos_emulator_select_aid(response);
             bit_buffer_append_bytes(response, (uint8_t*)success, sizeof(success));
             seos_central->phase = SELECT_ADF;
         } else {
-            bit_buffer_append_byte(response, BLE_START);
             bit_buffer_append_bytes(response, (uint8_t*)file_not_found, sizeof(file_not_found));
         }
     } else if(memcmp(apdu, select_adf_header, sizeof(select_adf_header)) == 0) {
         const uint8_t* oid_list = apdu + sizeof(select_adf_header) + 1;
         size_t oid_list_len = apdu[sizeof(select_adf_header)];
-
-        bit_buffer_append_byte(response, BLE_START);
 
         if(seos_emulator_select_adf(
                oid_list, oid_list_len, &seos_central->params, seos_central->credential, response)) {
@@ -90,17 +107,13 @@ void seos_central_notify(void* context, const uint8_t* buffer, size_t buffer_len
             FURI_LOG_W(TAG, "Failed to match any ADF OID");
         }
     } else if(memcmp(apdu, general_authenticate_1, sizeof(general_authenticate_1)) == 0) {
-        bit_buffer_append_byte(response, BLE_START);
-
         seos_emulator_general_authenticate_1(response, seos_central->params);
 
         bit_buffer_append_bytes(response, (uint8_t*)success, sizeof(success));
         seos_central->phase = GENERAL_AUTHENTICATION_2;
     } else if(memcmp(apdu, general_authenticate_2_header, sizeof(general_authenticate_2_header)) == 0) {
-        bit_buffer_append_byte(response, BLE_START);
-
         if(seos_emulator_general_authenticate_2(
-               apdu, buffer_len - 1, seos_central->credential, &seos_central->params, response)) {
+               apdu, apdu_len, seos_central->credential, &seos_central->params, response)) {
             FURI_LOG_I(TAG, "Authenticated");
 
             view_dispatcher_send_custom_event(
@@ -114,16 +127,12 @@ void seos_central_notify(void* context, const uint8_t* buffer, size_t buffer_len
     } else if(memcmp(apdu, secure_messaging_header, sizeof(secure_messaging_header)) == 0) {
         uint8_t request_sio[] = {0x5c, 0x02, 0xff, 0x00};
 
-        bit_buffer_append_byte(response, BLE_START);
-
         if(seos_central->secure_messaging) {
             FURI_LOG_D(TAG, "Unwrap secure message");
 
-            // c0 0ccb3fff 16 8508fa8395d30de4e8e097008e085da7edbd833b002d00
-            // Ignore 1 BLE_START byte
-            size_t bytes_to_ignore = 1;
-            BitBuffer* tmp = bit_buffer_alloc(buffer_len);
-            bit_buffer_append_bytes(tmp, buffer + bytes_to_ignore, buffer_len - bytes_to_ignore);
+            // 0ccb3fff 16 8508fa8395d30de4e8e097008e085da7edbd833b002d00
+            BitBuffer* tmp = bit_buffer_alloc(apdu_len);
+            bit_buffer_append_bytes(tmp, apdu, apdu_len);
 
             seos_log_bitbuffer(TAG, "NFC received(wrapped)", tmp);
             secure_messaging_unwrap_apdu(seos_central->secure_messaging, tmp);
@@ -163,7 +172,33 @@ void seos_central_notify(void* context, const uint8_t* buffer, size_t buffer_len
     }
 
     if(bit_buffer_get_size_bytes(response) > 0) {
-        seos_att_write_request(seos_central->seos_att, response);
+        BitBuffer* tx = bit_buffer_alloc(1 + BLE_CHUNK_SIZE);
+
+        const uint8_t* data = bit_buffer_get_data(response);
+        const uint16_t size = bit_buffer_get_size_bytes(response);
+
+        uint16_t num_chunks = size / BLE_CHUNK_SIZE;
+        if (size % BLE_CHUNK_SIZE) num_chunks++;
+
+        for (uint16_t i=0; i<num_chunks; i++) {
+            uint8_t flags = 0;
+            if (i == 0) flags |= BLE_FLAG_SOM;
+            if (i == num_chunks-1) flags |= BLE_FLAG_EOM;
+            // Add number of remaining chunks to lower nybble
+            flags |= (num_chunks - 1 - i) & 0x0F;
+
+            // Find number of bytes left to send
+            uint8_t chunk_size = size - (i * BLE_CHUNK_SIZE);
+            // Limit to maximum chunk size
+            chunk_size = chunk_size > BLE_CHUNK_SIZE ? BLE_CHUNK_SIZE : chunk_size;
+
+            // Combine and send
+            bit_buffer_reset(tx);
+            bit_buffer_append_byte(tx, flags);
+            bit_buffer_append_bytes(tx, &data[i * BLE_CHUNK_SIZE], chunk_size);
+            seos_att_write_request(seos_central->seos_att, tx);
+        }
+        bit_buffer_free(tx);
     }
     bit_buffer_free(response);
 }

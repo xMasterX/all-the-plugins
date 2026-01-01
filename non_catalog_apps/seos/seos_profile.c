@@ -1,5 +1,6 @@
 #include "seos_profile.h"
 
+#include "seos_common.h"
 #include <gap.h>
 #include <furi_ble/profile_interface.h>
 #include "seos_service.h"
@@ -132,5 +133,29 @@ bool ble_profile_seos_tx(FuriHalBleProfileBase* profile, uint8_t* data, uint16_t
         return false;
     }
 
-    return ble_svc_seos_update_tx(seos_profile->seos_svc, data, size);
+
+    uint16_t num_chunks = size / BLE_CHUNK_SIZE;
+    if (size % BLE_CHUNK_SIZE) num_chunks++;
+
+    uint8_t chunk[BLE_CHUNK_SIZE + 1];
+    for (uint16_t i=0; i<num_chunks; i++) {
+        uint8_t flags = 0;
+        if (i == 0) flags |= BLE_FLAG_SOM;
+        if (i == num_chunks-1) flags |= BLE_FLAG_EOM;
+        // Add number of remaining chunks to lower nybble
+        flags |= (num_chunks - 1 - i) & 0x0F;
+
+        // Find number of bytes left to send
+        uint8_t chunk_size = size - (i * BLE_CHUNK_SIZE);
+        // Limit to maximum chunk size
+        chunk_size = chunk_size > BLE_CHUNK_SIZE ? BLE_CHUNK_SIZE : chunk_size;
+
+        // Combine and send
+        chunk[0] = flags;
+        memcpy(chunk+1, &data[i * BLE_CHUNK_SIZE], chunk_size);
+        if (!ble_svc_seos_update_tx(seos_profile->seos_svc, chunk, chunk_size + 1))
+            return false;
+    }
+
+    return true;
 }

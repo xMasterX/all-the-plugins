@@ -10,7 +10,6 @@
 #include "secure_messaging.h"
 
 typedef struct {
-    Iso14443_3aListener* iso14443_listener;
     BitBuffer* tx_buffer;
     BitBuffer* rx_buffer;
 

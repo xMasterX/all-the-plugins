@@ -342,8 +342,13 @@ NfcCommand seos_worker_listener_inspect_reader(Seos* seos) {
     NfcCommand ret = NfcCommandContinue;
 
     const uint8_t* rx_data = bit_buffer_get_data(seos_emulator->rx_buffer);
+#if __has_include(<lib/nfc/protocols/type_4_tag/type_4_tag.h>)
+    // With PR #4242 ISO14443-4A command PCB is handled by firmware and not passed in rx buffer
+    uint8_t offset = 0;
+#else
     bool NAD = (rx_data[0] & NAD_MASK) == NAD_MASK;
     uint8_t offset = NAD ? 2 : 1;
+#endif
 
     // + x to skip stuff before APDU
     const uint8_t* apdu = rx_data + offset;
@@ -374,8 +379,13 @@ NfcCommand seos_worker_listener_process_message(Seos* seos) {
     NfcCommand ret = NfcCommandContinue;
 
     const uint8_t* rx_data = bit_buffer_get_data(seos_emulator->rx_buffer);
+#if __has_include(<lib/nfc/protocols/type_4_tag/type_4_tag.h>)
+    // With PR #4242 ISO14443-4A command PCB is handled by firmware and not passed in rx buffer
+    uint8_t offset = 0;
+#else
     bool NAD = (rx_data[0] & NAD_MASK) == NAD_MASK;
     uint8_t offset = NAD ? 2 : 1;
+#endif
 
     // + x to skip stuff before APDU
     const uint8_t* apdu = rx_data + offset;
@@ -507,8 +517,7 @@ NfcCommand seos_worker_listener_callback(NfcGenericEvent event, void* context) {
 
     NfcCommand ret = NfcCommandContinue;
     Iso14443_4aListenerEvent* iso14443_4a_event = event.event_data;
-    Iso14443_3aListener* iso14443_listener = event.instance;
-    seos_emulator->iso14443_listener = iso14443_listener;
+    Iso14443_4aListener* iso14443_4a_listener = event.instance;
 
     BitBuffer* tx_buffer = seos_emulator->tx_buffer;
     bit_buffer_reset(tx_buffer);
@@ -517,8 +526,14 @@ NfcCommand seos_worker_listener_callback(NfcGenericEvent event, void* context) {
     case Iso14443_4aListenerEventTypeReceivedData:
         seos_emulator->rx_buffer = iso14443_4a_event->data->buffer;
         const uint8_t* rx_data = bit_buffer_get_data(seos_emulator->rx_buffer);
+#if __has_include(<lib/nfc/protocols/type_4_tag/type_4_tag.h>)
+        // With PR #4242 ISO14443-4A command PCB is handled by firmware and not passed in rx buffer
+        uint8_t offset = 0;
+        UNUSED(rx_data);
+#else
         bool NAD = (rx_data[0] & NAD_MASK) == NAD_MASK;
         uint8_t offset = NAD ? 2 : 1;
+#endif
 
         if(bit_buffer_get_size_bytes(iso14443_4a_event->data->buffer) == offset) {
             FURI_LOG_I(TAG, "No contents in frame");
@@ -527,8 +542,12 @@ NfcCommand seos_worker_listener_callback(NfcGenericEvent event, void* context) {
 
         seos_log_bitbuffer(TAG, "NFC received", seos_emulator->rx_buffer);
 
+#if __has_include(<lib/nfc/protocols/type_4_tag/type_4_tag.h>)
+        // With PR #4242 ISO14443-4A response PCB is handled by firmware and not necessary in tx buffer
+#else
         // Some ISO14443a framing I need to figure out
         bit_buffer_append_bytes(tx_buffer, rx_data, offset);
+#endif
 
         if(seos->flow_mode == FLOW_CRED) {
             ret = seos_worker_listener_process_message(seos);
@@ -546,26 +565,27 @@ NfcCommand seos_worker_listener_callback(NfcGenericEvent event, void* context) {
                    sizeof(FILE_NOT_FOUND)) != 0) {
                 bit_buffer_append_bytes(tx_buffer, success, sizeof(success));
             }
+        }
 
-            iso14443_crc_append(Iso14443CrcTypeA, tx_buffer);
+#if __has_include(<lib/nfc/protocols/type_4_tag/type_4_tag.h>)
+        // With PR #4242 ISO14443-4A response CRC is handled by firmware and not necessary in tx buffer
+#else
+        iso14443_crc_append(Iso14443CrcTypeA, tx_buffer);
+#endif
 
-            seos_log_bitbuffer(TAG, "NFC transmit", seos_emulator->tx_buffer);
+        seos_log_bitbuffer(TAG, "NFC transmit", seos_emulator->tx_buffer);
 
-            NfcError error = nfc_listener_tx((Nfc*)iso14443_listener, tx_buffer);
-            if(error != NfcErrorNone) {
-                FURI_LOG_W(TAG, "Tx error: %d", error);
-                break;
-            }
-        } else {
-            iso14443_crc_append(Iso14443CrcTypeA, tx_buffer);
-
-            seos_log_bitbuffer(TAG, "NFC transmit", seos_emulator->tx_buffer);
-
-            NfcError error = nfc_listener_tx((Nfc*)iso14443_listener, tx_buffer);
-            if(error != NfcErrorNone) {
-                FURI_LOG_W(TAG, "Tx error: %d", error);
-                break;
-            }
+#if __has_include(<lib/nfc/protocols/type_4_tag/type_4_tag.h>)
+        // With PR #4242 ISO14443-4A use the public API that handles response PCB and CRC
+        Iso14443_4aError error = iso14443_4a_listener_send_block(iso14443_4a_listener, tx_buffer);
+        if(error != Iso14443_4aErrorNone) {
+#else
+        UNUSED(iso14443_4a_listener);
+        NfcError error = nfc_listener_tx(seos->nfc, tx_buffer);
+        if(error != NfcErrorNone) {
+#endif
+            FURI_LOG_W(TAG, "Tx error: %d", error);
+            break;
         }
         break;
     case Iso14443_4aListenerEventTypeHalted:
