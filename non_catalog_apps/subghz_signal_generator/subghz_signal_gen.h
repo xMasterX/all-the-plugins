@@ -25,6 +25,7 @@ typedef enum
 {
     SignalModeOok650Async,
     SignalMode2FSKDev238Async,
+    SignalMode2FSKDev12KAsync,
     SignalMode2FSKDev476Async,
     SignalModeMSK99_97KbAsync,
     SignalModeGFSK9_99KbAsync,

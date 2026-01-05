@@ -40,6 +40,7 @@ static const FrequencyBand valid_frequency_bands[] = {
 static const char *signal_modes[] = {
     "OOK 650kHz",
     "2FSK 2.38kHz",
+    "2FSK 12kHz",
     "2FSK 47.6kHz",
     "MSK 99.97Kb/s",
     "GFSK 9.99Kb/s",
@@ -564,6 +565,9 @@ static void subghz_signal_gen_switch_mode(SubGhzSignalGenApp *app)
     case SignalMode2FSKDev238Async:
         subghz_devices_load_preset(app->device, FuriHalSubGhzPreset2FSKDev238Async, NULL);
         break;
+    case SignalMode2FSKDev12KAsync:
+        subghz_devices_load_preset(app->device, FuriHalSubGhzPreset2FSKDev12KAsync, NULL);
+        break;
     case SignalMode2FSKDev476Async:
         subghz_devices_load_preset(app->device, FuriHalSubGhzPreset2FSKDev476Async, NULL);
         break;
@@ -644,6 +648,7 @@ static int32_t subghz_signal_gen_tx_thread(void *context)
         memset(signal_data, 0xFF, sizeof(signal_data));
         break;
     case SignalMode2FSKDev238Async:
+    case SignalMode2FSKDev12KAsync:
     case SignalMode2FSKDev476Async:
         for (size_t i = 0; i < sizeof(signal_data); i++)
         {

@@ -166,8 +166,9 @@ static char* setting_modulation_values[] = {
     "FuriHalSubGhzPresetOok270Async",
     "FuriHalSubGhzPresetOok650Async",
     "FuriHalSubGhzPreset2FSKDev238Async",
+    "FuriHalSubGhzPreset2FSKDev12KAsync",
     "FuriHalSubGhzPreset2FSKDev476Async"};
-static char* setting_modulation_names[] = {"AM270", "AM650", "FM238", "FM476"};
+static char* setting_modulation_names[] = {"AM270", "AM650", "FM238", "FM12K", "FM476"};
 static void fmf2sub_setting_modulation_change(VariableItem* item) {
     Fmf2SubApp* app = variable_item_get_context(item);
     uint8_t index = variable_item_get_current_value_index(item);
