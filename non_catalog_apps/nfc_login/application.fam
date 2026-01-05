@@ -5,8 +5,6 @@ App(
     entry_point="nfc_login",
     requires=["gui", "usb_hid", "storage", "notification", "bt", "cli"],
     fap_libs=["ble_profile", "assets"],
-    fap_icon_assets="icons",
-    fap_icon_assets_symbol="nfc_login",
     stack_size=4 * 1024,
     fap_category="NFC",
     fap_author="Play2BReal",

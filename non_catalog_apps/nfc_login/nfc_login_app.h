@@ -27,20 +27,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-#if !defined(HAS_MOMENTUM_SUPPORT)
-#ifdef __has_include
-#if __has_include(<momentum/momentum.h>) || __has_include(<firmware/momentum.h>)
-#define HAS_MOMENTUM_SUPPORT
-#elif defined(FIRMWARE_MOMENTUM) || defined(MOMENTUM_FIRMWARE) || defined(__MOMENTUM__) || \
-    defined(MOMENTUM) || defined(HAS_MOMENTUM) || defined(MOMENTUM_FW)
-#define HAS_MOMENTUM_SUPPORT
-#endif
-#elif defined(FIRMWARE_MOMENTUM) || defined(MOMENTUM_FIRMWARE) || defined(__MOMENTUM__) || \
-    defined(MOMENTUM) || defined(HAS_MOMENTUM) || defined(MOMENTUM_FW)
-#define HAS_MOMENTUM_SUPPORT
-#endif
-#endif
-
 #define MAX_PASSCODE_SEQUENCE_LEN 64
 
 #define TAG                         "nfc_login"

@@ -4,7 +4,6 @@
 #include "../../storage/nfc_login_card_storage.h"
 
 #include <ctype.h>
-#include <nfc_login_icons.h>
 
 NfcCommand iso14443_3a_async_callback(NfcGenericEvent event, void* context) {
     AsyncPollerContext* ctx = (AsyncPollerContext*)context;
