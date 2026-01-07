@@ -22,6 +22,7 @@ typedef struct {
     DateTime datetime;
     bool running;
     bool colon_state;
+    int mode; // 12 or 24 hour mode
 } SegmentClock;
 
 /*
@@ -186,8 +187,18 @@ static void draw_callback(Canvas* canvas, void* ctx) {
     uint8_t start_y = (screen_height - VERTICAL_HEIGHT * 2 - SEGMENT_HEIGHT) / 2;
 
     // Draw hours
-    draw_digit(canvas, start_x, start_y, hours / 10);
-    draw_digit(canvas, start_x + digit_width + digit_spacing, start_y, hours % 10);
+    if (clock->mode == 12) {
+        // Convert to 12-hour format
+        uint8_t display_hours = hours % 12;
+        if (display_hours == 0) display_hours = 12; // Handle midnight/noon case
+
+        draw_digit(canvas, start_x, start_y, display_hours / 10);
+        draw_digit(canvas, start_x + digit_width + digit_spacing, start_y, display_hours % 10);
+    } else {
+        // no modification for 24 hour mode
+        draw_digit(canvas, start_x, start_y, hours / 10);
+        draw_digit(canvas, start_x + digit_width + digit_spacing, start_y, hours % 10);
+    }
 
     // Draw colon (только если colon_state == true)
     if(clock->colon_state) {
@@ -235,6 +246,7 @@ int32_t clock_app(void* p) {
     clock->input_queue = furi_message_queue_alloc(8, sizeof(InputEvent));
     clock->running = true;
     clock->colon_state = true;  // Инициализируем состояние двоеточия
+    clock->mode = 24;
 
     // Setup view port
     clock->view_port = view_port_alloc();
@@ -263,6 +275,15 @@ int32_t clock_app(void* p) {
         if(furi_message_queue_get(clock->input_queue, &event, 100) == FuriStatusOk) {
             if(event.type == InputTypeShort && event.key == InputKeyBack) {
                 clock->running = false;
+            }
+
+            if (event.type == InputTypeShort && event.key == InputKeyUp) {
+                // switch between 12 and 24 hour time
+                if (clock->mode == 12) {
+                    clock->mode = 24;
+                } else {
+                    clock->mode = 12;
+                }
             }
         }
     }
