@@ -12,7 +12,7 @@ typedef enum { FOCUS_CONSOLE_END = 0, FOCUS_CONSOLE_START, FOCUS_CONSOLE_TOGGLE 
 #define SHOW_STOPSCAN_TIP (true)
 #define NO_TIP (false)
 
-#define MAX_OPTIONS (13)
+#define MAX_OPTIONS (15)
 typedef struct {
     const char* item_string;
     const char* options_menu[MAX_OPTIONS];
@@ -61,6 +61,13 @@ const WifiMarauderItem items[NUM_MENU_ITEMS] = {
      INPUT_ARGS,
      FOCUS_CONSOLE_END,
      NO_TIP},
+    {"Set MAC",
+     {"rand ap", "rand sta", "clone ap", "clone sta"},
+     4,
+     {"randapmac", "randstamac", "cloneapmac -a", "clonestamac -s"},
+     TOGGLE_ARGS,
+     FOCUS_CONSOLE_END,
+     NO_TIP},
     {"Join WiFi",
      {"new", "saved"},
      2,
@@ -79,6 +86,7 @@ const WifiMarauderItem items[NUM_MENU_ITEMS] = {
      {"deauth",
       "probe",
       "rickroll",
+      "funny",
       "badmsg",
       "sleep",
       "sour apple",
@@ -87,10 +95,11 @@ const WifiMarauderItem items[NUM_MENU_ITEMS] = {
       "google spam",
       "flipper spam",
       "bt spam all"},
-     11,
+     12,
      {"attack -t deauth",
       "attack -t probe",
       "attack -t rickroll",
+      "attack -t funny",
       "attack -t badmsg",
       "attack -t sleep",
       "blespam -t apple",
@@ -110,9 +119,9 @@ const WifiMarauderItem items[NUM_MENU_ITEMS] = {
      FOCUS_CONSOLE_END,
      NO_TIP},
     {"Wardrive",
-     {"ap", "station", "bt", "bt cont"},
-     4,
-     {"wardrive", "wardrive -s", "btwardrive", "btwardrive -c"},
+     {"ap", "station", "flock", "bt", "bt cont"},
+     5,
+     {"wardrive", "wardrive -s", "wardrive -f", "btwardrive", "btwardrive -c"},
      NO_ARGS,
      FOCUS_CONSOLE_END,
      SHOW_STOPSCAN_TIP},
@@ -167,8 +176,8 @@ const WifiMarauderItem items[NUM_MENU_ITEMS] = {
      FOCUS_CONSOLE_END,
      SHOW_STOPSCAN_TIP},
     {"Sniff",
-     {"beacon", "deauth", "pmkid", "probe", "pwn", "raw", "bt", "skim", "airtag", "flipper", "packetcount", "pineapple", "multissid"},
-     13,
+     {"beacon", "deauth", "pmkid", "probe", "pwn", "raw", "bt", "skim", "airtag", "flipper", "flock", "mactrack", "packetcount", "pineapple", "multissid"},
+     15,
      {"sniffbeacon",
       "sniffdeauth",
       "sniffpmkid",
@@ -179,6 +188,8 @@ const WifiMarauderItem items[NUM_MENU_ITEMS] = {
       "sniffskim",
       "sniffbt -t airtag",
       "sniffbt -t flipper",
+      "sniffbt -t flock",
+      "mactrack",
       "packetcount",
       "sniffpinescan",
       "sniffmultissid"},
