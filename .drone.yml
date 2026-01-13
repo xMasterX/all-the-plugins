@@ -51,6 +51,7 @@ steps:
       - rm -f artifacts-base/USB/hid_usb.fap
       - rm -f artifacts-base/Bluetooth/hid_ble.fap
       - rm -f artifacts-base/Bluetooth/findmy.fap
+      - rm -rf artifacts-base/assets
       - rm -rf artifacts-base/Scripts/
       - cd ..
       - mkdir base_pack_build
@@ -94,6 +95,7 @@ steps:
       - rm -f artifacts-extra/USB/hid_usb.fap
       - rm -f artifacts-extra/Bluetooth/hid_ble.fap
       - rm -f artifacts-extra/Bluetooth/findmy.fap
+      - rm -rf artifacts-extra/assets
       - rm -rf artifacts-extra/Scripts/
       - cd ..
       - mkdir extra_pack_build
