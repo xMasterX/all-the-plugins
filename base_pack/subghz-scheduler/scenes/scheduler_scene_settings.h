@@ -41,6 +41,9 @@ static const uint16_t tx_delay_value[TX_DELAY_COUNT] =
     {SchedulerTxDelay100, SchedulerTxDelay250, SchedulerTxDelay500, SchedulerTxDelay1000};
 
 enum Intervals {
+    Interval1Sec,
+    Interval2Sec,
+    Interval5Sec,
     Interval10Sec,
     Interval30Sec,
     Interval1Min,
@@ -61,6 +64,9 @@ enum Intervals {
 
 #define INTERVAL_COUNT IntervalSettingsNum
 static const char* const interval_text[INTERVAL_COUNT] = {
+    "1 sec",
+    "2 sec",
+    "5 sec",
     "10 sec",
     "30 sec",
     "1 min",
@@ -77,7 +83,7 @@ static const char* const interval_text[INTERVAL_COUNT] = {
     "12 hrs",
     "24 hrs"};
 static const uint32_t interval_second_value[INTERVAL_COUNT] =
-    {10, 30, 60, 120, 300, 600, 1200, 1800, 2700, 3600, 7200, 14400, 28800, 43200, 86400};
+    {1, 2, 5, 10, 30, 60, 120, 300, 600, 1200, 1800, 2700, 3600, 7200, 14400, 28800, 43200, 86400};
 
 #define REPEATS_COUNT 6
 static const char* const tx_repeats_text[REPEATS_COUNT] = {
