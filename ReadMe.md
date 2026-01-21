@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `21 Jan 08:28 GMT +3`
+### Apps checked & updated at `22 Jan 01:41 GMT +3`
 
 
 # Default pack
@@ -172,6 +172,10 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Fighter Jet | ![Games Badge] | [by Erbonator3000](https://github.com/Erbonator3000/flipper-fighter-jet) |  | [![Author Badge]](https://lab.flipper.net/apps/fighterjet) |
 | Drifter | ![Games Badge] | [by jean-edouard](https://github.com/jean-edouard/flipperzero-drifter) |  | [![Author Badge]](https://lab.flipper.net/apps/drifter) |
 | Wave | ![Games Badge] | [by Sladkisnovraper](https://github.com/Sladkisnovraper/Wave-game-for-Flipper-Zero) |  | [![Author Badge]](https://lab.flipper.net/apps/wave) |
+| Flipper Arduventure | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperArduventure) |  | ![None Badge] |
+| Flipper Catacombs | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperCatacombs) |  | ![None Badge] |
+| Flipper Golf | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperGolf) |  | ![None Badge] |
+| Flipper Hero | ![Games Badge] | [by mentoster](https://github.com/mentoster/flipper-hero) |  | [![Author Badge]](https://lab.flipper.net/apps/flipper_hero) |
 | Air Mouse | ![GPIO Badge] | [by ginkage](https://github.com/ginkage/FlippAirMouse/) |  | [![Author Badge]](https://lab.flipper.net/apps/air_mouse) |
 | Plantower PMSx003 sensor reader | ![GPIO Badge] | [by 3cky](https://github.com/3cky/flipperzero-airmon) |  | [![UFW Badge]](https://lab.flipper.net/apps/airmon) |
 | Bar code scanner emulator via COM port | ![GPIO Badge] | [by polarikus](https://github.com/polarikus/flipper-zero_bc_scanner_emulator) |  | [![Author Badge]](https://lab.flipper.net/apps/bc_scanner) |
