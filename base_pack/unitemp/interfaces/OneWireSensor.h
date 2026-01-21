@@ -19,206 +19,203 @@
 #define UNITEMP_OneWire
 
 #include "../unitemp.h"
-#include <one_wire/one_wire_host.h>
 
-//Коды семейства устройств
+//Device family codes
 typedef enum DallasFamilyCode {
     FC_DS18S20 = 0x10,
     FC_DS1822 = 0x22,
     FC_DS18B20 = 0x28,
 } DallasFamilyCode;
 
-//Режим питания датчка
+//Sensor power mode
 typedef enum PowerMode {
-    PWR_PASSIVE, //Питание от линии данных
-    PWR_ACTIVE //Питание от источника питания
+    PWR_PASSIVE, //Powered by data line
+    PWR_ACTIVE //Powered by power supply
 } PowerMode;
 
-//Инстанс шины one wire
+//One wire bus instance
 typedef struct {
-    //Порт подключения датчика
+    //Sensor connection port
     const GPIO* gpio;
-    //Количество устройств на шине
-    //Обновляется при ручном добавлении датчика на эту шину
+    //Number of devices on the bus
+    //Updated when manually adding a sensor to this bus
     int8_t device_count;
-    //Режим питания датчиков на шине
+    //Power supply mode for sensors on the bus
     PowerMode powerMode;
-
-    OneWireHost* host;
 } OneWireBus;
 
-//Инстанс датчика one wire
+//One wire sensor instance
 typedef struct OneWireSensor {
-    //Указатель на шину OneWire
+    //Pointer to OneWire bus
     OneWireBus* bus;
-    //Текущий адрес устройства на шине OneWire
+    //Current address of the device on the OneWire bus
     uint8_t deviceID[8];
-    //Код семейства устройств
+    //Device family code
     DallasFamilyCode familyCode;
 } OneWireSensor;
 
 /**
- * @brief Выделение памяти для датчика на шине OneWire
- * @param sensor Указатель на датчик
- * @param args Указатель на массив аргументов с параметрами датчика
- * @return Истина если всё ок
+ * @brief Memory allocation for sensor on OneWire bus
+ * @param sensor Pointer to sensor
+ * @param args Pointer to an array of arguments with sensor parameters
+ * @return Istina if all ok
  */
 bool unitemp_onewire_sensor_alloc(Sensor* sensor, char* args);
 
 /**
- * @brief Высвобождение памяти инстанса датчика
- * @param sensor Указатель на датчик
+ * @brief Freeing sensor instance memory
+ * @param sensor Pointer to sensor
  */
 bool unitemp_onewire_sensor_free(Sensor* sensor);
 
 /**
- * @brief Инициализации датчика на шине one wire
- * @param sensor Указатель на датчик
- * @return Истина если инициализация упспешная
+ * @brief Initializing the sensor on the one wire bus
+ * @param sensor Pointer to sensor
+ * @return True if initialization is successful
  */
 bool unitemp_onewire_sensor_init(Sensor* sensor);
 
 /**
- * @brief Деинициализация датчика
- * @param sensor Указатель на датчик
+ * @brief Deinitializing the sensor
+ * @param sensor Pointer to sensor
  */
 bool unitemp_onewire_sensor_deinit(Sensor* sensor);
 
 /**
- * @brief Обновить значение с датчка
- * @param sensor Указатель на датчик
- * @return Статус обновления
+ * @brief Update value from sensor
+ * @param sensor Pointer to sensor
+ * @return Update status
  */
 UnitempStatus unitemp_onewire_sensor_update(Sensor* sensor);
 
 /**
- * @brief Выделение памяти для шины one wire и её инициализация
- * @param gpio Порт на котором необходимо создать шину
- * @return При успехе возвращает указатель на шину one wire
+ * @brief Allocation of memory for the one wire bus and its initialization
+ * @param gpio Port on which to create a bus
+ * @return If successful, returns a pointer to the one wire bus
  */
-OneWireBus* uintemp_onewire_bus_alloc(const GPIO* gpio);
+OneWireBus* unitemp_onewire_bus_alloc(const GPIO* gpio);
 
 /**
- * @brief Инициализация шины one wire
+ * @brief One wire bus initialization
  * 
- * @param bus Указатель на шину
- * @return Истина если инициализация успешна
+ * @param bus Pointer to bus
+ * @return True if initialization is successful
  */
 bool unitemp_onewire_bus_init(OneWireBus* bus);
 
 /**
- * @brief Деинициализация шины one wire
+ * @brief One wire bus deinitialization
  * 
- * @param bus Указатель на шину
- * @return Истина если шина была деинициализирована, ложь если на шине остались устройства
+ * @param bus Pointer to bus
+ * @return True if the bus has been deinitialized, false if there are still devices on the bus
  */
 bool unitemp_onewire_bus_deinit(OneWireBus* bus);
 
 /**
- * @brief Запуск общения с датчиками на шине one wire
- * @param bus Указатель на шину 
- * @return Истина если хотя бы одно устройство отозвалось
+ * @brief Starting communication with sensors on the one wire bus
+ * @param bus Pointer to bus
+ * @return True if at least one device has responded
  */
 bool unitemp_onewire_bus_start(OneWireBus* bus);
 
 /**
- * @brief Отправить 1 бит данных на шину one wire
- * @param bus Указатель на шину
- * @param state Логический уровень
+ * @brief Send 1 bit of data to one wire bus
+ * @param bus Pointer to bus
+ * @param state Logical level
  */
 void unitemp_onewire_bus_send_bit(OneWireBus* bus, bool state);
 
 /**
- * @brief Запись байта на шину one wire
+ * @brief Writing a byte to the one wire bus
  * 
- * @param bus Указатель на шину one wire
- * @param data Записываемый байт
+ * @param bus Pointer to one wire bus
+ * @param data Byte to write
  */
 void unitemp_onewire_bus_send_byte(OneWireBus* bus, uint8_t data);
 
 /**
- * @brief Запись массива байт на шину one wire
+ * @brief Writing a byte array to the one wire bus
  * 
- * @param bus Указатель на шину one wire
- * @param data Указатель на массив, откуда будут записаны данные
- * @param len Количество байт
+ * @param bus Pointer to one wire bus
+ * @param data Pointer to the array from which the data will be written
+ * @param len Number of bytes
  */
 void unitemp_onewire_bus_send_byteArray(OneWireBus* bus, uint8_t* data, uint8_t len);
 
 /**
- * @brief Чтение бита на шине one wire
+ * @brief Reading a bit on a one wire bus
  * 
- * @param bus Указатель на шину one wire
- * @return Логический уровень бита
+ * @param bus Pointer to one wire bus
+ * @return Logical bit level
  */
 bool unitemp_onewire_bus_read_bit(OneWireBus* bus);
 
 /**
- * @brief Чтение байта с шины One Wire
+ * @brief Reading a byte from the One Wire bus
  * 
- * @param bus Указатель на шину one wire
- * @return Байт информации
- **/
+ * @param bus Pointer to one wire bus
+ * @return Byte of information
+ */
 uint8_t unitemp_onewire_bus_read_byte(OneWireBus* bus);
 
 /**
- * @brief Чтение массива байт с шины One Wire
+ * @brief Reading a byte array from the One Wire bus
  * 
- * @param bus Указатель на шину one wire
- * @param data Указатель на массив, куда будут записаны данные
- * @param len Количество байт
+ * @param bus Pointer to one wire bus
+ * @param data Pointer to the array where the data will be written
+ * @param len Number of bytes
  */
 void unitemp_onewire_bus_read_byteArray(OneWireBus* bus, uint8_t* data, uint8_t len);
 
 /**
- * @brief Проверить контрольную сумму массива данных
+ * @brief Check the checksum of a data array
  * 
- * @param data Указатель на массив данных
- * @param len Длина массива (включая байт CRC)
- * @return Истина если контрольная сумма корректная
+ * @param data Pointer to a data array
+ * @param len Array length (including CRC byte)
+ * @return True if the checksum is correct
  */
 bool unitemp_onewire_CRC_check(uint8_t* data, uint8_t len);
 
 /**
- * @brief Получить имя модели датчика на шине One Wire
+ * @brief Get the model name of the sensor on the One Wire bus
  * 
- * @param sensor Указатель на датчик
- * @return Указатель на строку с названием
+ * @param sensor Pointer to sensor
+ * @return Pointer to the string with the title
  */
 char* unitemp_onewire_sensor_getModel(Sensor* sensor);
 
 /**
- * @brief Чтение индификатора единственного датчика. ID запишется в инстанс датчика
+ * @brief Reading the identifier of a single sensor. 
  * 
- * @param instance Указатель на инстанс датчика
- * @return Истина, если код успешно прочитан, ложь если устройство отсутствует или устройств на шине больше одного
+ * @param instance Pointer to the sensor instance
+ * @return True if the code was successfully read, false if there is no device or there is more than one device on the bus
  */
 bool unitemp_oneWire_sensor_readID(OneWireSensor* instance);
 
 /**
- * @brief Команда выбора определённого датчка по его ID
- * @param instance Указатель на датчик one wire
+ * @brief Command to select a specific sensor by its ID
+ * @param instance Pointer to one wire sensor
  */
 void unitemp_onewire_bus_select_sensor(OneWireSensor* instance);
 
 /**
- * @brief Инициализация процесса поиска адресов на шине one wire
+ * @brief Initializing the process of searching for addresses on the one wire bus
  */
-void unitemp_onewire_bus_enum_init(OneWireBus* bus);
+void unitemp_onewire_bus_enum_init(void);
 
 /**
- * @brief Перечисляет устройства на шине one wire и получает очередной адрес
- * @param bus Указатель на шину one wire
- * @return Возвращает указатель на буфер, содержащий восьмибайтовое значение адреса, либо NULL, если поиск завешён
+ * @brief Enumerates devices on the one wire bus and gets the next address
+ * @param bus Pointer to one wire bus
+ * @return Returns a pointer to a buffer containing an eight-byte address value, or NULL if the search is completed
  */
 uint8_t* unitemp_onewire_bus_enum_next(OneWireBus* bus);
 
 /**
- * @brief Сравнить ID датчиков
+ * @brief Compare sensor IDs
  * 
- * @param id1 Указатель на адрес первого датчика
- * @param id2 Указатель на адрес второго датчика
- * @return Истина если ID индентичны
+ * @param id1 Pointer to the address of the first sensor
+ * @param id2 Pointer to the address of the second sensor
+ * @return True if IDs are identical
  */
 bool unitemp_onewire_id_compare(uint8_t* id1, uint8_t* id2);
 

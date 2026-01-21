@@ -29,7 +29,7 @@ const SensorType BME680 = {
     .deinitializer = unitemp_BME680_deinit,
     .updater = unitemp_BME680_update};
 
-//Интервал обновления калибровочных значений
+//Calibration Value Update Interval
 #define BOSCH_CAL_UPDATE_INTERVAL 60000
 
 #define BME680_ID 0x61
@@ -41,37 +41,37 @@ const SensorType BME680 = {
 #define BME680_REG_CTRL_MEAS 0x74
 #define BME680_REG_CONFIG 0x75
 #define BME680_REG_CTRL_HUM 0x72
-//Преддескретизация температуры
+//Temperature presampling
 #define BME680_TEMP_OVERSAMPLING_SKIP 0b00000000
 #define BME680_TEMP_OVERSAMPLING_1 0b00100000
 #define BME680_TEMP_OVERSAMPLING_2 0b01000000
 #define BME680_TEMP_OVERSAMPLING_4 0b01100000
 #define BME680_TEMP_OVERSAMPLING_8 0b10000000
 #define BME680_TEMP_OVERSAMPLING_16 0b10100000
-//Преддескретизация давления
+//Pressure presampling
 #define BME680_PRESS_OVERSAMPLING_SKIP 0b00000000
 #define BME680_PRESS_OVERSAMPLING_1 0b00000100
 #define BME680_PRESS_OVERSAMPLING_2 0b00001000
 #define BME680_PRESS_OVERSAMPLING_4 0b00001100
 #define BME680_PRESS_OVERSAMPLING_8 0b00010000
 #define BME680_PRESS_OVERSAMPLING_16 0b00010100
-//Преддескретизация влажности
+//Humidity presampling
 #define BME680_HUM_OVERSAMPLING_SKIP 0b00000000
 #define BME680_HUM_OVERSAMPLING_1 0b00000001
 #define BME680_HUM_OVERSAMPLING_2 0b00000010
 #define BME680_HUM_OVERSAMPLING_4 0b00000011
 #define BME680_HUM_OVERSAMPLING_8 0b00000100
 #define BME680_HUM_OVERSAMPLING_16 0b00000101
-//Режимы работы датчика
-#define BME680_MODE_SLEEP 0b00000000 //Наелся и спит
-#define BME680_MODE_FORCED 0b00000001 //Обновляет значения 1 раз, после чего уходит в сон
-//Коэффициент фильтрации значений
+//Sensor operating modes
+#define BME680_MODE_SLEEP 0b00000000 //He's full and sleeping
+#define BME680_MODE_FORCED 0b00000001 //Updates values ​​1 time, after which it goes to sleep
+//Value filter factor
 #define BME680_FILTER_COEFF_1 0b00000000
 #define BME680_FILTER_COEFF_2 0b00000100
 #define BME680_FILTER_COEFF_4 0b00001000
 #define BME680_FILTER_COEFF_8 0b00001100
 #define BME680_FILTER_COEFF_16 0b00010000
-//Разрешить работу по SPI
+//Allow operation via SPI
 #define BME680_SPI_3W_ENABLE 0b00000001
 #define BME680_SPI_3W_DISABLE 0b00000000
 
@@ -341,9 +341,9 @@ bool unitemp_BME680_alloc(Sensor* sensor, char* args) {
 
 bool unitemp_BME680_init(Sensor* sensor) {
     I2CSensor* i2c_sensor = (I2CSensor*)sensor->instance;
-    //Перезагрузка
+    //Reboot
     unitemp_i2c_writeReg(i2c_sensor, 0xE0, 0xB6);
-    //Чтение ID датчика
+    //Reading Sensor ID
     uint8_t id = unitemp_i2c_readReg(i2c_sensor, 0xD0);
     if(id != BME680_ID) {
         FURI_LOG_E(
@@ -363,10 +363,10 @@ bool unitemp_BME680_init(Sensor* sensor) {
         i2c_sensor,
         BME680_REG_CTRL_MEAS,
         BME680_TEMP_OVERSAMPLING_2 | BME680_PRESS_OVERSAMPLING_4 | BME680_MODE_FORCED);
-    //Настройка периода опроса и фильтрации значений
+    //Setting the polling period and filtering values
     unitemp_i2c_writeReg(
         i2c_sensor, BME680_REG_CONFIG, BME680_FILTER_COEFF_16 | BME680_SPI_3W_DISABLE);
-    //Чтение калибровочных значений
+    //Reading calibration values
     if(!BME680_readCalValues(i2c_sensor)) {
         FURI_LOG_E(APP_NAME, "Failed to read calibration values sensor %s", sensor->name);
         return false;
@@ -376,7 +376,7 @@ bool unitemp_BME680_init(Sensor* sensor) {
 
 bool unitemp_BME680_deinit(Sensor* sensor) {
     I2CSensor* i2c_sensor = (I2CSensor*)sensor->instance;
-    //Перевод в сон
+    //Transfer to sleep
     unitemp_i2c_writeReg(i2c_sensor, BME680_REG_CTRL_MEAS, BME680_MODE_SLEEP);
     return true;
 }
@@ -388,7 +388,7 @@ UnitempStatus unitemp_BME680_update(Sensor* sensor) {
     uint32_t t = furi_get_tick();
 
     uint8_t buff[3];
-    //Проверка инициализированности датчика
+    //Checking the initialization of the sensor
     unitemp_i2c_readRegArray(i2c_sensor, 0xF4, 2, buff);
     if(buff[0] == 0) {
         FURI_LOG_W(APP_NAME, "Sensor %s is not initialized!", sensor->name);

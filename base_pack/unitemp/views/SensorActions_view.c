@@ -19,38 +19,38 @@
 #include <gui/modules/variable_item_list.h>
 #include <stdio.h>
 
-//Текущий вид
+//Current view
 static View* view;
-//Список
+//List
 static VariableItemList* variable_item_list;
-//Текущий датчик
+//Current sensor
 static Sensor* current_sensor;
 
 typedef enum carousel_info {
-    CAROUSEL_VALUES, //Отображение значений датчиков
-    CAROUSEL_INFO, //Отображение информации о датчике
+    CAROUSEL_VALUES, //Displaying sensor values
+    CAROUSEL_INFO, //Displaying sensor information
 } carousel_info;
 extern carousel_info carousel_info_selector;
 
 #define VIEW_ID UnitempViewSensorActions
 
 /**
- * @brief Функция обработки нажатия кнопки "Назад"
+ * @brief Back button click handling function
  *
- * @param context Указатель на данные приложения
- * @return ID вида в который нужно переключиться
+ * @param context Pointer to application data
+ * @return ID of the view to switch to
  */
 static uint32_t _exit_callback(void* context) {
     UNUSED(context);
 
-    //Возврат предыдущий вид
+    //Return to previous view
     return UnitempViewGeneral;
 }
 /**
- * @brief Функция обработки нажатия средней кнопки
+ * @brief Middle button click handling function
  *
- * @param context Указатель на данные приложения
- * @param index На каком элементе списка была нажата кнопка
+ * @param context Pointer to application data
+ * @param index Which list item the button was clicked on
  */
 static void _enter_callback(void* context, uint32_t index) {
     UNUSED(context);
@@ -81,11 +81,11 @@ static void _enter_callback(void* context, uint32_t index) {
 }
 
 /**
- * @brief Создание меню действий с датчиком
+ * @brief Creating a sensor action menu
  */
 void unitemp_SensorActions_alloc(void) {
     variable_item_list = variable_item_list_alloc();
-    //Сброс всех элементов меню
+    //Reset all menu items
     variable_item_list_reset(variable_item_list);
 
     variable_item_list_add(variable_item_list, "Info", 1, NULL, NULL);
@@ -97,27 +97,29 @@ void unitemp_SensorActions_alloc(void) {
     variable_item_list_add(variable_item_list, "Help", 1, NULL, NULL);
     variable_item_list_add(variable_item_list, "About", 1, NULL, NULL);
 
-    //Добавление колбека на нажатие средней кнопки
+    //Adding a callback for pressing the middle button
     variable_item_list_set_enter_callback(variable_item_list, _enter_callback, app);
-    //Создание вида из списка
+    //Creating a View from a List
     view = variable_item_list_get_view(variable_item_list);
-    //Добавление колбека на нажатие кнопки "Назад"
+    //Adding a callback for pressing the "Back" button
     view_set_previous_callback(view, _exit_callback);
-    //Добавление вида в диспетчер
+    //Adding a View to the Manager
     view_dispatcher_add_view(app->view_dispatcher, VIEW_ID, view);
 }
 
 void unitemp_SensorActions_switch(Sensor* sensor) {
     current_sensor = sensor;
-    //Обнуление последнего выбранного пункта
+    //Resetting the last selected item
     variable_item_list_set_selected_item(variable_item_list, 0);
 
     view_dispatcher_switch_to_view(app->view_dispatcher, VIEW_ID);
 }
 
 void unitemp_SensorActions_free(void) {
-    //Удаление вида после обработки
-    view_dispatcher_remove_view(app->view_dispatcher, VIEW_ID);
-    //Очистка списка элементов
+    //Clearing the list of elements
     variable_item_list_free(variable_item_list);
+    //Clearing a view
+    view_free(view);
+    //Deleting a view after processing
+    view_dispatcher_remove_view(app->view_dispatcher, VIEW_ID);
 }

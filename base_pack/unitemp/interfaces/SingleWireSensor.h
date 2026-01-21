@@ -21,13 +21,13 @@
 #include "../unitemp.h"
 #include "../Sensors.h"
 
-//Интерфейс Single Wire
+//Single Wire Interface
 typedef struct {
-    //Порт подключения датчика
+    //Sensor connection port
     const GPIO* gpio;
 } SingleWireSensor;
 
-/* Датчики */
+/* Sensors */
 extern const SensorType DHT11;
 extern const SensorType DHT12_SW;
 extern const SensorType DHT21;
@@ -35,58 +35,58 @@ extern const SensorType DHT22;
 extern const SensorType AM2320_SW;
 
 /**
- * @brief Инициализация датчика
+ * @brief Sensor initialization
  * 
- * @param sensor Указатель на инициализируемый датчик
- * @return Истина если всё прошло успешно
+ * @param sensor Pointer to the sensor to be initialized
+ * @return True if everything went well
  */
 bool unitemp_singlewire_init(Sensor* sensor);
 
 /**
- * @brief Деинициализация датчика
+ * @brief Deinitializing the sensor
  * 
- * @param sensor Указатель на инициализируемый датчик
- * @return Истина если всё прошло успешно
+ * @param sensor Pointer to the sensor to be initialized
+ * @return True if everything went well
  */
 bool unitemp_singlewire_deinit(Sensor* sensor);
 
 /**
- * @brief Получение данных с датчика по однопроводному интерфейсу DHTxx и AM2xxx
+ * @brief Receiving data from the sensor via single-wire interface DHTxx and AM2xxx
  * 
- * @param sensor Указатель на датчик
- * @return Статус опроса
+ * @param sensor Pointer to sensor
+ * @return Poll status
  */
 UnitempStatus unitemp_singlewire_update(Sensor* sensor);
 
 /**
- * @brief Установить порт датчика
+ * @brief Set sensor port
  * 
- * @param sensor Указатель на датчик
- * @param gpio Устанавливаемый порт
- * @return Истина если всё ок
+ * @param sensor Pointer to sensor
+ * @param gpio Port to set
+ * @return Istina if all ok
  */
 bool unitemp_singlewire_sensorSetGPIO(Sensor* sensor, const GPIO* gpio);
 
 /**
- * @brief Получить порт датчика
+ * @brief Get sensor port
  * 
- * @param sensor Указатель на датчик
- * @return Указатель на GPIO
+ * @param sensor Pointer to sensor
+ * @return Pointer to GPIO
  */
 const GPIO* unitemp_singlewire_sensorGetGPIO(Sensor* sensor);
 
 /**
- * @brief Выделение памяти под датчик на линии One Wire
+ * @brief Memory allocation for a sensor on a One Wire line
  * 
- * @param sensor Указатель на датчик
- * @param args Указатель на массив с аргументами параметров датчка
+ * @param sensor Pointer to sensor
+ * @param args Index on an array with the arguments of the parameters
  */
 bool unitemp_singlewire_alloc(Sensor* sensor, char* args);
 
 /**
- * @brief Высвобождение памяти инстанса датчика
+ * @brief Freeing sensor instance memory
  * 
- * @param sensor Указатель на датчик
+ * @param sensor Pointer to sensor
  */
 bool unitemp_singlewire_free(Sensor* sensor);
 #endif

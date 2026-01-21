@@ -33,7 +33,7 @@ typedef struct {
 } BMP180_cal;
 
 typedef struct {
-    //Калибровочные значения
+    //Calibration values
     BMP180_cal bmp180_cal;
 } BMP180_instance;
 
@@ -52,12 +52,12 @@ bool unitemp_BMP180_I2C_alloc(Sensor* sensor, char* args) {
     UNUSED(args);
     I2CSensor* i2c_sensor = (I2CSensor*)sensor->instance;
 
-    //Адреса на шине I2C (7 бит)
+    //Addresses on the I2C bus (7 bits)
     i2c_sensor->minI2CAdr = 0x77 << 1;
     i2c_sensor->maxI2CAdr = 0x77 << 1;
 
-    BMP180_instance* bmx180_instance = malloc(sizeof(BMP180_instance));
-    i2c_sensor->sensorInstance = bmx180_instance;
+    BMP180_instance* bmx280_instance = malloc(sizeof(BMP180_instance));
+    i2c_sensor->sensorInstance = bmx280_instance;
     return true;
 }
 
@@ -71,11 +71,11 @@ bool unitemp_BMP180_I2C_free(Sensor* sensor) {
 bool unitemp_BMP180_init(Sensor* sensor) {
     I2CSensor* i2c_sensor = (I2CSensor*)sensor->instance;
 
-    //Перезагрузка
+    //Reboot
     if(!unitemp_i2c_writeReg(i2c_sensor, 0xE0, 0xB6)) return false;
     furi_delay_ms(100);
 
-    //Проверка ID
+    //ID verification
     uint8_t id = unitemp_i2c_readReg(i2c_sensor, 0xD0);
     if(id != 0x55) {
         FURI_LOG_E(
@@ -87,7 +87,7 @@ bool unitemp_BMP180_init(Sensor* sensor) {
 
     uint8_t buff[22] = {0};
 
-    //Чтение калибровочных значений
+    //Reading calibration values
     if(!unitemp_i2c_readRegArray(i2c_sensor, 0xAA, 22, buff)) return false;
     bmp180_instance->bmp180_cal.AC1 = (buff[0] << 8) | buff[1];
     bmp180_instance->bmp180_cal.AC2 = (buff[2] << 8) | buff[3];
@@ -119,7 +119,7 @@ bool unitemp_BMP180_init(Sensor* sensor) {
 }
 
 bool unitemp_BMP180_I2C_deinit(Sensor* sensor) {
-    //Нечего деинициализировать
+    //Nothing to deinitialize
     UNUSED(sensor);
     return true;
 }
@@ -128,7 +128,7 @@ UnitempStatus unitemp_BMP180_I2C_update(Sensor* sensor) {
     I2CSensor* i2c_sensor = (I2CSensor*)sensor->instance;
     BMP180_instance* bmp180_instance = i2c_sensor->sensorInstance;
 
-    //Чтение температуры
+    //Temperature reading
     if(!unitemp_i2c_writeReg(i2c_sensor, 0xF4, 0x2E)) return UT_SENSORSTATUS_TIMEOUT;
     furi_delay_ms(5);
     uint8_t buff[3] = {0};
@@ -139,7 +139,7 @@ UnitempStatus unitemp_BMP180_I2C_update(Sensor* sensor) {
     int32_t B5 = X1 + X2;
     sensor->temp = ((B5 + 8) / 16) * 0.1f;
 
-    //Чтение давления
+    //Pressure reading
     if(!unitemp_i2c_writeReg(i2c_sensor, 0xF4, 0x34 + (0b11 << 6))) return UT_SENSORSTATUS_TIMEOUT;
     furi_delay_ms(26);
     if(!unitemp_i2c_readRegArray(i2c_sensor, 0xF6, 3, buff)) return UT_SENSORSTATUS_TIMEOUT;

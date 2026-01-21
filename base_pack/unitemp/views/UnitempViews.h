@@ -20,7 +20,7 @@
 
 #include "../unitemp.h"
 
-//Виды менюшек
+//Types of menus
 typedef enum UnitempViews {
     UnitempViewGeneral,
     UnitempViewMainMenu,
@@ -36,59 +36,59 @@ typedef enum UnitempViews {
 } UnitempViews;
 
 /**
- * @brief Вывести всплывающее окно
+ * @brief Display a popup window
  * 
- * @param icon Указатель на иконку
- * @param header Заголовок
- * @param message Сообщение
- * @param prev_view_id ID вида куда в который нужно вернуться
+ * @param icon Pointer to icon
+ * @param header The header
+ * @param message Message
+ * @param prev_view_id ID of the view where you want to return to
  */
 void unitemp_popup(const Icon* icon, char* header, char* message, uint32_t prev_view_id);
 
-/* Общий вид на датчики */
+/* General view of the sensors */
 void unitemp_General_alloc(void);
 void unitemp_General_switch(void);
 void unitemp_General_free(void);
 
-/* Главное меню */
+/* Main menu */
 void unitemp_MainMenu_alloc(void);
 void unitemp_MainMenu_switch(void);
 void unitemp_MainMenu_free(void);
 
-/* Настройки */
+/* Settings */
 void unitemp_Settings_alloc(void);
 void unitemp_Settings_switch(void);
 void unitemp_Settings_free(void);
 
-/* Список датчиков */
+/* List of sensors */
 void unitemp_SensorsList_alloc(void);
 void unitemp_SensorsList_switch(void);
 void unitemp_SensorsList_free(void);
 
-/* Редактор датчка */
+/* Sensor editor */
 void unitemp_SensorEdit_alloc(void);
-//sensor - указатель на редактируемый датчик
+//sensor - pointer to the edited sensor
 void unitemp_SensorEdit_switch(Sensor* sensor);
 void unitemp_SensorEdit_free(void);
 
-/* Редактор имени датчика */
+/* Sensor name editor */
 void unitemp_SensorNameEdit_alloc(void);
 void unitemp_SensorNameEdit_switch(Sensor* sensor);
 void unitemp_SensorNameEdit_free(void);
 
-/* Список действий с датчиком */
+/* List of actions with the sensor */
 void unitemp_SensorActions_alloc(void);
 void unitemp_SensorActions_switch(Sensor* sensor);
 void unitemp_SensorActions_free(void);
 
-/* Виджеты */
+/* Widgets */
 void unitemp_widgets_alloc(void);
 void unitemp_widgets_free(void);
 
-/* Подтверждение удаления */
+/* Deletion confirmation */
 void unitemp_widget_delete_switch(Sensor* sensor);
-/* Помощь */
+/* Help */
 void unitemp_widget_help_switch(void);
-/* О приложении */
+/* About the application */
 void unitemp_widget_about_switch(void);
 #endif

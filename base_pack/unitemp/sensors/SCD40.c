@@ -24,16 +24,27 @@
 #include "../interfaces/endianness.h"
 //#include <3rdparty/everest/include/everest/kremlin/c_endianness.h>
 
-const SensorType SCD40 = {
-    .typename = "SCD40",
-    .interface = &I2C,
-    .datatype = UT_DATA_TYPE_TEMP_HUM_CO2,
-    .pollingInterval = 5000,
-    .allocator = unitemp_SCD40_alloc,
-    .mem_releaser = unitemp_SCD40_free,
-    .initializer = unitemp_SCD40_init,
-    .deinitializer = unitemp_SCD40_deinit,
-    .updater = unitemp_SCD40_update};
+bool unitemp_SCD40_alloc(Sensor* sensor, char* args);
+bool unitemp_SCD40_init(Sensor* sensor);
+bool unitemp_SCD40_deinit(Sensor* sensor);
+UnitempStatus unitemp_SCD40_update(Sensor* sensor);
+bool unitemp_SCD40_free(Sensor* sensor);
+UnitempStatus unitemp_SCD40_calibrate(Sensor* sensor, float value);
+
+const SensorTypeWithCalibration SCD40 = {
+    .super = {
+        .typename = "SCD40",
+        .interface = &I2C,
+        .datatype = UT_DATA_TYPE_TEMP_HUM_CO2 | UT_CALIBRATION,
+        .pollingInterval = 1000,
+        .allocator = unitemp_SCD40_alloc,
+        .mem_releaser = unitemp_SCD40_free,
+        .initializer = unitemp_SCD40_init,
+        .deinitializer = unitemp_SCD40_deinit,
+        .updater = unitemp_SCD40_update,
+    },
+    .calibrate = unitemp_SCD40_calibrate
+};
 
 #define SCD40_ID 0x62
 
@@ -70,6 +81,7 @@ static bool setTemperatureOffset(Sensor* sensor, float tempOffset) __attribute__
 static bool beginMeasuring(Sensor* sensor) __attribute__((unused));
 static bool stopMeasurement(Sensor* sensor) __attribute__((unused));
 
+
 bool unitemp_SCD40_alloc(Sensor* sensor, char* args) {
     UNUSED(args);
     I2CSensor* i2c_sensor = (I2CSensor*)sensor->instance;
@@ -80,7 +92,7 @@ bool unitemp_SCD40_alloc(Sensor* sensor, char* args) {
 }
 
 bool unitemp_SCD40_free(Sensor* sensor) {
-    //Нечего высвобождать, так как ничего не было выделено
+    //Nothing to release since nothing was allocated
     UNUSED(sensor);
     return true;
 }
@@ -103,10 +115,10 @@ UnitempStatus unitemp_SCD40_update(Sensor* sensor) {
 
 static uint8_t computeCRC8(uint8_t* message, uint8_t len) {
     uint8_t crc = CRC8_INIT; // Init with 0xFF
-    for(uint8_t x = 0; x < len; x++) {
+    for (uint8_t x = 0; x < len; x++) {
         crc ^= message[x]; // XOR-in the next input byte
-        for(uint8_t i = 0; i < 8; i++) {
-            if((crc & 0x80) != 0)
+        for (uint8_t i = 0; i < 8; i++) {
+            if ((crc & 0x80) != 0)
                 crc = (uint8_t)((crc << 1) ^ CRC8_POLYNOMIAL);
             else
                 crc <<= 1;
@@ -120,10 +132,10 @@ static bool sendCommandWithCRC(Sensor* sensor, uint16_t command, uint16_t argume
     static const uint8_t cmdSize = 5;
 
     uint8_t bytes[cmdSize];
-    uint8_t* pointer = bytes;
+    uint8_t *pointer = bytes;
     store16_be(pointer, command);
     pointer += 2;
-    uint8_t* argPos = pointer;
+    uint8_t *argPos = pointer;
     store16_be(pointer, arguments);
     pointer += 2;
     *pointer = computeCRC8(argPos, pointer - argPos);
@@ -146,13 +158,15 @@ static bool sendCommand(Sensor* sensor, uint16_t command) {
 static uint16_t readRegister(Sensor* sensor, uint16_t registerAddress) {
     static const uint8_t regSize = 2;
 
-    if(!sendCommand(sensor, registerAddress)) return 0; // Sensor did not ACK
+    if(!sendCommand(sensor, registerAddress))
+        return 0; // Sensor did not ACK
 
     furi_delay_ms(3);
 
     uint8_t bytes[regSize];
     I2CSensor* i2c_sensor = (I2CSensor*)sensor->instance;
-    if(!unitemp_i2c_readArray(i2c_sensor, regSize, bytes)) return 0;
+    if(!unitemp_i2c_readArray(i2c_sensor, regSize, bytes))
+        return 0;
 
     return load16_be(bytes);
 }
@@ -160,7 +174,8 @@ static uint16_t readRegister(Sensor* sensor, uint16_t registerAddress) {
 static bool loadWord(uint8_t* buff, uint16_t* val) {
     uint16_t tmp = load16_be(buff);
     uint8_t expectedCRC = computeCRC8(buff, 2);
-    if(buff[2] != expectedCRC) return false;
+    if(buff[2] != expectedCRC)
+        return false;
     *val = tmp;
     return true;
 }
@@ -168,18 +183,20 @@ static bool loadWord(uint8_t* buff, uint16_t* val) {
 static bool getSettingValue(Sensor* sensor, uint16_t registerAddress, uint16_t* val) {
     static const uint8_t respSize = 3;
 
-    if(!sendCommand(sensor, registerAddress)) return false; // Sensor did not ACK
+    if(!sendCommand(sensor, registerAddress))
+        return false; // Sensor did not ACK
 
     furi_delay_ms(3);
 
     uint8_t bytes[respSize];
     I2CSensor* i2c_sensor = (I2CSensor*)sensor->instance;
-    if(!unitemp_i2c_readArray(i2c_sensor, respSize, bytes)) return false;
+    if(!unitemp_i2c_readArray(i2c_sensor, respSize, bytes))
+        return false;
 
     return loadWord(bytes, val);
 }
 
-// Get 18 bytes from SCD40
+// Get 18 bytes from SCD30
 // Updates global variables with floats
 // Returns true if success
 static bool readMeasurement(Sensor* sensor) {
@@ -195,7 +212,7 @@ static bool readMeasurement(Sensor* sensor) {
     uint8_t* bytes = buff;
     I2CSensor* i2c_sensor = (I2CSensor*)sensor->instance;
     if(!unitemp_i2c_readArray(i2c_sensor, respSize, bytes)) {
-        FURI_LOG_E(APP_NAME, "Error while read measures");
+        FURI_LOG_E(APP_NAME, "Error while read measures from SCD40");
         return false;
     }
 
@@ -204,23 +221,26 @@ static bool readMeasurement(Sensor* sensor) {
     bool error = false;
     if(loadWord(bytes, &tmpValue)) {
         sensor->co2 = tmpValue;
-    } else {
+    }
+    else {
         FURI_LOG_E(APP_NAME, "Error while parsing CO2");
         error = true;
     }
 
     bytes += 3;
     if(loadWord(bytes, &tmpValue)) {
-        sensor->temp = (float)tmpValue * 175.0f / 65535.0f - 45.0f;
-    } else {
-        FURI_LOG_E(APP_NAME, "Error while parsing temp");
-        error = true;
+       sensor->temp = (float)tmpValue * 175.0f / 65535.0f - 45.0f;
+    }
+    else {
+       FURI_LOG_E(APP_NAME, "Error while parsing temp");
+       error = true;
     }
 
     bytes += 3;
     if(loadWord(bytes, &tmpValue)) {
         sensor->hum = (float)tmpValue * 100.0f / 65535.0f;
-    } else {
+    }
+    else {
         FURI_LOG_E(APP_NAME, "Error while parsing humidity");
         error = true;
     }
@@ -233,8 +253,7 @@ static void reset(Sensor* sensor) {
 }
 
 static bool setAutoSelfCalibration(Sensor* sensor, bool enable) {
-    return sendCommandWithCRC(
-        sensor, COMMAND_SET_AUTOMATIC_SELF_CALIBRATION_ENABLED, enable); // Activate continuous ASC
+    return sendCommandWithCRC(sensor, COMMAND_SET_AUTOMATIC_SELF_CALIBRATION_ENABLED, enable); // Activate continuous ASC
 }
 
 // Get the current ASC setting
@@ -254,7 +273,7 @@ static bool getFirmwareVersion(Sensor* sensor, uint16_t* val) {
     uint8_t* bytes = buff;
     I2CSensor* i2c_sensor = (I2CSensor*)sensor->instance;
     if(!unitemp_i2c_readArray(i2c_sensor, respSize, bytes)) {
-        FURI_LOG_E(APP_NAME, "Error while read measures");
+        FURI_LOG_E(APP_NAME, "Error while read firmware version from SCD40");
         return false;
     }
 
@@ -269,17 +288,50 @@ static bool beginMeasuring(Sensor* sensor) {
 
 // Stop continuous measurement
 static bool stopMeasurement(Sensor* sensor) {
-    return sendCommand(sensor, COMMAND_READ_MEASUREMENT);
+    return sendCommand(sensor, COMMAND_STOP_PERIODIC_MEASUREMENT);
 }
 
 static float getTemperatureOffset(Sensor* sensor) {
     uint16_t curOffset;
-    if(!getSettingValue(sensor, COMMAND_GET_TEMPERATURE_OFFSET, &curOffset)) return 0.0;
+    if(!getSettingValue(sensor, COMMAND_GET_TEMPERATURE_OFFSET, &curOffset))
+        return 0.0;
     return (float)curOffset * 175.0f / 65536.0f;
 }
 
 static bool setTemperatureOffset(Sensor* sensor, float tempOffset) {
     uint16_t newOffset = tempOffset * 65536.0 / 175.0 + 0.5f;
-    return sendCommandWithCRC(
-        sensor, COMMAND_SET_TEMPERATURE_OFFSET, newOffset); // Activate continuous ASC
+    return sendCommandWithCRC(sensor, COMMAND_SET_TEMPERATURE_OFFSET, newOffset); // Activate continuous ASC
+}
+
+UnitempStatus unitemp_SCD40_calibrate(Sensor* sensor, float value) {
+    stopMeasurement(sensor);
+    furi_delay_ms(500);
+
+    uint16_t curPPM = value;
+    sendCommandWithCRC(sensor, COMMAND_PERFORM_FORCED_RECALIBRATION, curPPM); // Activate continuous ASC
+
+    furi_delay_ms(500);
+
+    static const uint8_t respSize = 3;
+    uint8_t buff[respSize];
+    uint8_t* bytes = buff;
+    I2CSensor* i2c_sensor = (I2CSensor*)sensor->instance;
+    if(!unitemp_i2c_readArray(i2c_sensor, respSize, bytes)) {
+        FURI_LOG_E(APP_NAME, "Error while read response");
+        return UT_SENSORSTATUS_ERROR;
+    }
+
+    uint16_t tmpValue;
+    if(loadWord(bytes, &tmpValue)) {
+        if(tmpValue == 0xFFFF)
+            return UT_SENSORSTATUS_ERROR;
+        int16_t correction = (int16_t)tmpValue - 0x8000;
+        FURI_LOG_I(APP_NAME, "CO2 correction %d", correction);
+    }
+    else
+        return UT_SENSORSTATUS_ERROR;
+
+    beginMeasuring(sensor);
+
+    return UT_SENSORSTATUS_OK;
 }

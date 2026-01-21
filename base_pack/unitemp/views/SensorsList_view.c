@@ -18,32 +18,33 @@
 #include "UnitempViews.h"
 #include <gui/modules/variable_item_list.h>
 #include <stdio.h>
-#include "unitemp_icons.h"
 
-//Текущий вид
+extern const Icon I_Cry_dolph_55x52;
+
+//Current view
 static View* view;
-//Список
+//List
 static VariableItemList* variable_item_list;
 
 #define VIEW_ID UnitempViewSensorsList
 
 /**
- * @brief Функция обработки нажатия кнопки "Назад"
+ * @brief Back button click handling function
  *
- * @param context Указатель на данные приложения
- * @return ID вида в который нужно переключиться
+ * @param context Pointer to application data
+ * @return ID of the view to switch to
  */
 static uint32_t _exit_callback(void* context) {
     UNUSED(context);
 
-    //Возврат предыдущий вид
+    //Return to previous view
     return UnitempViewGeneral;
 }
 /**
- * @brief Функция обработки нажатия средней кнопки
+ * @brief Middle button click handling function
  *
- * @param context Указатель на данные приложения
- * @param index На каком элементе списка была нажата кнопка
+ * @param context Pointer to application data
+ * @param index Which list item the button was clicked on
  */
 static void _enter_callback(void* context, uint32_t index) {
     UNUSED(context);
@@ -55,16 +56,16 @@ static void _enter_callback(void* context, uint32_t index) {
     const SensorType* type = unitemp_sensors_getTypes()[index];
     uint8_t sensor_type_count = 0;
 
-    //Подсчёт имеющихся датчиков данного типа
+    //Counting available sensors of this type
     for(uint8_t i = 0; i < unitemp_sensors_getActiveCount(); i++) {
         if(unitemp_sensor_getActive(i)->type == type) {
             sensor_type_count++;
         }
     }
 
-    //Имя датчка
+    //Sensor name
     char sensor_name[11];
-    //Добавление счётчика к имени если такой датчик имеется
+    //Adding a counter to the name if such a sensor exists
     if(sensor_type_count == 0)
         snprintf(sensor_name, 11, "%s", type->typename);
     else
@@ -72,7 +73,7 @@ static void _enter_callback(void* context, uint32_t index) {
 
     char args[22] = {0};
 
-    //Проверка доступности датчика
+    //Checking Sensor Availability
     if(unitemp_gpio_getAviablePort(type->interface, 0, NULL) == NULL) {
         if(type->interface == &SINGLE_WIRE || type->interface == &ONE_WIRE) {
             unitemp_popup(
@@ -85,7 +86,7 @@ static void _enter_callback(void* context, uint32_t index) {
         return;
     }
 
-    //Выбор первого доступного порта для датчика single wire и SPI
+    //Selecting the first available port for single wire and SPI sensor
     if(type->interface == &SINGLE_WIRE || type->interface == &SPI) {
         snprintf(
             args,
@@ -93,7 +94,7 @@ static void _enter_callback(void* context, uint32_t index) {
             "%d",
             unitemp_gpio_toInt(unitemp_gpio_getAviablePort(type->interface, 0, NULL)));
     }
-    //Выбор первого доступного порта для датчика one wire и запись нулевого ID
+    //Selecting the first available port for the one wire sensor and writing a zero ID
     if(type->interface == &ONE_WIRE) {
         snprintf(
             args,
@@ -109,20 +110,20 @@ static void _enter_callback(void* context, uint32_t index) {
             0,
             0);
     }
-    //Для I2C адрес выберется автоматически
+    //For I2C the address will be selected automatically
 
     unitemp_SensorEdit_switch(unitemp_sensor_alloc(sensor_name, type, args));
 }
 
 /**
- * @brief Создание меню редактирования настроек
+ * @brief Creating a menu for editing settings
  */
 void unitemp_SensorsList_alloc(void) {
     variable_item_list = variable_item_list_alloc();
-    //Сброс всех элементов меню
+    //Reset all menu items
     variable_item_list_reset(variable_item_list);
 
-    //Добавление в список доступных датчиков
+    //Adding to the list of available sensors
     for(uint8_t i = 0; i < unitemp_sensors_getTypesCount(); i++) {
         if(unitemp_sensors_getTypes()[i]->altname == NULL) {
             variable_item_list_add(
@@ -134,27 +135,29 @@ void unitemp_SensorsList_alloc(void) {
     }
     variable_item_list_add(variable_item_list, "I don't know what to choose", 1, NULL, app);
 
-    //Добавление колбека на нажатие средней кнопки
+    //Adding a callback for pressing the middle button
     variable_item_list_set_enter_callback(variable_item_list, _enter_callback, app);
 
-    //Создание вида из списка
+    //Creating a View from a List
     view = variable_item_list_get_view(variable_item_list);
-    //Добавление колбека на нажатие кнопки "Назад"
+    //Adding a callback for pressing the "Back" button
     view_set_previous_callback(view, _exit_callback);
-    //Добавление вида в диспетчер
+    //Adding a View to the Manager
     view_dispatcher_add_view(app->view_dispatcher, VIEW_ID, view);
 }
 
 void unitemp_SensorsList_switch(void) {
-    //Обнуление последнего выбранного пункта
+    //Resetting the last selected item
     variable_item_list_set_selected_item(variable_item_list, 0);
 
     view_dispatcher_switch_to_view(app->view_dispatcher, VIEW_ID);
 }
 
 void unitemp_SensorsList_free(void) {
-    //Удаление вида после обработки
-    view_dispatcher_remove_view(app->view_dispatcher, VIEW_ID);
-    //Очистка списка элементов
+    //Clearing the list of elements
     variable_item_list_free(variable_item_list);
+    //Clearing a view
+    view_free(view);
+    //Deleting a view after processing
+    view_dispatcher_remove_view(app->view_dispatcher, VIEW_ID);
 }

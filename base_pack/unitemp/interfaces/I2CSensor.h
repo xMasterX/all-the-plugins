@@ -22,107 +22,107 @@
 
 #include <furi_hal_i2c.h>
 
-//Структура I2C датчика
+//I2C sensor structure
 typedef struct I2CSensor {
-    //Указатель на интерфейс I2C
+    //Pointer to I2C interface
     const FuriHalI2cBusHandle* i2c;
-    //Минимальный адрес устройства на шине I2C
+    //Minimum device address on the I2C bus
     uint8_t minI2CAdr;
-    //Максимальный адрес устройства на шине I2C
+    //Maximum device address on the I2C bus
     uint8_t maxI2CAdr;
-    //Текущий адрес устройства на шине I2C
+    //Current device address on the I2C bus
     uint8_t currentI2CAdr;
-    //Указатель на собственный экземпляр датчика
+    //Pointer to its own sensor instance
     void* sensorInstance;
 } I2CSensor;
 
 /**
- * @brief Заблокировать шину I2C
+ * @brief Lock the I2C bus
  * 
- * @param handle Указатель на шину
+ * @param handle Pointer to bus
  */
 void unitemp_i2c_acquire(const FuriHalI2cBusHandle* handle);
 
 /**
- * @brief Проверить наличие датчика на шине
+ * @brief Check the presence of a sensor on the tire
  * 
- * @param i2c_sensor Указатель на датчик
- * @return Истина если устройство отозвалось
+ * @param i2c_sensor Pointer to sensor
+ * @return True if the device has responded
  */
 bool unitemp_i2c_isDeviceReady(I2CSensor* i2c_sensor);
 
 /**
- * @brief Выделение памяти для датчика на шине I2C
- * @param sensor Указатель на датчик
- * @param st Тип датчика
- * @return Истина если всё ок
+ * @brief Memory allocation for sensor on I2C bus
+ * @param sensor Pointer to sensor
+ * @param st Sensor type
+ * @return Istina if all ok
  */
 bool unitemp_I2C_sensor_alloc(Sensor* sensor, char* args);
 
 /**
- * @brief Высвобождение памяти инстанса датчика
- * @param sensor Указатель на датчик
+ * @brief Freeing sensor instance memory
+ * @param sensor Pointer to sensor
  */
 bool unitemp_I2C_sensor_free(Sensor* sensor);
 
 /**
- * @brief Обновить значение с датчка
- * @param sensor Указатель на датчик
- * @return Статус обновления
+ * @brief Update value from sensor
+ * @param sensor Pointer to sensor
+ * @return Update status
  */
 UnitempStatus unitemp_I2C_sensor_update(Sensor* sensor);
 /**
- * @brief Прочитать значение регистра reg
- * @param i2c_sensor Указатель на инстанс датчика
- * @param reg Номер регистра
- * @return Значение регистра
+ * @brief Read the value of the reg register
+ * @param i2c_sensor Pointer to sensor instance
+ * @param reg Register number
+ * @return Register value
  */
 uint8_t unitemp_i2c_readReg(I2CSensor* i2c_sensor, uint8_t reg);
 
 /**
- * @brief Прочитать масссив значений из памяти
- * @param i2c_sensor Указатель на инстанс датчика
- * @param startReg Адрес регистра с которого начнётся чтение
- * @param len Количество байт для считывания из регистра
- * @param data Указатель на массив куда будут считаны данные
- * @return Истина если устройство вернуло данные
+ * @brief Read an array of values ​​from memory
+ * @param i2c_sensor Pointer to sensor instance
+ * @param startReg Register address from which reading will begin
+ * @param len Number of bytes to read from the register
+ * @param data Pointer to an array where the data will be read
+ * @return True if the device returned data
  */
 bool unitemp_i2c_readRegArray(I2CSensor* i2c_sensor, uint8_t startReg, uint8_t len, uint8_t* data);
 
 /**
- * @brief Записать значение в регистр
- * @param i2c_sensor Указатель на инстанс датчика
- * @param reg Номер регистра
- * @param value Значение для записи
- * @return Истина если значение записано
+ * @brief Write value to register
+ * @param i2c_sensor Pointer to sensor instance
+ * @param reg Register number
+ * @param value Value to write
+ * @return True if the value is written
  */
 bool unitemp_i2c_writeReg(I2CSensor* i2c_sensor, uint8_t reg, uint8_t value);
 
 /**
- * @brief Записать масссив значений в память
- * @param i2c_sensor Указатель на инстанс датчика
- * @param startReg Адрес регистра с которого начнётся запись
- * @param len Количество байт для считывания из регистра
- * @param data Указатель на массив откуда будут записаны данные
- * @return Истина если устройство вернуло данные
+ * @brief Write an array of values ​​to memory
+ * @param i2c_sensor Pointer to sensor instance
+ * @param startReg Register address from which recording will begin
+ * @param len Number of bytes to read from the register
+ * @param data Pointer to the array from which the data will be written
+ * @return True if the device returned data
  */
 bool unitemp_i2c_writeRegArray(I2CSensor* i2c_sensor, uint8_t startReg, uint8_t len, uint8_t* data);
 
 /**
- * @brief Прочитать массив данных по шине I2C
- * @param i2c_sensor Указатель на инстанс датчика
- * @param startReg Адрес регистра с которого начнётся чтение
- * @param data Указатель на массив куда будут считаны данные
- * @return Истина если устройство вернуло данные
+ * @brief Read data array over I2C bus
+ * @param i2c_sensor Pointer to sensor instance
+ * @param startReg Register address from which reading will begin
+ * @param data Pointer to an array where the data will be read
+ * @return True if the device returned data
  */
 bool unitemp_i2c_readArray(I2CSensor* i2c_sensor, uint8_t len, uint8_t* data);
 
 /**
- * @brief Записать масссив данных по шине I2C
- * @param i2c_sensor Указатель на инстанс датчика
- * @param len Количество байт для считывания из регистра
- * @param data Указатель на массив откуда будут записаны данные
- * @return Истина если устройство вернуло данные
+ * @brief Write an array of data over the I2C bus
+ * @param i2c_sensor Pointer to sensor instance
+ * @param len Number of bytes to read from the register
+ * @param data Pointer to the array from which the data will be written
+ * @return True if the device returned data
  */
 bool unitemp_i2c_writeArray(I2CSensor* i2c_sensor, uint8_t len, uint8_t* data);
 #endif

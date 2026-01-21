@@ -21,45 +21,45 @@
 #include "../unitemp.h"
 #include <furi_hal_spi.h>
 
-//Структура SPI датчика
+//SPI sensor structure
 typedef struct SPISensor {
-    //Указатель на интерфейс SPI
+    //Pointer to SPI interface
     FuriHalSpiBusHandle* spi;
-    //Порт подключения CS
+    //CS connection port
     const GPIO* CS_pin;
 } SPISensor;
 
 /**
- * @brief Выделение памяти для датчика с интерфейсом SPI
- * @param sensor Указатель на датчик
- * @param args Указатель на массив аргументов с параметрами датчика
- * @return Истина если всё ок
+ * @brief Memory allocation for SPI sensor
+ * @param sensor Pointer to sensor
+ * @param args Pointer to an array of arguments with sensor parameters
+ * @return Istina if all ok
  */
 bool unitemp_spi_sensor_alloc(Sensor* sensor, char* args);
 
 /**
- * @brief Высвобождение памяти инстанса датчика
- * @param sensor Указатель на датчик
+ * @brief Freeing sensor instance memory
+ * @param sensor Pointer to sensor
  */
 bool unitemp_spi_sensor_free(Sensor* sensor);
 
 /**
- * @brief Инициализации датчика с интерфейсом one wire
- * @param sensor Указатель на датчик
- * @return Истина если инициализация упспешная
+ * @brief Initializing a sensor with a one wire interface
+ * @param sensor Pointer to sensor
+ * @return True if initialization is successful
  */
 bool unitemp_spi_sensor_init(Sensor* sensor);
 
 /**
- * @brief Деинициализация датчика
- * @param sensor Указатель на датчик
+ * @brief Deinitializing the sensor
+ * @param sensor Pointer to sensor
  */
 bool unitemp_spi_sensor_deinit(Sensor* sensor);
 
 /**
- * @brief Обновить значение с датчка
- * @param sensor Указатель на датчик
- * @return Статус обновления
+ * @brief Update value from sensor
+ * @param sensor Pointer to sensor
+ * @return Update status
  */
 UnitempStatus unitemp_spi_sensor_update(Sensor* sensor);
 

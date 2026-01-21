@@ -43,12 +43,12 @@ bool unitemp_MAX31855_free(Sensor* sensor) {
 bool unitemp_MAX31855_init(Sensor* sensor) {
     SPISensor* instance = sensor->instance;
     furi_hal_spi_bus_handle_init(instance->spi);
+    UNUSED(instance);
     return true;
 }
 
 bool unitemp_MAX31855_deinit(Sensor* sensor) {
-    SPISensor* instance = sensor->instance;
-    furi_hal_spi_bus_handle_deinit(instance->spi);
+    UNUSED(sensor);
     return true;
 }
 
@@ -67,19 +67,19 @@ UnitempStatus unitemp_MAX31855_update(Sensor* sensor) {
 
     if(raw == 0xFFFFFFFF || raw == 0) return UT_SENSORSTATUS_TIMEOUT;
 
-    //Определение состояния термопары
+    //Determining the status of the thermocouple
     uint8_t state = raw & 0b111;
-    //Обрыв
+    //Break
     if(state == 0x01) {
         UNITEMP_DEBUG("%s has thermocouple open circuit", sensor->name);
         return UT_SENSORSTATUS_ERROR;
     }
-    //Короткое замыкание к земле
+    //Short circuit to ground
     if(state == 0x02) {
         UNITEMP_DEBUG("%s has thermocouple short to GND", sensor->name);
         return UT_SENSORSTATUS_ERROR;
     }
-    //Короткое замыкание к питанию
+    //Short circuit to power
     if(state == 0x04) {
         UNITEMP_DEBUG("%s has thermocouple short to VCC", sensor->name);
         return UT_SENSORSTATUS_ERROR;

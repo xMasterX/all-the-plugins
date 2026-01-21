@@ -22,26 +22,28 @@
 #include "../interfaces/OneWireSensor.h"
 #include "../interfaces/I2CSensor.h"
 
-//Текущий вид
+//Current view
 static View* view;
-//Список
+//List
 static VariableItemList* variable_item_list;
-//Текущий редактируемый датчик
+//Current edited sensor
 static Sensor* editable_sensor;
-//Изначальный GPIO датчика
+//Initial GPIO of the sensor
 static const GPIO* initial_gpio = NULL;
 
-//Элемент списка - имя датчика
+//List item - sensor name
 static VariableItem* sensor_name_item;
-//Элемент списка - адрес датчика one wire
+//List item - one wire sensor address
 static VariableItem* onewire_addr_item;
-//Элемент списка - адрес датчика one wire
+//List item - one wire sensor address
 static VariableItem* onewire_type_item;
-//Элемент списка - смещение температуры
+//List item - temperature offset
 VariableItem* temp_offset_item;
 
+VariableItem* calibration_item;
+
 #define OFFSET_BUFF_SIZE 5
-//Буффер для текста смещения
+//Buffer for offset text
 static char* offset_buff;
 
 extern uint8_t generalview_sensor_index;
@@ -67,7 +69,7 @@ static void _onewire_scan(void) {
     UNITEMP_DEBUG(
         "devices on wire %d: %d", ow_sensor->bus->gpio->num, ow_sensor->bus->device_count);
 
-    //Сканирование шины one wire
+    //One wire bus scan
     unitemp_onewire_bus_init(ow_sensor->bus);
     uint8_t* id = NULL;
     do {
@@ -75,7 +77,7 @@ static void _onewire_scan(void) {
     } while(_onewire_id_exist(id));
 
     if(id == NULL) {
-        unitemp_onewire_bus_enum_init(ow_sensor->bus);
+        unitemp_onewire_bus_enum_init();
         id = unitemp_onewire_bus_enum_next(ow_sensor->bus);
         if(_onewire_id_exist(id)) {
             do {
@@ -118,7 +120,7 @@ static void _onewire_scan(void) {
             ow_sensor->deviceID[1],
             ow_sensor->deviceID[2],
             ow_sensor->deviceID[3]);
-        //А больше не лезет(
+        //And it doesn’t climb anymore(
         variable_item_set_current_value_text(onewire_addr_item, id_buff);
     } else {
         variable_item_set_current_value_text(onewire_addr_item, "empty");
@@ -128,35 +130,35 @@ static void _onewire_scan(void) {
 }
 
 /**
- * @brief Функция обработки нажатия кнопки "Назад"
+ * @brief Back button click handling function
  *
- * @param context Указатель на данные приложения
- * @return ID вида в который нужно переключиться
+ * @param context Pointer to application data
+ * @return ID of the view to switch to
  */
 static uint32_t _exit_callback(void* context) {
     UNUSED(context);
     editable_sensor->status = UT_SENSORSTATUS_TIMEOUT;
     if(!unitemp_sensor_isContains(editable_sensor)) unitemp_sensor_free(editable_sensor);
     unitemp_sensors_reload();
-    //Возврат предыдущий вид
+    //Return to previous view
     return UnitempViewGeneral;
 }
 /**
- * @brief Функция обработки нажатия средней кнопки
+ * @brief Middle button click handling function
  *
- * @param context Указатель на данные приложения
- * @param index На каком элементе списка была нажата кнопка
+ * @param context Pointer to application data
+ * @param index Which list item the button was clicked on
  */
 static void _enter_callback(void* context, uint32_t index) {
     UNUSED(context);
-    //Смена имени
+    //Name change
     if(index == 0) {
         unitemp_SensorNameEdit_switch(editable_sensor);
     }
-    //Сохранение
+    //Saving
     if((index == 4 && editable_sensor->type->interface != &ONE_WIRE) ||
        (index == 5 && editable_sensor->type->interface == &ONE_WIRE)) {
-        //Выход если датчик one wire не имеет ID
+        //Output if the one wire sensor does not have an ID
         if(editable_sensor->type->interface == &ONE_WIRE &&
            ((OneWireSensor*)(editable_sensor->instance))->familyCode == 0) {
             return;
@@ -174,16 +176,16 @@ static void _enter_callback(void* context, uint32_t index) {
         unitemp_General_switch();
     }
 
-    //Адрес устройства на шине one wire
+    //Address devices on a one wire bus
     if(index == 4 && editable_sensor->type->interface == &ONE_WIRE) {
         _onewire_scan();
     }
 }
 
 /**
- * @brief Функция обработки изменения значения GPIO
+ * @brief Function to handle GPIO value change
  * 
- * @param item Указатель на элемент списка
+ * @param item Pointer to a list element
  */
 static void _gpio_change_callback(VariableItem* item) {
     uint8_t index = variable_item_get_current_value_index(item);
@@ -207,9 +209,9 @@ static void _gpio_change_callback(VariableItem* item) {
     }
 }
 /**
- * @brief Функция обработки изменения значения GPIO
+ * @brief Function to handle GPIO value change
  * 
- * @param item Указатель на элемент списка
+ * @param item Pointer to a list element
  */
 static void _i2caddr_change_callback(VariableItem* item) {
     uint8_t index = variable_item_get_current_value_index(item);
@@ -220,18 +222,25 @@ static void _i2caddr_change_callback(VariableItem* item) {
     variable_item_set_current_value_text(item, buff);
 }
 /**
- * @brief Функция обработки изменения значения имени датчика
+ * @brief Function to handle changes in sensor name value
  * 
- * @param item Указатель на элемент списка
+ * @param item Pointer to a list element
  */
 static void _name_change_callback(VariableItem* item) {
     variable_item_set_current_value_index(item, 0);
     unitemp_SensorNameEdit_switch(editable_sensor);
 }
+
+static void _calibrate_callback(VariableItem* item) {
+    variable_item_set_current_value_index(item, 0);
+    const SensorTypeWithCalibration* extSensor = (const SensorTypeWithCalibration*)editable_sensor->type;
+    extSensor->calibrate(editable_sensor, 450);
+}
+
 /**
- * @brief Функция обработки изменения значения адреса датчика one wire
+ * @brief Function for processing changes in the one wire sensor address value
  * 
- * @param item Указатель на элемент списка
+ * @param item Pointer to a list element
  */
 static void _onwire_addr_change_callback(VariableItem* item) {
     variable_item_set_current_value_index(item, 0);
@@ -239,9 +248,9 @@ static void _onwire_addr_change_callback(VariableItem* item) {
 }
 
 /**
- * @brief Функция обработки изменения значения смещения температуры
+ * @brief Function to handle changes in temperature offset value
  * 
- * @param item Указатель на элемент списка
+ * @param item Pointer to a list element
  */
 static void _offset_change_callback(VariableItem* item) {
     editable_sensor->temp_offset = variable_item_get_current_value_index(item) - 20;
@@ -251,21 +260,21 @@ static void _offset_change_callback(VariableItem* item) {
 }
 
 /**
- * @brief Создание меню редактирования датчка
+ * @brief Creating a sensor editing menu
  */
 void unitemp_SensorEdit_alloc(void) {
     variable_item_list = variable_item_list_alloc();
-    //Сброс всех элементов меню
+    //Reset all menu items
     variable_item_list_reset(variable_item_list);
 
-    //Добавление колбека на нажатие средней кнопки
+    //Adding a callback for pressing the middle button
     variable_item_list_set_enter_callback(variable_item_list, _enter_callback, app);
 
-    //Создание вида из списка
+    //Creating a View from a List
     view = variable_item_list_get_view(variable_item_list);
-    //Добавление колбека на нажатие кнопки "Назад"
+    //Adding a callback for pressing the "Back" button
     view_set_previous_callback(view, _exit_callback);
-    //Добавление вида в диспетчер
+    //Adding a View to the Manager
     view_dispatcher_add_view(app->view_dispatcher, VIEW_ID, view);
 
     offset_buff = malloc(OFFSET_BUFF_SIZE);
@@ -276,25 +285,25 @@ void unitemp_SensorEdit_switch(Sensor* sensor) {
 
     editable_sensor->status = UT_SENSORSTATUS_INACTIVE;
 
-    //Сброс всех элементов меню
+    //Reset all menu items
     variable_item_list_reset(variable_item_list);
-    //Обнуление последнего выбранного пункта
+    //Resetting the last selected item
     variable_item_list_set_selected_item(variable_item_list, 0);
 
-    //Имя датчика
+    //Sensor name
     sensor_name_item = variable_item_list_add(
         variable_item_list, "Name", strlen(sensor->name) > 7 ? 1 : 2, _name_change_callback, NULL);
     variable_item_set_current_value_index(sensor_name_item, 0);
     variable_item_set_current_value_text(sensor_name_item, sensor->name);
 
-    //Тип датчика (не редактируется)
+    //Sensor type (not editable)
     onewire_type_item = variable_item_list_add(variable_item_list, "Type", 1, NULL, NULL);
     variable_item_set_current_value_index(onewire_type_item, 0);
     variable_item_set_current_value_text(
         onewire_type_item,
         (sensor->type->interface == &ONE_WIRE ? unitemp_onewire_sensor_getModel(editable_sensor) :
                                                 sensor->type->typename));
-    //Смещение температуры
+    //Temperature offset
     temp_offset_item = variable_item_list_add(
         variable_item_list, "Temp. offset", 41, _offset_change_callback, NULL);
     variable_item_set_current_value_index(temp_offset_item, sensor->temp_offset + 20);
@@ -302,7 +311,7 @@ void unitemp_SensorEdit_switch(Sensor* sensor) {
         offset_buff, OFFSET_BUFF_SIZE, "%+1.1f", (double)(editable_sensor->temp_offset / 10.0));
     variable_item_set_current_value_text(temp_offset_item, offset_buff);
 
-    //Порт подключения датчка (для one wire, SPI и single wire)
+    //Sensor connection port (for one wire, SPI and single wire)
     if(sensor->type->interface == &ONE_WIRE || sensor->type->interface == &SINGLE_WIRE ||
        sensor->type->interface == &SPI) {
         if(sensor->type->interface == &ONE_WIRE) {
@@ -333,7 +342,7 @@ void unitemp_SensorEdit_switch(Sensor* sensor) {
             item,
             unitemp_gpio_getAviablePort(sensor->type->interface, gpio_index, initial_gpio)->name);
     }
-    //Адрес устройства на шине I2C (для датчиков I2C)
+    //Device address on the I2C bus (for I2C sensors)
     if(sensor->type->interface == &I2C) {
         VariableItem* item = variable_item_list_add(
             variable_item_list,
@@ -350,7 +359,7 @@ void unitemp_SensorEdit_switch(Sensor* sensor) {
         variable_item_set_current_value_text(item, app->buff);
     }
 
-    //Адрес устройства на шине one wire (для датчиков one wire)
+    //Device address on the one wire bus (for one wire sensors)
     if(sensor->type->interface == &ONE_WIRE) {
         onewire_addr_item = variable_item_list_add(
             variable_item_list, "Address", 2, _onwire_addr_change_callback, NULL);
@@ -368,14 +377,22 @@ void unitemp_SensorEdit_switch(Sensor* sensor) {
             variable_item_set_current_value_text(onewire_addr_item, app->buff);
         }
     }
+
+    // Has calibration
+    if((sensor->type->datatype & UT_CALIBRATION) == UT_CALIBRATION) {
+        calibration_item = variable_item_list_add(variable_item_list, "Calibrate", 1, _calibrate_callback, NULL);
+    }
+
     variable_item_list_add(variable_item_list, "Save", 1, NULL, NULL);
     view_dispatcher_switch_to_view(app->view_dispatcher, VIEW_ID);
 }
 
 void unitemp_SensorEdit_free(void) {
-    //Удаление вида после обработки
-    view_dispatcher_remove_view(app->view_dispatcher, VIEW_ID);
-    //Очистка списка элементов
+    //Clearing the list of elements
     variable_item_list_free(variable_item_list);
+    //Clearing a view
+    view_free(view);
+    //Deleting a view after processing
+    view_dispatcher_remove_view(app->view_dispatcher, VIEW_ID);
     free(offset_buff);
 }

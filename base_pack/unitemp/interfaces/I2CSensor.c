@@ -33,7 +33,7 @@ bool unitemp_i2c_isDeviceReady(I2CSensor* i2c_sensor) {
 }
 
 uint8_t unitemp_i2c_readReg(I2CSensor* i2c_sensor, uint8_t reg) {
-    //Блокировка шины
+    //Bus lock
     unitemp_i2c_acquire(i2c_sensor->i2c);
     uint8_t buff[1] = {0};
     furi_hal_i2c_read_mem(i2c_sensor->i2c, i2c_sensor->currentI2CAdr, reg, buff, 1, 10);
@@ -57,7 +57,7 @@ bool unitemp_i2c_readRegArray(I2CSensor* i2c_sensor, uint8_t startReg, uint8_t l
 }
 
 bool unitemp_i2c_writeReg(I2CSensor* i2c_sensor, uint8_t reg, uint8_t value) {
-    //Блокировка шины
+    //Bus lock
     unitemp_i2c_acquire(i2c_sensor->i2c);
     uint8_t buff[1] = {value};
     bool status =
@@ -74,7 +74,7 @@ bool unitemp_i2c_writeArray(I2CSensor* i2c_sensor, uint8_t len, uint8_t* data) {
 }
 
 bool unitemp_i2c_writeRegArray(I2CSensor* i2c_sensor, uint8_t startReg, uint8_t len, uint8_t* data) {
-    //Блокировка шины
+    //Bus lock
     unitemp_i2c_acquire(i2c_sensor->i2c);
     bool status = furi_hal_i2c_write_mem(
         i2c_sensor->i2c, i2c_sensor->currentI2CAdr, startReg, data, len, 10);
@@ -92,19 +92,19 @@ bool unitemp_I2C_sensor_alloc(Sensor* sensor, char* args) {
     instance->i2c = &furi_hal_i2c_handle_external;
     sensor->instance = instance;
 
-    //Указание функций инициализации, деинициализации и обновления данных, а так же адреса на шине I2C
+    //Specifying the functions of initialization, deinitialization and data update, as well as the address on the I2C bus
     status = sensor->type->allocator(sensor, args);
     int i2c_addr;
     sscanf(args, "%X", &i2c_addr);
 
-    //Установка адреса шины I2C
+    //Setting the I2C bus address
     if(i2c_addr >= instance->minI2CAdr && i2c_addr <= instance->maxI2CAdr) {
         instance->currentI2CAdr = i2c_addr;
     } else {
         instance->currentI2CAdr = instance->minI2CAdr;
     }
 
-    //Блокировка портов GPIO
+    //Blocking GPIO ports
     sensors_count++;
     unitemp_gpio_lock(unitemp_gpio_getFromInt(15), &I2C);
     unitemp_gpio_lock(unitemp_gpio_getFromInt(16), &I2C);

@@ -22,38 +22,6 @@
 #include "../unitemp.h"
 #include "../Sensors.h"
 
-extern const SensorType SCD40;
-/**
- * @brief Выделение памяти и установка начальных значений датчика SCD40
- * @param sensor Указатель на создаваемый датчик
- * @return Истина при успехе
- */
-bool unitemp_SCD40_alloc(Sensor* sensor, char* args);
-
-/**
- * @brief Инициализации датчика SCD40
- * @param sensor Указатель на датчик
- * @return Истина если инициализация упспешная
- */
-bool unitemp_SCD40_init(Sensor* sensor);
-
-/**
- * @brief Деинициализация датчика
- * @param sensor Указатель на датчик
- */
-bool unitemp_SCD40_deinit(Sensor* sensor);
-
-/**
- * @brief Обновление значений из датчика
- * @param sensor Указатель на датчик
- * @return Статус опроса датчика
- */
-UnitempStatus unitemp_SCD40_update(Sensor* sensor);
-
-/**
- * @brief Высвободить память датчика
- * @param sensor Указатель на датчик
- */
-bool unitemp_SCD40_free(Sensor* sensor);
+extern const SensorTypeWithCalibration SCD40;
 
 #endif

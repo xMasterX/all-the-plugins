@@ -18,37 +18,37 @@
 #ifndef UNITEMP
 #define UNITEMP
 
-/* Подключение стандартных библиотек */
+/* Connecting standard libraries */
 
-/* Подключение API Flipper Zero */
-//Файловый поток
+/* Flipper Zero API connection */
+//File stream
 #include <toolbox/stream/file_stream.h>
-//Экран
+//Screen
 #include <gui/gui.h>
 #include <gui/view_dispatcher.h>
 #include <gui/modules/widget.h>
 #include <gui/modules/popup.h>
-//Уведомления
+//Notifications
 #include <notification/notification.h>
 #include <notification/notification_messages.h>
 
-/* Внутренние библиотеки */
-//Интерфейсы подключения датчиков
+/* Internal libraries */
+//Sensor connection interfaces
 #include "Sensors.h"
 
-/* Объявление макроподстановок */
-//Имя приложения
-#define APP_NAME "Unitemp"
-//Версия приложения
-#define UNITEMP_APP_VER "1.4"
-//Путь хранения файлов плагина
-#define APP_PATH_FOLDER "/ext/unitemp"
-//Имя файла с настройками
+/* Declaring Macro Substitutions */
+//Application name
+#define APP_NAME              "Unitemp"
+//Application version
+#define UNITEMP_APP_VER       "1.6"
+//Plugin file storage path
+#define APP_PATH_FOLDER       "/ext/unitemp"
+//Settings file name
 #define APP_FILENAME_SETTINGS "settings.cfg"
-//Имя файла с датчиками
-#define APP_FILENAME_SENSORS "sensors.cfg"
+//Sensor file name
+#define APP_FILENAME_SENSORS  "sensors.cfg"
 
-//Размер буффера текста
+//Text buffer size
 #define BUFF_SIZE 32
 
 #define UNITEMP_D
@@ -59,10 +59,14 @@
 #define UNITEMP_DEBUG(msg, ...)
 #endif
 
-/* Объявление перечислений */
-//Единицы измерения температуры
-typedef enum { UT_TEMP_CELSIUS, UT_TEMP_FAHRENHEIT, UT_TEMP_COUNT } tempMeasureUnit;
-//Единицы измерения давления
+/* Declaration of transfers */
+//Temperature units
+typedef enum {
+    UT_TEMP_CELSIUS,
+    UT_TEMP_FAHRENHEIT,
+    UT_TEMP_COUNT
+} tempMeasureUnit;
+//Pressure units
 typedef enum {
     UT_PRESSURE_MM_HG,
     UT_PRESSURE_IN_HG,
@@ -71,48 +75,62 @@ typedef enum {
 
     UT_PRESSURE_COUNT
 } pressureMeasureUnit;
-/* Объявление структур */
-//Настройки плагина
+// Humidity units
+typedef enum {
+    UT_HUMIDITY_RELATIVE, // Relative humidity
+    UT_HUMIDITY_DEWPOINT, // Dewpoint
+    UT_HUMIDITY_COUNT // Number of humidity modes
+} humidityUnit;
+/* Declaration of structures */
+//Plugin settings
 typedef struct {
-    //Бесконечная работа подсветки
+    //Endless backlight operation
     bool infinityBacklight;
-    //Единица измерения температуры
+    //Temperature unit
     tempMeasureUnit temp_unit;
-    //Единица измерения давления
+    // Humidity units
+    humidityUnit humidity_unit;
+    //Pressure unit
     pressureMeasureUnit pressure_unit;
     // Do calculate and show heat index
     bool heat_index;
-    //Последнее состояние OTG
+    //Latest OTG status
     bool lastOTGState;
 } UnitempSettings;
 
-//Основная структура плагина
+//Basic plugin structure
 typedef struct {
-    //Система
-    bool processing; //Флаг работы приложения. При ложном значении приложение закрывается
-    bool sensors_ready; //Флаг готовности датчиков к опросу
-    //Основные настройки
+    //System
+    bool sensors_ready; //Sensor readiness flag for polling
+    bool sensors_update; //Sensor polling permissibility flag
+    //Basic settings
     UnitempSettings settings;
-    //Массив указателей на датчики
+    //Array of pointers to sensors
     Sensor** sensors;
-    //Количество загруженных датчиков
+    //Number of loaded sensors
     uint8_t sensors_count;
-    //SD-карта
-    Storage* storage; //Хранилище
-    Stream* file_stream; //Файловый поток
+    //SD card
+    Storage* storage; //Storage
+    Stream* file_stream; //File stream
 
-    //Экран
+    //Screen
     Gui* gui;
-    ViewPort* view_port;
     ViewDispatcher* view_dispatcher;
     NotificationApp* notifications;
     Widget* widget;
     Popup* popup;
-    //Буффер для различного текста
+    //Buffer for various text
     char* buff;
 } Unitemp;
 
-/* Объявление прототипов функций */
+/* Declaring Function Prototypes */
+
+/**
+ * @brief Converting sensor temperature value from Celsius to Fahrenheit
+ * 
+ * @param sensor Pointer to sensor
+ */
+void unitemp_celsiusToFahrenheit(Sensor* sensor);
 
 /**
  * @brief Calculates the heat index in Celsius from the temperature and humidity and stores it in the sensor heat_index field
@@ -122,48 +140,55 @@ typedef struct {
 void unitemp_calculate_heat_index(Sensor* sensor);
 
 /**
- * @brief Перевод значения температуры датчика из Цельсия в Фаренгейты
+ * @brief Calculate dewpoint in C from relative humidity
  * 
- * @param sensor Указатель на датчик
+ * @param sensor Pointer to sensor
  */
-void uintemp_celsiumToFarengate(Sensor* sensor);
+void unitemp_rhToDewpointC(Sensor* sensor);
 
 /**
- * @brief Конвертация давления из паскалей в мм рт.ст.
+ * @brief Calculate dewpoint in F from relative humidity
  * 
- * @param sensor Указатель на датчик
+ * @param sensor Pointer to sensor
+ */
+void unitemp_rhToDewpointF(Sensor* sensor);
+
+/**
+ * @brief Converting pressure from pascals to mmHg.
+ * 
+ * @param sensor Pointer to sensor
  */
 void unitemp_pascalToMmHg(Sensor* sensor);
 
 /**
- * @brief Конвертация давления из паскалей в килопаскали
+ * @brief Converting pressure from pascals to kilopascals
  * 
- * @param sensor Указатель на датчик
+ * @param sensor Pointer to sensor
  */
 void unitemp_pascalToKPa(Sensor* sensor);
 /**
- * @brief Конвертация давления из паскалей в дюйм рт.ст.
+ * @brief Convert pressure from Pa to hPa
  * 
- * @param sensor Указатель на датчик
+ * @param sensor Pointer to sensor
  */
 void unitemp_pascalToHPa(Sensor* sensor);
 /**
+ * @brief Converting pressure from pascals to inHg.
  * 
- * Mod BySepa - linktr.ee/BySepa
- * 
+ * @param sensor Pointer to sensor
  */
 void unitemp_pascalToInHg(Sensor* sensor);
 
 /**
- * @brief Сохранение настроек на SD-карту
+ * @brief Saving settings to SD card
  * 
- * @return Истина если сохранение успешное
+ * @return True if save is successful
  */
 bool unitemp_saveSettings(void);
 /**
- * @brief Загрузка настроек с SD-карты
+ * @brief Loading settings from SD card
  * 
- * @return Истина если загрузка успешная
+ * @return True if upload is successful
  */
 bool unitemp_loadSettings(void);
 

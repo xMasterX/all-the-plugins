@@ -46,14 +46,14 @@ bool unitemp_LM75_alloc(Sensor* sensor, char* args) {
     UNUSED(args);
     I2CSensor* i2c_sensor = (I2CSensor*)sensor->instance;
 
-    //Адреса на шине I2C (7 бит)
+    //Addresses on the I2C bus (7 bits)
     i2c_sensor->minI2CAdr = 0b1001000 << 1;
     i2c_sensor->maxI2CAdr = 0b1001111 << 1;
     return true;
 }
 
 bool unitemp_LM75_free(Sensor* sensor) {
-    //Нечего высвобождать, так как ничего не было выделено
+    //Nothing to release since nothing was allocated
     UNUSED(sensor);
     return true;
 }
@@ -61,7 +61,7 @@ bool unitemp_LM75_free(Sensor* sensor) {
 bool unitemp_LM75_init(Sensor* sensor) {
     I2CSensor* i2c_sensor = (I2CSensor*)sensor->instance;
 
-    //Выход если не удалось записать значение в датчик
+    //Exit if it was not possible to write a value to the sensor
     if(!unitemp_i2c_writeReg(i2c_sensor, LM75_REG_CONFIG, LM75_CONFIG_FAULTQUEUE_1)) return false;
 
     return true;

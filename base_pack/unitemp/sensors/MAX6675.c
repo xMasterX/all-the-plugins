@@ -43,12 +43,12 @@ bool unitemp_MAX6675_free(Sensor* sensor) {
 bool unitemp_MAX6675_init(Sensor* sensor) {
     SPISensor* instance = sensor->instance;
     furi_hal_spi_bus_handle_init(instance->spi);
+    UNUSED(instance);
     return true;
 }
 
 bool unitemp_MAX6675_deinit(Sensor* sensor) {
-    SPISensor* instance = sensor->instance;
-    furi_hal_spi_bus_handle_deinit(instance->spi);
+    UNUSED(sensor);
     return true;
 }
 
@@ -67,9 +67,9 @@ UnitempStatus unitemp_MAX6675_update(Sensor* sensor) {
 
     if(raw == 0xFFFFFFFF || raw == 0) return UT_SENSORSTATUS_TIMEOUT;
 
-    //Определение состояния термопары
+    //Determining the status of the thermocouple
     uint8_t state = raw & 0b100;
-    //Обрыв
+    //Break
     if(state == 0b100) {
         UNITEMP_DEBUG("%s has thermocouple open circuit", sensor->name);
         return UT_SENSORSTATUS_ERROR;

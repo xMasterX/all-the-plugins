@@ -81,14 +81,14 @@ bool unitemp_DHT20_I2C_alloc(Sensor* sensor, char* args) {
     UNUSED(args);
     I2CSensor* i2c_sensor = (I2CSensor*)sensor->instance;
 
-    //Адреса на шине I2C (7 бит)
+    //Addresses on the I2C bus (7 bits)
     i2c_sensor->minI2CAdr = 0x38 << 1;
     i2c_sensor->maxI2CAdr = (sensor->type == &DHT20) ? (0x38 << 1) : (0x39 << 1);
     return true;
 }
 
 bool unitemp_DHT20_I2C_free(Sensor* sensor) {
-    //Нечего высвобождать, так как ничего не было выделено
+    //Nothing to release since nothing was allocated
     UNUSED(sensor);
     return true;
 }
@@ -108,7 +108,7 @@ bool unitemp_DHT20_init(Sensor* sensor) {
 }
 
 bool unitemp_DHT20_I2C_deinit(Sensor* sensor) {
-    //Нечего деинициализировать
+    //Nothing to deinitialize
     UNUSED(sensor);
     return true;
 }

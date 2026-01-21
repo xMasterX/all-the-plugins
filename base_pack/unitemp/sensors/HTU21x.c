@@ -44,14 +44,14 @@ bool unitemp_HTU21x_alloc(Sensor* sensor, char* args) {
     UNUSED(args);
     I2CSensor* i2c_sensor = (I2CSensor*)sensor->instance;
 
-    //Адреса на шине I2C (7 бит)
+    //Addresses on the I2C bus (7 bits)
     i2c_sensor->minI2CAdr = 0x40 << 1;
     i2c_sensor->maxI2CAdr = 0x41 << 1;
     return true;
 }
 
 bool unitemp_HTU21x_free(Sensor* sensor) {
-    //Нечего высвобождать, так как ничего не было выделено
+    //Nothing to release since nothing was allocated
     UNUSED(sensor);
     return true;
 }
@@ -72,7 +72,7 @@ bool unitemp_HTU21x_deinit(Sensor* sensor) {
 UnitempStatus unitemp_HTU21x_update(Sensor* sensor) {
     I2CSensor* i2c_sensor = (I2CSensor*)sensor->instance;
 
-    //Датчик может быть всего один, так что норм
+    //There can be only one sensor, so it’s normal
     static bool temp_hum = false;
 
     uint8_t data[3];
@@ -94,11 +94,11 @@ UnitempStatus unitemp_HTU21x_update(Sensor* sensor) {
     }
 
     if(temp_hum) {
-        //Запрос температуры
+        //Request temperature
         data[0] = 0xF3;
         if(!unitemp_i2c_writeArray(i2c_sensor, 1, data)) return UT_SENSORSTATUS_TIMEOUT;
     } else {
-        //Запрос влажности
+        //Humidity request
         data[0] = 0xF5;
         if(!unitemp_i2c_writeArray(i2c_sensor, 1, data)) return UT_SENSORSTATUS_TIMEOUT;
     }

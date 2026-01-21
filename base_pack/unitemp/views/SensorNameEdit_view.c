@@ -18,9 +18,9 @@
 #include "UnitempViews.h"
 #include <gui/modules/text_input.h>
 
-//Окно ввода текста
+//Text input window
 static TextInput* text_input;
-//Текущий редактируемый датчик
+//Current edited sensor
 static Sensor* editable_sensor;
 
 #define VIEW_ID UnitempViewSensorNameEdit
