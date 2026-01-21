@@ -1,0 +1,15 @@
+App(
+    appid="arduventure",
+    name="Arduventure",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="arduboy_app",
+    cdefines=["APP_ARDUVENTURE"],
+    requires=["gui"],
+    stack_size=8 * 1024,
+    fap_category="Games",
+    fap_icon="arduventure.png",
+    fap_author="@apfxtech",
+    fap_weburl="https://github.com/apfxtech/FlipperArduventure.git",
+    fap_version="1.0",
+    fap_description="Play the port of Arduventure game on your Flipper Zero.",
+)

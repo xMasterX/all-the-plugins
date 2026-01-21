@@ -1,0 +1,14 @@
+sourcecode:
+  type: git
+  location:
+    origin: https://github.com/apfxtech/FlipperArduventure.git
+    commit_sha: 3126dcfed61781c1775fc92561764051636b9c87
+
+short_description: A top-down action adventure ported to Flipper Zero.
+description: "@APPSTORE.md"
+changelog: "@CHANGELOG.md"
+screenshots:
+  - "package/screenshots/screen1.png"
+  - "package/screenshots/screen2.png"
+  - "package/screenshots/screen3.png"
+  - "package/screenshots/screen4.png"
