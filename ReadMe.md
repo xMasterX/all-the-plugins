@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `9 Jan 12:38 GMT +3`
+### Apps checked & updated at `21 Jan 08:28 GMT +3`
 
 
 # Default pack
@@ -64,6 +64,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Radio Scanner | ![SubGhz Badge] | [by RocketGod](https://github.com/RocketGod-git/Flipper-Zero-Radio-Scanner) | Scans frequencies available to the CC1101 and plays them over the speaker so you can hear them. | ![None Badge] |
 | Sub-GHz Scheduler | ![SubGhz Badge] | [by shalebridge](https://github.com/shalebridge/flipper-subghz-scheduler) | Remake to work with all types of keys by @xMasterX | [![Author Badge]](https://lab.flipper.net/apps/subghz_scheduler) |
 | Flipper Share | ![SubGhz Badge] | [by lomalkin](https://github.com/lomalkin/flipper-zero-apps/blob/-/flipper_share) | | [![Author Badge]](https://lab.flipper.net/apps/flipper_share) |
+| ProtoPirate | ![SubGhz Badge] | [by RocketGod](https://github.com/RocketGod-git/ProtoPirate) | Keyfob analysis toolkit that can decode and decrypt keys (no emulation) | ![None Badge] |
 | **NFC Maker** plugin | ![NFC Badge] | [by Willy-JL](https://github.com/Flipper-XFW/Xtreme-Firmware/tree/dev/applications/external/nfc_maker) | make tags with URLs, Wifi and other things | ![None Badge] |
 | MIFARE Classic Editor | ![NFC Badge] | [by TollyH](https://github.com/TollyH/flipper-apps/tree/main/mfc-editor) | edit dumps on flipper | [![Author Badge]](https://lab.flipper.net/apps/mfc_editor) |
 | **RFID Fuzzer** | ![RFID Badge] | [by @gid9798](https://github.com/DarkFlippers/Multi_Fuzzer) | original by Ganapati & xMasterX | [![UFW Badge]](https://lab.flipper.net/apps/fuzzer_rfid) |
