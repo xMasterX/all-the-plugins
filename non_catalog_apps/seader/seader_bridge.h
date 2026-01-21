@@ -45,6 +45,7 @@ struct SeaderUartBridge {
 
     // T=0 or T=1
     uint8_t T;
+    uint8_t IFSC;
 };
 
 typedef struct SeaderUartBridge SeaderUartBridge;

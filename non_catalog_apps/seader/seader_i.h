@@ -63,6 +63,7 @@
 #define WORKER_ALL_TX_EVENTS (WorkerEvtTxStop | WorkerEvtSamRx)
 
 #define SEADER_TEXT_STORE_SIZE 128
+#define SEADER_MAX_ATR_SIZE    33
 
 enum SeaderCustomEvent {
     // Reserve first 100 events for button types and indexes, starting from 0
@@ -107,6 +108,8 @@ struct Seader {
     SeaderUartBridge* uart;
     SeaderCredential* credential;
     SamCommand_PR samCommand;
+    uint8_t ATR[SEADER_MAX_ATR_SIZE];
+    size_t ATR_len;
 
     char text_store[SEADER_TEXT_STORE_SIZE + 1];
     FuriString* text_box_store;

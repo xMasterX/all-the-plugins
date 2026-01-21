@@ -7,10 +7,10 @@
 /* I know my T=1 is terrible, but I'm also only targetting one specific 'card' */
 
 #define MORE_BIT               0x20
-#define IFSD_VALUE             0xfe
-#define IFSC_VALUE             0xfe // Fom the SAM ATR
 #define R_BLOCK                0x80
+#define S_BLOCK                0xC0
 #define R_SEQUENCE_NUMBER_MASK 0x10
+#define T1_S_IFS               0x01
 
 // TODO: T1 struct
 uint8_t NAD = 0x00;
@@ -44,9 +44,26 @@ void seader_t_1_set_IFSD(Seader* seader) {
     uint8_t frame_len = 0;
 
     frame[0] = NAD;
-    frame[1] = 0xC1; // S(IFS request)
+    frame[1] = S_BLOCK | T1_S_IFS; // S(IFS request)
     frame[2] = 0x01;
-    frame[3] = IFSD_VALUE;
+    frame[3] = seader_uart->IFSC;
+    frame_len = 4;
+
+    frame_len = seader_add_lrc(frame, frame_len);
+
+    seader_ccid_XfrBlock(seader_uart, frame, frame_len);
+}
+
+void seader_t_1_IFSD_response(Seader* seader) {
+    SeaderWorker* seader_worker = seader->worker;
+    SeaderUartBridge* seader_uart = seader_worker->uart;
+    uint8_t frame[5];
+    uint8_t frame_len = 0;
+
+    frame[0] = NAD;
+    frame[1] = 0xE0 | 0x01; // S(IFS response)
+    frame[2] = 0x01;
+    frame[3] = seader_uart->IFSC;
     frame_len = 4;
 
     frame_len = seader_add_lrc(frame, frame_len);
@@ -96,19 +113,21 @@ void seader_send_t1_chunk(SeaderUartBridge* seader_uart, uint8_t PCB, uint8_t* c
 }
 
 void seader_send_t1(SeaderUartBridge* seader_uart, uint8_t* apdu, size_t len) {
-    if(len > IFSC_VALUE) {
+    uint8_t ifsc = seader_uart->IFSC;
+
+    if(len > ifsc) {
         if(seader_t_1_tx_buffer == NULL) {
             seader_t_1_tx_buffer = bit_buffer_alloc(768);
             bit_buffer_copy_bytes(seader_t_1_tx_buffer, apdu, len);
         }
         size_t remaining =
             (bit_buffer_get_size_bytes(seader_t_1_tx_buffer) - seader_t_1_tx_buffer_offset);
-        size_t copy_length = remaining > IFSC_VALUE ? IFSC_VALUE : remaining;
+        size_t copy_length = remaining > ifsc ? ifsc : remaining;
 
         uint8_t* chunk =
             (uint8_t*)bit_buffer_get_data(seader_t_1_tx_buffer) + seader_t_1_tx_buffer_offset;
 
-        if(remaining > IFSC_VALUE) {
+        if(remaining > ifsc) {
             uint8_t PCB = seader_next_dpcb() | MORE_BIT;
             seader_send_t1_chunk(seader_uart, PCB, chunk, copy_length);
         } else {
@@ -144,6 +163,7 @@ bool seader_recv_t1(Seader* seader, CCID_Message* message) {
 
     if(rPCB == 0xE1) {
         // S(IFS response)
+        //FURI_LOG_D(TAG, "Received IFS Response");
         seader_worker_send_version(seader);
         SeaderWorker* seader_worker = seader->worker;
         if(seader_worker->callback) {
@@ -190,6 +210,13 @@ bool seader_recv_t1(Seader* seader, CCID_Message* message) {
         bit_buffer_append_bytes(seader_t_1_rx_buffer, message->payload + 3, LEN);
         seader_t_1_send_ack(seader);
         return false;
+    } else if((rPCB & S_BLOCK) == S_BLOCK) {
+        //FURI_LOG_D(TAG, "Received S-Block");
+        if((rPCB & 0x0F) == T1_S_IFS) {
+            seader_t_1_IFSD_response(seader);
+            return false;
+        }
+
     } else if((rPCB & R_BLOCK) == R_BLOCK) {
         uint8_t R_SEQ = (rPCB & R_SEQUENCE_NUMBER_MASK) >> 4;
         uint8_t I_SEQ = (dPCB ^ 0x40) >> 6;

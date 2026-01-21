@@ -99,7 +99,6 @@ struct CCID_Message {
 void seader_ccid_check_for_sam(SeaderUartBridge* seader_uart);
 void seader_ccid_IccPowerOn(SeaderUartBridge* seader_uart, uint8_t slot);
 void seader_ccid_GetSlotStatus(SeaderUartBridge* seader_uart, uint8_t slot);
-void seader_ccid_SetParameters(Seader* seader, uint8_t slot, uint8_t* atr, size_t atr_len);
 void seader_ccid_GetParameters(SeaderUartBridge* seader_uart);
 void seader_ccid_XfrBlock(SeaderUartBridge* seader_uart, uint8_t* data, size_t len);
 void seader_ccid_XfrBlockToSlot(

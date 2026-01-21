@@ -5,8 +5,8 @@
  * 	`asn1c -D ./lib/asn1 -no-gen-example -no-gen-OER -no-gen-PER -pdu=all`
  */
 
-#ifndef	_SamVersion_H_
-#define	_SamVersion_H_
+#ifndef	_SamVerionDetails_H_
+#define	_SamVerionDetails_H_
 
 
 #include <asn_application.h>
@@ -19,29 +19,25 @@
 extern "C" {
 #endif
 
-/* Forward declarations */
-struct SamVerionDetails;
-
-/* SamVersion */
-typedef struct SamVersion {
-	OCTET_STRING_t	 version;
-	OCTET_STRING_t	 firmware;
-	OCTET_STRING_t	 type;
-	struct SamVerionDetails	*extra	/* OPTIONAL */;
+/* SamVerionDetails */
+typedef struct SamVerionDetails {
+	OCTET_STRING_t	 zero;
+	OCTET_STRING_t	 one;
+	OCTET_STRING_t	 two;
+	OCTET_STRING_t	 three;
 	
 	/* Context for parsing across buffer boundaries */
 	asn_struct_ctx_t _asn_ctx;
-} SamVersion_t;
+} SamVerionDetails_t;
 
 /* Implementation */
-extern asn_TYPE_descriptor_t asn_DEF_SamVersion;
+extern asn_TYPE_descriptor_t asn_DEF_SamVerionDetails;
+extern asn_SEQUENCE_specifics_t asn_SPC_SamVerionDetails_specs_1;
+extern asn_TYPE_member_t asn_MBR_SamVerionDetails_1[4];
 
 #ifdef __cplusplus
 }
 #endif
 
-/* Referred external types */
-#include "SamVerionDetails.h"
-
-#endif	/* _SamVersion_H_ */
+#endif	/* _SamVerionDetails_H_ */
 #include <asn_internal.h>

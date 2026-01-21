@@ -178,7 +178,9 @@ bool seader_send_apdu(
     SeaderWorker* seader_worker = seader->worker;
     SeaderUartBridge* seader_uart = seader_worker->uart;
 
-    if(seader_uart->T == 1) {
+    bool extended = seader_uart->T == 1;
+
+    if(extended) {
         APDU_HEADER_LEN = 7;
     }
 
@@ -199,7 +201,7 @@ bool seader_send_apdu(
     apdu[2] = P1;
     apdu[3] = P2;
 
-    if(seader_uart->T == 1) {
+    if(extended) {
         apdu[4] = 0x00;
         apdu[5] = 0x00;
         apdu[6] = payloadLen;
@@ -231,13 +233,6 @@ static int seader_print_struct_callback(const void* buffer, size_t size, void* a
         uint8_t next = strlen(asn1_log);
         strncpy(asn1_log + next, buffer, size);
     }
-    return 0;
-}
-#else
-static int seader_print_struct_callback(const void* buffer, size_t size, void* app_key) {
-    UNUSED(buffer);
-    UNUSED(size);
-    UNUSED(app_key);
     return 0;
 }
 #endif
@@ -533,11 +528,14 @@ bool seader_unpack_pacs(Seader* seader, uint8_t* buf, size_t size) {
 
 //    800201298106683d052026b6820101
 //300F800201298106683D052026B6820101
+// ATR3:
+//    800207358106793D81F9F385820104A51E8004000000018106053000000000820B323330353139313232395A830152
+#define MAX_VERSION_SIZE 60
 bool seader_parse_version(SeaderWorker* seader_worker, uint8_t* buf, size_t size) {
     bool rtn = false;
-    if(size > 30) {
+    if(size > MAX_VERSION_SIZE) {
         // Too large to handle now
-        FURI_LOG_W(TAG, "Version of %d is to long to parse", size);
+        FURI_LOG_W(TAG, "Version of %d is too long to parse", size);
         return false;
     }
     SamVersion_t* version = 0;
@@ -545,7 +543,7 @@ bool seader_parse_version(SeaderWorker* seader_worker, uint8_t* buf, size_t size
     assert(version);
 
     // Add sequence prefix
-    uint8_t seq[32] = {0x30};
+    uint8_t seq[MAX_VERSION_SIZE + 2] = {0x30};
     seq[1] = (uint8_t)size;
     memcpy(seq + 2, buf, size);
 
@@ -553,6 +551,7 @@ bool seader_parse_version(SeaderWorker* seader_worker, uint8_t* buf, size_t size
         asn_decode(0, ATS_DER, &asn_DEF_SamVersion, (void**)&version, seq, size + 2);
 
     if(rval.code == RC_OK) {
+#ifdef ASN1_DEBUG
         char versionDebug[128] = {0};
         (&asn_DEF_SamVersion)
             ->op->print_struct(
@@ -560,11 +559,19 @@ bool seader_parse_version(SeaderWorker* seader_worker, uint8_t* buf, size_t size
         if(strlen(versionDebug) > 0) {
             FURI_LOG_D(TAG, "Received version: %s", versionDebug);
         }
+#endif
         if(version->version.size == 2) {
             memcpy(seader_worker->sam_version, version->version.buf, version->version.size);
+            FURI_LOG_I(
+                TAG,
+                "SAM Version: %d.%d",
+                seader_worker->sam_version[0],
+                seader_worker->sam_version[1]);
         }
 
         rtn = true;
+    } else {
+        FURI_LOG_W(TAG, "Failed to decode SamVersion %d consumed, size %d", rval.consumed, size);
     }
 
     ASN_STRUCT_FREE(asn_DEF_SamVersion, version);
