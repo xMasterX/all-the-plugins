@@ -1,0 +1,30 @@
+// protopirate_history.h
+#pragma once
+
+#include <lib/subghz/receiver.h>
+#include <lib/subghz/protocols/base.h>
+
+#define KIA_HISTORY_MAX 50
+
+typedef struct ProtoPirateHistory ProtoPirateHistory;
+
+ProtoPirateHistory* protopirate_history_alloc(void);
+void protopirate_history_free(ProtoPirateHistory* instance);
+void protopirate_history_reset(ProtoPirateHistory* instance);
+uint16_t protopirate_history_get_item(ProtoPirateHistory* instance);
+uint16_t protopirate_history_get_last_index(ProtoPirateHistory* instance);
+bool protopirate_history_add_to_history(
+    ProtoPirateHistory* instance,
+    void* context,
+    SubGhzRadioPreset* preset);
+void protopirate_history_get_text_item_menu(
+    ProtoPirateHistory* instance,
+    FuriString* output,
+    uint16_t idx);
+void protopirate_history_get_text_item(
+    ProtoPirateHistory* instance,
+    FuriString* output,
+    uint16_t idx);
+SubGhzProtocolDecoderBase*
+    protopirate_history_get_decoder_base(ProtoPirateHistory* instance, uint16_t idx);
+FlipperFormat* protopirate_history_get_raw_data(ProtoPirateHistory* instance, uint16_t idx);

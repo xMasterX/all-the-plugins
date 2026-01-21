@@ -1,0 +1,11 @@
+// scenes/protopirate_scene_config.h
+ADD_SCENE(protopirate, start, Start)
+ADD_SCENE(protopirate, sub_decode, SubDecode)
+ADD_SCENE(protopirate, about, About)
+ADD_SCENE(protopirate, receiver, Receiver)
+ADD_SCENE(protopirate, receiver_config, ReceiverConfig)
+ADD_SCENE(protopirate, receiver_info, ReceiverInfo)
+ADD_SCENE(protopirate, saved, Saved)
+ADD_SCENE(protopirate, saved_info, SavedInfo)
+ADD_SCENE(protopirate, emulate, Emulate)
+ADD_SCENE(protopirate, timing_tuner, TimingTuner)
