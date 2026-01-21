@@ -1,0 +1,17 @@
+sourcecode:
+  type: git
+  location:
+    origin: https://github.com/apfxtech/FlipperGolf.git
+    commit_sha: a378ab82cf0b2633353190fadb5c901b29583f9c
+
+short_description: 3D mini-golf game ported to Flipper Zero.
+description: "@APPSTORE.md"
+changelog: "@CHANGELOG.md"
+screenshots:
+  - "package/screenshots/screen1.png"
+  - "package/screenshots/screen2.png"
+  - "package/screenshots/screen3.png"
+  - "package/screenshots/screen4.png"
+  - "package/screenshots/screen5.png"
+  - "package/screenshots/screen6.png"
+  - "package/screenshots/screen7.png"
