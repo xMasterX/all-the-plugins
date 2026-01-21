@@ -7,7 +7,6 @@
 
 #define TAG             "IE"
 #define APP_NAME        "IconEdit"
-#define VERSION         "0.6"
 #define ENABLE_XBM_SAVE // Enables XBM file save
 
 typedef struct {
@@ -17,8 +16,7 @@ typedef struct {
 // Panel determines what should process input
 typedef enum {
     // main view components
-    Panel_TabBar, // File, Tools, View, Anim
-    // Panel_Tab,
+    Panel_TabBar,
     Panel_Canvas,
 
     Panel_File,
@@ -41,14 +39,17 @@ typedef void (*IconEditUpdateCallback)(void* context);
 
 typedef enum {
     Setting_START,
-    Setting_Include = Setting_START,
-    Setting_Delete_Brace,
+    Setting_Canvas_Scale = Setting_START,
+    Setting_Draw_Cursor_Guides,
     Setting_COUNT,
     Setting_NONE,
 } SettingType;
+
+#define SETTING_SCALE_AUTO     0u
+#define SETTING_SCALE_AUTO_MIN 2u
 typedef struct {
-    bool include_icon_header;
-    bool delete_auto_brace;
+    size_t canvas_scale; // 0 is Auto
+    bool draw_cursor_guides; // default is true
 } IESettings;
 
 typedef struct {
@@ -65,3 +66,6 @@ typedef struct {
     bool running;
     bool dirty;
 } IconEdit;
+
+void iconedit_load_settings(IconEdit* app);
+void iconedit_save_settings(IconEdit* app);

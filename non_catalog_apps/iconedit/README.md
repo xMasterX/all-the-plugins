@@ -53,6 +53,9 @@ Change animation frame rate | Save as PNG, .C, or XBM
     * Back returns to editing
   * FPS - Change the Frame Rate for the animation (Default = 4fps)
   * Left/Right - Navigate between frames of animation
+* Settings
+  * Canvas Scale - Changes the canvas scaling factor in the editor
+  * Cursor Guides - Toggles the drawing of the cursor guides on the edge of the editor
 * Help
 * About
 

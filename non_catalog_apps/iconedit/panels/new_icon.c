@@ -103,8 +103,7 @@ bool new_icon_input(InputEvent* event, void* context) {
             if(new_icon_check_digits()) {
                 ie_icon_reset(app->icon, newModel.w, newModel.h, NULL);
                 furi_string_set_str(app->icon->name, NEW_ICON_DEFAULT_NAME);
-                canvas_free_canvas();
-                canvas_alloc_canvas(newModel.w, newModel.h);
+                canvas_initialize(app->icon, app->settings.canvas_scale);
                 // user just created a new icon, place them directly into Tools!
                 tabbar_set_selected_tab(TabTools);
                 app->panel = Panel_Tools;

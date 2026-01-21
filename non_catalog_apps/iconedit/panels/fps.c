@@ -13,13 +13,8 @@ void fps_set_fps(uint8_t new_fps) {
     fps = new_fps;
 }
 
-uint8_t fps_get_fps() {
-    return fps;
-}
-
 void fps_draw(Canvas* canvas, void* context) {
     UNUSED(context);
-    // IconEdit* app = context;
 
     size_t cw = canvas_width(canvas);
     size_t ch = canvas_height(canvas);

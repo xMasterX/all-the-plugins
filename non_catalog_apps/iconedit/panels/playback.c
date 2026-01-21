@@ -85,7 +85,7 @@ bool playback_input(InputEvent* event, void* context) {
     if(event->type == InputTypeShort) {
         switch(event->key) {
         case InputKeyUp: {
-            playbackModel.scale += playbackModel.scale + 1 < 10; //
+            playbackModel.scale += playbackModel.scale + 1 <= 10;
             break;
         }
         case InputKeyDown: {

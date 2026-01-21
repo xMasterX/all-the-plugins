@@ -8,15 +8,20 @@
 static const char* TAB_NAMES[] = {
     "File",
     "Tools",
-    // "Settings",
+    "Settings",
     "Help",
     "About",
 };
 
-const Tab Tab_LEFT[Tab_COUNT] = {Tab_NONE, TabFile, TabTools, TabHelp};
-const Tab Tab_RIGHT[Tab_COUNT] = {TabTools, TabHelp, TabAbout, Tab_NONE};
+const Tab Tab_LEFT[Tab_COUNT] = {Tab_NONE, TabFile, TabTools, TabSettings, TabHelp};
+const Tab Tab_RIGHT[Tab_COUNT] = {TabTools, TabSettings, TabHelp, TabAbout, Tab_NONE};
 
-const PanelType Tab2Panel[Tab_COUNT] = {Panel_File, Panel_Tools, Panel_Help, Panel_About};
+const PanelType Tab2Panel[Tab_COUNT] = {
+    [TabFile] = Panel_File,
+    [TabTools] = Panel_Tools,
+    [TabSettings] = Panel_Settings,
+    [TabHelp] = Panel_Help,
+    [TabAbout] = Panel_About};
 
 static struct {
     Tab tab;

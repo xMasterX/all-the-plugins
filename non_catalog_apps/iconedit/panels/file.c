@@ -184,8 +184,7 @@ void file_input_handle_ok(void* context) {
             }
             if(icon) {
                 app->icon = icon;
-                canvas_free_canvas();
-                canvas_alloc_canvas(icon->width, icon->height);
+                canvas_initialize(app->icon, app->settings.canvas_scale);
             } else {
                 // unsupported file type
                 dialog_info_dialog(app, "Unsupported type", app->panel);
