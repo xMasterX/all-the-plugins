@@ -63,6 +63,7 @@ The following contributors are recognized for helping us keep open sourced proje
 
 - RocketGod
 - MMX
+- Leeroy
 - Skorp - Thanks, I sneaked a lot from Weather App!
 - Vadim's Radio Driver
 
@@ -71,12 +72,14 @@ The following contributors are recognized for helping us keep open sourced proje
 - L0rdDiakon
 - YougZ
 - RocketGod
+- MMX
 - DoobTheGoober
 - Skorp
 - Slackware
 - Trikk
 - Wootini
 - Li0ard
+- Leeroy
 
 ### **Reverse Engineering Support**
 

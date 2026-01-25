@@ -212,21 +212,25 @@ static void protopirate_emulate_draw_callback(Canvas* canvas, void* context) {
     }
 
     // Divider
-    canvas_draw_line(canvas, 0, 35, 127, 35);
+    canvas_draw_line(canvas, 0, 34, 127, 34);
 
     // Button mapping - adjusted positioning
     canvas_set_font(canvas, FontSecondary);
 
     // Row 1
-    canvas_draw_str(canvas, 2, 44, "^Lock");
-    canvas_draw_str(canvas, 95, 44, "<Panic");
+    canvas_draw_str_aligned(canvas, 64, 44, AlignCenter, AlignBottom, "^ Lock");
 
-    // Row 2
-    canvas_draw_str(canvas, 2, 53, "vTrunk");
-    canvas_draw_str(canvas, 95, 53, ">0x8");
+    // OK in Centre
+    canvas_draw_str_aligned(canvas, 64, 53, AlignCenter, AlignBottom, "[Unlock]");
 
-    // OK at bottom center
-    canvas_draw_str_aligned(canvas, 64, 62, AlignCenter, AlignBottom, "[OK]Unlock");
+    // Right Centre Row
+    canvas_draw_str(canvas, 98, 53, "0x8 >");
+
+    // Left Centre Row
+    canvas_draw_str(canvas, 2, 53, "< Panic");
+
+    // Row 3
+    canvas_draw_str_aligned(canvas, 64, 63, AlignCenter, AlignBottom, "v Trunk");
 
     // Transmitting overlay
     if(emulate_context->is_transmitting) {

@@ -182,7 +182,7 @@ void protopirate_scene_receiver_on_enter(void* context) {
 
     // Update lock state in view
     protopirate_view_receiver_set_lock(app->protopirate_receiver, app->lock);
-    
+
     // Switch to receiver view
     view_dispatcher_switch_to_view(app->view_dispatcher, ProtoPirateViewReceiver);
 }
@@ -252,6 +252,9 @@ bool protopirate_scene_receiver_on_event(void* context, SceneManagerEvent event)
                 FURI_LOG_D(TAG, "RSSI: %.1f dBm (%s)", (double)rssi, is_ext ? "EXT" : "INT");
                 rssi_log_counter = 0;
             }
+
+            //Blink the light like the SubGHZ app.
+            notification_message(app->notifications, &sequence_blink_cyan_10);
         }
 
         consumed = true;

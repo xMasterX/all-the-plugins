@@ -6,6 +6,9 @@
 // PROTOCOL CONSTANTS
 // =============================================================================
 
+// Uncomment to enable bit-level debug logging (WARNING: 80 log calls per signal)
+// #define FORD_V0_DEBUG_BITS
+
 static const SubGhzBlockConst subghz_protocol_ford_v0_const = {
     .te_short = 250,
     .te_long = 500,
@@ -135,13 +138,9 @@ const SubGhzProtocol ford_protocol_v0 = {
 // =============================================================================
 
 static uint8_t ford_v0_calculate_bs(uint32_t count, uint8_t button, uint8_t bs_magic) {
-    uint16_t result;
-
-    //Do the BS calculation
-    result = ((uint16_t)count & 0xFF) + bs_magic + (button << 4);
-
-    //Return the last byte of result
-    return (uint8_t)(result & 0xFF);
+    //Do the BS calculation, move right the overflow bit if neccesary
+    uint16_t result = ((uint16_t)count & 0xFF) + bs_magic + (button << 4);
+    return (uint8_t)(result - ((result & 0xFF00) ? 0x80 : 0));
 }
 
 // =============================================================================
@@ -266,8 +265,8 @@ static void decode_ford_v0(
 
     *count = ((buf[5] & 0x0F) << 16) | (buf[6] << 8) | buf[7];
 
-    //Build the BS Magic number for this fob. (Wlll have overflow bug until other pr is acceoted and overflow calc returned)
-    *bs_magic = bs - (*button << 4) - (uint8_t)(*count & 0xFF);
+    //Build the BS Magic number for this fob.
+    *bs_magic = bs + ((bs & 0x80) ? 0x80 : 0) - (*button << 4) - (uint8_t)(*count & 0xFF);
 }
 
 // =============================================================================
@@ -362,7 +361,7 @@ void* subghz_protocol_encoder_ford_v0_alloc(SubGhzEnvironment* environment) {
     instance->generic.protocol_name = instance->base.protocol->name;
 
     instance->encoder.repeat = 10;
-    instance->encoder.size_upload = 2048;
+    instance->encoder.size_upload = 1024;
     instance->encoder.upload = malloc(instance->encoder.size_upload * sizeof(LevelDuration));
     instance->encoder.is_running = false;
     instance->encoder.front = 0;
@@ -634,6 +633,14 @@ SubGhzProtocolStatus
             break;
         }
 
+        //Update the PSF file, since we have overwritten the COUNTER and BUTTON
+        //This makes the file's nummers wrong, and fails tests. It wasnt causing a TX bug, but manual tests failed.
+        flipper_format_rewind(flipper_format);
+        uint32_t temp = calculated_crc;
+        flipper_format_insert_or_update_uint32(flipper_format, "CRC", &temp, 1);
+        temp = instance->bs;
+        flipper_format_insert_or_update_uint32(flipper_format, "BS", &temp, 1);
+
         instance->encoder.is_running = true;
 
         FURI_LOG_I(
@@ -679,7 +686,9 @@ LevelDuration subghz_protocol_encoder_ford_v0_yield(void* context) {
 // =============================================================================
 
 static void ford_v0_add_bit(SubGhzProtocolDecoderFordV0* instance, bool bit) {
+#ifdef FORD_V0_DEBUG_BITS
     FURI_LOG_D(TAG, "Bit %d: %d", instance->bit_count, bit);
+#endif
 
     uint32_t low = (uint32_t)instance->data_low;
     instance->data_low = (instance->data_low << 1) | (bit ? 1 : 0);
@@ -949,11 +958,14 @@ void subghz_protocol_decoder_ford_v0_get_string(void* context, FuriString* outpu
     furi_string_cat_printf(
         output,
         "%s %dbit CRC:%s\r\n"
-        "Key1:%08lX%08lX\r\n"
-        "Key2:%04X\r\n"
-        "Sn:%08lX Btn:%02X:%s\r\n"
-        "Cnt:%05lX BS:%02X CRC:%02X\r\n"
-        "BSMagic:%02X\r\n",
+        "Key1: %08lX%08lX\r\n"
+        "Key2: %04X"
+        "  Sn: %08lX\r\n"
+        "Cnt: %05lX"
+        "  BS: %02X"
+        "  CRC: %02X\r\n"
+        "BS Magic: %02X"
+        "  Btn: %02X - %s\r\n",
         instance->generic.protocol_name,
         instance->generic.data_count_bit,
         crc_ok ? "OK" : "BAD",
@@ -961,10 +973,11 @@ void subghz_protocol_decoder_ford_v0_get_string(void* context, FuriString* outpu
         (unsigned long)code_found_lo,
         instance->key2,
         (unsigned long)instance->serial,
-        instance->button,
-        button_name,
+
         (unsigned long)instance->count,
         (instance->key2 >> 8) & 0xFF,
         instance->key2 & 0xFF,
-        instance->bs_magic);
+        instance->bs_magic,
+        instance->button,
+        button_name);
 }

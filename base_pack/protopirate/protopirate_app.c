@@ -7,6 +7,7 @@
 #include "helpers/protopirate_settings.h"
 #include "helpers/protopirate_storage.h"
 #include "protocols/keys.h"
+#include <string.h>
 
 #define TAG "ProtoPirateApp"
 
@@ -206,9 +207,6 @@ ProtoPirateApp* protopirate_app_alloc() {
     subghz_worker_set_pair_callback(
         app->txrx->worker, (SubGhzWorkerPairCallback)subghz_receiver_decode);
     subghz_worker_set_context(app->txrx->worker, app->txrx->receiver);
-
-    scene_manager_next_scene(app->scene_manager, ProtoPirateSceneStart);
-
     return app;
 }
 
@@ -311,12 +309,18 @@ void protopirate_app_free(ProtoPirateApp* app) {
     free(app);
 }
 
-int32_t protopirate_app(void* p) {
-    UNUSED(p);
-
+int32_t protopirate_app(char* p) {
     furi_hal_power_suppress_charge_enter();
 
     ProtoPirateApp* protopirate_app = protopirate_app_alloc();
+
+    //Handle Command line PSF that may have been passed to us, load in Saved Info Scene.
+    bool load_saved = (p && strlen(p));
+    if(load_saved) protopirate_app->loaded_file_path = furi_string_alloc_set(p);
+
+    scene_manager_next_scene(
+        protopirate_app->scene_manager,
+        (load_saved) ? ProtoPirateSceneSavedInfo : ProtoPirateSceneStart);
 
     view_dispatcher_run(protopirate_app->view_dispatcher);
 

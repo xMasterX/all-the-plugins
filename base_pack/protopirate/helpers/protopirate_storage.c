@@ -15,8 +15,19 @@ typedef struct {
 static FileEntry* g_file_entries = NULL;
 static uint32_t g_file_count = 0;
 static bool g_file_list_valid = false;
+static bool g_file_list_building = false;  // NEW: Prevent re-entry
+static FuriMutex* g_storage_mutex = NULL;  // NEW: Thread safety
+
+// NEW: Initialize mutex (call once at app start)
+static void protopirate_storage_ensure_mutex(void) {
+    if(g_storage_mutex == NULL) {
+        g_storage_mutex = furi_mutex_alloc(FuriMutexTypeNormal);
+    }
+}
 
 bool protopirate_storage_init(void) {
+    protopirate_storage_ensure_mutex();
+    
     Storage* storage = furi_record_open(RECORD_STORAGE);
     bool result = storage_simply_mkdir(storage, PROTOPIRATE_APP_FOLDER);
     furi_record_close(RECORD_STORAGE);
@@ -44,6 +55,13 @@ static void sanitize_filename(const char* input, char* output, size_t output_siz
 
 // Find next available filename for a protocol
 bool protopirate_storage_get_next_filename(const char* protocol_name, FuriString* out_filename) {
+    protopirate_storage_ensure_mutex();
+    
+    if(furi_mutex_acquire(g_storage_mutex, 100) != FuriStatusOk) {
+        FURI_LOG_W(TAG, "Could not acquire mutex for get_next_filename");
+        return false;
+    }
+    
     Storage* storage = furi_record_open(RECORD_STORAGE);
     FuriString* temp_path = furi_string_alloc();
     uint32_t index = 0;
@@ -72,6 +90,7 @@ bool protopirate_storage_get_next_filename(const char* protocol_name, FuriString
 
     furi_string_free(temp_path);
     furi_record_close(RECORD_STORAGE);
+    furi_mutex_release(g_storage_mutex);
     return found;
 }
 
@@ -101,7 +120,7 @@ static bool protopirate_storage_write_capture_data(
     } else {
         flipper_format_rewind(flipper_format);
         if(flipper_format_get_value_count(flipper_format, "Key", &uint32_array_size) &&
-           uint32_array_size > 0) {
+           uint32_array_size > 0 && uint32_array_size < 1024) {  // NEW: Bounds check
             uint32_t* uint32_array = malloc(sizeof(uint32_t) * uint32_array_size);
             if(uint32_array) {
                 if(flipper_format_read_uint32(
@@ -133,7 +152,7 @@ static bool protopirate_storage_write_capture_data(
     // Custom preset data
     flipper_format_rewind(flipper_format);
     if(flipper_format_get_value_count(flipper_format, "Custom_preset_data", &uint32_array_size) &&
-       uint32_array_size > 0) {
+       uint32_array_size > 0 && uint32_array_size < 1024) {  // NEW: Bounds check
         uint8_t* custom_data = malloc(uint32_array_size);
         if(custom_data) {
             if(flipper_format_read_hex(
@@ -184,10 +203,10 @@ static bool protopirate_storage_write_capture_data(
     if(flipper_format_read_uint32(flipper_format, "Check", &uint32_value, 1))
         flipper_format_write_uint32(save_file, "Check", &uint32_value, 1);
 
-    // RAW_Data
+    // RAW_Data - with strict bounds check
     flipper_format_rewind(flipper_format);
     if(flipper_format_get_value_count(flipper_format, "RAW_Data", &uint32_array_size) &&
-       uint32_array_size > 0) {
+       uint32_array_size > 0 && uint32_array_size < 4096) {  // NEW: Strict bounds check
         uint32_t* uint32_array = malloc(sizeof(uint32_t) * uint32_array_size);
         if(uint32_array) {
             if(flipper_format_read_uint32(
@@ -244,8 +263,16 @@ static bool protopirate_storage_write_capture_data(
 
 // Save to temp file for emulation
 bool protopirate_storage_save_temp(FlipperFormat* flipper_format) {
+    protopirate_storage_ensure_mutex();
+    
+    if(furi_mutex_acquire(g_storage_mutex, 500) != FuriStatusOk) {
+        FURI_LOG_W(TAG, "Could not acquire mutex for save_temp");
+        return false;
+    }
+    
     if(!protopirate_storage_init()) {
         FURI_LOG_E(TAG, "Failed to create app folder");
+        furi_mutex_release(g_storage_mutex);
         return false;
     }
 
@@ -276,17 +303,26 @@ bool protopirate_storage_save_temp(FlipperFormat* flipper_format) {
 
     flipper_format_free(save_file);
     furi_record_close(RECORD_STORAGE);
+    furi_mutex_release(g_storage_mutex);
     return result;
 }
 
 // Delete temp file
 void protopirate_storage_delete_temp(void) {
+    protopirate_storage_ensure_mutex();
+    
+    if(furi_mutex_acquire(g_storage_mutex, 100) != FuriStatusOk) {
+        FURI_LOG_W(TAG, "Could not acquire mutex for delete_temp");
+        return;
+    }
+    
     Storage* storage = furi_record_open(RECORD_STORAGE);
     if(storage_file_exists(storage, PROTOPIRATE_TEMP_FILE)) {
         storage_simply_remove(storage, PROTOPIRATE_TEMP_FILE);
         FURI_LOG_I(TAG, "Deleted temp file");
     }
     furi_record_close(RECORD_STORAGE);
+    furi_mutex_release(g_storage_mutex);
 }
 
 // Save a capture to a new file
@@ -294,6 +330,16 @@ bool protopirate_storage_save_capture(
     FlipperFormat* flipper_format,
     const char* protocol_name,
     FuriString* out_path) {
+    protopirate_storage_ensure_mutex();
+    
+    if(furi_mutex_acquire(g_storage_mutex, 1000) != FuriStatusOk) {
+        FURI_LOG_W(TAG, "Could not acquire mutex for save_capture");
+        return false;
+    }
+    
+    // Release mutex temporarily for init (it will re-acquire)
+    furi_mutex_release(g_storage_mutex);
+    
     if(!protopirate_storage_init()) {
         FURI_LOG_E(TAG, "Failed to create app folder");
         return false;
@@ -303,6 +349,13 @@ bool protopirate_storage_save_capture(
 
     if(!protopirate_storage_get_next_filename(protocol_name, file_path)) {
         FURI_LOG_E(TAG, "Failed to get next filename");
+        furi_string_free(file_path);
+        return false;
+    }
+
+    // Re-acquire mutex for the actual save
+    if(furi_mutex_acquire(g_storage_mutex, 1000) != FuriStatusOk) {
+        FURI_LOG_W(TAG, "Could not re-acquire mutex for save_capture");
         furi_string_free(file_path);
         return false;
     }
@@ -339,11 +392,21 @@ bool protopirate_storage_save_capture(
     flipper_format_free(save_file);
     furi_string_free(file_path);
     furi_record_close(RECORD_STORAGE);
+    furi_mutex_release(g_storage_mutex);
     return result;
 }
 
 // Build file list using circular buffer - keeps only last MAX_FILES_TO_DISPLAY
 static void protopirate_storage_build_file_list(void) {
+    // NEW: Prevent re-entry
+    if(g_file_list_building) {
+        FURI_LOG_W(TAG, "File list build already in progress, skipping");
+        return;
+    }
+    g_file_list_building = true;
+    
+    FURI_LOG_D(TAG, "Building file list...");
+    
     // Allocate buffer if needed
     if(g_file_entries == NULL) {
         g_file_entries = malloc(sizeof(FileEntry) * MAX_FILES_TO_DISPLAY);
@@ -351,6 +414,7 @@ static void protopirate_storage_build_file_list(void) {
             FURI_LOG_E(TAG, "Failed to allocate file list buffer");
             g_file_count = 0;
             g_file_list_valid = true;
+            g_file_list_building = false;
             return;
         }
     }
@@ -359,24 +423,51 @@ static void protopirate_storage_build_file_list(void) {
     memset(g_file_entries, 0, sizeof(FileEntry) * MAX_FILES_TO_DISPLAY);
 
     Storage* storage = furi_record_open(RECORD_STORAGE);
+    
+    // NEW: Check if storage is available
+    if(storage == NULL) {
+        FURI_LOG_E(TAG, "Failed to open storage record");
+        g_file_list_valid = true;  // Mark valid to prevent retry loop
+        g_file_list_building = false;
+        return;
+    }
 
     if(!storage_dir_exists(storage, PROTOPIRATE_APP_FOLDER)) {
         storage_simply_mkdir(storage, PROTOPIRATE_APP_FOLDER);
         furi_record_close(RECORD_STORAGE);
         g_file_list_valid = true;
+        g_file_list_building = false;
+        FURI_LOG_D(TAG, "Created app folder, no files yet");
         return;
     }
 
     File* dir = storage_file_alloc(storage);
+    if(dir == NULL) {
+        FURI_LOG_E(TAG, "Failed to allocate directory handle");
+        furi_record_close(RECORD_STORAGE);
+        g_file_list_valid = true;
+        g_file_list_building = false;
+        return;
+    }
+    
     FileInfo file_info;
 
     // Use circular buffer index
     uint32_t write_index = 0;
     uint32_t total_found = 0;
+    uint32_t iterations = 0;
+    const uint32_t MAX_ITERATIONS = 500;  // NEW: Safety limit
 
     if(storage_dir_open(dir, PROTOPIRATE_APP_FOLDER)) {
         char name[256];
         while(storage_dir_read(dir, &file_info, name, sizeof(name))) {
+            // NEW: Safety check against infinite loops
+            iterations++;
+            if(iterations > MAX_ITERATIONS) {
+                FURI_LOG_E(TAG, "Too many iterations, breaking out");
+                break;
+            }
+            
             // Skip temp file and hidden files
             if(name[0] == '.') continue;
 
@@ -399,6 +490,8 @@ static void protopirate_storage_build_file_list(void) {
             }
         }
         storage_dir_close(dir);
+    } else {
+        FURI_LOG_E(TAG, "Failed to open directory");
     }
 
     storage_file_free(dir);
@@ -431,16 +524,31 @@ static void protopirate_storage_build_file_list(void) {
     }
 
     g_file_list_valid = true;
+    g_file_list_building = false;
     FURI_LOG_I(
         TAG,
-        "Built file list with %lu entries (total on disk: %lu)",
+        "Built file list with %lu entries (total on disk: %lu, iterations: %lu)",
         (unsigned long)g_file_count,
-        (unsigned long)total_found);
+        (unsigned long)total_found,
+        (unsigned long)iterations);
 }
 
 uint32_t protopirate_storage_get_file_count(void) {
-    if(!g_file_list_valid) protopirate_storage_build_file_list();
-    return g_file_count;
+    protopirate_storage_ensure_mutex();
+    
+    // NEW: Try to acquire mutex with timeout
+    if(furi_mutex_acquire(g_storage_mutex, 200) != FuriStatusOk) {
+        FURI_LOG_W(TAG, "Could not acquire mutex for get_file_count, returning cached");
+        return g_file_count;  // Return cached value instead of blocking
+    }
+    
+    if(!g_file_list_valid && !g_file_list_building) {
+        protopirate_storage_build_file_list();
+    }
+    
+    uint32_t count = g_file_count;
+    furi_mutex_release(g_storage_mutex);
+    return count;
 }
 
 void protopirate_storage_invalidate_cache(void) {
@@ -451,9 +559,21 @@ bool protopirate_storage_get_file_by_index(
     uint32_t index,
     FuriString* out_path,
     FuriString* out_name) {
-    if(!g_file_list_valid) protopirate_storage_build_file_list();
+    protopirate_storage_ensure_mutex();
+    
+    if(furi_mutex_acquire(g_storage_mutex, 200) != FuriStatusOk) {
+        FURI_LOG_W(TAG, "Could not acquire mutex for get_file_by_index");
+        return false;
+    }
+    
+    if(!g_file_list_valid && !g_file_list_building) {
+        protopirate_storage_build_file_list();
+    }
 
-    if(g_file_entries == NULL || index >= g_file_count) return false;
+    if(g_file_entries == NULL || index >= g_file_count) {
+        furi_mutex_release(g_storage_mutex);
+        return false;
+    }
 
     if(out_path) {
         furi_string_printf(
@@ -467,17 +587,27 @@ bool protopirate_storage_get_file_by_index(
         furi_string_set_str(out_name, g_file_entries[index].name);
     }
 
+    furi_mutex_release(g_storage_mutex);
     return true;
 }
 
 // Delete a capture file
 bool protopirate_storage_delete_file(const char* file_path) {
+    protopirate_storage_ensure_mutex();
+    
+    if(furi_mutex_acquire(g_storage_mutex, 500) != FuriStatusOk) {
+        FURI_LOG_W(TAG, "Could not acquire mutex for delete_file");
+        return false;
+    }
+    
     Storage* storage = furi_record_open(RECORD_STORAGE);
     bool result = storage_simply_remove(storage, file_path);
     furi_record_close(RECORD_STORAGE);
 
     if(result) g_file_list_valid = false;
 
+    furi_mutex_release(g_storage_mutex);
+    
     FURI_LOG_I(TAG, "Delete file %s: %s", file_path, result ? "OK" : "FAILED");
     return result;
 }
@@ -517,12 +647,24 @@ bool protopirate_storage_file_exists(const char* file_path) {
 }
 
 // Free the internal file list cache
-// Call this when exiting the app or when you need to refresh the list
+// Call this ONLY when exiting the app entirely
 void protopirate_storage_free_file_list(void) {
+    // Don't try to acquire mutex here - just do cleanup
+    // This should only be called during app shutdown
+    
     if(g_file_entries != NULL) {
         free(g_file_entries);
         g_file_entries = NULL;
     }
     g_file_count = 0;
     g_file_list_valid = false;
+    g_file_list_building = false;
+    
+    // Free mutex only on full app cleanup
+    if(g_storage_mutex != NULL) {
+        furi_mutex_free(g_storage_mutex);
+        g_storage_mutex = NULL;
+    }
+    
+    FURI_LOG_D(TAG, "File list freed");
 }
