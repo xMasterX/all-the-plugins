@@ -1,6 +1,6 @@
 App(
     appid="nfc_login",
-    name="NFC PC Login",
+    name="NFC Login",
     apptype=FlipperAppType.EXTERNAL,
     entry_point="nfc_login",
     requires=["gui", "usb_hid", "storage", "notification", "bt", "cli"],

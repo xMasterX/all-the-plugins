@@ -25,8 +25,7 @@ void app_edit_text_result_callback(void* context) {
         size_t idx = 0;
         // skip spaces and parse two hex chars per byte
         while(*p && idx < MAX_UID_LEN) {
-            while(*p == ' ')
-                p++;
+            while(*p == ' ') p++;
             if(!isxdigit((unsigned char)p[0])) break;
             unsigned int byte_val = 0;
             if(sscanf(p, "%2x", &byte_val) == 1) {
@@ -37,8 +36,7 @@ void app_edit_text_result_callback(void* context) {
             } else {
                 break;
             }
-            while(*p == ' ')
-                p++;
+            while(*p == ' ') p++;
         }
         if(idx > 0) {
             app->cards[app->edit_card_index].uid_len = idx;
@@ -56,15 +54,12 @@ void app_edit_text_result_callback(void* context) {
         // Return to edit menu
         app->widget_state = 3;
         widget_reset(app->widget);
-        widget_add_string_element(
-            app->widget, 0, 0, AlignLeft, AlignTop, FontPrimary, "Edit Card");
+        widget_add_string_element(app->widget, 0, 0, AlignLeft, AlignTop, FontPrimary, "Edit Card");
         const char* items[] = {"Name", "Password", "UID", "Delete"};
         for(size_t i = 0; i < 4; i++) {
             char line[32];
-            snprintf(
-                line, sizeof(line), "%s %s", (i == app->edit_menu_index) ? ">" : " ", items[i]);
-            widget_add_string_element(
-                app->widget, 0, 12 + i * 12, AlignLeft, AlignTop, FontSecondary, line);
+            snprintf(line, sizeof(line), "%s %s", (i == app->edit_menu_index) ? ">" : " ", items[i]);
+            widget_add_string_element(app->widget, 0, 12 + i * 12, AlignLeft, AlignTop, FontSecondary, line);
         }
         app_switch_to_view(app, ViewWidget);
     }
@@ -75,7 +70,7 @@ void app_edit_uid_byte_input_done(void* context) {
     // Use the length that was set when opening the byte input (app->edit_uid_len)
     // This is the actual UID length, not MAX_UID_LEN
     size_t actual_len = app->edit_uid_len;
-
+    
     if(app->edit_card_index < app->card_count && actual_len > 0 && actual_len <= MAX_UID_LEN) {
         app->cards[app->edit_card_index].uid_len = actual_len;
         memcpy(app->cards[app->edit_card_index].uid, app->edit_uid_bytes, actual_len);

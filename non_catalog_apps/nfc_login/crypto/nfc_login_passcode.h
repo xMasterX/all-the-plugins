@@ -5,11 +5,11 @@
 #include <stdint.h>
 #include <input/input.h>
 
-#define MAX_PASSCODE_SEQUENCE_LEN \
-    64 // Max button sequence length (e.g., "up down up up left right ok back")
-#define MIN_PASSCODE_BUTTONS 4 // Minimum 4 buttons for passcode
-#define MAX_PASSCODE_BUTTONS 8 // Maximum 8 buttons for passcode
-#define PASSCODE_HEADER_SIZE 2 // 2 bytes for passcode length in cards.enc header
+#define MAX_PASSCODE_SEQUENCE_LEN 64  // Max button sequence length (e.g., "up down up up left right ok back")
+#define MIN_PASSCODE_BUTTONS 4        // Minimum 4 buttons for passcode
+#define MAX_PASSCODE_BUTTONS 8        // Maximum 8 buttons for passcode
+#define PASSCODE_HEADER_SIZE 3       // 2 bytes for passcode length + 1 byte for flags in cards.enc header
+#define PASSCODE_FLAG_DISABLED 0x01  // Flag bit for passcode disabled
 
 // Get button sequence passcode from encrypted settings storage
 // Returns the button sequence as a string (e.g., "up down up up")
@@ -42,3 +42,11 @@ bool delete_cards_and_reset_passcode(void);
 // Returns true if reset was successful
 // Note: Cards encrypted with passcode-based encryption will be lost if old passcode is unknown
 bool reset_passcode_preserve_cards(void);
+
+// Get passcode_disabled flag from encrypted cards.enc header
+// Returns true if passcode is disabled, false otherwise
+bool get_passcode_disabled(void);
+
+// Set passcode_disabled flag in encrypted cards.enc header
+// Returns true if flag was set successfully
+bool set_passcode_disabled(bool disabled);
