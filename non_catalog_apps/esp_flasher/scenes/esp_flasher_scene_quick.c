@@ -52,7 +52,7 @@ void esp_flasher_scene_quick_on_enter(void* context) {
     case QuickWROOM:
     case QuickS2:
     case QuickS3:
-        submenu_set_header(submenu, "Choose Board:");
+        submenu_set_header(submenu, "Choose ESP32 Type:");
         submenu_add_item(
             submenu,
             "Flipper WiFi Devboard",
@@ -61,13 +61,13 @@ void esp_flasher_scene_quick_on_enter(void* context) {
             app);
         submenu_add_item(
             submenu,
-            "ESP32-WROOM (bootloader)",
+            "WROOM (auto bootloader)",
             QuickWROOMBoot,
             esp_flasher_scene_quick_submenu_callback,
             app);
         submenu_add_item(
             submenu,
-            "ESP32-S3 (bootloader)",
+            "S3 (auto bootloader)",
             QuickS3Boot,
             esp_flasher_scene_quick_submenu_callback,
             app);

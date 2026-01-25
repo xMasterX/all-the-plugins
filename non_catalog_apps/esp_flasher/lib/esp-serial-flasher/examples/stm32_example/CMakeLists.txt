@@ -29,6 +29,12 @@ set(STM32_CHIP STM32H743VI)
 set(CORE_USED M7)
 add_subdirectory(${FLASHER_DIR} ${CMAKE_BINARY_DIR}/flasher)
 
+target_compile_options(flasher
+PRIVATE
+    -Wunused-parameter
+    -Wshadow
+)
+
 target_link_libraries(${CMAKE_PROJECT_NAME}
 PRIVATE
     HAL::STM32::H7::M7::PWREx

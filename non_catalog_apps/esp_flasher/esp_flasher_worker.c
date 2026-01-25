@@ -169,7 +169,10 @@ static void _flash_all_files(EspFlasherApp* app) {
         {SelectedFlashBoot,
          "bootloader",
          app->bin_file_path_boot,
-         app->selected_flash_options[SelectedFlashS3Mode] ? ESP_ADDR_BOOT_S3 : ESP_ADDR_BOOT},
+         app->selected_flash_options[SelectedFlashC5Mode] ?
+             ESP_ADDR_BOOT_C5 :
+             (app->selected_flash_options[SelectedFlashS3Mode] ? ESP_ADDR_BOOT_S3 :
+                                                                 ESP_ADDR_BOOT)},
         {SelectedFlashPart, "partition table", app->bin_file_path_part, ESP_ADDR_PART},
         {SelectedFlashNvs, "NVS", app->bin_file_path_nvs, ESP_ADDR_NVS},
         {SelectedFlashBootApp0, "boot_app0", app->bin_file_path_boot_app0, ESP_ADDR_BOOT_APP0},
