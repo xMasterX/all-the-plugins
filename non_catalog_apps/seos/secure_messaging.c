@@ -2,7 +2,7 @@
 
 #define TAG "SecureMessaging"
 
-uint8_t padding[16] =
+static uint8_t padding[16] =
     {0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 SecureMessaging* secure_messaging_alloc(AuthParameters* params) {
@@ -101,6 +101,8 @@ void secure_messaging_wrap_apdu(
     SecureMessaging* secure_messaging,
     uint8_t* message,
     size_t message_len,
+    uint8_t* apdu_header,
+    size_t apdu_header_len,
     BitBuffer* tx_buffer) {
     secure_messaging_increment_context(secure_messaging);
     uint8_t cipher = secure_messaging->cipher;
@@ -115,7 +117,7 @@ void secure_messaging_wrap_apdu(
     memcpy(clear, message, message_len);
     clear[message_len] = 0x80;
     uint8_t block_size = cipher == AES_128_CBC ? 16 : 8;
-    uint8_t block_count = (message_len + block_size - 1) / block_size;
+    uint8_t block_count = (message_len + block_size) / block_size;
     size_t clear_len = block_count * block_size;
 
     uint8_t encrypted[SECURE_MESSAGING_MAX_SIZE];
@@ -127,7 +129,6 @@ void secure_messaging_wrap_apdu(
         FURI_LOG_W(TAG, "Cipher not matched");
     }
 
-    uint8_t header[] = {0x0c, 0xcb, 0x3f, 0xff};
     uint8_t encrypted_prefix[] = {0x85, clear_len};
     uint8_t no_something[] = {0x97, 0x00};
 
@@ -137,8 +138,8 @@ void secure_messaging_wrap_apdu(
     if(cipher == AES_128_CBC) {
         uint8_t* context = secure_messaging->aesContext;
         bit_buffer_append_bytes(cmacInput, context, block_size);
-        bit_buffer_append_bytes(cmacInput, header, sizeof(header));
-        bit_buffer_append_bytes(cmacInput, padding, block_size - sizeof(header));
+        bit_buffer_append_bytes(cmacInput, apdu_header, apdu_header_len);
+        bit_buffer_append_bytes(cmacInput, padding, block_size - apdu_header_len);
         bit_buffer_append_bytes(cmacInput, encrypted_prefix, sizeof(encrypted_prefix));
         bit_buffer_append_bytes(cmacInput, encrypted, clear_len);
         bit_buffer_append_bytes(cmacInput, no_something, sizeof(no_something));
@@ -154,8 +155,8 @@ void secure_messaging_wrap_apdu(
     } else if(cipher == TWO_KEY_3DES_CBC_MODE) {
         uint8_t* context = secure_messaging->desContext;
         bit_buffer_append_bytes(cmacInput, context, block_size);
-        bit_buffer_append_bytes(cmacInput, header, sizeof(header));
-        bit_buffer_append_bytes(cmacInput, padding, block_size - sizeof(header));
+        bit_buffer_append_bytes(cmacInput, apdu_header, apdu_header_len);
+        bit_buffer_append_bytes(cmacInput, padding, block_size - apdu_header_len);
         bit_buffer_append_bytes(cmacInput, encrypted_prefix, sizeof(encrypted_prefix));
         bit_buffer_append_bytes(cmacInput, encrypted, clear_len);
         bit_buffer_append_bytes(cmacInput, no_something, sizeof(no_something));
@@ -179,7 +180,7 @@ void secure_messaging_wrap_apdu(
     uint8_t Le[] = {0x00};
 
     bit_buffer_reset(tx_buffer);
-    bit_buffer_append_bytes(tx_buffer, header, sizeof(header));
+    bit_buffer_append_bytes(tx_buffer, apdu_header, apdu_header_len);
     bit_buffer_append_bytes(tx_buffer, apdu_len, sizeof(apdu_len));
     bit_buffer_append_bytes(tx_buffer, encrypted_prefix, sizeof(encrypted_prefix));
     bit_buffer_append_bytes(tx_buffer, encrypted, clear_len);

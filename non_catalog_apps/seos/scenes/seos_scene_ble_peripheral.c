@@ -35,11 +35,11 @@ bool seos_scene_ble_peripheral_on_event(void* context, SceneManagerEvent event) 
     bool consumed = false;
 
     if(event.type == SceneManagerEventTypeCustom) {
-        if(event.event == SeosCustomEventReaderSuccess) {
+        if(event.event == SeosCustomEventPollerSuccess) {
             notification_message(seos->notifications, &sequence_success);
             scene_manager_next_scene(seos->scene_manager, SeosSceneReadSuccess);
             consumed = true;
-        } else if(event.event == SeosCustomEventReaderError) {
+        } else if(event.event == SeosCustomEventPollerError) {
             scene_manager_next_scene(seos->scene_manager, SeosSceneReadError);
             consumed = true;
         } else if(event.event == SeosCustomEventHCIInit) {

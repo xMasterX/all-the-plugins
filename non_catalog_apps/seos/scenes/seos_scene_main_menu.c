@@ -56,8 +56,6 @@ void seos_scene_main_menu_on_enter(void* context) {
     submenu_add_item(
         submenu, "Inspect", SubmenuIndexInspect, seos_scene_main_menu_submenu_callback, seos);
     */
-    submenu_add_item(
-        submenu, "About", SubmenuIndexAbout, seos_scene_main_menu_submenu_callback, seos);
 
     if(storage_dir_exists(seos->credential->storage, SEADER_PATH)) {
         submenu_add_item(
@@ -76,6 +74,9 @@ void seos_scene_main_menu_on_enter(void* context) {
             seos_scene_main_menu_submenu_callback,
             seos);
     }
+
+    submenu_add_item(
+        submenu, "About", SubmenuIndexAbout, seos_scene_main_menu_submenu_callback, seos);
 
     submenu_set_selected_item(
         seos->submenu, scene_manager_get_scene_state(seos->scene_manager, SeosSceneMainMenu));

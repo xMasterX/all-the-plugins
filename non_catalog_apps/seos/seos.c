@@ -54,6 +54,9 @@ bool seos_migrate_keys(Seos* seos) {
         if(furi_hal_crypto_encrypt(SEOS_ADF1_READ, output, sizeof(output))) {
             if(!flipper_format_write_hex(file, "SEOS_ADF1_READ", output, 16)) break;
         }
+        if(furi_hal_crypto_encrypt(SEOS_ADF1_WRITE, output, sizeof(output))) {
+            if(!flipper_format_write_hex(file, "SEOS_ADF1_WRITE", output, 16)) break;
+        }
 
         if(!furi_hal_crypto_enclave_unload_key(FURI_HAL_CRYPTO_ENCLAVE_UNIQUE_KEY_SLOT)) {
             FURI_LOG_E(TAG, "Failed to unload unique key");
@@ -104,6 +107,7 @@ bool seos_load_keys_v2(Seos* seos) {
         if(!flipper_format_read_hex(file, "SEOS_ADF1_PRIV_ENC", SEOS_ADF1_PRIV_ENC, 16)) break;
         if(!flipper_format_read_hex(file, "SEOS_ADF1_PRIV_MAC", SEOS_ADF1_PRIV_MAC, 16)) break;
         if(!flipper_format_read_hex(file, "SEOS_ADF1_READ", SEOS_ADF1_READ, 16)) break;
+        if(!flipper_format_read_hex(file, "SEOS_ADF1_WRITE", SEOS_ADF1_WRITE, 16)) break;
 
         // Decrypt the keys using the per-device key
         if(!furi_hal_crypto_enclave_ensure_key(FURI_HAL_CRYPTO_ENCLAVE_UNIQUE_KEY_SLOT)) {
@@ -123,6 +127,9 @@ bool seos_load_keys_v2(Seos* seos) {
         }
         if(furi_hal_crypto_decrypt(SEOS_ADF1_READ, output, sizeof(output))) {
             memcpy(SEOS_ADF1_READ, output, sizeof(SEOS_ADF1_READ));
+        }
+        if(furi_hal_crypto_decrypt(SEOS_ADF1_WRITE, output, sizeof(output))) {
+            memcpy(SEOS_ADF1_WRITE, output, sizeof(SEOS_ADF1_WRITE));
         }
 
         if(!furi_hal_crypto_enclave_unload_key(FURI_HAL_CRYPTO_ENCLAVE_UNIQUE_KEY_SLOT)) {
@@ -173,6 +180,7 @@ bool seos_load_keys_v1(Seos* seos) {
         if(!flipper_format_read_hex(file, "SEOS_ADF1_PRIV_ENC", SEOS_ADF1_PRIV_ENC, 16)) break;
         if(!flipper_format_read_hex(file, "SEOS_ADF1_PRIV_MAC", SEOS_ADF1_PRIV_MAC, 16)) break;
         if(!flipper_format_read_hex(file, "SEOS_ADF1_READ", SEOS_ADF1_READ, 16)) break;
+        if(!flipper_format_read_hex(file, "SEOS_ADF1_WRITE", SEOS_ADF1_WRITE, 16)) break;
 
         parsed = true;
         seos->keys_version = file_version;

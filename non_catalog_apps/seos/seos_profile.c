@@ -133,15 +133,14 @@ bool ble_profile_seos_tx(FuriHalBleProfileBase* profile, uint8_t* data, uint16_t
         return false;
     }
 
-
     uint16_t num_chunks = size / BLE_CHUNK_SIZE;
-    if (size % BLE_CHUNK_SIZE) num_chunks++;
+    if(size % BLE_CHUNK_SIZE) num_chunks++;
 
     uint8_t chunk[BLE_CHUNK_SIZE + 1];
-    for (uint16_t i=0; i<num_chunks; i++) {
+    for(uint16_t i = 0; i < num_chunks; i++) {
         uint8_t flags = 0;
-        if (i == 0) flags |= BLE_FLAG_SOM;
-        if (i == num_chunks-1) flags |= BLE_FLAG_EOM;
+        if(i == 0) flags |= BLE_FLAG_SOM;
+        if(i == num_chunks - 1) flags |= BLE_FLAG_EOM;
         // Add number of remaining chunks to lower nybble
         flags |= (num_chunks - 1 - i) & 0x0F;
 
@@ -152,9 +151,8 @@ bool ble_profile_seos_tx(FuriHalBleProfileBase* profile, uint8_t* data, uint16_t
 
         // Combine and send
         chunk[0] = flags;
-        memcpy(chunk+1, &data[i * BLE_CHUNK_SIZE], chunk_size);
-        if (!ble_svc_seos_update_tx(seos_profile->seos_svc, chunk, chunk_size + 1))
-            return false;
+        memcpy(chunk + 1, &data[i * BLE_CHUNK_SIZE], chunk_size);
+        if(!ble_svc_seos_update_tx(seos_profile->seos_svc, chunk, chunk_size + 1)) return false;
     }
 
     return true;

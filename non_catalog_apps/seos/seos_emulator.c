@@ -85,12 +85,18 @@ bool seos_emulator_general_authenticate_2(
 
     params->key_no = rx_data[3];
 
+    uint8_t* master_key = SEOS_ADF1_READ;
+    if(params->key_no == 0x02) {
+        // Write keyslot
+        master_key = SEOS_ADF1_WRITE;
+    }
+
     if(credential->use_hardcoded) {
         memcpy(params->priv_key, credential->priv_key, sizeof(params->priv_key));
         memcpy(params->auth_key, credential->auth_key, sizeof(params->auth_key));
     } else {
         seos_worker_diversify_key(
-            SEOS_ADF1_READ,
+            master_key,
             credential->diversifier,
             credential->diversifier_len,
             SEOS_ADF_OID,
@@ -101,7 +107,7 @@ bool seos_emulator_general_authenticate_2(
             true,
             params->priv_key);
         seos_worker_diversify_key(
-            SEOS_ADF1_READ,
+            master_key,
             credential->diversifier,
             credential->diversifier_len,
             SEOS_ADF_OID,
@@ -597,7 +603,7 @@ NfcCommand seos_worker_listener_callback(NfcGenericEvent event, void* context) {
     }
 
     if(ret == NfcCommandStop) {
-        view_dispatcher_send_custom_event(seos->view_dispatcher, SeosCustomEventReaderError);
+        view_dispatcher_send_custom_event(seos->view_dispatcher, SeosCustomEventPollerError);
     }
     return ret;
 }

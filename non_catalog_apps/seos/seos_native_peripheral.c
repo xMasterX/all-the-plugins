@@ -19,6 +19,8 @@ static uint8_t select_adf_header[] = {0x80, 0xa5, 0x04, 0x00};
 static uint8_t general_authenticate_2_header[] = {0x00, 0x87, 0x00, 0x01};
 static uint8_t secure_messaging_header[] = {0x0c, 0xcb, 0x3f, 0xff};
 
+static uint8_t apdu_header[] = {0x0c, 0xcb, 0x3f, 0xff};
+
 int32_t seos_native_peripheral_task(void* context);
 
 typedef struct {
@@ -192,18 +194,18 @@ void seos_native_peripheral_process_message_cred(
     if((flags & BLE_FLAG_SOM) == BLE_FLAG_SOM) {
         bit_buffer_reset(seos_native_peripheral->rx_buffer);
     } else {
-        if (bit_buffer_get_size_bytes(seos_native_peripheral->rx_buffer) == 0) {
+        if(bit_buffer_get_size_bytes(seos_native_peripheral->rx_buffer) == 0) {
             FURI_LOG_W(TAG, "Expected start of BLE packet");
             return;
         }
     }
 
     bit_buffer_append_bytes(seos_native_peripheral->rx_buffer, message.buf + 1, message.len - 1);
-    
+
     // Only parse if end-of-message flag found
     if((flags & BLE_FLAG_EOM) == BLE_FLAG_EOM) return;
-    
-    const uint8_t *apdu = bit_buffer_get_data(seos_native_peripheral->rx_buffer);
+
+    const uint8_t* apdu = bit_buffer_get_data(seos_native_peripheral->rx_buffer);
     const size_t apdu_len = bit_buffer_get_size_bytes(seos_native_peripheral->rx_buffer);
 
     if(memcmp(apdu, select_header, sizeof(select_header)) == 0) {
@@ -307,7 +309,6 @@ void seos_native_peripheral_process_message_cred(
 void seos_native_peripheral_process_message_reader(
     SeosNativePeripheral* seos_native_peripheral,
     NativePeripheralMessage message) {
-
     uint8_t flags = message.buf[0];
 
     // Check for error flag
@@ -320,23 +321,24 @@ void seos_native_peripheral_process_message_reader(
     if((flags & BLE_FLAG_SOM) == BLE_FLAG_SOM) {
         bit_buffer_reset(seos_native_peripheral->rx_buffer);
     } else {
-        if (bit_buffer_get_size_bytes(seos_native_peripheral->rx_buffer) == 0) {
+        if(bit_buffer_get_size_bytes(seos_native_peripheral->rx_buffer) == 0) {
             FURI_LOG_W(TAG, "Expected start of BLE packet");
             return;
         }
     }
 
     bit_buffer_append_bytes(seos_native_peripheral->rx_buffer, message.buf + 1, message.len - 1);
-    
+
     // Only parse if end-of-message flag found
     if((flags & BLE_FLAG_EOM) == BLE_FLAG_EOM) return;
-    
+
     BitBuffer* response = bit_buffer_alloc(128); // TODO: MTU
 
-    const uint8_t *rx_data = bit_buffer_get_data(seos_native_peripheral->rx_buffer);
+    const uint8_t* rx_data = bit_buffer_get_data(seos_native_peripheral->rx_buffer);
     const size_t rx_len = bit_buffer_get_size_bytes(seos_native_peripheral->rx_buffer);
 
-    if(memcmp(rx_data + 4, standard_seos_aid, sizeof(standard_seos_aid)) == 0) { // response to select
+    if(memcmp(rx_data + 4, standard_seos_aid, sizeof(standard_seos_aid)) ==
+       0) { // response to select
         FURI_LOG_I(TAG, "Select ADF");
         uint8_t select_adf_header[] = {
             0x80, 0xa5, 0x04, 0x00, (uint8_t)SEOS_ADF_OID_LEN + 2, 0x06, (uint8_t)SEOS_ADF_OID_LEN};
@@ -405,7 +407,8 @@ void seos_native_peripheral_process_message_reader(
         SecureMessaging* secure_messaging = seos_native_peripheral->secure_messaging;
 
         uint8_t message[] = {0x5c, 0x02, 0xff, 0x00};
-        secure_messaging_wrap_apdu(secure_messaging, message, sizeof(message), response);
+        secure_messaging_wrap_apdu(
+            secure_messaging, message, sizeof(message), apdu_header, sizeof(apdu_header), response);
         seos_native_peripheral->phase = REQUEST_SIO;
         view_dispatcher_send_custom_event(
             seos_native_peripheral->seos->view_dispatcher, SeosCustomEventSIORequested);
@@ -437,7 +440,7 @@ void seos_native_peripheral_process_message_reader(
         FURI_LOG_I(TAG, "SIO Captured, %d bytes", credential->sio_len);
 
         Seos* seos = seos_native_peripheral->seos;
-        view_dispatcher_send_custom_event(seos->view_dispatcher, SeosCustomEventReaderSuccess);
+        view_dispatcher_send_custom_event(seos->view_dispatcher, SeosCustomEventPollerSuccess);
         bit_buffer_free(rx_buffer);
 
         seos_native_peripheral->phase = SELECT_AID;

@@ -30,6 +30,8 @@ void secure_messaging_wrap_apdu(
     SecureMessaging* secure_messaging,
     uint8_t* message,
     size_t message_len,
+    uint8_t* apdu_header,
+    size_t apdu_header_len,
     BitBuffer* tx_buffer);
 
 void secure_messaging_unwrap_apdu(SecureMessaging* secure_messaging, BitBuffer* rx_buffer);
