@@ -1,6 +1,6 @@
 # CAN Tools
 
-CAN Tools is a Flipper Zero app for creating simple DBC-style signal definitions and decoding CAN frames with them. This is a sub feature of the CAN Commander but in standalone form for anyone to use right away. I will be updating this app with the other features (auto convert real DBC to flipper DBC, full log decoding, etc)
+CAN Tools is a Flipper Zero external app for creating simple DBC-style signal definitions and decoding CAN frames with them.
 
 ## Features
 - Create and save DBC signal entries (name, CAN ID, bit layout, scaling, unit, min/max).

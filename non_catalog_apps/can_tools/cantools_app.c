@@ -10,17 +10,21 @@
 #include <dialogs/dialogs.h>
 
 #include <storage/storage.h>
-#include <flipper_format/flipper_format.h>
+#include <stream/stream.h>
+#include <stream/buffered_file_stream.h>
 
 #include <stdlib.h>
 #include <string.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <strings.h>
+#include <ctype.h>
 
-#define TAG             "dbc_app"
-#define TEXT_INPUT_SIZE 32
-#define MAX_SIGNALS     32
+#define TAG               "dbc_app"
+#define TEXT_INPUT_SIZE   32
+#define VEHICLE_INFO_SIZE 64
+#define MAX_SIGNALS       32
+#define MAX_DBC_FILES     16
 
 #define CANTOOLS_EVENT_TEXT_INPUT_SAVE   1U
 #define CANTOOLS_EVENT_SORT_TOGGLE       2U
@@ -29,16 +33,22 @@
 #define CANTOOLS_EVENT_DECODE_LOG        5U
 #define CANTOOLS_EVENT_DECODE_CANID_SAVE 6U
 #define CANTOOLS_EVENT_DECODE_DLC_SAVE   7U
+#define CANTOOLS_EVENT_DBC_NAME_SAVE     8U
+#define CANTOOLS_EVENT_DBC_VEHICLE_SAVE  9U
+#define CANTOOLS_EVENT_DBC_CREATE        10U
 #define CANTOOLS_EVENT_SIGNAL_BASE       100U
+#define CANTOOLS_EVENT_DBC_FILE_BASE     200U
 
-// Folder + file format for saved DBC signals (may change to .dbc later)
-#define DBC_USER_PATH    EXT_PATH("apps_data/dbc_signals")
-#define DBC_EXTENSION    ".txt"
-#define DBC_FILETYPE     "DBC_SIGNAL"
-#define DBC_FILE_VERSION 1
+// Folder + file format for saved DBC files
+#define DBC_USER_PATH      EXT_PATH("apps_data/can_tools")
+#define DBC_EXTENSION      ".dbc"
+#define DBC_VEHICLE_PREFIX "CM_ \"Vehicle: "
 
 typedef enum {
     CantoolsScenesMainMenuScene,
+    CantoolsScenesDbcFileListScene,
+    CantoolsScenesDbcFileNameScene,
+    CantoolsScenesVehicleInfoScene,
     CantoolsScenesDbcMakerMenuScene,
     CantoolsScenesSignalNameScene,
     CantoolsScenesCanIdScene,
@@ -94,6 +104,7 @@ typedef enum {
 // Typical DBC signal components
 typedef struct {
     bool used;
+    char message_name[TEXT_INPUT_SIZE];
     char signal_name[TEXT_INPUT_SIZE];
     char can_id[TEXT_INPUT_SIZE];
     char start_bit[TEXT_INPUT_SIZE];
@@ -105,8 +116,13 @@ typedef struct {
     char unit[TEXT_INPUT_SIZE];
     char min_val[TEXT_INPUT_SIZE];
     char max_val[TEXT_INPUT_SIZE];
-    char file_path[256];
 } DbcSignal;
+
+typedef struct {
+    char name[TEXT_INPUT_SIZE];
+    char path[256];
+    char vehicle_info[VEHICLE_INFO_SIZE];
+} DbcFile;
 
 typedef struct App {
     SceneManager* scene_manager;
@@ -121,15 +137,17 @@ typedef struct App {
     DbcFieldId active_field;
     CantoolsSortMode sort_mode;
     bool editing;
-    char editing_file_path[256];
     char decode_can_id_text[TEXT_INPUT_SIZE];
     char decode_dlc_text[TEXT_INPUT_SIZE];
     uint8_t decode_data_bytes[8];
     uint32_t decode_can_id;
     uint8_t decode_dlc;
     uint8_t decode_data_len;
+    char dbc_file_name[TEXT_INPUT_SIZE];
+    char vehicle_info[VEHICLE_INFO_SIZE];
 
     // Current-in-edit signal fields
+    char message_name[TEXT_INPUT_SIZE];
     char signal_name[TEXT_INPUT_SIZE];
     char can_id[TEXT_INPUT_SIZE];
     char start_bit[TEXT_INPUT_SIZE];
@@ -146,18 +164,24 @@ typedef struct App {
     DbcSignal signals[MAX_SIGNALS];
     uint8_t signal_count;
     int selected_signal_index;
+    DbcFile dbc_files[MAX_DBC_FILES];
+    uint8_t dbc_file_count;
+    int active_dbc_index;
+    FuriString* dbc_header;
 } App;
 
 typedef enum {
     CantoolsScenesMainMenuSceneDbcMaker,
     CantoolsScenesMainMenuSceneViewDbc,
     CantoolsScenesMainMenuSceneDecodeData,
+    CantoolsScenesMainMenuSceneDbcFiles,
 } CantoolsScenesMainMenuSceneIndex;
 
 typedef enum {
     CantoolsScenesMainMenuSceneDbcMakerEvent,
     CantoolsScenesMainMenuSceneViewDbcEvent,
     CantoolsScenesMainMenuSceneDecodeDataEvent,
+    CantoolsScenesMainMenuSceneDbcFilesEvent,
 } CantoolsScenesMainMenuEvent;
 
 typedef enum {
@@ -280,8 +304,8 @@ static bool validate_endianness(App* app, const char* value, FuriString* error) 
     if(!validate_required(value, "Endianness", error)) return false;
     char c = value[0];
     if(!(c == '0' || c == '1' || c == 'l' || c == 'L' || c == 'b' || c == 'B' || c == 'm' ||
-         c == 'M')) {
-        furi_string_set(error, "Use 0/1, l/b (little/big).");
+         c == 'M' || c == 'i' || c == 'I')) {
+        furi_string_set(error, "Use 0/1, b/l (big/little).");
         return false;
     }
     return true;
@@ -356,7 +380,7 @@ static const DbcFieldConfig dbc_field_configs[DbcFieldCount] = {
     [DbcFieldEndianness] =
         {
             .menu_label = "Endianness",
-            .input_header = "Endianness (0=LE/1=BE):",
+            .input_header = "Endianness (0=BE/1=LE):",
             .offset = offsetof(App, endianness),
             .scene = CantoolsScenesEndiannessScene,
             .next_scene = CantoolsScenesSignedScene,
@@ -462,11 +486,11 @@ static void sanitize_filename(FuriString* s) {
     furi_string_free(clean);
 }
 
-static void dbc_build_signal_path(const char* signal_name, char* out, size_t out_size) {
+static void dbc_build_file_path(const char* name, char* out, size_t out_size) {
     FuriString* filename = furi_string_alloc();
     FuriString* path = furi_string_alloc();
 
-    furi_string_set_str(filename, signal_name && signal_name[0] ? signal_name : "Signal");
+    furi_string_set_str(filename, name && name[0] ? name : "vehicle");
     sanitize_filename(filename);
     furi_string_printf(
         path, "%s/%s%s", DBC_USER_PATH, furi_string_get_cstr(filename), DBC_EXTENSION);
@@ -477,9 +501,76 @@ static void dbc_build_signal_path(const char* signal_name, char* out, size_t out
     furi_string_free(path);
 }
 
-// format a DBC entry into a FuriString from given fields
+static void dbc_sanitize_file_name(char* name, size_t name_size) {
+    FuriString* tmp = furi_string_alloc();
+    furi_string_set_str(tmp, name);
+    sanitize_filename(tmp);
+    strlcpy(name, furi_string_get_cstr(tmp), name_size);
+    furi_string_free(tmp);
+}
+
+static char dbc_endian_char(const char* endianness) {
+    char endian_char = '0';
+    if(endianness && strlen(endianness) > 0) {
+        char c = endianness[0];
+        if(c == '1' || c == 'l' || c == 'L' || c == 'i' || c == 'I') {
+            endian_char = '1';
+        } else {
+            endian_char = '0';
+        }
+    }
+    return endian_char;
+}
+
+static char dbc_sign_char(const char* signedness) {
+    char sign_char = '+';
+    if(signedness && strlen(signedness) > 0) {
+        char c = signedness[0];
+        if(c == 's' || c == 'S' || c == '-' || c == '1') {
+            sign_char = '-';
+        } else {
+            sign_char = '+';
+        }
+    }
+    return sign_char;
+}
+
+static void format_dbc_bo_line(FuriString* out, uint32_t can_id, const char* message_name) {
+    const char* msg_name = (message_name && message_name[0]) ? message_name : "Message";
+    furi_string_printf(out, "BO_ %lu %s: 8 VehicleBus", (unsigned long)can_id, msg_name);
+}
+
+static void format_dbc_sg_line(FuriString* out, const DbcSignal* sig) {
+    const char* signal_name = (sig && sig->signal_name[0]) ? sig->signal_name : "Signal";
+    const char* sb_str = (sig && sig->start_bit[0]) ? sig->start_bit : "0";
+    const char* bl_str = (sig && sig->bit_length[0]) ? sig->bit_length : "8";
+    const char* sc_str = (sig && sig->scalar[0]) ? sig->scalar : "1";
+    const char* off_str = (sig && sig->offset[0]) ? sig->offset : "0";
+    const char* min_str = (sig && sig->min_val[0]) ? sig->min_val : "0";
+    const char* max_str = (sig && sig->max_val[0]) ? sig->max_val : "0";
+    const char* unit_str = (sig && sig->unit[0]) ? sig->unit : "";
+
+    char endian_char = dbc_endian_char(sig ? sig->endianness : NULL);
+    char sign_char = dbc_sign_char(sig ? sig->signedness : NULL);
+
+    furi_string_printf(
+        out,
+        " SG_ %s : %s|%s@%c%c (%s,%s) [%s|%s] \"%s\"  Receiver",
+        signal_name,
+        sb_str,
+        bl_str,
+        endian_char,
+        sign_char,
+        sc_str,
+        off_str,
+        min_str,
+        max_str,
+        unit_str);
+}
+
 static void format_dbc_entry(
     FuriString* out,
+    const char* message_name,
     const char* signal_name,
     const char* can_id_str,
     const char* start_bit,
@@ -501,29 +592,10 @@ static void format_dbc_entry(
         can_id = (uint32_t)strtoul(can_id_str, NULL, 0);
     }
 
-    // Determine endianness char
-    char endian_char = '0';
-    if(endianness && strlen(endianness) > 0) {
-        char c = endianness[0];
-        if(c == '1' || c == 'M' || c == 'm' || c == 'B' || c == 'b') {
-            endian_char = '1';
-        } else {
-            endian_char = '0';
-        }
-    }
+    char endian_char = dbc_endian_char(endianness);
+    char sign_char = dbc_sign_char(signedness);
 
-    // Determine sign char
-    char sign_char = '+';
-    if(signedness && strlen(signedness) > 0) {
-        char c = signedness[0];
-        if(c == 's' || c == 'S' || c == '-' || c == '1') {
-            sign_char = '-';
-        } else {
-            sign_char = '+';
-        }
-    }
-
-    const char* msg_name = signal_name;
+    const char* msg_name = (message_name && message_name[0]) ? message_name : signal_name;
 
     const char* sb_str = (start_bit && strlen(start_bit) > 0) ? start_bit : "0";
     const char* bl_str = (bit_length && strlen(bit_length) > 0) ? bit_length : "8";
@@ -567,199 +639,394 @@ static void dbc_init_folder(void) {
     furi_record_close(RECORD_STORAGE);
 }
 
-// Save one DbcSignal to SD as a FlipperFormat file
-static bool dbc_save_signal_to_sd(const DbcSignal* sig, char* saved_path, size_t saved_size) {
-    if(!sig) return false;
-
-    Storage* storage = furi_record_open(RECORD_STORAGE);
-    FlipperFormat* ff = flipper_format_file_alloc(storage);
-    bool ok = false;
-
-    char path[256];
-    dbc_build_signal_path(sig->signal_name, path, sizeof(path));
-
-    FURI_LOG_I(TAG, "Saving DBC signal to: %s", path);
-
-    if(!flipper_format_file_open_new(ff, path)) {
-        FURI_LOG_E(TAG, "Could not open new DBC file");
-        goto cleanup;
+static void dbc_clear_signals(App* app) {
+    app->signal_count = 0;
+    for(uint8_t i = 0; i < MAX_SIGNALS; i++) {
+        app->signals[i].used = false;
+        app->signals[i].signal_name[0] = '\0';
+        app->signals[i].message_name[0] = '\0';
+        app->signals[i].can_id[0] = '\0';
     }
-
-    if(!flipper_format_write_header_cstr(ff, DBC_FILETYPE, DBC_FILE_VERSION)) {
-        FURI_LOG_E(TAG, "Could not write header");
-        goto cleanup;
-    }
-
-    FuriString* tmp = furi_string_alloc();
-
-    // Write each field as a string
-    furi_string_set_str(tmp, sig->signal_name);
-    if(!flipper_format_write_string(ff, "SignalName", tmp)) goto write_fail;
-
-    furi_string_set_str(tmp, sig->can_id);
-    if(!flipper_format_write_string(ff, "CanID", tmp)) goto write_fail;
-
-    furi_string_set_str(tmp, sig->start_bit);
-    if(!flipper_format_write_string(ff, "StartBit", tmp)) goto write_fail;
-
-    furi_string_set_str(tmp, sig->bit_length);
-    if(!flipper_format_write_string(ff, "BitLength", tmp)) goto write_fail;
-
-    furi_string_set_str(tmp, sig->endianness);
-    if(!flipper_format_write_string(ff, "Endianness", tmp)) goto write_fail;
-
-    furi_string_set_str(tmp, sig->signedness);
-    if(!flipper_format_write_string(ff, "Signedness", tmp)) goto write_fail;
-
-    furi_string_set_str(tmp, sig->offset);
-    if(!flipper_format_write_string(ff, "Offset", tmp)) goto write_fail;
-
-    furi_string_set_str(tmp, sig->scalar);
-    if(!flipper_format_write_string(ff, "Scalar", tmp)) goto write_fail;
-
-    furi_string_set_str(tmp, sig->unit);
-    if(!flipper_format_write_string(ff, "Unit", tmp)) goto write_fail;
-
-    furi_string_set_str(tmp, sig->min_val);
-    if(!flipper_format_write_string(ff, "Min", tmp)) goto write_fail;
-
-    furi_string_set_str(tmp, sig->max_val);
-    if(!flipper_format_write_string(ff, "Max", tmp)) goto write_fail;
-
-    ok = true;
-    goto cleanup_tmp;
-
-write_fail:
-    FURI_LOG_E(TAG, "Error writing DBC signal fields");
-
-cleanup_tmp:
-    furi_string_free(tmp);
-
-cleanup:
-    flipper_format_free(ff);
-    furi_record_close(RECORD_STORAGE);
-    if(ok && saved_path && saved_size > 0) {
-        strlcpy(saved_path, path, saved_size);
-    }
-    return ok;
 }
 
-static bool dbc_load_signal_from_file(DbcSignal* sig, const char* path) {
-    if(!sig || !path) return false;
+static void dbc_clear_files(App* app) {
+    app->dbc_file_count = 0;
+    app->active_dbc_index = -1;
+    for(uint8_t i = 0; i < MAX_DBC_FILES; i++) {
+        app->dbc_files[i].name[0] = '\0';
+        app->dbc_files[i].path[0] = '\0';
+        app->dbc_files[i].vehicle_info[0] = '\0';
+    }
+}
+
+static void dbc_set_default_header(App* app) {
+    if(!app->dbc_header) {
+        app->dbc_header = furi_string_alloc();
+    }
+    furi_string_set_str(
+        app->dbc_header,
+        "VERSION \"\"\n"
+        "NS_ :\n"
+        "    CM_\n"
+        "    BA_DEF_\n"
+        "    BA_\n"
+        "    VAL_\n"
+        "BS_:\n"
+        "BU_: Vector__XXX\n");
+}
+
+static const char* dbc_trim_left(const char* s) {
+    while(*s && isspace((unsigned char)*s)) {
+        s++;
+    }
+    return s;
+}
+
+static void dbc_trim_right(char* s) {
+    size_t len = strlen(s);
+    while(len > 0 && (s[len - 1] == '\n' || s[len - 1] == '\r')) {
+        s[len - 1] = '\0';
+        len--;
+    }
+}
+
+static bool dbc_parse_vehicle_comment(const char* line, char* out, size_t out_size) {
+    size_t prefix_len = strlen(DBC_VEHICLE_PREFIX);
+    if(strncmp(line, DBC_VEHICLE_PREFIX, prefix_len) != 0) return false;
+    const char* start = line + prefix_len;
+    const char* end = strchr(start, '"');
+    if(!end) return false;
+    size_t len = (size_t)(end - start);
+    if(len >= out_size) len = out_size - 1;
+    memcpy(out, start, len);
+    out[len] = '\0';
+    return true;
+}
+
+static bool
+    dbc_parse_bo_line(const char* line, uint32_t* can_id, char* msg_name, size_t msg_size) {
+    if(strncmp(line, "BO_", 3) != 0) return false;
+    const char* p = line + 3;
+    while(isspace((unsigned char)*p))
+        p++;
+    char* end = NULL;
+    unsigned long parsed = strtoul(p, &end, 10);
+    if(end == p) return false;
+    *can_id = (uint32_t)parsed;
+    p = end;
+    while(isspace((unsigned char)*p))
+        p++;
+    const char* name_start = p;
+    while(*p && *p != ':' && !isspace((unsigned char)*p))
+        p++;
+    if(name_start == p) return false;
+    size_t len = (size_t)(p - name_start);
+    if(len >= msg_size) len = msg_size - 1;
+    memcpy(msg_name, name_start, len);
+    msg_name[len] = '\0';
+    return true;
+}
+
+static bool
+    dbc_parse_sg_line(const char* line, DbcSignal* sig, uint32_t can_id, const char* msg_name) {
+    if(strncmp(line, "SG_", 3) != 0) return false;
+    const char* p = line + 3;
+    while(isspace((unsigned char)*p))
+        p++;
+
+    const char* name_start = p;
+    while(*p && !isspace((unsigned char)*p) && *p != ':')
+        p++;
+    if(name_start == p) return false;
+    size_t name_len = (size_t)(p - name_start);
+    if(name_len >= TEXT_INPUT_SIZE) name_len = TEXT_INPUT_SIZE - 1;
+
+    while(*p && *p != ':')
+        p++;
+    if(*p != ':') return false;
+    p++;
+    while(isspace((unsigned char)*p))
+        p++;
+
+    char* end = NULL;
+    long start_bit = strtol(p, &end, 10);
+    if(end == p || *end != '|') return false;
+    p = end + 1;
+    long bit_length = strtol(p, &end, 10);
+    if(end == p || *end != '@') return false;
+    p = end + 1;
+
+    char endian_char = *p++;
+    char sign_char = *p++;
+
+    while(isspace((unsigned char)*p))
+        p++;
+    if(*p != '(') return false;
+    p++;
+    double scale = strtod(p, &end);
+    if(end == p || *end != ',') return false;
+    p = end + 1;
+    double offset = strtod(p, &end);
+    if(end == p || *end != ')') return false;
+    p = end + 1;
+
+    while(isspace((unsigned char)*p))
+        p++;
+    if(*p != '[') return false;
+    p++;
+    double min_val = strtod(p, &end);
+    if(end == p || *end != '|') return false;
+    p = end + 1;
+    double max_val = strtod(p, &end);
+    if(end == p || *end != ']') return false;
+    p = end + 1;
+
+    while(isspace((unsigned char)*p))
+        p++;
+    char unit[TEXT_INPUT_SIZE] = {0};
+    if(*p == '"') {
+        p++;
+        const char* unit_start = p;
+        while(*p && *p != '"')
+            p++;
+        size_t unit_len = (size_t)(p - unit_start);
+        if(unit_len >= TEXT_INPUT_SIZE) unit_len = TEXT_INPUT_SIZE - 1;
+        memcpy(unit, unit_start, unit_len);
+        unit[unit_len] = '\0';
+    }
+
+    memset(sig, 0, sizeof(*sig));
+    sig->used = true;
+    strlcpy(sig->message_name, msg_name && msg_name[0] ? msg_name : "Message", TEXT_INPUT_SIZE);
+    memcpy(sig->signal_name, name_start, name_len);
+    sig->signal_name[name_len] = '\0';
+    snprintf(sig->can_id, sizeof(sig->can_id), "0x%lX", (unsigned long)can_id);
+    snprintf(sig->start_bit, sizeof(sig->start_bit), "%ld", start_bit);
+    snprintf(sig->bit_length, sizeof(sig->bit_length), "%ld", bit_length);
+    sig->endianness[0] = (endian_char == '1') ? '1' : '0';
+    sig->endianness[1] = '\0';
+    sig->signedness[0] = (sign_char == '-') ? 's' : 'u';
+    sig->signedness[1] = '\0';
+    snprintf(sig->scalar, sizeof(sig->scalar), "%.6g", scale);
+    snprintf(sig->offset, sizeof(sig->offset), "%.6g", offset);
+    snprintf(sig->min_val, sizeof(sig->min_val), "%.6g", min_val);
+    snprintf(sig->max_val, sizeof(sig->max_val), "%.6g", max_val);
+    strlcpy(sig->unit, unit, sizeof(sig->unit));
+    return true;
+}
+
+static bool dbc_read_vehicle_info(const char* path, char* out, size_t out_size) {
+    if(!out || out_size == 0) return false;
+    out[0] = '\0';
+    Storage* storage = furi_record_open(RECORD_STORAGE);
+    Stream* stream = buffered_file_stream_alloc(storage);
+    bool found = false;
+    if(!buffered_file_stream_open(stream, path, FSAM_READ, FSOM_OPEN_EXISTING)) {
+        goto cleanup;
+    }
+    FuriString* line = furi_string_alloc();
+    while(stream_read_line(stream, line)) {
+        char buf[256];
+        strlcpy(buf, furi_string_get_cstr(line), sizeof(buf));
+        dbc_trim_right(buf);
+        const char* trimmed = dbc_trim_left(buf);
+        if(dbc_parse_vehicle_comment(trimmed, out, out_size)) {
+            found = true;
+            break;
+        }
+    }
+    furi_string_free(line);
+
+cleanup:
+    buffered_file_stream_close(stream);
+    stream_free(stream);
+    furi_record_close(RECORD_STORAGE);
+    return found;
+}
+
+static bool dbc_load_file(App* app, const char* path) {
+    dbc_clear_signals(app);
+    app->vehicle_info[0] = '\0';
+    if(!app->dbc_header) {
+        app->dbc_header = furi_string_alloc();
+    }
+    furi_string_reset(app->dbc_header);
 
     Storage* storage = furi_record_open(RECORD_STORAGE);
-    FlipperFormat* ff = flipper_format_file_alloc(storage);
+    Stream* stream = buffered_file_stream_alloc(storage);
     bool ok = false;
 
-    if(!flipper_format_file_open_existing(ff, path)) {
+    if(!buffered_file_stream_open(stream, path, FSAM_READ, FSOM_OPEN_EXISTING)) {
         FURI_LOG_E(TAG, "Could not open DBC file: %s", path);
         goto cleanup;
     }
 
-    FuriString* tmp = furi_string_alloc();
+    FuriString* line = furi_string_alloc();
+    uint32_t current_can_id = 0;
+    char current_msg[TEXT_INPUT_SIZE] = {0};
 
-    if(!flipper_format_read_string(ff, "SignalName", tmp)) goto read_fail;
-    strlcpy(sig->signal_name, furi_string_get_cstr(tmp), TEXT_INPUT_SIZE);
+    while(stream_read_line(stream, line)) {
+        char buf[256];
+        strlcpy(buf, furi_string_get_cstr(line), sizeof(buf));
+        dbc_trim_right(buf);
+        const char* trimmed = dbc_trim_left(buf);
+        if(trimmed[0] == '\0') {
+            continue;
+        }
 
-    if(!flipper_format_read_string(ff, "CanID", tmp)) goto read_fail;
-    strlcpy(sig->can_id, furi_string_get_cstr(tmp), TEXT_INPUT_SIZE);
+        if(dbc_parse_vehicle_comment(trimmed, app->vehicle_info, sizeof(app->vehicle_info))) {
+            continue;
+        }
 
-    if(!flipper_format_read_string(ff, "StartBit", tmp)) goto read_fail;
-    strlcpy(sig->start_bit, furi_string_get_cstr(tmp), TEXT_INPUT_SIZE);
+        if(dbc_parse_bo_line(trimmed, &current_can_id, current_msg, sizeof(current_msg))) {
+            continue;
+        }
 
-    if(!flipper_format_read_string(ff, "BitLength", tmp)) goto read_fail;
-    strlcpy(sig->bit_length, furi_string_get_cstr(tmp), TEXT_INPUT_SIZE);
+        if(app->signal_count < MAX_SIGNALS) {
+            DbcSignal sig;
+            if(dbc_parse_sg_line(trimmed, &sig, current_can_id, current_msg)) {
+                app->signals[app->signal_count++] = sig;
+                continue;
+            }
+        } else {
+            FURI_LOG_W(TAG, "MAX_SIGNALS reached, ignoring extra signals");
+        }
 
-    if(!flipper_format_read_string(ff, "Endianness", tmp)) goto read_fail;
-    strlcpy(sig->endianness, furi_string_get_cstr(tmp), TEXT_INPUT_SIZE);
+        furi_string_cat_str(app->dbc_header, buf);
+        furi_string_cat_str(app->dbc_header, "\n");
+    }
 
-    if(!flipper_format_read_string(ff, "Signedness", tmp)) goto read_fail;
-    strlcpy(sig->signedness, furi_string_get_cstr(tmp), TEXT_INPUT_SIZE);
-
-    if(!flipper_format_read_string(ff, "Offset", tmp)) goto read_fail;
-    strlcpy(sig->offset, furi_string_get_cstr(tmp), TEXT_INPUT_SIZE);
-
-    if(!flipper_format_read_string(ff, "Scalar", tmp)) goto read_fail;
-    strlcpy(sig->scalar, furi_string_get_cstr(tmp), TEXT_INPUT_SIZE);
-
-    if(!flipper_format_read_string(ff, "Unit", tmp)) goto read_fail;
-    strlcpy(sig->unit, furi_string_get_cstr(tmp), TEXT_INPUT_SIZE);
-
-    if(!flipper_format_read_string(ff, "Min", tmp)) goto read_fail;
-    strlcpy(sig->min_val, furi_string_get_cstr(tmp), TEXT_INPUT_SIZE);
-
-    if(!flipper_format_read_string(ff, "Max", tmp)) goto read_fail;
-    strlcpy(sig->max_val, furi_string_get_cstr(tmp), TEXT_INPUT_SIZE);
-
-    sig->used = true;
-    strlcpy(sig->file_path, path, sizeof(sig->file_path));
+    furi_string_free(line);
     ok = true;
-    goto cleanup_tmp;
-
-read_fail:
-    FURI_LOG_E(TAG, "Error reading DBC signal fields from %s", path);
-
-cleanup_tmp:
-    furi_string_free(tmp);
 
 cleanup:
-    flipper_format_free(ff);
+    buffered_file_stream_close(stream);
+    stream_free(stream);
     furi_record_close(RECORD_STORAGE);
+    dbc_sort_signals(app);
     return ok;
 }
 
-// Scan the DBC_USER_PATH directory and load all signals into app->signals
-static void dbc_load_all_signals(App* app) {
-    Storage* storage = furi_record_open(RECORD_STORAGE);
-
-    app->signal_count = 0;
-    for(uint8_t i = 0; i < MAX_SIGNALS; i++) {
-        app->signals[i].used = false;
-        app->signals[i].file_path[0] = '\0';
+static void dbc_scan_files(App* app) {
+    char active_path[256] = {0};
+    if(app->active_dbc_index >= 0 && app->active_dbc_index < app->dbc_file_count) {
+        strlcpy(active_path, app->dbc_files[app->active_dbc_index].path, sizeof(active_path));
     }
-
+    dbc_clear_files(app);
+    Storage* storage = furi_record_open(RECORD_STORAGE);
     File* dir = storage_file_alloc(storage);
     FileInfo file_info;
     char name[128];
 
     if(!storage_dir_open(dir, DBC_USER_PATH)) {
-        FURI_LOG_W(TAG, "Could not open DBC dir: %s", DBC_USER_PATH);
         storage_file_free(dir);
         furi_record_close(RECORD_STORAGE);
         return;
     }
 
     while(storage_dir_read(dir, &file_info, name, sizeof(name))) {
-        //if(file_info.type != FileTypeFile) continue;
-
-        // filter by extension
         size_t len = strlen(name);
         size_t ext_len = strlen(DBC_EXTENSION);
         if(len <= ext_len) continue;
         if(strcmp(name + len - ext_len, DBC_EXTENSION) != 0) continue;
 
-        if(app->signal_count >= MAX_SIGNALS) {
-            FURI_LOG_W(TAG, "MAX_SIGNALS reached, ignoring extra files");
+        if(app->dbc_file_count >= MAX_DBC_FILES) {
+            FURI_LOG_W(TAG, "MAX_DBC_FILES reached, ignoring extra files");
             break;
         }
 
-        char fullpath[256];
-        snprintf(fullpath, sizeof(fullpath), "%s/%s", DBC_USER_PATH, name);
-
-        DbcSignal* sig = &app->signals[app->signal_count];
-        if(dbc_load_signal_from_file(sig, fullpath)) {
-            FURI_LOG_I(TAG, "Loaded DBC signal from %s", fullpath);
-            app->signal_count++;
-        } else {
-            FURI_LOG_W(TAG, "Failed to load DBC from %s", fullpath);
-        }
+        DbcFile* file = &app->dbc_files[app->dbc_file_count++];
+        snprintf(file->path, sizeof(file->path), "%s/%s", DBC_USER_PATH, name);
+        size_t name_len = len - ext_len;
+        if(name_len >= sizeof(file->name)) name_len = sizeof(file->name) - 1;
+        memcpy(file->name, name, name_len);
+        file->name[name_len] = '\0';
+        dbc_read_vehicle_info(file->path, file->vehicle_info, sizeof(file->vehicle_info));
     }
-
-    dbc_sort_signals(app);
 
     storage_dir_close(dir);
     storage_file_free(dir);
     furi_record_close(RECORD_STORAGE);
+
+    if(active_path[0]) {
+        for(uint8_t i = 0; i < app->dbc_file_count; i++) {
+            if(strcmp(app->dbc_files[i].path, active_path) == 0) {
+                app->active_dbc_index = i;
+                break;
+            }
+        }
+    }
+}
+
+static bool dbc_set_active_file(App* app, int index) {
+    if(index < 0 || index >= app->dbc_file_count) return false;
+    app->active_dbc_index = index;
+    return dbc_load_file(app, app->dbc_files[index].path);
+}
+
+static bool dbc_write_file(App* app) {
+    if(app->active_dbc_index < 0 || app->active_dbc_index >= app->dbc_file_count) return false;
+
+    Storage* storage = furi_record_open(RECORD_STORAGE);
+    Stream* stream = buffered_file_stream_alloc(storage);
+    bool ok = false;
+    const char* path = app->dbc_files[app->active_dbc_index].path;
+
+    if(!buffered_file_stream_open(stream, path, FSAM_WRITE, FSOM_CREATE_ALWAYS)) {
+        FURI_LOG_E(TAG, "Could not open DBC file for write: %s", path);
+        goto cleanup;
+    }
+
+    if(app->dbc_header && furi_string_size(app->dbc_header) > 0) {
+        stream_write_cstring(stream, furi_string_get_cstr(app->dbc_header));
+        if(furi_string_get_cstr(app->dbc_header)[furi_string_size(app->dbc_header) - 1] != '\n') {
+            stream_write_char(stream, '\n');
+        }
+    }
+
+    if(app->vehicle_info[0]) {
+        stream_write_format(stream, "%s%s\";\n", DBC_VEHICLE_PREFIX, app->vehicle_info);
+    }
+
+    bool written[MAX_SIGNALS] = {0};
+    FuriString* line = furi_string_alloc();
+    for(uint8_t i = 0; i < app->signal_count; i++) {
+        if(!app->signals[i].used || written[i]) continue;
+        uint32_t can_id = dbc_parse_can_id(&app->signals[i]);
+        const char* msg_name = app->signals[i].message_name[0] ? app->signals[i].message_name :
+                                                                 app->signals[i].signal_name;
+        format_dbc_bo_line(line, can_id, msg_name);
+        stream_write_cstring(stream, furi_string_get_cstr(line));
+        stream_write_char(stream, '\n');
+
+        for(uint8_t j = i; j < app->signal_count; j++) {
+            if(!app->signals[j].used || written[j]) continue;
+            if(dbc_parse_can_id(&app->signals[j]) != can_id) continue;
+            const char* other_msg = app->signals[j].message_name[0] ?
+                                        app->signals[j].message_name :
+                                        app->signals[j].signal_name;
+            if(strcmp(msg_name, other_msg) != 0) continue;
+            format_dbc_sg_line(line, &app->signals[j]);
+            stream_write_cstring(stream, furi_string_get_cstr(line));
+            stream_write_char(stream, '\n');
+            written[j] = true;
+        }
+    }
+    furi_string_free(line);
+
+    ok = true;
+
+cleanup:
+    buffered_file_stream_close(stream);
+    stream_free(stream);
+    furi_record_close(RECORD_STORAGE);
+    if(ok) {
+        strlcpy(
+            app->dbc_files[app->active_dbc_index].vehicle_info,
+            app->vehicle_info,
+            sizeof(app->dbc_files[app->active_dbc_index].vehicle_info));
+    }
+    return ok;
 }
 
 static uint32_t dbc_parse_can_id(const DbcSignal* sig) {
@@ -800,8 +1067,21 @@ static void dbc_sort_signals(App* app) {
 
 // Save "current" fields from App into SD, then reload all into memory
 static void dbc_save_current_and_reload(App* app) {
+    if(app->active_dbc_index < 0) {
+        cantools_show_message(app, "No DBC file", "Select or create a DBC file first.");
+        return;
+    }
+
+    if(!app->editing) {
+        strlcpy(app->message_name, app->signal_name, TEXT_INPUT_SIZE);
+    }
+
     DbcSignal tmp = {0};
     tmp.used = true;
+    strlcpy(tmp.message_name, app->message_name, TEXT_INPUT_SIZE);
+    if(tmp.message_name[0] == '\0') {
+        strlcpy(tmp.message_name, app->signal_name, TEXT_INPUT_SIZE);
+    }
     strlcpy(tmp.signal_name, app->signal_name, TEXT_INPUT_SIZE);
     strlcpy(tmp.can_id, app->can_id, TEXT_INPUT_SIZE);
     strlcpy(tmp.start_bit, app->start_bit, TEXT_INPUT_SIZE);
@@ -813,41 +1093,41 @@ static void dbc_save_current_and_reload(App* app) {
     strlcpy(tmp.unit, app->unit, TEXT_INPUT_SIZE);
     strlcpy(tmp.min_val, app->min_val, TEXT_INPUT_SIZE);
     strlcpy(tmp.max_val, app->max_val, TEXT_INPUT_SIZE);
-    char saved_path[256] = {0};
-    if(!dbc_save_signal_to_sd(&tmp, saved_path, sizeof(saved_path))) {
-        FURI_LOG_E(TAG, "Failed to save current signal to SD");
-    } else if(
-        app->editing && app->editing_file_path[0] != '\0' &&
-        strcmp(app->editing_file_path, saved_path) != 0) {
-        Storage* storage = furi_record_open(RECORD_STORAGE);
-        FS_Error status = storage_common_remove(storage, app->editing_file_path);
-        furi_record_close(RECORD_STORAGE);
-        if(status != FSE_OK && status != FSE_EXIST) {
-            FURI_LOG_W(TAG, "Could not remove old signal file: %s", app->editing_file_path);
+
+    bool updated = false;
+    if(app->editing && app->selected_signal_index >= 0 &&
+       app->selected_signal_index < app->signal_count) {
+        app->signals[app->selected_signal_index] = tmp;
+        updated = true;
+    }
+
+    if(!updated) {
+        if(app->signal_count >= MAX_SIGNALS) {
+            cantools_show_message(app, "Error", "Signal limit reached.");
+            return;
         }
+        app->signals[app->signal_count++] = tmp;
+    }
+
+    if(!dbc_write_file(app)) {
+        cantools_show_message(app, "Error", "Failed to save DBC file.");
+        return;
     }
 
     app->editing = false;
-    app->editing_file_path[0] = '\0';
-    strlcpy(app->decode_can_id_text, "0x", sizeof(app->decode_can_id_text));
-    strlcpy(app->decode_dlc_text, "8", sizeof(app->decode_dlc_text));
-    memset(app->decode_data_bytes, 0, sizeof(app->decode_data_bytes));
-    app->decode_can_id = 0;
-    app->decode_dlc = 0;
-    app->decode_data_len = 0;
+    dbc_load_file(app, app->dbc_files[app->active_dbc_index].path);
 
-    dbc_load_all_signals(app);
-
-    // Try to set selected index to the last signal with same name
     app->selected_signal_index = -1;
     for(uint8_t i = 0; i < app->signal_count; i++) {
-        if(strcmp(app->signals[i].signal_name, app->signal_name) == 0) {
+        if(strcmp(app->signals[i].signal_name, app->signal_name) == 0 &&
+           strcmp(app->signals[i].can_id, app->can_id) == 0) {
             app->selected_signal_index = i;
         }
     }
 }
 
 static void dbc_copy_signal_to_app(App* app, const DbcSignal* sig) {
+    strlcpy(app->message_name, sig->message_name, TEXT_INPUT_SIZE);
     strlcpy(app->signal_name, sig->signal_name, TEXT_INPUT_SIZE);
     strlcpy(app->can_id, sig->can_id, TEXT_INPUT_SIZE);
     strlcpy(app->start_bit, sig->start_bit, TEXT_INPUT_SIZE);
@@ -862,6 +1142,7 @@ static void dbc_copy_signal_to_app(App* app, const DbcSignal* sig) {
 }
 
 static void app_set_defaults(App* app) {
+    strlcpy(app->message_name, "DI_vehicleSpeed", TEXT_INPUT_SIZE);
     strlcpy(app->signal_name, "DI_vehicleSpeed", TEXT_INPUT_SIZE);
     strlcpy(app->can_id, "0x257", TEXT_INPUT_SIZE);
     strlcpy(app->start_bit, "12", TEXT_INPUT_SIZE);
@@ -965,7 +1246,7 @@ static bool decode_signal_value(
     bool big_endian = false;
     if(sig->endianness[0]) {
         char c = sig->endianness[0];
-        big_endian = (c == '1' || c == 'M' || c == 'm' || c == 'B' || c == 'b');
+        big_endian = (c == '0' || c == 'M' || c == 'm' || c == 'B' || c == 'b');
     }
 
     uint64_t raw = 0;
@@ -1010,13 +1291,16 @@ void Cantools_scenes_main_menu_callback(void* context, uint32_t index) {
         scene_manager_handle_custom_event(
             app->scene_manager, CantoolsScenesMainMenuSceneDecodeDataEvent);
         break;
+    case CantoolsScenesMainMenuSceneDbcFiles:
+        scene_manager_handle_custom_event(
+            app->scene_manager, CantoolsScenesMainMenuSceneDbcFilesEvent);
+        break;
     }
 }
 
 void Cantools_scenes_main_menu_scene_on_enter(void* context) {
     App* app = context;
     app->editing = false;
-    app->editing_file_path[0] = '\0';
     submenu_reset(app->submenu);
     submenu_set_header(app->submenu, "CAN Tools");
 
@@ -1038,6 +1322,12 @@ void Cantools_scenes_main_menu_scene_on_enter(void* context) {
         CantoolsScenesMainMenuSceneDecodeData,
         Cantools_scenes_main_menu_callback,
         app);
+    submenu_add_item(
+        app->submenu,
+        "DBC Files",
+        CantoolsScenesMainMenuSceneDbcFiles,
+        Cantools_scenes_main_menu_callback,
+        app);
 
     view_dispatcher_switch_to_view(app->view_dispatcher, CantoolsScenesSubmenuView);
 }
@@ -1053,13 +1343,18 @@ bool Cantools_scenes_main_menu_scene_on_event(void* context, SceneManagerEvent e
             consumed = true;
             break;
         case CantoolsScenesMainMenuSceneViewDbcEvent:
-            // ensure we are up-to-date from SD before viewing
-            dbc_load_all_signals(app);
+            if(app->active_dbc_index >= 0) {
+                dbc_load_file(app, app->dbc_files[app->active_dbc_index].path);
+            }
             scene_manager_next_scene(app->scene_manager, CantoolsScenesViewDbcListScene);
             consumed = true;
             break;
         case CantoolsScenesMainMenuSceneDecodeDataEvent:
             scene_manager_next_scene(app->scene_manager, CantoolsScenesDecodeDataScene);
+            consumed = true;
+            break;
+        case CantoolsScenesMainMenuSceneDbcFilesEvent:
+            scene_manager_next_scene(app->scene_manager, CantoolsScenesDbcFileListScene);
             consumed = true;
             break;
         }
@@ -1075,6 +1370,196 @@ void Cantools_scenes_main_menu_scene_on_exit(void* context) {
     submenu_reset(app->submenu);
 }
 
+// DBC Files
+
+void Cantools_scenes_dbc_file_menu_callback(void* context, uint32_t index) {
+    App* app = context;
+    scene_manager_handle_custom_event(app->scene_manager, index);
+}
+
+void Cantools_scenes_dbc_file_list_scene_on_enter(void* context) {
+    App* app = context;
+    submenu_reset(app->submenu);
+    submenu_set_header(app->submenu, "DBC Files");
+
+    dbc_scan_files(app);
+
+    submenu_add_item(
+        app->submenu,
+        "Create DBC",
+        CANTOOLS_EVENT_DBC_CREATE,
+        Cantools_scenes_dbc_file_menu_callback,
+        app);
+
+    FuriString* label = furi_string_alloc();
+    for(uint8_t i = 0; i < app->dbc_file_count; i++) {
+        const char* name = app->dbc_files[i].name;
+        const char* info = app->dbc_files[i].vehicle_info;
+        const char* prefix = (app->active_dbc_index == (int)i) ? "* " : "";
+        if(info[0]) {
+            furi_string_printf(label, "%s%s - %s", prefix, name, info);
+        } else {
+            furi_string_printf(label, "%s%s", prefix, name);
+        }
+        submenu_add_item(
+            app->submenu,
+            furi_string_get_cstr(label),
+            CANTOOLS_EVENT_DBC_FILE_BASE + i,
+            Cantools_scenes_dbc_file_menu_callback,
+            app);
+    }
+    furi_string_free(label);
+
+    view_dispatcher_switch_to_view(app->view_dispatcher, CantoolsScenesSubmenuView);
+}
+
+bool Cantools_scenes_dbc_file_list_scene_on_event(void* context, SceneManagerEvent event) {
+    App* app = context;
+    if(event.type == SceneManagerEventTypeCustom) {
+        if(event.event == CANTOOLS_EVENT_DBC_CREATE) {
+            app->dbc_file_name[0] = '\0';
+            app->vehicle_info[0] = '\0';
+            scene_manager_next_scene(app->scene_manager, CantoolsScenesDbcFileNameScene);
+            return true;
+        }
+        if(event.event >= CANTOOLS_EVENT_DBC_FILE_BASE) {
+            uint32_t idx = event.event - CANTOOLS_EVENT_DBC_FILE_BASE;
+            if(idx < app->dbc_file_count) {
+                if(dbc_set_active_file(app, (int)idx)) {
+                    scene_manager_next_scene(app->scene_manager, CantoolsScenesMainMenuScene);
+                } else {
+                    cantools_show_message(app, "Error", "Failed to load DBC file.");
+                }
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+void Cantools_scenes_dbc_file_list_scene_on_exit(void* context) {
+    App* app = context;
+    submenu_reset(app->submenu);
+}
+
+static void cantools_dbc_name_input_callback(void* context) {
+    App* app = context;
+    scene_manager_handle_custom_event(app->scene_manager, CANTOOLS_EVENT_DBC_NAME_SAVE);
+}
+
+static void cantools_vehicle_info_input_callback(void* context) {
+    App* app = context;
+    scene_manager_handle_custom_event(app->scene_manager, CANTOOLS_EVENT_DBC_VEHICLE_SAVE);
+}
+
+static void cantools_simple_text_input_on_enter(
+    App* app,
+    const char* header,
+    char* value,
+    TextInputCallback callback) {
+    bool clear_text = true;
+    strlcpy(app->buffer, value, app->buffer_size);
+    text_input_reset(app->text_input);
+    text_input_set_header_text(app->text_input, header);
+    text_input_set_result_callback(
+        app->text_input, callback, app, app->buffer, app->buffer_size, clear_text);
+    view_dispatcher_switch_to_view(app->view_dispatcher, CantoolsScenesTextInputView);
+}
+
+void Cantools_scenes_dbc_file_name_scene_on_enter(void* context) {
+    App* app = context;
+    cantools_simple_text_input_on_enter(
+        app, "DBC file name:", app->dbc_file_name, cantools_dbc_name_input_callback);
+}
+
+bool Cantools_scenes_dbc_file_name_scene_on_event(void* context, SceneManagerEvent event) {
+    App* app = context;
+    if(event.type == SceneManagerEventTypeCustom && event.event == CANTOOLS_EVENT_DBC_NAME_SAVE) {
+        strlcpy(app->dbc_file_name, app->buffer, sizeof(app->dbc_file_name));
+        if(app->dbc_file_name[0] == '\0') {
+            cantools_show_message(app, "Invalid name", "Enter a file name.");
+            return true;
+        }
+        dbc_sanitize_file_name(app->dbc_file_name, sizeof(app->dbc_file_name));
+        scene_manager_next_scene(app->scene_manager, CantoolsScenesVehicleInfoScene);
+        return true;
+    }
+    return false;
+}
+
+void Cantools_scenes_dbc_file_name_scene_on_exit(void* context) {
+    UNUSED(context);
+}
+
+static bool dbc_create_file(App* app) {
+    char path[256];
+    dbc_build_file_path(app->dbc_file_name, path, sizeof(path));
+
+    Storage* storage = furi_record_open(RECORD_STORAGE);
+    FileInfo info;
+    if(storage_common_stat(storage, path, &info) == FSE_OK) {
+        furi_record_close(RECORD_STORAGE);
+        cantools_show_message(app, "Error", "File already exists.");
+        return false;
+    }
+
+    Stream* stream = buffered_file_stream_alloc(storage);
+    bool ok = false;
+    if(!buffered_file_stream_open(stream, path, FSAM_WRITE, FSOM_CREATE_ALWAYS)) {
+        FURI_LOG_E(TAG, "Could not create DBC file: %s", path);
+        goto cleanup;
+    }
+
+    dbc_set_default_header(app);
+    stream_write_cstring(stream, furi_string_get_cstr(app->dbc_header));
+    if(furi_string_get_cstr(app->dbc_header)[furi_string_size(app->dbc_header) - 1] != '\n') {
+        stream_write_char(stream, '\n');
+    }
+
+    if(app->vehicle_info[0]) {
+        stream_write_format(stream, "%s%s\";\n", DBC_VEHICLE_PREFIX, app->vehicle_info);
+    }
+
+    ok = true;
+
+cleanup:
+    buffered_file_stream_close(stream);
+    stream_free(stream);
+    furi_record_close(RECORD_STORAGE);
+    return ok;
+}
+
+void Cantools_scenes_vehicle_info_scene_on_enter(void* context) {
+    App* app = context;
+    cantools_simple_text_input_on_enter(
+        app, "Vehicle (make/model/year):", app->vehicle_info, cantools_vehicle_info_input_callback);
+}
+
+bool Cantools_scenes_vehicle_info_scene_on_event(void* context, SceneManagerEvent event) {
+    App* app = context;
+    if(event.type == SceneManagerEventTypeCustom &&
+       event.event == CANTOOLS_EVENT_DBC_VEHICLE_SAVE) {
+        strlcpy(app->vehicle_info, app->buffer, sizeof(app->vehicle_info));
+        if(!dbc_create_file(app)) {
+            return true;
+        }
+        dbc_scan_files(app);
+        for(uint8_t i = 0; i < app->dbc_file_count; i++) {
+            if(strcmp(app->dbc_files[i].name, app->dbc_file_name) == 0) {
+                dbc_set_active_file(app, i);
+                break;
+            }
+        }
+        scene_manager_next_scene(app->scene_manager, CantoolsScenesDbcFileListScene);
+        return true;
+    }
+    return false;
+}
+
+void Cantools_scenes_vehicle_info_scene_on_exit(void* context) {
+    UNUSED(context);
+}
+
 void Cantools_scenes_dbc_maker_menu_callback(void* context, uint32_t index) {
     App* app = context;
     scene_manager_handle_custom_event(app->scene_manager, index);
@@ -1082,6 +1567,11 @@ void Cantools_scenes_dbc_maker_menu_callback(void* context, uint32_t index) {
 
 void Cantools_scenes_dbc_maker_menu_scene_on_enter(void* context) {
     App* app = context;
+    if(app->active_dbc_index < 0) {
+        cantools_show_message(app, "No DBC file", "Select or create a DBC file first.");
+        scene_manager_next_scene(app->scene_manager, CantoolsScenesDbcFileListScene);
+        return;
+    }
     submenu_reset(app->submenu);
     submenu_set_header(app->submenu, app->editing ? "Edit Signal" : "DBC Maker");
 
@@ -1208,6 +1698,12 @@ void Cantools_scenes_calculate_scene_on_enter(void* context) {
     App* app = context;
     widget_reset(app->widget);
 
+    if(app->active_dbc_index < 0) {
+        cantools_show_message(app, "No DBC file", "Select or create a DBC file first.");
+        scene_manager_next_scene(app->scene_manager, CantoolsScenesDbcFileListScene);
+        return;
+    }
+
     if(!dbc_validate_all(app)) {
         scene_manager_next_scene(app->scene_manager, CantoolsScenesDbcMakerMenuScene);
         return;
@@ -1222,6 +1718,7 @@ void Cantools_scenes_calculate_scene_on_enter(void* context) {
     FuriString* dbc = furi_string_alloc();
     format_dbc_entry(
         dbc,
+        app->message_name,
         app->signal_name,
         app->can_id,
         app->start_bit,
@@ -1257,6 +1754,14 @@ void Cantools_scenes_view_dbc_menu_callback(void* context, uint32_t index) {
 void Cantools_scenes_view_dbc_list_scene_on_enter(void* context) {
     App* app = context;
 
+    if(app->active_dbc_index < 0) {
+        cantools_show_message(app, "No DBC file", "Select or create a DBC file first.");
+        scene_manager_next_scene(app->scene_manager, CantoolsScenesDbcFileListScene);
+        return;
+    }
+
+    dbc_load_file(app, app->dbc_files[app->active_dbc_index].path);
+
     if(app->signal_count == 0) {
         widget_reset(app->widget);
         widget_add_text_scroll_element(
@@ -1269,7 +1774,12 @@ void Cantools_scenes_view_dbc_list_scene_on_enter(void* context) {
         view_dispatcher_switch_to_view(app->view_dispatcher, CantoolsScenesWidgetView);
     } else {
         submenu_reset(app->submenu);
-        submenu_set_header(app->submenu, "Saved DBC signals");
+        const char* file_name = app->dbc_files[app->active_dbc_index].name;
+        if(file_name[0]) {
+            submenu_set_header(app->submenu, file_name);
+        } else {
+            submenu_set_header(app->submenu, "Saved DBC signals");
+        }
         const char* sort_label = (app->sort_mode == CantoolsSortByCanId) ? "Sort: CAN ID" :
                                                                            "Sort: Name";
         submenu_add_item(
@@ -1370,7 +1880,6 @@ bool Cantools_scenes_signal_actions_scene_on_event(void* context, SceneManagerEv
         case CantoolsSignalActionEdit:
             dbc_copy_signal_to_app(app, sig);
             app->editing = true;
-            strlcpy(app->editing_file_path, sig->file_path, sizeof(app->editing_file_path));
             scene_manager_next_scene(app->scene_manager, CantoolsScenesDbcMakerMenuScene);
             return true;
         case CantoolsSignalActionDelete: {
@@ -1381,18 +1890,20 @@ bool Cantools_scenes_signal_actions_scene_on_event(void* context, SceneManagerEv
             DialogMessageButton result = dialog_message_show(app->dialogs, message);
             dialog_message_free(message);
             if(result == DialogMessageButtonRight) {
-                Storage* storage = furi_record_open(RECORD_STORAGE);
-                FS_Error status = storage_common_remove(storage, sig->file_path);
-                furi_record_close(RECORD_STORAGE);
-                if(status == FSE_OK || status == FSE_EXIST) {
-                    app->editing = false;
-                    app->editing_file_path[0] = '\0';
-                    dbc_load_all_signals(app);
-                    scene_manager_next_scene(app->scene_manager, CantoolsScenesViewDbcListScene);
-                } else {
-                    cantools_show_message(app, "Error", "Failed to delete file.");
-                    scene_manager_next_scene(app->scene_manager, CantoolsScenesViewDbcListScene);
+                if(app->selected_signal_index >= 0 &&
+                   app->selected_signal_index < app->signal_count) {
+                    for(uint8_t i = app->selected_signal_index; i + 1 < app->signal_count; i++) {
+                        app->signals[i] = app->signals[i + 1];
+                    }
+                    app->signal_count--;
                 }
+                if(!dbc_write_file(app)) {
+                    cantools_show_message(app, "Error", "Failed to update DBC file.");
+                } else if(app->active_dbc_index >= 0) {
+                    dbc_load_file(app, app->dbc_files[app->active_dbc_index].path);
+                }
+                app->editing = false;
+                scene_manager_next_scene(app->scene_manager, CantoolsScenesViewDbcListScene);
             } else {
                 scene_manager_next_scene(app->scene_manager, CantoolsScenesViewDbcListScene);
             }
@@ -1424,6 +1935,7 @@ void Cantools_scenes_view_dbc_detail_scene_on_enter(void* context) {
             FuriString* dbc = furi_string_alloc();
             format_dbc_entry(
                 dbc,
+                sig->message_name,
                 sig->signal_name,
                 sig->can_id,
                 sig->start_bit,
@@ -1479,22 +1991,13 @@ static void cantools_decode_dlc_input_callback(void* context) {
     scene_manager_handle_custom_event(app->scene_manager, CANTOOLS_EVENT_DECODE_DLC_SAVE);
 }
 
-static void cantools_decode_text_input_on_enter(
-    App* app,
-    const char* header,
-    char* value,
-    TextInputCallback callback) {
-    bool clear_text = true;
-    strlcpy(app->buffer, value, app->buffer_size);
-    text_input_reset(app->text_input);
-    text_input_set_header_text(app->text_input, header);
-    text_input_set_result_callback(
-        app->text_input, callback, app, app->buffer, app->buffer_size, clear_text);
-    view_dispatcher_switch_to_view(app->view_dispatcher, CantoolsScenesTextInputView);
-}
-
 void Cantools_scenes_decode_data_scene_on_enter(void* context) {
     App* app = context;
+    if(app->active_dbc_index < 0) {
+        cantools_show_message(app, "No DBC file", "Select or create a DBC file first.");
+        scene_manager_next_scene(app->scene_manager, CantoolsScenesDbcFileListScene);
+        return;
+    }
     submenu_reset(app->submenu);
     submenu_set_header(app->submenu, "Decode Data");
     submenu_add_item(
@@ -1537,7 +2040,7 @@ void Cantools_scenes_decode_manual_can_id_scene_on_enter(void* context) {
     if(app->decode_can_id_text[0] == '\0') {
         strlcpy(app->decode_can_id_text, "0x", sizeof(app->decode_can_id_text));
     }
-    cantools_decode_text_input_on_enter(
+    cantools_simple_text_input_on_enter(
         app, "CAN ID (dec/0x):", app->decode_can_id_text, cantools_decode_canid_input_callback);
 }
 
@@ -1567,7 +2070,7 @@ void Cantools_scenes_decode_manual_dlc_scene_on_enter(void* context) {
     if(app->decode_dlc_text[0] == '\0') {
         strlcpy(app->decode_dlc_text, "8", sizeof(app->decode_dlc_text));
     }
-    cantools_decode_text_input_on_enter(
+    cantools_simple_text_input_on_enter(
         app, "DLC (0-8):", app->decode_dlc_text, cantools_decode_dlc_input_callback);
 }
 
@@ -1621,6 +2124,10 @@ void Cantools_scenes_decode_manual_data_scene_on_exit(void* context) {
 void Cantools_scenes_decode_result_scene_on_enter(void* context) {
     App* app = context;
     widget_reset(app->widget);
+
+    if(app->active_dbc_index >= 0) {
+        dbc_load_file(app, app->dbc_files[app->active_dbc_index].path);
+    }
 
     if(app->signal_count == 0) {
         widget_add_text_scroll_element(
@@ -1691,32 +2198,38 @@ void Cantools_scenes_decode_log_scene_on_exit(void* context) {
 
 void (*const Cantools_scenes_scene_on_enter_handlers[])(void*) = {
     Cantools_scenes_main_menu_scene_on_enter, // 0
-    Cantools_scenes_dbc_maker_menu_scene_on_enter, // 1
-    Cantools_scenes_signal_name_scene_on_enter, // 2
-    Cantools_scenes_can_id_scene_on_enter, // 3
-    Cantools_scenes_start_bit_scene_on_enter, // 4
-    Cantools_scenes_bit_length_scene_on_enter, // 5
-    Cantools_scenes_endianness_scene_on_enter, // 6
-    Cantools_scenes_signed_scene_on_enter, // 7
-    Cantools_scenes_offset_scene_on_enter, // 8
-    Cantools_scenes_scalar_scene_on_enter, // 9
-    Cantools_scenes_unit_scene_on_enter, // 10
-    Cantools_scenes_min_scene_on_enter, // 11
-    Cantools_scenes_max_scene_on_enter, // 12
-    Cantools_scenes_calculate_scene_on_enter, // 13
-    Cantools_scenes_view_dbc_list_scene_on_enter, // 14
-    Cantools_scenes_signal_actions_scene_on_enter, // 15
-    Cantools_scenes_view_dbc_detail_scene_on_enter, // 16
-    Cantools_scenes_decode_data_scene_on_enter, // 17
-    Cantools_scenes_decode_manual_can_id_scene_on_enter, // 18
-    Cantools_scenes_decode_manual_dlc_scene_on_enter, // 19
-    Cantools_scenes_decode_manual_data_scene_on_enter, // 20
-    Cantools_scenes_decode_result_scene_on_enter, // 21
-    Cantools_scenes_decode_log_scene_on_enter, // 22
+    Cantools_scenes_dbc_file_list_scene_on_enter, // 1
+    Cantools_scenes_dbc_file_name_scene_on_enter, // 2
+    Cantools_scenes_vehicle_info_scene_on_enter, // 3
+    Cantools_scenes_dbc_maker_menu_scene_on_enter, // 4
+    Cantools_scenes_signal_name_scene_on_enter, // 5
+    Cantools_scenes_can_id_scene_on_enter, // 6
+    Cantools_scenes_start_bit_scene_on_enter, // 7
+    Cantools_scenes_bit_length_scene_on_enter, // 8
+    Cantools_scenes_endianness_scene_on_enter, // 9
+    Cantools_scenes_signed_scene_on_enter, // 10
+    Cantools_scenes_offset_scene_on_enter, // 11
+    Cantools_scenes_scalar_scene_on_enter, // 12
+    Cantools_scenes_unit_scene_on_enter, // 13
+    Cantools_scenes_min_scene_on_enter, // 14
+    Cantools_scenes_max_scene_on_enter, // 15
+    Cantools_scenes_calculate_scene_on_enter, // 16
+    Cantools_scenes_view_dbc_list_scene_on_enter, // 17
+    Cantools_scenes_signal_actions_scene_on_enter, // 18
+    Cantools_scenes_view_dbc_detail_scene_on_enter, // 19
+    Cantools_scenes_decode_data_scene_on_enter, // 20
+    Cantools_scenes_decode_manual_can_id_scene_on_enter, // 21
+    Cantools_scenes_decode_manual_dlc_scene_on_enter, // 22
+    Cantools_scenes_decode_manual_data_scene_on_enter, // 23
+    Cantools_scenes_decode_result_scene_on_enter, // 24
+    Cantools_scenes_decode_log_scene_on_enter, // 25
 };
 
 bool (*const Cantools_scenes_scene_on_event_handlers[])(void*, SceneManagerEvent) = {
     Cantools_scenes_main_menu_scene_on_event,
+    Cantools_scenes_dbc_file_list_scene_on_event,
+    Cantools_scenes_dbc_file_name_scene_on_event,
+    Cantools_scenes_vehicle_info_scene_on_event,
     Cantools_scenes_dbc_maker_menu_scene_on_event,
     Cantools_scenes_signal_name_scene_on_event,
     Cantools_scenes_can_id_scene_on_event,
@@ -1743,6 +2256,9 @@ bool (*const Cantools_scenes_scene_on_event_handlers[])(void*, SceneManagerEvent
 
 void (*const Cantools_scenes_scene_on_exit_handlers[])(void*) = {
     Cantools_scenes_main_menu_scene_on_exit,
+    Cantools_scenes_dbc_file_list_scene_on_exit,
+    Cantools_scenes_dbc_file_name_scene_on_exit,
+    Cantools_scenes_vehicle_info_scene_on_exit,
     Cantools_scenes_dbc_maker_menu_scene_on_exit,
     Cantools_scenes_signal_name_scene_on_exit,
     Cantools_scenes_can_id_scene_on_exit,
@@ -1833,7 +2349,9 @@ static App* app_alloc() {
     app->dialogs = furi_record_open(RECORD_DIALOGS);
     app->sort_mode = CantoolsSortByName;
     app->editing = false;
-    app->editing_file_path[0] = '\0';
+    app->active_dbc_index = -1;
+    app->dbc_file_count = 0;
+    app->dbc_header = furi_string_alloc();
 
     return app;
 }
@@ -1850,6 +2368,9 @@ static void app_free(App* app) {
     widget_free(app->widget);
     text_input_free(app->text_input);
     byte_input_free(app->byte_input);
+    if(app->dbc_header) {
+        furi_string_free(app->dbc_header);
+    }
     furi_record_close(RECORD_DIALOGS);
     free(app->buffer);
     free(app);
@@ -1858,19 +2379,28 @@ static void app_free(App* app) {
 static void app_initialize(App* app) {
     app_set_defaults(app);
 
-    app->signal_count = 0;
+    dbc_clear_signals(app);
     app->selected_signal_index = -1;
     app->editing = false;
-    app->editing_file_path[0] = '\0';
-    for(int i = 0; i < MAX_SIGNALS; i++) {
-        app->signals[i].used = false;
-        app->signals[i].file_path[0] = '\0';
-    }
+    app->dbc_file_name[0] = '\0';
+    app->vehicle_info[0] = '\0';
+    strlcpy(app->decode_can_id_text, "0x", sizeof(app->decode_can_id_text));
+    strlcpy(app->decode_dlc_text, "8", sizeof(app->decode_dlc_text));
+    memset(app->decode_data_bytes, 0, sizeof(app->decode_data_bytes));
+    app->decode_can_id = 0;
+    app->decode_dlc = 0;
+    app->decode_data_len = 0;
 
     calculate_values(app);
 
     dbc_init_folder();
-    dbc_load_all_signals(app);
+    dbc_scan_files(app);
+    if(app->dbc_file_count > 0) {
+        dbc_set_active_file(app, 0);
+    } else {
+        app->active_dbc_index = -1;
+        dbc_set_default_header(app);
+    }
 }
 
 int32_t cantools_app(void* p) {
