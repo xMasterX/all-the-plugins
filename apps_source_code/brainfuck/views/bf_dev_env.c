@@ -129,6 +129,7 @@ static void bf_dev_draw_callback(Canvas* canvas, void* _model) {
     canvas_draw_icon(
         canvas, 103, 52, (selectedButton == 11) ? &I_KeySaveSelected_24x11 : &I_KeySave_24x11);
 
+
     if(saveNotifyCountdown > 0) {
         canvas_draw_icon(canvas, 98, 54, &I_ButtonRightSmall_3x5);
         saveNotifyCountdown--;
