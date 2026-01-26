@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `26 Jan 02:56 GMT +3`
+### Apps checked & updated at `26 Jan 03:00 GMT +3`
 
 
 # Default pack
@@ -262,7 +262,8 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | SaFlip | ![NFC Badge] | [by aaronjamt](https://github.com/aaronjamt/saflip) |  | ![None Badge] |
 | NFC Comparator | ![NFC Badge] | [by acegoal07](https://github.com/acegoal07/FlipperZero_NFC_Comparator) |  | ![None Badge] |
 | Ami Toolkit | ![NFC Badge] | [by Firefox2100](https://github.com/Firefox2100/flipper-amiibo-toolkit) |  | ![None Badge] |
-| NFC PC Login | ![NFC Badge] | [by Play2BReal](https://github.com/Play2BReal/NFC-Login) |  | ![None Badge] |
+| NFC Login | ![NFC Badge] | [by Play2BReal](https://github.com/Play2BReal/NFC-Login) |  | ![None Badge] |
+| ISO15693-3 NFC Writer | ![NFC Badge] | [by ch4istO](https://github.com/ch4istO/unleashed-firmware/tree/dev/applications_user/iso15693_nfc_writer) |  | ![None Badge] |
 | RFID Beacon | ![RFID Badge] | [by nmrr](https://github.com/nmrr/flipperzero-rfidbeacon)  | `A letter/number Morse beacon on 125 kHz` | ![None Badge] |
 | EM4100 universal keys generator (for RFID Fuzzer) | ![RFID Badge] | [by Milk-Cool](https://github.com/Milk-Cool/fz-em4100-generator) |  | [![Author Badge]](https://lab.flipper.net/apps/key_generator) |
 | (Q)M100 UHF RFID | ![RFID Badge] | [by frux-c](https://github.com/frux-c/uhf_rfid) | WIP -> (+Added icon by @xMasterX) | [![UFW Badge]](https://lab.flipper.net/apps/uhf_rfid) |
