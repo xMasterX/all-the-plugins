@@ -375,7 +375,9 @@ bool protopirate_view_receiver_input(InputEvent* event, void* context) {
                             }
                         }
                     }
-                } else if(event->type == InputTypeShort || event->type == InputTypeLong || event->type == InputTypePress) {
+                } else if(
+                    event->type == InputTypeShort || event->type == InputTypeLong ||
+                    event->type == InputTypePress) {
                     model->lock_count = 0;
                 }
             },
@@ -441,22 +443,6 @@ bool protopirate_view_receiver_input(InputEvent* event, void* context) {
             break;
         case InputKeyBack:
             if(receiver->callback) {
-                with_view_model(
-                    receiver->view,
-                    ProtoPirateReceiverModel * model,
-                    {
-                        for(size_t i = 0;
-                            i < ProtoPirateReceiverMenuItemArray_size(model->history_item_arr);
-                            i++) {
-                            ProtoPirateReceiverMenuItem* item =
-                                ProtoPirateReceiverMenuItemArray_get(model->history_item_arr, i);
-                            furi_string_free(item->item_str);
-                        }
-                        ProtoPirateReceiverMenuItemArray_reset(model->history_item_arr);
-                        model->history_item = 0;
-                        model->list_offset = 0;
-                    },
-                    false);
                 receiver->callback(ProtoPirateCustomEventViewReceiverBack, receiver->context);
             }
             consumed = true;

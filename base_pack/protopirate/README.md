@@ -7,34 +7,20 @@ The app currently supports decoding for multiple automotive key-fob families (Ki
 
 ## **Supported Protocols**
 
-Decoders:
+| Protocol                      | Decoder | Encoder |
+|:------------------------------|:--------|:--------|
+| Fiat V0                       | ✅ | ✅ |
+| Ford V0                       | ✅ | ✅ |
+| Kia V0 / V1 / V2 / V3 / V4    | ✅ | ✅ |
+| Kia V5 / V6                   | ✅ | ❌ |
+| Scher-Khan                    | ✅ | ❌ |
+| StarLine                      | ✅ | ✅ |
+| Subaru                        | ✅ | ✅ |
+| Suzuki                        | ✅ | ✅ |
+| PSA                           | ✅ | ✅ |
+| Volkswagen (VW)               | ✅ | ❌ |
 
-- KIA V0
-- KIA V1
-- KIA V2
-- KIA V3 / V4
-- KIA V5
-- KIA V6
-- Fiat V0
-- Ford V0
-- Scher-Khan
-- StarLine
-- Subaru
-- Suzuki
-- Volkswagen (VW)
-
-Encoders:
-
-- Fiat V0
-- Ford V0
-- KIA V0
-- KIA V1
-- KIA V2
-- KIA V3 / V4
-- StarLine
-- Subaru
-- Suzuki
-- More Coming Soon
+_More Coming Soon_
 
 ## **Features**
 

@@ -10,10 +10,10 @@ static const SubGhzBlockConst subghz_protocol_fiat_v0_const = {
     .min_count_bit_for_found = 64,
 };
 
-#define FIAT_V0_PREAMBLE_PAIRS   150
-#define FIAT_V0_GAP_US           800
-#define FIAT_V0_TOTAL_BURSTS     3
-#define FIAT_V0_INTER_BURST_GAP  25000
+#define FIAT_V0_PREAMBLE_PAIRS  150
+#define FIAT_V0_GAP_US          800
+#define FIAT_V0_TOTAL_BURSTS    3
+#define FIAT_V0_INTER_BURST_GAP 25000
 
 struct SubGhzProtocolDecoderFiatV0 {
     SubGhzProtocolDecoderBase base;
@@ -129,7 +129,8 @@ static void subghz_protocol_encoder_fiat_v0_get_upload(SubGhzProtocolEncoderFiat
 
     for(uint8_t burst = 0; burst < FIAT_V0_TOTAL_BURSTS; burst++) {
         if(burst > 0) {
-            instance->encoder.upload[index++] = level_duration_make(false, FIAT_V0_INTER_BURST_GAP);
+            instance->encoder.upload[index++] =
+                level_duration_make(false, FIAT_V0_INTER_BURST_GAP);
         }
 
         // Preamble: HIGH-LOW pairs
@@ -206,8 +207,11 @@ static void subghz_protocol_encoder_fiat_v0_get_upload(SubGhzProtocolEncoderFiat
     instance->encoder.size_upload = index;
     instance->encoder.front = 0;
 
-    FURI_LOG_I(TAG, "Upload built: %zu elements, btn_to_send=0x%02X",
-        instance->encoder.size_upload, btn_to_send);
+    FURI_LOG_I(
+        TAG,
+        "Upload built: %zu elements, btn_to_send=0x%02X",
+        instance->encoder.size_upload,
+        btn_to_send);
 }
 
 SubGhzProtocolStatus
@@ -293,8 +297,12 @@ SubGhzProtocolStatus
         subghz_protocol_encoder_fiat_v0_get_upload(instance);
         instance->encoder.is_running = true;
 
-        FURI_LOG_I(TAG, "Encoder ready: cnt=0x%08lX, serial=0x%08lX, btn=0x%02X",
-            instance->cnt, instance->serial, instance->btn);
+        FURI_LOG_I(
+            TAG,
+            "Encoder ready: cnt=0x%08lX, serial=0x%08lX, btn=0x%02X",
+            instance->cnt,
+            instance->serial,
+            instance->btn);
 
         ret = SubGhzProtocolStatusOk;
     } while(false);
@@ -558,9 +566,11 @@ SubGhzProtocolStatus subghz_protocol_decoder_fiat_v0_serialize(
     do {
         if(!flipper_format_write_uint32(flipper_format, "Frequency", &preset->frequency, 1)) break;
         if(!flipper_format_write_string_cstr(
-               flipper_format, "Preset", furi_string_get_cstr(preset->name))) break;
+               flipper_format, "Preset", furi_string_get_cstr(preset->name)))
+            break;
         if(!flipper_format_write_string_cstr(
-               flipper_format, "Protocol", instance->generic.protocol_name)) break;
+               flipper_format, "Protocol", instance->generic.protocol_name))
+            break;
 
         uint32_t bits = 71;
         if(!flipper_format_write_uint32(flipper_format, "Bit", &bits, 1)) break;

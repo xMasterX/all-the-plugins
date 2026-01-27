@@ -1,13 +1,11 @@
 // scenes/protopirate_scene_sub_decode.c
 #include "../protopirate_app_i.h"
-#include "../protocols/protocol_items.h"
 #include "../helpers/protopirate_storage.h"
 #include "../helpers/radio_device_loader.h"
 #include "../protopirate_history.h"
 #include "core/record.h"
 #include "storage/storage.h"
 #include <dialogs/dialogs.h>
-#include <ctype.h>
 #include <math.h>
 #include <lib/subghz/types.h>
 #include <lib/subghz/subghz_file_encoder_worker.h>
@@ -31,7 +29,6 @@ typedef enum {
     DecodeStateReadHeader,
     DecodeStateStartingWorker,
     DecodeStateDecodingRaw,
-    DecodeStateDecodingProtocol,
     DecodeStateShowHistory,
     DecodeStateShowSignalInfo,
     DecodeStateShowSuccess,
@@ -92,7 +89,6 @@ static void protopirate_sub_decode_receiver_callback(
     SubGhzReceiver* receiver,
     SubGhzProtocolDecoderBase* decoder_base,
     void* context) {
-    UNUSED(receiver);
     furi_assert(context);
     ProtoPirateApp* app = context;
     SubDecodeContext* ctx = g_decode_ctx;
@@ -115,117 +111,6 @@ static void protopirate_sub_decode_receiver_callback(
 
     // Reset receiver to continue looking for more signals
     subghz_receiver_reset(receiver);
-}
-
-// Case-insensitive string search
-static bool str_contains_ci(const char* haystack, const char* needle) {
-    if(!haystack || !needle) return false;
-
-    size_t haystack_len = strlen(haystack);
-    size_t needle_len = strlen(needle);
-
-    if(needle_len > haystack_len) return false;
-
-    for(size_t i = 0; i <= haystack_len - needle_len; i++) {
-        bool match = true;
-        for(size_t j = 0; j < needle_len; j++) {
-            if(tolower((unsigned char)haystack[i + j]) != tolower((unsigned char)needle[j])) {
-                match = false;
-                break;
-            }
-        }
-        if(match) return true;
-    }
-    return false;
-}
-
-// Check if protocol names match
-static bool protocol_names_match(const char* file_proto, const char* registry_proto) {
-    if(!file_proto || !registry_proto) return false;
-
-    if(strcasecmp(file_proto, registry_proto) == 0) return true;
-    if(str_contains_ci(file_proto, registry_proto)) return true;
-
-    const char* file_version = NULL;
-    const char* reg_version = NULL;
-
-    for(const char* p = file_proto; *p; p++) {
-        if((*p == 'V' || *p == 'v') && isdigit((unsigned char)*(p + 1))) {
-            file_version = p;
-            break;
-        }
-    }
-
-    for(const char* p = registry_proto; *p; p++) {
-        if((*p == 'V' || *p == 'v') && isdigit((unsigned char)*(p + 1))) {
-            reg_version = p;
-            break;
-        }
-    }
-
-    if(file_version && reg_version) {
-        size_t file_ver_len = 0;
-        size_t reg_ver_len = 0;
-
-        for(const char* p = file_version; *p && (isalnum((unsigned char)*p) || *p == '/'); p++) {
-            file_ver_len++;
-        }
-        for(const char* p = reg_version; *p && (isalnum((unsigned char)*p) || *p == '/'); p++) {
-            reg_ver_len++;
-        }
-
-        if(file_ver_len == reg_ver_len &&
-           strncasecmp(file_version, reg_version, file_ver_len) == 0) {
-            if((str_contains_ci(file_proto, "KIA") || str_contains_ci(file_proto, "HYU")) &&
-               str_contains_ci(registry_proto, "Kia")) {
-                return true;
-            }
-            if(str_contains_ci(file_proto, "Ford") && str_contains_ci(registry_proto, "Ford")) {
-                return true;
-            }
-            if(str_contains_ci(file_proto, "Subaru") &&
-               str_contains_ci(registry_proto, "Subaru")) {
-                return true;
-            }
-            if(str_contains_ci(file_proto, "Suzuki") &&
-               str_contains_ci(registry_proto, "Suzuki")) {
-                return true;
-            }
-            if(str_contains_ci(file_proto, "VW") && str_contains_ci(registry_proto, "VW")) {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
-// Get human readable error string from status
-static const char* get_protocol_status_string(SubGhzProtocolStatus status) {
-    switch(status) {
-    case SubGhzProtocolStatusOk:
-        return "OK";
-    case SubGhzProtocolStatusErrorParserHeader:
-        return "Header parse error";
-    case SubGhzProtocolStatusErrorParserFrequency:
-        return "Frequency error";
-    case SubGhzProtocolStatusErrorParserPreset:
-        return "Preset error";
-    case SubGhzProtocolStatusErrorParserCustomPreset:
-        return "Custom preset error";
-    case SubGhzProtocolStatusErrorParserProtocolName:
-        return "Protocol name error";
-    case SubGhzProtocolStatusErrorParserOthers:
-        return "Parse error";
-    case SubGhzProtocolStatusErrorValueBitCount:
-        return "Bit count mismatch";
-    case SubGhzProtocolStatusErrorParserKey:
-        return "Key parse error";
-    case SubGhzProtocolStatusErrorParserTe:
-        return "TE parse error";
-    default:
-        return "Unknown error";
-    }
 }
 
 // Draw the decoding animation
@@ -403,8 +288,6 @@ static void protopirate_decode_draw_callback(Canvas* canvas, void* context) {
         progress = 30 + (frame % 50);
     } else if(ctx->state == DecodeStateOpenFile || ctx->state == DecodeStateReadHeader) {
         progress = 5 + (frame % 10);
-    } else if(ctx->state == DecodeStateDecodingProtocol) {
-        progress = 50 + (frame % 30);
     }
     if(progress > 100) progress = 100;
 
@@ -447,9 +330,6 @@ static void protopirate_decode_draw_callback(Canvas* canvas, void* context) {
         }
         break;
     }
-    case DecodeStateDecodingProtocol:
-        status_text = "Parsing protocol...";
-        break;
     default:
         break;
     }
@@ -572,6 +452,13 @@ static void protopirate_scene_sub_decode_widget_callback(
 
 void protopirate_scene_sub_decode_on_enter(void* context) {
     ProtoPirateApp* app = context;
+
+    if(!protopirate_radio_init(app)) {
+        FURI_LOG_E(TAG, "Failed to initialize radio!");
+        notification_message(app->notifications, &sequence_error);
+        scene_manager_previous_scene(app->scene_manager);
+        return;
+    }
 
     g_decode_ctx = malloc(sizeof(SubDecodeContext));
     memset(g_decode_ctx, 0, sizeof(SubDecodeContext));
@@ -757,8 +644,7 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                     break;
                 }
 
-                if(furi_string_cmp_str(temp_str, "Flipper SubGhz RAW File") != 0 &&
-                   furi_string_cmp_str(temp_str, "Flipper SubGhz") != 0) {
+                if(furi_string_cmp_str(temp_str, "Flipper SubGhz RAW File") != 0) {
                     furi_string_set(ctx->result, "Not a RAW SubGhz file");
                     furi_string_set(ctx->error_info, "Not RAW SubGhz file");
                     break;
@@ -802,7 +688,6 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                 // Move to starting worker state - this will happen on next tick
                 ctx->state = DecodeStateStartingWorker;
             } else {
-                ctx->state = DecodeStateDecodingProtocol;
             }
             break;
         }
@@ -993,228 +878,6 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                     ctx->result_display_counter = 0;
                     notification_message(app->notifications, &sequence_error);
                 }
-            }
-            break;
-        }
-
-        case DecodeStateDecodingProtocol: {
-            const char* proto_name = furi_string_get_cstr(ctx->protocol_name);
-            bool decoded = false;
-            SubGhzProtocolStatus last_status = SubGhzProtocolStatusOk;
-            bool partial_decode = false;
-
-            // Find matching protocol
-            const SubGhzProtocol* custom_protocol = NULL;
-            for(size_t i = 0; i < protopirate_protocol_registry.size; i++) {
-                if(protocol_names_match(proto_name, protopirate_protocol_registry.items[i]->name)) {
-                    custom_protocol = protopirate_protocol_registry.items[i];
-                    FURI_LOG_I(TAG, "Matched to: %s", custom_protocol->name);
-                    break;
-                }
-            }
-
-            if(custom_protocol && custom_protocol->decoder && custom_protocol->decoder->alloc) {
-                void* decoder = custom_protocol->decoder->alloc(app->txrx->environment);
-                if(decoder) {
-                    flipper_format_rewind(ctx->ff);
-                    last_status = custom_protocol->decoder->deserialize(decoder, ctx->ff);
-
-                    if(last_status == SubGhzProtocolStatusOk) {
-                        FuriString* dec_str = furi_string_alloc();
-                        custom_protocol->decoder->get_string(decoder, dec_str);
-
-                        const char* fname = furi_string_get_cstr(ctx->file_path);
-                        const char* short_name = strrchr(fname, '/');
-                        if(short_name)
-                            short_name++;
-                        else
-                            short_name = fname;
-
-                        furi_string_printf(
-                            ctx->result,
-                            "File: %s\n\n%s",
-                            short_name,
-                            furi_string_get_cstr(dec_str));
-                        furi_string_free(dec_str);
-                        decoded = true;
-                        ctx->decode_success = true;
-                        ctx->can_save = true;
-
-                        // Copy the file data for saving
-                        ctx->save_data = flipper_format_string_alloc();
-                        flipper_format_rewind(ctx->ff);
-                        custom_protocol->decoder->serialize(
-                            decoder, ctx->save_data, app->txrx->preset);
-                    } else if(last_status == SubGhzProtocolStatusErrorValueBitCount) {
-                        // Bit count mismatch - try to still show data
-                        FURI_LOG_W(TAG, "Bit count mismatch, attempting partial decode");
-                        FuriString* dec_str = furi_string_alloc();
-                        custom_protocol->decoder->get_string(decoder, dec_str);
-
-                        if(furi_string_size(dec_str) > 0) {
-                            const char* fname = furi_string_get_cstr(ctx->file_path);
-                            const char* short_name = strrchr(fname, '/');
-                            if(short_name)
-                                short_name++;
-                            else
-                                short_name = fname;
-
-                            furi_string_printf(
-                                ctx->result,
-                                "File: %s\n"
-                                "WARNING: Bit count mismatch\n\n%s",
-                                short_name,
-                                furi_string_get_cstr(dec_str));
-                            partial_decode = true;
-                            ctx->decode_success = true;
-                            ctx->can_save = true;
-
-                            // Copy the file for saving (original file data)
-                            ctx->save_data = flipper_format_string_alloc();
-                            flipper_format_rewind(ctx->ff);
-
-                            // Read entire file into save_data
-                            FuriString* header = furi_string_alloc();
-                            uint32_t ver;
-                            flipper_format_read_header(ctx->ff, header, &ver);
-                            flipper_format_write_header_cstr(
-                                ctx->save_data, furi_string_get_cstr(header), ver);
-                            furi_string_free(header);
-
-                            // Copy key fields
-                            uint32_t freq = ctx->frequency;
-                            flipper_format_write_uint32(ctx->save_data, "Frequency", &freq, 1);
-
-                            flipper_format_rewind(ctx->ff);
-                            FuriString* preset = furi_string_alloc();
-                            uint32_t dummy;
-                            flipper_format_read_header(ctx->ff, preset, &dummy);
-                            if(flipper_format_read_string(ctx->ff, "Preset", preset)) {
-                                flipper_format_write_string(ctx->save_data, "Preset", preset);
-                            }
-                            furi_string_free(preset);
-
-                            flipper_format_write_string_cstr(
-                                ctx->save_data, "Protocol", proto_name);
-                        }
-                        furi_string_free(dec_str);
-                    } else {
-                        FURI_LOG_W(TAG, "Custom decoder failed: %d", last_status);
-                    }
-                    custom_protocol->decoder->free(decoder);
-                }
-            }
-
-            if(!decoded && !partial_decode) {
-                SubGhzProtocolDecoderBase* decoder =
-                    subghz_receiver_search_decoder_base_by_name(app->txrx->receiver, proto_name);
-
-                if(decoder) {
-                    flipper_format_rewind(ctx->ff);
-                    last_status = subghz_protocol_decoder_base_deserialize(decoder, ctx->ff);
-
-                    if(last_status == SubGhzProtocolStatusOk) {
-                        FuriString* dec_str = furi_string_alloc();
-                        subghz_protocol_decoder_base_get_string(decoder, dec_str);
-
-                        const char* fname = furi_string_get_cstr(ctx->file_path);
-                        const char* short_name = strrchr(fname, '/');
-                        if(short_name)
-                            short_name++;
-                        else
-                            short_name = fname;
-
-                        furi_string_printf(
-                            ctx->result,
-                            "File: %s\n\n%s",
-                            short_name,
-                            furi_string_get_cstr(dec_str));
-                        furi_string_free(dec_str);
-                        decoded = true;
-                        ctx->decode_success = true;
-                    } else if(last_status == SubGhzProtocolStatusErrorValueBitCount) {
-                        // Bit count mismatch - try to still show data
-                        FURI_LOG_W(TAG, "Bit count mismatch (base), attempting partial decode");
-                        FuriString* dec_str = furi_string_alloc();
-                        subghz_protocol_decoder_base_get_string(decoder, dec_str);
-
-                        if(furi_string_size(dec_str) > 0) {
-                            const char* fname = furi_string_get_cstr(ctx->file_path);
-                            const char* short_name = strrchr(fname, '/');
-                            if(short_name)
-                                short_name++;
-                            else
-                                short_name = fname;
-
-                            furi_string_printf(
-                                ctx->result,
-                                "File: %s\n"
-                                "WARNING: Bit count mismatch\n\n%s",
-                                short_name,
-                                furi_string_get_cstr(dec_str));
-                            partial_decode = true;
-                            ctx->decode_success = true;
-                        }
-                        furi_string_free(dec_str);
-                    } else {
-                        FURI_LOG_W(TAG, "App receiver failed: %d", last_status);
-                    }
-                }
-            }
-
-            if(!decoded && !partial_decode) {
-                const char* fname = furi_string_get_cstr(ctx->file_path);
-                const char* short_name = strrchr(fname, '/');
-                if(short_name)
-                    short_name++;
-                else
-                    short_name = fname;
-
-                // Set error info based on status
-                furi_string_set(ctx->error_info, get_protocol_status_string(last_status));
-
-                furi_string_printf(
-                    ctx->result,
-                    "File: %s\nProtocol: %s\n\nError: %s\n\n",
-                    short_name,
-                    proto_name,
-                    get_protocol_status_string(last_status));
-
-                // Read available fields to show what we can
-                FuriString* temp = furi_string_alloc();
-                uint32_t version, val;
-
-                flipper_format_rewind(ctx->ff);
-                flipper_format_read_header(ctx->ff, temp, &version);
-                if(flipper_format_read_uint32(ctx->ff, "Bit", &val, 1)) {
-                    furi_string_cat_printf(ctx->result, "Bits: %lu\n", val);
-                }
-
-                flipper_format_rewind(ctx->ff);
-                flipper_format_read_header(ctx->ff, temp, &version);
-                if(flipper_format_read_string(ctx->ff, "Key", temp)) {
-                    furi_string_cat_printf(ctx->result, "Key: %s\n", furi_string_get_cstr(temp));
-                }
-
-                furi_string_cat_printf(
-                    ctx->result,
-                    "Freq: %lu.%02lu MHz\n",
-                    ctx->frequency / 1000000,
-                    (ctx->frequency % 1000000) / 10000);
-
-                furi_string_free(temp);
-            }
-
-            close_file_handles(ctx);
-
-            if(ctx->decode_success) {
-                ctx->state = DecodeStateShowSuccess;
-                ctx->result_display_counter = 0;
-                notification_message(app->notifications, &sequence_success);
-            } else {
-                ctx->state = DecodeStateShowFailure;
-                ctx->result_display_counter = 0;
-                notification_message(app->notifications, &sequence_error);
             }
             break;
         }
@@ -1424,4 +1087,10 @@ void protopirate_scene_sub_decode_on_exit(void* context) {
     view_set_draw_callback(app->view_about, NULL);
     view_set_input_callback(app->view_about, NULL);
     widget_reset(app->widget);
+
+    // Reset both view menu AND history when actually leaving (only if radio initialized)
+    protopirate_view_receiver_reset_menu(app->protopirate_receiver);
+    if(app->radio_initialized && app->txrx->history) {
+        protopirate_history_reset(app->txrx->history);
+    }
 }

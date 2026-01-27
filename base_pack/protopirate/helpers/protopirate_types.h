@@ -11,6 +11,7 @@ typedef enum {
     ProtoPirateViewReceiver,
     ProtoPirateViewReceiverInfo,
     ProtoPirateViewAbout,
+    ProtoPirateViewFileBrowser,
 } ProtoPirateView;
 
 typedef enum {
@@ -34,6 +35,8 @@ typedef enum {
     // Sub decode
     ProtoPirateCustomEventSubDecodeUpdate,
     ProtoPirateCustomEventSubDecodeSave,
+    // File Browser
+    ProtoPirateCustomEventSavedFileSelected,
 } ProtoPirateCustomEvent;
 
 typedef enum {

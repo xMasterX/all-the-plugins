@@ -40,6 +40,19 @@ void protopirate_scene_receiver_info_on_enter(void* context) {
     furi_string_reset(text);
     protopirate_history_get_text_item(app->txrx->history, text, app->txrx->idx_menu_chosen);
 
+    bool is_psa = false;
+    FlipperFormat* ff = protopirate_history_get_raw_data(app->txrx->history, app->txrx->idx_menu_chosen);
+    if(ff) {
+        FuriString* protocol = furi_string_alloc();
+        flipper_format_rewind(ff);
+        if(flipper_format_read_string(ff, "Protocol", protocol)) {
+            if(furi_string_cmp_str(protocol, "PSA") == 0) {
+                is_psa = true;
+            }
+        }
+        furi_string_free(protocol);
+    }
+
     // Skip the first line (protocol name + Xbits) since it's already shown as the title
     const char* text_str = furi_string_get_cstr(text);
     const char* first_newline = strchr(text_str, '\r');
@@ -57,8 +70,71 @@ void protopirate_scene_receiver_info_on_enter(void* context) {
         }
     }
 
-    widget_add_string_multiline_element(
-        app->widget, 0, 11, AlignLeft, AlignTop, FontSecondary, text_str);
+    if(is_psa) {
+        FuriString* reformatted = furi_string_alloc();
+        const char* current = text_str;
+        
+        while(*current) {
+
+            const char* line_end = strchr(current, '\r');
+            if(!line_end) {
+                line_end = strchr(current, '\n');
+            }
+            if(!line_end) {
+                line_end = current + strlen(current);
+            }
+            
+            if(strncmp(current, "Ser:", 4) == 0) {
+
+                size_t ser_len = line_end - current;
+                furi_string_cat_printf(reformatted, "%.*s", (int)ser_len, current);
+                
+                const char* next_line = line_end;
+                if(*next_line == '\r') next_line++;
+                if(*next_line == '\n') next_line++;
+                
+                if(strncmp(next_line, "Cnt:", 4) == 0) {
+
+                    const char* cnt_end = strchr(next_line, '\r');
+                    if(!cnt_end) {
+                        cnt_end = strchr(next_line, '\n');
+                    }
+                    if(!cnt_end) {
+                        cnt_end = next_line + strlen(next_line);
+                    }
+                    
+                    size_t cnt_len = cnt_end - next_line;
+                    furi_string_cat_printf(reformatted, " %.*s\r\n", (int)cnt_len, next_line);
+                    
+                    current = cnt_end;
+                    if(*current == '\r') current++;
+                    if(*current == '\n') current++;
+                } else {
+
+                    furi_string_cat_printf(reformatted, "\r\n");
+                    current = line_end;
+                    if(*current == '\r') current++;
+                    if(*current == '\n') current++;
+                }
+            } else {
+
+                size_t line_len = line_end - current;
+                furi_string_cat_printf(reformatted, "%.*s\r\n", (int)line_len, current);
+                current = line_end;
+                if(*current == '\r') current++;
+                if(*current == '\n') current++;
+            }
+            
+            if(*current == '\0') break;
+        }
+        
+        widget_add_string_multiline_element(
+            app->widget, 0, 11, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(reformatted));
+        furi_string_free(reformatted);
+    } else {
+        widget_add_string_multiline_element(
+            app->widget, 0, 11, AlignLeft, AlignTop, FontSecondary, text_str);
+    }
 
 #ifdef ENABLE_EMULATE_FEATURE
     // Add emulate button on the left

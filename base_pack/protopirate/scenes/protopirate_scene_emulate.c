@@ -300,6 +300,13 @@ void protopirate_scene_emulate_on_enter(void* context) {
         emulate_context_free();
     }
 
+    if(!protopirate_radio_init(app)) {
+        FURI_LOG_E(TAG, "Failed to initialize radio!");
+        notification_message(app->notifications, &sequence_error);
+        scene_manager_previous_scene(app->scene_manager);
+        return;
+    }
+
     // Create emulate context
     emulate_context = malloc(sizeof(EmulateContext));
     if(!emulate_context) {

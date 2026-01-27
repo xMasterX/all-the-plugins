@@ -4,7 +4,7 @@
 #include <notification/notification_messages.h>
 
 #define TAG                     "ProtoPirateSceneRx"
-#define KIA_DISPLAY_HISTORY_MAX 50
+#define KIA_DISPLAY_HISTORY_MAX 20 // Reduced from 50 to save memory
 
 // Forward declaration
 void protopirate_scene_receiver_view_callback(ProtoPirateCustomEvent event, void* context);
@@ -17,8 +17,11 @@ static void protopirate_scene_receiver_update_statusbar(void* context) {
 
     protopirate_get_frequency_modulation(app, frequency_str, modulation_str);
 
-    // Check if using external radio
-    bool is_external = radio_device_loader_is_external(app->txrx->radio_device);
+    // Check if using external radio (only if radio is initialized)
+    bool is_external = false;
+    if(app->radio_initialized && app->txrx->radio_device) {
+        is_external = radio_device_loader_is_external(app->txrx->radio_device);
+    }
 
     // Show auto-save indicator in the history count area
     if(app->auto_save) {
@@ -41,7 +44,7 @@ static void protopirate_scene_receiver_update_statusbar(void* context) {
         furi_string_get_cstr(frequency_str),
         furi_string_get_cstr(modulation_str),
         furi_string_get_cstr(history_stat_str),
-        is_external); // <-- Now correctly passes external status
+        is_external);
 
     furi_string_free(frequency_str);
     furi_string_free(modulation_str);
@@ -132,16 +135,27 @@ static void protopirate_scene_receiver_callback(
 void protopirate_scene_receiver_on_enter(void* context) {
     ProtoPirateApp* app = context;
 
-    // Log which radio device is being used
+    FURI_LOG_I(TAG, "=== ENTERING RECEIVER SCENE ===");
+
+    // Initialize radio if not already done (DEFERRED INIT)
+    if(!protopirate_radio_init(app)) {
+        FURI_LOG_E(TAG, "Failed to initialize radio!");
+        notification_message(app->notifications, &sequence_error);
+        scene_manager_previous_scene(app->scene_manager);
+        return;
+    }
+
+// Now safe to access radio device
+#ifndef REMOVE_LOGS
     bool is_external = radio_device_loader_is_external(app->txrx->radio_device);
     const char* device_name = subghz_devices_get_name(app->txrx->radio_device);
 
-    FURI_LOG_I(TAG, "=== ENTERING RECEIVER SCENE ===");
     FURI_LOG_I(TAG, "Radio device: %s", device_name ? device_name : "NULL");
     FURI_LOG_I(TAG, "Is External: %s", is_external ? "YES" : "NO");
     FURI_LOG_I(TAG, "Frequency: %lu Hz", app->txrx->preset->frequency);
     FURI_LOG_I(TAG, "Modulation: %s", furi_string_get_cstr(app->txrx->preset->name));
     FURI_LOG_I(TAG, "Auto-save: %s", app->auto_save ? "ON" : "OFF");
+#endif
 
     // Set up the receiver callback
     subghz_receiver_set_rx_callback(app->txrx->receiver, protopirate_scene_receiver_callback, app);
@@ -221,7 +235,6 @@ bool protopirate_scene_receiver_on_event(void* context, SceneManagerEvent event)
                 protopirate_rx_end(app);
             }
             protopirate_sleep(app);
-            protopirate_history_reset(app->txrx->history);
             scene_manager_search_and_switch_to_previous_scene(
                 app->scene_manager, ProtoPirateSceneStart);
             consumed = true;
@@ -240,20 +253,22 @@ bool protopirate_scene_receiver_on_event(void* context, SceneManagerEvent event)
             protopirate_scene_receiver_update_statusbar(app);
         }
 
-        // Update RSSI from the correct radio device
-        if(app->txrx->txrx_state == ProtoPirateTxRxStateRx) {
+        // Update RSSI from the correct radio device (only if initialized)
+        if(app->radio_initialized && app->txrx->txrx_state == ProtoPirateTxRxStateRx) {
             float rssi = subghz_devices_get_rssi(app->txrx->radio_device);
             protopirate_view_receiver_set_rssi(app->protopirate_receiver, rssi);
 
             // Debug: Log RSSI periodically (every ~5 seconds)
             static uint8_t rssi_log_counter = 0;
             if(++rssi_log_counter >= 50) {
+#ifndef REMOVE_LOGS
                 bool is_ext = radio_device_loader_is_external(app->txrx->radio_device);
                 FURI_LOG_D(TAG, "RSSI: %.1f dBm (%s)", (double)rssi, is_ext ? "EXT" : "INT");
+#endif
                 rssi_log_counter = 0;
             }
 
-            //Blink the light like the SubGHZ app.
+            // Blink the light like the SubGHZ app
             notification_message(app->notifications, &sequence_blink_cyan_10);
         }
 
@@ -268,18 +283,21 @@ void protopirate_scene_receiver_on_exit(void* context) {
 
     FURI_LOG_I(TAG, "=== EXITING RECEIVER SCENE ===");
 
-    if(app->txrx->txrx_state == ProtoPirateTxRxStateRx) {
+    // Only try to stop RX if radio is initialized
+    if(app->radio_initialized && app->txrx->txrx_state == ProtoPirateTxRxStateRx) {
         protopirate_rx_end(app);
     }
 
     if(scene_manager_get_scene_state(app->scene_manager, ProtoPirateSceneReceiver) == 1) {
-        FURI_LOG_D(TAG, "Switching to info or config scene, not clearing list");
-        // Reset state for next time
         scene_manager_set_scene_state(app->scene_manager, ProtoPirateSceneReceiver, 0);
         return;
     }
-    // Clear the receiver view menu items
+
+    // Reset both view menu AND history when actually leaving (only if radio initialized)
     protopirate_view_receiver_reset_menu(app->protopirate_receiver);
+    if(app->radio_initialized && app->txrx->history) {
+        protopirate_history_reset(app->txrx->history);
+    }
 }
 
 void protopirate_scene_receiver_view_callback(ProtoPirateCustomEvent event, void* context) {

@@ -28,6 +28,24 @@
 
 //#define ENABLE_EMULATE_FEATURE
 
+#define REMOVE_LOGS
+
+#ifdef REMOVE_LOGS
+// Undefine existing macros
+#undef FURI_LOG_E
+#undef FURI_LOG_W
+#undef FURI_LOG_I
+#undef FURI_LOG_D
+#undef FURI_LOG_T
+// Define empty macros
+#define FURI_LOG_E(tag, format, ...)
+#define FURI_LOG_W(tag, format, ...)
+#define FURI_LOG_I(tag, format, ...)
+#define FURI_LOG_D(tag, format, ...)
+#define FURI_LOG_T(tag, format, ...)
+
+#endif // REMOVE_LOGS
+
 typedef struct ProtoPirateApp ProtoPirateApp;
 
 typedef struct {
@@ -50,10 +68,12 @@ struct ProtoPirateApp {
     ViewDispatcher* view_dispatcher;
     SceneManager* scene_manager;
     NotificationApp* notifications;
+    DialogsApp* dialogs;
     VariableItemList* variable_item_list;
     Submenu* submenu;
     Widget* widget;
     View* view_about;
+    FuriString* file_path;
     ProtoPirateReceiver* protopirate_receiver;
     ProtoPirateReceiverInfo* protopirate_receiver_info;
     ProtoPirateTxRx* txrx;
@@ -61,6 +81,7 @@ struct ProtoPirateApp {
     ProtoPirateLock lock;
     FuriString* loaded_file_path;
     bool auto_save;
+    bool radio_initialized;
     ProtoPirateSettings settings;
     SubGhzFileEncoderWorker* decode_raw_file_worker_encoder;
 };
@@ -87,3 +108,5 @@ void protopirate_sleep(ProtoPirateApp* app);
 void protopirate_hopper_update(ProtoPirateApp* app);
 void protopirate_tx(ProtoPirateApp* app, uint32_t frequency);
 void protopirate_tx_stop(ProtoPirateApp* app);
+bool protopirate_radio_init(ProtoPirateApp* app);
+void protopirate_radio_deinit(ProtoPirateApp* app);

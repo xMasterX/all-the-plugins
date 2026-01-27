@@ -160,6 +160,7 @@ static void calculate_timing_stats(TimingTunerContext* ctx) {
         ctx->long_count);
 
     if(ctx->timing_info && ctx->short_count > 0 && ctx->long_count > 0) {
+#ifndef REMOVE_LOGS
         int32_t short_diff = ctx->avg_short - (int32_t)ctx->timing_info->te_short;
         int32_t long_diff = ctx->avg_long - (int32_t)ctx->timing_info->te_long;
         FURI_LOG_I(
@@ -168,6 +169,7 @@ static void calculate_timing_stats(TimingTunerContext* ctx) {
             short_diff,
             long_diff,
             ctx->timing_info->te_delta);
+#endif
     }
 }
 
@@ -590,6 +592,13 @@ void protopirate_scene_timing_tuner_on_enter(void* context) {
     ProtoPirateApp* app = context;
 
     FURI_LOG_I(TAG, "Entering Timing Tuner");
+
+    if(!protopirate_radio_init(app)) {
+        FURI_LOG_E(TAG, "Failed to initialize radio!");
+        notification_message(app->notifications, &sequence_error);
+        scene_manager_previous_scene(app->scene_manager);
+        return;
+    }
 
     g_timing_ctx = malloc(sizeof(TimingTunerContext));
     memset(g_timing_ctx, 0, sizeof(TimingTunerContext));

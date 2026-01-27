@@ -1,4 +1,5 @@
 #include "kia_v5.h"
+#include "keys.h"
 
 #define TAG "KiaV5"
 
@@ -9,13 +10,23 @@ static const SubGhzBlockConst kia_protocol_v5_const = {
     .min_count_bit_for_found = 64,
 };
 
-static const uint8_t keystore_bytes[] = {0x53, 0x54, 0x46, 0x52, 0x4b, 0x45, 0x30, 0x30};
+static void build_keystore_from_mfkey(uint8_t* result) {
+    uint64_t ky = get_kia_v5_key();
+    for(int i = 0; i < 8; i++) {
+        result[i] = (ky >> ((7 - i) * 8)) & 0xFF;
+    }
+}
+
+static uint8_t keystore_bytes[8] = {0};
 
 static uint16_t mixer_decode(uint32_t encrypted) {
     uint8_t s0 = (encrypted & 0xFF);
     uint8_t s1 = (encrypted >> 8) & 0xFF;
     uint8_t s2 = (encrypted >> 16) & 0xFF;
     uint8_t s3 = (encrypted >> 24) & 0xFF;
+
+    // Prepare key
+    build_keystore_from_mfkey(keystore_bytes);
 
     int round_index = 1;
     for(size_t i = 0; i < 18; i++) {
