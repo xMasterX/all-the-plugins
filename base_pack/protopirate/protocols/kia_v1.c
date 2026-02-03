@@ -1,6 +1,6 @@
 #include "kia_v1.h"
+#include "../protopirate_app_i.h"
 #include <lib/toolbox/manchester_decoder.h>
-#include <lib/toolbox/manchester_encoder.h>
 
 #define TAG "KiaV1"
 

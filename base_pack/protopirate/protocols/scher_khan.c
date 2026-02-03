@@ -1,4 +1,5 @@
 #include "scher_khan.h"
+#include "../protopirate_app_i.h"
 
 #include "protocols_common.h"
 

@@ -1,4 +1,5 @@
 #include "kia_v6.h"
+#include "../protopirate_app_i.h"
 #include "keys.h"
 #include <furi.h>
 #include <string.h>

@@ -81,8 +81,8 @@ static uint8_t
             return original;
         }
     }
-    // VW
-    else if(strstr(protocol, "VW")) {
+    // VAG
+    else if(strstr(protocol, "VAG")) {
         switch(key) {
         case InputKeyUp:
             return 0x2; // Lock

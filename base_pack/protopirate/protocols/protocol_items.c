@@ -13,7 +13,7 @@ const SubGhzProtocol* protopirate_protocol_registry_items[] = {
     &fiat_protocol_v0,
     &subaru_protocol,
     &suzuki_protocol,
-    &vw_protocol,
+    &vag_protocol,
     &subghz_protocol_star_line,
     &psa_protocol,
 };

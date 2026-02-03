@@ -1,4 +1,5 @@
 #include "ford_v0.h"
+#include "../protopirate_app_i.h"
 
 #define TAG "FordProtocolV0"
 

@@ -1,4 +1,5 @@
 #include "fiat_v0.h"
+#include "../protopirate_app_i.h"
 #include <lib/toolbox/manchester_decoder.h>
 
 #define TAG "FiatProtocolV0"

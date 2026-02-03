@@ -147,9 +147,9 @@ void protopirate_scene_receiver_on_enter(void* context) {
 
 // Now safe to access radio device
 #ifndef REMOVE_LOGS
-    bool is_external = radio_device_loader_is_external(app->txrx->radio_device);
+    bool is_external = app->txrx->radio_device ? 
+        radio_device_loader_is_external(app->txrx->radio_device) : false;
     const char* device_name = subghz_devices_get_name(app->txrx->radio_device);
-
     FURI_LOG_I(TAG, "Radio device: %s", device_name ? device_name : "NULL");
     FURI_LOG_I(TAG, "Is External: %s", is_external ? "YES" : "NO");
     FURI_LOG_I(TAG, "Frequency: %lu Hz", app->txrx->preset->frequency);
@@ -262,8 +262,9 @@ bool protopirate_scene_receiver_on_event(void* context, SceneManagerEvent event)
             static uint8_t rssi_log_counter = 0;
             if(++rssi_log_counter >= 50) {
 #ifndef REMOVE_LOGS
-                bool is_ext = radio_device_loader_is_external(app->txrx->radio_device);
-                FURI_LOG_D(TAG, "RSSI: %.1f dBm (%s)", (double)rssi, is_ext ? "EXT" : "INT");
+                bool is_external = app->txrx->radio_device ? 
+                    radio_device_loader_is_external(app->txrx->radio_device) : false;
+                FURI_LOG_D(TAG, "RSSI: %.1f dBm (%s)", (double)rssi, is_external ? "EXT" : "INT");
 #endif
                 rssi_log_counter = 0;
             }

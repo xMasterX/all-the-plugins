@@ -4,6 +4,8 @@
 
 #define TAG "ProtoPirateSceneSavedInfo"
 
+static bool is_emu_off = false;
+
 static void protopirate_scene_saved_info_widget_callback(
     GuiButtonType result,
     InputType type,
@@ -12,8 +14,10 @@ static void protopirate_scene_saved_info_widget_callback(
     if(type == InputTypeShort) {
         if(result == GuiButtonTypeLeft) {
 #ifdef ENABLE_EMULATE_FEATURE
-            view_dispatcher_send_custom_event(
-                app->view_dispatcher, ProtoPirateCustomEventSavedInfoEmulate);
+            if(!is_emu_off) {
+                view_dispatcher_send_custom_event(
+                    app->view_dispatcher, ProtoPirateCustomEventSavedInfoEmulate);
+            }
 #endif
         } else if(result == GuiButtonTypeRight) {
             view_dispatcher_send_custom_event(
@@ -102,6 +106,17 @@ void protopirate_scene_saved_info_on_enter(void* context) {
     flipper_format_rewind(ff);
     if(flipper_format_read_string(ff, "Protocol", temp_str)) {
         furi_string_cat_printf(info_str, "Protocol: %s\n", furi_string_get_cstr(temp_str));
+    }
+    if(furi_string_cmp_str(temp_str, "VAG") == 0) {
+        is_emu_off = true;
+    } else if(furi_string_cmp_str(temp_str, "Scher-Khan") == 0) {
+        is_emu_off = true;
+    } else if(furi_string_cmp_str(temp_str, "Kia V5") == 0) {
+        is_emu_off = true;
+    } else if(furi_string_cmp_str(temp_str, "Kia V6") == 0) {
+        is_emu_off = true;
+    } else {
+        is_emu_off = false;
     }
     furi_thread_yield();
 
@@ -197,12 +212,14 @@ cleanup:
         furi_thread_yield();
 
 #ifdef ENABLE_EMULATE_FEATURE
-        widget_add_button_element(
-            app->widget,
-            GuiButtonTypeLeft,
-            "Emulate",
-            protopirate_scene_saved_info_widget_callback,
-            app);
+        if(!is_emu_off) {
+            widget_add_button_element(
+                app->widget,
+                GuiButtonTypeLeft,
+                "Emulate",
+                protopirate_scene_saved_info_widget_callback,
+                app);
+        }
 #endif
         widget_add_button_element(
             app->widget,
@@ -238,7 +255,7 @@ bool protopirate_scene_saved_info_on_event(void* context, SceneManagerEvent even
             consumed = true;
         }
 #ifdef ENABLE_EMULATE_FEATURE
-        if(event.event == ProtoPirateCustomEventSavedInfoEmulate) {
+        if(event.event == ProtoPirateCustomEventSavedInfoEmulate && !is_emu_off) {
             FURI_LOG_I(TAG, "Emulate requested");
             scene_manager_next_scene(app->scene_manager, ProtoPirateSceneEmulate);
             consumed = true;
