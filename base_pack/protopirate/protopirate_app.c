@@ -317,6 +317,10 @@ bool protopirate_decoder_init(ProtoPirateApp* app) {
         FURI_LOG_D(TAG, "Decoder already initialized");
         return true;
     }
+    if(app->radio_initialized) {
+        FURI_LOG_D(TAG, "Radio already initialized, skipping decoder init");
+        return true;
+    }
 
     LOG_HEAP("Decoder init start");
 

@@ -3,8 +3,8 @@
 #include "../helpers/protopirate_storage.h"
 #include <notification/notification_messages.h>
 
-#define TAG                     "ProtoPirateSceneRx"
-#define KIA_DISPLAY_HISTORY_MAX 20 // Reduced from 50 to save memory
+#define TAG                             "ProtoPirateSceneRx"
+#define PROTOPIRATE_DISPLAY_HISTORY_MAX 20 // Reduced from 50 to save memory
 
 // Forward declaration
 void protopirate_scene_receiver_view_callback(ProtoPirateCustomEvent event, void* context);
@@ -29,13 +29,13 @@ static void protopirate_scene_receiver_update_statusbar(void* context) {
             history_stat_str,
             "A%u/%u",
             protopirate_history_get_item(app->txrx->history),
-            KIA_DISPLAY_HISTORY_MAX);
+            PROTOPIRATE_DISPLAY_HISTORY_MAX);
     } else {
         furi_string_printf(
             history_stat_str,
             "%u/%u",
             protopirate_history_get_item(app->txrx->history),
-            KIA_DISPLAY_HISTORY_MAX);
+            PROTOPIRATE_DISPLAY_HISTORY_MAX);
     }
 
     // Pass actual external radio status
@@ -299,6 +299,9 @@ void protopirate_scene_receiver_on_exit(void* context) {
     if(app->radio_initialized && app->txrx->history) {
         protopirate_history_reset(app->txrx->history);
     }
+
+    // Deinitialize radio to free up memory
+    protopirate_radio_deinit(app);
 }
 
 void protopirate_scene_receiver_view_callback(ProtoPirateCustomEvent event, void* context) {

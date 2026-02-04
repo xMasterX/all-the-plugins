@@ -4,7 +4,7 @@
 #include <lib/subghz/receiver.h>
 #include <lib/subghz/protocols/base.h>
 
-#define PROTOPIRATE_HISTORY_MAX 50
+#define PROTOPIRATE_HISTORY_MAX 20
 
 typedef struct ProtoPirateHistory ProtoPirateHistory;
 

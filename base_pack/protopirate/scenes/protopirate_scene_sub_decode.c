@@ -18,7 +18,6 @@
 #define SAMPLES_TO_READ_PER_TICK 400
 #define SUCCESS_DISPLAY_TICKS    18
 #define FAILURE_DISPLAY_TICKS    18
-#define PROTOPIRATE_HISTORY_MAX  50
 
 // Decode state machine
 typedef enum {
