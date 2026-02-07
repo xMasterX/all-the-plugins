@@ -175,6 +175,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Flipper Arduventure | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperArduventure) |  | ![None Badge] |
 | Flipper Catacombs | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperCatacombs) |  | ![None Badge] |
 | Flipper Golf | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperGolf) |  | ![None Badge] |
+| Flipper Drivin | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperDrivin) |  | ![None Badge] |
 | Flipper Hero | ![Games Badge] | [by mentoster](https://github.com/mentoster/flipper-hero) |  | [![Author Badge]](https://lab.flipper.net/apps/flipper_hero) |
 | Air Mouse | ![GPIO Badge] | [by ginkage](https://github.com/ginkage/FlippAirMouse/) |  | [![Author Badge]](https://lab.flipper.net/apps/air_mouse) |
 | Plantower PMSx003 sensor reader | ![GPIO Badge] | [by 3cky](https://github.com/3cky/flipperzero-airmon) |  | [![UFW Badge]](https://lab.flipper.net/apps/airmon) |
@@ -250,6 +251,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | The C Programming Language | ![Media Badge] | [by armixz](https://github.com/armixz/Flipper-Zero-The-C-Programming-Language) |  | ![None Badge] |
 | Cryptography Dictionary | ![Media Badge] | [by armixz](https://github.com/armixz/Flipper-Zero-Crypto-Dictionary) |  | ![None Badge] |
 | Flipper Keyller | ![Media Badge] | [by EstebanFuentealba](https://github.com/EstebanFuentealba/Flipper-Keyller) |  | [![Author Badge]](https://lab.flipper.net/apps/executor_keychain) |
+| Flipper ATM | ![Media Badge] | [by apfxtech](https://github.com/apfxtech/FlipperATM) |  | ![None Badge] |
 | Mifare Fuzzer | ![NFC Badge] | [by spheeere98](https://github.com/spheeere98/mifare_fuzzer) | Fixed crash on exit. / Update!: Ported to new NFC API [by @Sil333033](https://github.com/Flipper-XFW/Xtreme-Firmware/commit/ac5744328a28b73fb5022ce7baaa4332a824a739) | [![UFW Badge]](https://lab.flipper.net/apps/mifare_fuzzer) |
 | Seader | ![NFC Badge] | [by bettse](https://github.com/bettse/seader/tree/main) | `Interface with a SAM from the Flipper Zero over UART` | [![Author Badge]](https://lab.flipper.net/apps/seader) |
 | VB Lab Migration Assistant | ![NFC Badge] | [by GMMan (cyanic)](https://github.com/GMMan/flipperzero-vb-migrate) |  | [![Author Badge]](https://lab.flipper.net/apps/vb_migrate) |
