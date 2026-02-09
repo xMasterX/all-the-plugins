@@ -1,0 +1,12 @@
+sourcecode:
+  type: git
+  location:
+    origin: https://github.com/apfxtech/FlipperATM.git
+    commit_sha: 8933238ba2a088e83cb7162cdb181d0bd85497d5
+
+short_description: ATM player
+description: "@APPSTORE.md"
+changelog: "@CHANGELOG.md"
+screenshots:
+  - "package/screenshots/1.png"
+  - "package/screenshots/2.png"
