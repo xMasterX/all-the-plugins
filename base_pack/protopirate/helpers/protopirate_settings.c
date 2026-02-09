@@ -68,6 +68,14 @@ void protopirate_settings_load(ProtoPirateSettings* settings) {
         }
         settings->auto_save = (auto_save_temp == 1);
 
+        // Read tx-power
+        uint32_t tx_power_temp = 0;
+        if(!flipper_format_read_uint32(ff, "TXPower", &tx_power_temp, 1)) {
+            FURI_LOG_W(TAG, "Failed to read auto-save, using default");
+            tx_power_temp = 0;
+        }
+        settings->tx_power = (uint8_t)tx_power_temp;
+
         // Read hopping
         uint32_t hopping_temp = 0;
         if(!flipper_format_read_uint32(ff, "Hopping", &hopping_temp, 1)) {
@@ -123,6 +131,12 @@ void protopirate_settings_save(ProtoPirateSettings* settings) {
         uint32_t auto_save_temp = settings->auto_save ? 1 : 0;
         if(!flipper_format_write_uint32(ff, "AutoSave", &auto_save_temp, 1)) {
             FURI_LOG_E(TAG, "Failed to write auto-save");
+            break;
+        }
+
+        uint32_t tx_power_temp = settings->tx_power;
+        if(!flipper_format_write_uint32(ff, "TXPower", &tx_power_temp, 1)) {
+            FURI_LOG_E(TAG, "Failed to write TX Power");
             break;
         }
 

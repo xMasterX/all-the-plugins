@@ -1,9 +1,11 @@
 // scenes/protopirate_scene_sub_decode.c
 #include "../protopirate_app_i.h"
+#ifdef ENABLE_SUB_DECODE_SCENE
 #include "../helpers/protopirate_storage.h"
 #include "../helpers/radio_device_loader.h"
 #include "../helpers/raw_file_reader.h"
 #include "../protopirate_history.h"
+#include "core/core_defines.h"
 #include "core/record.h"
 #include "storage/storage.h"
 #include <dialogs/dialogs.h>
@@ -15,7 +17,7 @@
 #define TAG "ProtoPirateSubDecode"
 
 #define SUBGHZ_APP_FOLDER        EXT_PATH("subghz")
-#define SAMPLES_TO_READ_PER_TICK 400
+#define SAMPLES_TO_READ_PER_TICK 128
 #define SUCCESS_DISPLAY_TICKS    18
 #define FAILURE_DISPLAY_TICKS    18
 
@@ -230,7 +232,7 @@ static void protopirate_decode_draw_callback(Canvas* canvas, void* context) {
     // Title with occasional glitch
     canvas_set_font(canvas, FontPrimary);
     int glitch = (frame % 47 == 0) ? 1 : 0;
-    canvas_draw_str_aligned(canvas, 64 + glitch, 0, AlignCenter, AlignTop, "DECODING");
+    canvas_draw_str_aligned(canvas, 64 + glitch, 0, AlignCenter, AlignTop, "Decoding");
 
     // Waveform visualization - original style with sinf
     int wave_y = 22;
@@ -306,7 +308,7 @@ static void protopirate_decode_draw_callback(Canvas* canvas, void* context) {
         status_text = "Reading header...";
         break;
     case DecodeStateStartingWorker:
-        status_text = "Starting decoder...";
+        status_text = "Counting timings...";
         break;
     case DecodeStateDecodingRaw: {
         static char match_text[32];
@@ -350,7 +352,7 @@ static void protopirate_decode_draw_callback(Canvas* canvas, void* context) {
 }
 
 static bool protopirate_decode_input_callback(InputEvent* event, void* context) {
-    ProtoPirateApp* app = context;
+    UNUSED(context);
 
     if(event->type == InputTypeShort && event->key == InputKeyBack) {
         if(g_decode_ctx && g_decode_ctx->state != DecodeStateIdle &&
@@ -359,8 +361,6 @@ static bool protopirate_decode_input_callback(InputEvent* event, void* context) 
                 raw_file_reader_free(g_decode_ctx->raw_reader);
                 g_decode_ctx->raw_reader = NULL;
             }
-
-            subghz_receiver_set_rx_callback(app->txrx->receiver, NULL, NULL);
 
             furi_string_set(g_decode_ctx->error_info, "Cancelled");
             g_decode_ctx->state = DecodeStateShowFailure;
@@ -396,7 +396,7 @@ static void protopirate_scene_sub_decode_widget_callback(
     void* context) {
     ProtoPirateApp* app = context;
 
-    if(type == InputTypeShort) {
+    if(type == InputTypeShort || type == InputTypeLong) {
         if(result == GuiButtonTypeRight) {
             // Save button in signal info view
             view_dispatcher_send_custom_event(
@@ -407,13 +407,6 @@ static void protopirate_scene_sub_decode_widget_callback(
 
 void protopirate_scene_sub_decode_on_enter(void* context) {
     ProtoPirateApp* app = context;
-
-    if(!protopirate_decoder_init(app)) {
-        FURI_LOG_E(TAG, "Failed to initialize decoder!");
-        notification_message(app->notifications, &sequence_error);
-        scene_manager_previous_scene(app->scene_manager);
-        return;
-    }
 
     FURI_LOG_I(TAG, "Sub decode scene enter - Free heap: %zu", memmgr_get_free_heap());
 
@@ -427,6 +420,15 @@ void protopirate_scene_sub_decode_on_enter(void* context) {
 
     FURI_LOG_I(TAG, "After decode context alloc - Free heap: %zu", memmgr_get_free_heap());
 
+    // Allocate history
+    if(!app->txrx->history) {
+        app->txrx->history = protopirate_history_alloc();
+        if(!app->txrx->history) {
+            FURI_LOG_E(TAG, "Failed to allocate history!");
+            return;
+        }
+    }
+
     g_decode_ctx->file_path = furi_string_alloc();
     g_decode_ctx->protocol_name = furi_string_alloc();
     g_decode_ctx->result = furi_string_alloc();
@@ -437,10 +439,12 @@ void protopirate_scene_sub_decode_on_enter(void* context) {
     g_decode_ctx->save_data = NULL;
     g_decode_ctx->worker_startup_delay = 0;
     g_decode_ctx->history = app->txrx->history;
-    protopirate_history_reset(g_decode_ctx->history);
+    //protopirate_history_reset(g_decode_ctx->history);
     g_decode_ctx->match_count = 0;
     g_decode_ctx->selected_history_index = 0;
     g_decode_ctx->raw_reader = NULL;
+
+    protopirate_view_receiver_set_sub_decode_mode(app->protopirate_receiver, true);
 
     FURI_LOG_I(TAG, "After context setup - Free heap: %zu", memmgr_get_free_heap());
 
@@ -857,8 +861,8 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                 break;
             }
 
-            bool level;
-            uint32_t duration;
+            bool level = false;
+            uint32_t duration = 0;
             uint32_t samples_processed = 0;
 
             while(samples_processed < SAMPLES_TO_READ_PER_TICK) {
@@ -894,7 +898,7 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                     }
                     break;
                 }
-
+                furi_thread_yield();
                 subghz_receiver_decode(app->txrx->receiver, level, duration);
                 samples_processed++;
             }
@@ -1105,6 +1109,10 @@ void protopirate_scene_sub_decode_on_exit(void* context) {
 
     if(app->txrx->history) {
         protopirate_history_reset(app->txrx->history);
+
+        FURI_LOG_D(TAG, "Freeing history %p", app->txrx->history);
+        protopirate_history_free(app->txrx->history);
+        app->txrx->history = NULL;
     }
 
     view_set_draw_callback(app->view_about, NULL);
@@ -1113,3 +1121,4 @@ void protopirate_scene_sub_decode_on_exit(void* context) {
 
     protopirate_view_receiver_reset_menu(app->protopirate_receiver);
 }
+#endif

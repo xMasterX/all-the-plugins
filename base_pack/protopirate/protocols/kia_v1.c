@@ -121,13 +121,13 @@ static const char* kia_v1_get_button_name(uint8_t btn) {
     const char* name;
     switch(btn) {
     case 0x1:
-        name = "CLOSE";
+        name = "Close";
         break;
     case 0x2:
-        name = "OPEN";
+        name = "Open";
         break;
     case 0x3:
-        name = "TRUNK";
+        name = "Boot";
         break;
     default:
         name = "??";

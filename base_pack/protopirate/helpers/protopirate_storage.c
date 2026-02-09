@@ -147,6 +147,17 @@ static bool protopirate_storage_write_capture_data(
     if(flipper_format_read_uint32(flipper_format, "Type", &uint32_value, 1))
         flipper_format_write_uint32(save_file, "Type", &uint32_value, 1);
 
+    // VAG Key2 field
+    flipper_format_rewind(flipper_format);
+    uint8_t key2_buf[8];
+    if(flipper_format_read_hex(flipper_format, "Key2", key2_buf, 8))
+        flipper_format_write_hex(save_file, "Key2", key2_buf, 8);
+
+    // VAG KeyIdx field (which key was used)
+    flipper_format_rewind(flipper_format);
+    if(flipper_format_read_uint32(flipper_format, "KeyIdx", &uint32_value, 1))
+        flipper_format_write_uint32(save_file, "KeyIdx", &uint32_value, 1);
+
     flipper_format_rewind(flipper_format);
     if(flipper_format_read_uint32(flipper_format, "Seed", &uint32_value, 1))
         flipper_format_write_uint32(save_file, "Seed", &uint32_value, 1);

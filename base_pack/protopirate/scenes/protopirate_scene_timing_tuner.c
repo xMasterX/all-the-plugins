@@ -1,13 +1,16 @@
 // scenes/protopirate_scene_timing_tuner.c
 #include "../protopirate_app_i.h"
+#ifdef ENABLE_TIMING_TUNER_SCENE
 #include "../protocols/protocol_items.h"
+#include <gui/elements.h>
 #include <math.h>
 
 #define TAG "ProtoPirateTimingTuner"
 
-#define MAX_TIMING_SAMPLES 512
-#define VISIBLE_LINES      6
-#define LINE_HEIGHT        9
+#define MAX_TIMING_SAMPLES       512
+#define VISIBLE_LINES            6
+#define LINE_HEIGHT              9
+#define SUBGHZ_RAW_THRESHOLD_MIN -90.0f
 
 typedef struct {
     // Ring buffer for timing capture
@@ -175,7 +178,7 @@ static void calculate_timing_stats(TimingTunerContext* ctx) {
 
 static void timing_tuner_draw_listening(Canvas* canvas, TimingTunerContext* ctx) {
     canvas_set_font(canvas, FontPrimary);
-    canvas_draw_str_aligned(canvas, 64, 2, AlignCenter, AlignTop, "TIMING TUNER");
+    canvas_draw_str_aligned(canvas, 64, 2, AlignCenter, AlignTop, "Timing Tuner");
 
     canvas_set_font(canvas, FontSecondary);
     canvas_draw_str_aligned(canvas, 64, 18, AlignCenter, AlignTop, "Listening for signals...");
@@ -188,10 +191,25 @@ static void timing_tuner_draw_listening(Canvas* canvas, TimingTunerContext* ctx)
         canvas_draw_dot(canvas, x, wave_y + y_offset);
     }
 
+    {
+        //RSSI Signal Bar
+        uint8_t spacer = 0;
+        for(uint8_t i = 1; i < (uint8_t)(ctx->rssi - SUBGHZ_RAW_THRESHOLD_MIN); i++) {
+            if(i % 5) {
+                uint8_t j = 46 + i + spacer;
+                canvas_draw_dot(canvas, j, 58);
+                canvas_draw_dot(canvas, j + 1, 59);
+                canvas_draw_dot(canvas, j, 60);
+            } else
+                spacer++;
+        }
+    }
+
     canvas_set_font(canvas, FontSecondary);
     char rssi_str[24];
-    snprintf(rssi_str, sizeof(rssi_str), "RSSI: %.0f  <:Cfg", (double)ctx->rssi);
-    canvas_draw_str_aligned(canvas, 64, 62, AlignCenter, AlignBottom, rssi_str);
+    snprintf(rssi_str, sizeof(rssi_str), "%.0f", (double)ctx->rssi);
+    canvas_draw_str_aligned(canvas, 127, 62, AlignRight, AlignBottom, rssi_str);
+    elements_button_left(canvas, "Config");
 }
 
 // Get a specific line of content
@@ -593,13 +611,6 @@ void protopirate_scene_timing_tuner_on_enter(void* context) {
 
     FURI_LOG_I(TAG, "Entering Timing Tuner");
 
-    if(!protopirate_radio_init(app)) {
-        FURI_LOG_E(TAG, "Failed to initialize radio!");
-        notification_message(app->notifications, &sequence_error);
-        scene_manager_previous_scene(app->scene_manager);
-        return;
-    }
-
     g_timing_ctx = malloc(sizeof(TimingTunerContext));
     memset(g_timing_ctx, 0, sizeof(TimingTunerContext));
     g_timing_ctx->is_receiving = false;
@@ -616,6 +627,21 @@ void protopirate_scene_timing_tuner_on_enter(void* context) {
     view_set_draw_callback(app->view_about, timing_tuner_draw_callback);
     view_set_input_callback(app->view_about, timing_tuner_input_callback);
     view_set_context(app->view_about, app);
+
+    // Allocate worker
+    if(!app->txrx->worker) {
+        app->txrx->worker = subghz_worker_alloc();
+        if(!app->txrx->worker) {
+            FURI_LOG_E(TAG, "Failed to allocate worker!");
+            return;
+        }
+        // Set up worker callbacks
+        subghz_worker_set_overrun_callback(
+            app->txrx->worker, (SubGhzWorkerOverrunCallback)subghz_receiver_reset);
+        subghz_worker_set_pair_callback(
+            app->txrx->worker, (SubGhzWorkerPairCallback)subghz_receiver_decode);
+        subghz_worker_set_context(app->txrx->worker, app->txrx->receiver);
+    }
 
     subghz_receiver_set_rx_callback(app->txrx->receiver, timing_tuner_rx_callback, app);
 
@@ -648,6 +674,9 @@ bool protopirate_scene_timing_tuner_on_event(void* context, SceneManagerEvent ev
     } else if(event.type == SceneManagerEventTypeTick) {
         if(g_timing_ctx && g_timing_ctx->is_receiving && !g_timing_ctx->has_match) {
             g_timing_ctx->rssi = subghz_devices_get_rssi(app->txrx->radio_device);
+
+            // Blink the light like the SubGHZ app
+            notification_message(app->notifications, &sequence_blink_cyan_10);
         }
         view_commit_model(app->view_about, true);
         consumed = true;
@@ -668,6 +697,14 @@ void protopirate_scene_timing_tuner_on_exit(void* context) {
     subghz_worker_set_pair_callback(
         app->txrx->worker, (SubGhzWorkerPairCallback)subghz_receiver_decode);
 
+    if(app->txrx->worker) {
+        FURI_LOG_D(TAG, "Freeing worker %p", app->txrx->worker);
+        subghz_worker_free(app->txrx->worker);
+        app->txrx->worker = NULL;
+    } else {
+        FURI_LOG_D(TAG, "Worker was NULL, skipping free");
+    }
+
     view_set_draw_callback(app->view_about, NULL);
     view_set_input_callback(app->view_about, NULL);
 
@@ -676,3 +713,4 @@ void protopirate_scene_timing_tuner_on_exit(void* context) {
         g_timing_ctx = NULL;
     }
 }
+#endif

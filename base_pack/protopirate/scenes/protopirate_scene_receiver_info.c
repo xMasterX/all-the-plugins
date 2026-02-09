@@ -11,7 +11,7 @@ static void protopirate_scene_receiver_info_widget_callback(
     InputType type,
     void* context) {
     ProtoPirateApp* app = context;
-    if(type == InputTypeShort) {
+    if(type == InputTypeShort || type == InputTypeLong) {
         if(result == GuiButtonTypeRight) {
             view_dispatcher_send_custom_event(
                 app->view_dispatcher, ProtoPirateCustomEventReceiverInfoSave);
@@ -52,9 +52,7 @@ void protopirate_scene_receiver_info_on_enter(void* context) {
             if(furi_string_cmp_str(protocol, "PSA") == 0) {
                 is_psa = true;
             }
-            if(furi_string_cmp_str(protocol, "VAG") == 0) {
-                is_emu_off = true;
-            } else if(furi_string_cmp_str(protocol, "Scher-Khan") == 0) {
+            if(furi_string_cmp_str(protocol, "Scher-Khan") == 0) {
                 is_emu_off = true;
             } else if(furi_string_cmp_str(protocol, "Kia V5") == 0) {
                 is_emu_off = true;

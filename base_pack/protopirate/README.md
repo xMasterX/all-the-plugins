@@ -31,7 +31,7 @@ App is intended for educational and security purposes only, and has no signal tr
 | Subaru                        | ✅ | ✅ |
 | Suzuki                        | ✅ | ✅ |
 | PSA                           | ✅ | ✅ |
-| VAG (VW)                      | ✅ | ❌ |
+| VAG (VW)                      | ✅ | ✅ |
 
 _More Coming Soon_
 
