@@ -266,6 +266,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Ami Toolkit | ![NFC Badge] | [by Firefox2100](https://github.com/Firefox2100/flipper-amiibo-toolkit) |  | ![None Badge] |
 | NFC Login | ![NFC Badge] | [by Play2BReal](https://github.com/Play2BReal/NFC-Login) |  | ![None Badge] |
 | ISO15693-3 NFC Writer | ![NFC Badge] | [by ch4istO](https://github.com/ch4istO/unleashed-firmware/tree/dev/applications_user/iso15693_nfc_writer) |  | ![None Badge] |
+| VK Thermo | ![NFC Badge] | [by VivoKey Technologies](https://github.com/VivoKey/vkthermo-flipper) | Read temperature from VivoKey Thermo implants via ISO15693 NFC | ![None Badge] |
 | RFID Beacon | ![RFID Badge] | [by nmrr](https://github.com/nmrr/flipperzero-rfidbeacon)  | `A letter/number Morse beacon on 125 kHz` | ![None Badge] |
 | EM4100 universal keys generator (for RFID Fuzzer) | ![RFID Badge] | [by Milk-Cool](https://github.com/Milk-Cool/fz-em4100-generator) |  | [![Author Badge]](https://lab.flipper.net/apps/key_generator) |
 | (Q)M100 UHF RFID | ![RFID Badge] | [by frux-c](https://github.com/frux-c/uhf_rfid) | WIP -> (+Added icon by @xMasterX) | [![UFW Badge]](https://lab.flipper.net/apps/uhf_rfid) |
