@@ -1,4 +1,5 @@
 #include "kia_v0.h"
+#include "../protopirate_app_i.h"
 
 #define TAG "KiaProtocolV0"
 

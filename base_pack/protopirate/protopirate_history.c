@@ -109,7 +109,7 @@ bool protopirate_history_add_to_history(
     }
 
     // If history is full, remove the oldest entry
-    if(ProtoPirateHistoryItemArray_size(instance->data) >= KIA_HISTORY_MAX) {
+    if(ProtoPirateHistoryItemArray_size(instance->data) >= PROTOPIRATE_HISTORY_MAX) {
         ProtoPirateHistoryItem* oldest = ProtoPirateHistoryItemArray_get(instance->data, 0);
         if(oldest) {
             protopirate_history_item_free(oldest);

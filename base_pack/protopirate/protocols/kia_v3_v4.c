@@ -1,4 +1,5 @@
 #include "kia_v3_v4.h"
+#include "../protopirate_app_i.h"
 #include "keys.h"
 
 #define TAG "KiaV3V4"

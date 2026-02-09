@@ -62,7 +62,7 @@ static const char* suzuki_get_button_name(uint8_t btn) {
     case 1:
         return "Panic";
     case 2:
-        return "Trunk";
+        return "Boot";
     case 3:
         return "Lock";
     case 4:

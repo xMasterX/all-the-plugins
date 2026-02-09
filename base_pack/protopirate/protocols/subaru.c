@@ -1,4 +1,5 @@
 #include "subaru.h"
+#include "../protopirate_app_i.h"
 
 #define TAG "SubaruProtocol"
 

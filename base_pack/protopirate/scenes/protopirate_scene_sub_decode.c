@@ -1,26 +1,25 @@
 // scenes/protopirate_scene_sub_decode.c
 #include "../protopirate_app_i.h"
+#ifdef ENABLE_SUB_DECODE_SCENE
 #include "../helpers/protopirate_storage.h"
 #include "../helpers/radio_device_loader.h"
+#include "../helpers/raw_file_reader.h"
 #include "../protopirate_history.h"
+#include "core/core_defines.h"
 #include "core/record.h"
 #include "storage/storage.h"
 #include <dialogs/dialogs.h>
 #include <math.h>
 #include <lib/subghz/types.h>
-#include <lib/subghz/subghz_file_encoder_worker.h>
-#include <applications/drivers/subghz/cc1101_ext/cc1101_ext_interconnect.h>
-#include <lib/subghz/devices/cc1101_int/cc1101_int_interconnect.h>
 
 #include "proto_pirate_icons.h"
 
 #define TAG "ProtoPirateSubDecode"
 
 #define SUBGHZ_APP_FOLDER        EXT_PATH("subghz")
-#define SAMPLES_TO_READ_PER_TICK 400
+#define SAMPLES_TO_READ_PER_TICK 128
 #define SUCCESS_DISPLAY_TICKS    18
 #define FAILURE_DISPLAY_TICKS    18
-#define KIA_HISTORY_MAX          50
 
 // Decode state machine
 typedef enum {
@@ -42,34 +41,30 @@ typedef struct {
     uint16_t animation_frame;
     uint8_t result_display_counter;
 
-    // File info
     FuriString* file_path;
     FuriString* protocol_name;
     FuriString* result;
     FuriString* error_info;
     uint32_t frequency;
 
-    // File handle
     Storage* storage;
     FlipperFormat* ff;
 
-    // RAW decode state - using receiver system
     bool decode_success;
     SubGhzProtocolDecoderBase* decoded_decoder;
     FuriString* decoded_string;
 
-    // For saving - keep a copy of the flipper format data
     FlipperFormat* save_data;
     bool can_save;
 
-    // Worker startup delay counter
     uint8_t worker_startup_delay;
 
-    // History for decoded signals
     ProtoPirateHistory* history;
     uint16_t match_count;
     uint16_t selected_history_index;
-    bool showing_signal_info; // Track if we're showing signal info (true) or history (false)
+    bool showing_signal_info;
+
+    RawFileReader* raw_reader;
 } SubDecodeContext;
 
 static SubDecodeContext* g_decode_ctx = NULL;
@@ -237,7 +232,7 @@ static void protopirate_decode_draw_callback(Canvas* canvas, void* context) {
     // Title with occasional glitch
     canvas_set_font(canvas, FontPrimary);
     int glitch = (frame % 47 == 0) ? 1 : 0;
-    canvas_draw_str_aligned(canvas, 64 + glitch, 0, AlignCenter, AlignTop, "DECODING");
+    canvas_draw_str_aligned(canvas, 64 + glitch, 0, AlignCenter, AlignTop, "Decoding");
 
     // Waveform visualization - original style with sinf
     int wave_y = 22;
@@ -313,7 +308,7 @@ static void protopirate_decode_draw_callback(Canvas* canvas, void* context) {
         status_text = "Reading header...";
         break;
     case DecodeStateStartingWorker:
-        status_text = "Starting decoder...";
+        status_text = "Counting timings...";
         break;
     case DecodeStateDecodingRaw: {
         static char match_text[32];
@@ -357,22 +352,15 @@ static void protopirate_decode_draw_callback(Canvas* canvas, void* context) {
 }
 
 static bool protopirate_decode_input_callback(InputEvent* event, void* context) {
-    ProtoPirateApp* app = context;
+    UNUSED(context);
 
     if(event->type == InputTypeShort && event->key == InputKeyBack) {
         if(g_decode_ctx && g_decode_ctx->state != DecodeStateIdle &&
            g_decode_ctx->state != DecodeStateDone) {
-            // Stop worker if running
-            if(app->decode_raw_file_worker_encoder) {
-                if(subghz_file_encoder_worker_is_running(app->decode_raw_file_worker_encoder)) {
-                    subghz_file_encoder_worker_stop(app->decode_raw_file_worker_encoder);
-                }
-                subghz_file_encoder_worker_free(app->decode_raw_file_worker_encoder);
-                app->decode_raw_file_worker_encoder = NULL;
+            if(g_decode_ctx->raw_reader) {
+                raw_file_reader_free(g_decode_ctx->raw_reader);
+                g_decode_ctx->raw_reader = NULL;
             }
-
-            // Clear receiver callback
-            subghz_receiver_set_rx_callback(app->txrx->receiver, NULL, NULL);
 
             furi_string_set(g_decode_ctx->error_info, "Cancelled");
             g_decode_ctx->state = DecodeStateShowFailure;
@@ -383,39 +371,6 @@ static bool protopirate_decode_input_callback(InputEvent* event, void* context) 
     }
 
     return false;
-}
-
-// Process samples from file encoder worker
-static bool protopirate_process_raw_file_samples(ProtoPirateApp* app, SubDecodeContext* ctx) {
-    if(!app->decode_raw_file_worker_encoder ||
-       !subghz_file_encoder_worker_is_running(app->decode_raw_file_worker_encoder)) {
-        return true; // File finished or not started
-    }
-
-    LevelDuration level_duration;
-
-    for(uint32_t read = SAMPLES_TO_READ_PER_TICK; read > 0; --read) {
-        level_duration =
-            subghz_file_encoder_worker_get_level_duration(app->decode_raw_file_worker_encoder);
-
-        if(!level_duration_is_reset(level_duration)) {
-            bool level = level_duration_get_level(level_duration);
-            uint32_t duration = level_duration_get_duration(level_duration);
-            subghz_receiver_decode(app->txrx->receiver, level, duration);
-
-            // Check if we got a decode
-            if(ctx->decode_success) {
-                // Stop processing and show result
-                return true;
-            }
-        } else {
-            // File finished
-            FURI_LOG_I(TAG, "File decode complete");
-            return true;
-        }
-    }
-
-    return false; // Continue processing
 }
 
 static void close_file_handles(SubDecodeContext* ctx) {
@@ -441,7 +396,7 @@ static void protopirate_scene_sub_decode_widget_callback(
     void* context) {
     ProtoPirateApp* app = context;
 
-    if(type == InputTypeShort) {
+    if(type == InputTypeShort || type == InputTypeLong) {
         if(result == GuiButtonTypeRight) {
             // Save button in signal info view
             view_dispatcher_send_custom_event(
@@ -453,15 +408,27 @@ static void protopirate_scene_sub_decode_widget_callback(
 void protopirate_scene_sub_decode_on_enter(void* context) {
     ProtoPirateApp* app = context;
 
-    if(!protopirate_radio_init(app)) {
-        FURI_LOG_E(TAG, "Failed to initialize radio!");
-        notification_message(app->notifications, &sequence_error);
+    FURI_LOG_I(TAG, "Sub decode scene enter - Free heap: %zu", memmgr_get_free_heap());
+
+    g_decode_ctx = malloc(sizeof(SubDecodeContext));
+    if(!g_decode_ctx) {
+        FURI_LOG_E(TAG, "Failed to allocate decode context");
         scene_manager_previous_scene(app->scene_manager);
         return;
     }
-
-    g_decode_ctx = malloc(sizeof(SubDecodeContext));
     memset(g_decode_ctx, 0, sizeof(SubDecodeContext));
+
+    FURI_LOG_I(TAG, "After decode context alloc - Free heap: %zu", memmgr_get_free_heap());
+
+    // Allocate history
+    if(!app->txrx->history) {
+        app->txrx->history = protopirate_history_alloc();
+        if(!app->txrx->history) {
+            FURI_LOG_E(TAG, "Failed to allocate history!");
+            return;
+        }
+    }
+
     g_decode_ctx->file_path = furi_string_alloc();
     g_decode_ctx->protocol_name = furi_string_alloc();
     g_decode_ctx->result = furi_string_alloc();
@@ -471,9 +438,15 @@ void protopirate_scene_sub_decode_on_enter(void* context) {
     g_decode_ctx->can_save = false;
     g_decode_ctx->save_data = NULL;
     g_decode_ctx->worker_startup_delay = 0;
-    g_decode_ctx->history = protopirate_history_alloc();
+    g_decode_ctx->history = app->txrx->history;
+    //protopirate_history_reset(g_decode_ctx->history);
     g_decode_ctx->match_count = 0;
     g_decode_ctx->selected_history_index = 0;
+    g_decode_ctx->raw_reader = NULL;
+
+    protopirate_view_receiver_set_sub_decode_mode(app->protopirate_receiver, true);
+
+    FURI_LOG_I(TAG, "After context setup - Free heap: %zu", memmgr_get_free_heap());
 
     DialogsFileBrowserOptions browser_options;
     dialog_file_browser_set_basic_options(&browser_options, ".sub", &I_subghz_10px);
@@ -538,14 +511,19 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                     FuriString* history_stat_str = furi_string_alloc();
 
                     protopirate_get_frequency_modulation(app, frequency_str, modulation_str);
-                    furi_string_printf(history_stat_str, "%u/%u", history_count, KIA_HISTORY_MAX);
+                    furi_string_printf(
+                        history_stat_str, "%u/%u", history_count, PROTOPIRATE_HISTORY_MAX);
 
+                    bool is_external =
+                        app->txrx->radio_device ?
+                            radio_device_loader_is_external(app->txrx->radio_device) :
+                            false;
                     protopirate_view_receiver_add_data_statusbar(
                         app->protopirate_receiver,
                         furi_string_get_cstr(frequency_str),
                         furi_string_get_cstr(modulation_str),
                         furi_string_get_cstr(history_stat_str),
-                        radio_device_loader_is_external(app->txrx->radio_device));
+                        is_external);
 
                     furi_string_free(frequency_str);
                     furi_string_free(modulation_str);
@@ -614,12 +592,18 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
         consumed = true;
         ctx->animation_frame++;
 
+        FURI_LOG_D(TAG, "Tick: state=%d, frame=%u", ctx->state, ctx->animation_frame);
+
         switch(ctx->state) {
         case DecodeStateOpenFile: {
+            FURI_LOG_I(TAG, "OpenFile: Starting - Free heap: %zu", memmgr_get_free_heap());
             ctx->storage = furi_record_open(RECORD_STORAGE);
+            FURI_LOG_D(TAG, "OpenFile: Storage opened");
             ctx->ff = flipper_format_file_alloc(ctx->storage);
+            FURI_LOG_D(TAG, "OpenFile: FlipperFormat allocated");
 
             if(!flipper_format_file_open_existing(ctx->ff, furi_string_get_cstr(ctx->file_path))) {
+                FURI_LOG_E(TAG, "OpenFile: Failed to open file");
                 furi_string_set(ctx->result, "Failed to open file");
                 furi_string_set(ctx->error_info, "File open failed");
                 close_file_handles(ctx);
@@ -627,35 +611,42 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                 ctx->result_display_counter = 0;
                 notification_message(app->notifications, &sequence_error);
             } else {
+                FURI_LOG_I(TAG, "OpenFile: File opened successfully");
                 ctx->state = DecodeStateReadHeader;
             }
             break;
         }
 
         case DecodeStateReadHeader: {
+            FURI_LOG_I(TAG, "ReadHeader: Starting - Free heap: %zu", memmgr_get_free_heap());
+
             FuriString* temp_str = furi_string_alloc();
             uint32_t version = 0;
             bool success = false;
 
             do {
+                FURI_LOG_D(TAG, "ReadHeader: Reading header");
                 if(!flipper_format_read_header(ctx->ff, temp_str, &version)) {
                     furi_string_set(ctx->result, "Invalid file format");
                     furi_string_set(ctx->error_info, "Invalid header");
                     break;
                 }
 
+                FURI_LOG_D(TAG, "ReadHeader: Header type: %s", furi_string_get_cstr(temp_str));
                 if(furi_string_cmp_str(temp_str, "Flipper SubGhz RAW File") != 0) {
                     furi_string_set(ctx->result, "Not a RAW SubGhz file");
                     furi_string_set(ctx->error_info, "Not RAW SubGhz file");
                     break;
                 }
 
+                FURI_LOG_D(TAG, "ReadHeader: Reading protocol");
                 if(!flipper_format_read_string(ctx->ff, "Protocol", ctx->protocol_name)) {
                     furi_string_set(ctx->result, "Missing Protocol");
                     furi_string_set(ctx->error_info, "No protocol field");
                     break;
                 }
 
+                FURI_LOG_D(TAG, "ReadHeader: Rewinding for frequency");
                 flipper_format_rewind(ctx->ff);
                 flipper_format_read_header(ctx->ff, temp_str, &version);
                 ctx->frequency = 433920000;
@@ -671,44 +662,66 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
             } while(false);
 
             furi_string_free(temp_str);
+            FURI_LOG_D(TAG, "ReadHeader: Freed temp_str");
 
             if(!success) {
+                FURI_LOG_E(TAG, "ReadHeader: Failed, closing handles");
                 close_file_handles(ctx);
                 ctx->state = DecodeStateShowFailure;
                 ctx->result_display_counter = 0;
                 notification_message(app->notifications, &sequence_error);
             } else if(furi_string_cmp_str(ctx->protocol_name, "RAW") == 0) {
-                // Close the file handle as we'll use SubGhzFileEncoderWorker
+                FURI_LOG_I(TAG, "ReadHeader: RAW file detected, closing handles");
                 close_file_handles(ctx);
+                FURI_LOG_D(TAG, "ReadHeader: Handles closed");
 
-                // Set up receiver callback
+                FURI_LOG_D(TAG, "ReadHeader: Setting up receiver callback");
                 subghz_receiver_set_rx_callback(
                     app->txrx->receiver, protopirate_sub_decode_receiver_callback, app);
+                FURI_LOG_D(TAG, "ReadHeader: Receiver callback set");
 
-                // Move to starting worker state - this will happen on next tick
                 ctx->state = DecodeStateStartingWorker;
+                FURI_LOG_I(
+                    TAG,
+                    "ReadHeader: State set to StartingWorker - Free heap: %zu",
+                    memmgr_get_free_heap());
             } else {
+                FURI_LOG_W(TAG, "ReadHeader: Non-RAW protocol not supported");
+                close_file_handles(ctx);
+                furi_string_set(ctx->error_info, "Only RAW supported");
+                ctx->state = DecodeStateShowFailure;
+                ctx->result_display_counter = 0;
             }
+
+            FURI_LOG_I(TAG, "ReadHeader: Complete, next state: %d", ctx->state);
             break;
         }
 
         case DecodeStateStartingWorker: {
-            // Wait a couple ticks to show the animation before starting worker
+            FURI_LOG_I(
+                TAG,
+                "StartingWorker: Entry - delay=%d, Free heap: %zu",
+                ctx->worker_startup_delay,
+                memmgr_get_free_heap());
+
             if(ctx->worker_startup_delay < 3) {
                 ctx->worker_startup_delay++;
+                FURI_LOG_D(TAG, "StartingWorker: Delay tick %d", ctx->worker_startup_delay);
                 break;
             }
             ctx->worker_startup_delay = 0;
 
-            // Load file metadata (frequency and preset) for the worker
-            FlipperFormat* fff_data_file = flipper_format_file_alloc(ctx->storage);
+            FURI_LOG_I(TAG, "StartingWorker: Reading file metadata");
+
+            Storage* storage = furi_record_open(RECORD_STORAGE);
+            FlipperFormat* fff_data_file = flipper_format_file_alloc(storage);
             FuriString* temp_str = furi_string_alloc();
-            bool worker_started = false;
+            bool setup_ok = false;
 
             do {
                 if(!flipper_format_file_open_existing(
                        fff_data_file, furi_string_get_cstr(ctx->file_path))) {
-                    FURI_LOG_E(TAG, "Error opening file for worker");
+                    FURI_LOG_E(TAG, "Error opening file for metadata");
                     break;
                 }
 
@@ -718,26 +731,22 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                     break;
                 }
 
-                // Check if it's a RAW file
                 if(strcmp(furi_string_get_cstr(temp_str), "Flipper SubGhz RAW File") != 0 ||
                    version != 1) {
                     FURI_LOG_E(TAG, "Not a valid RAW file");
                     break;
                 }
 
-                // Load frequency
                 if(!flipper_format_read_uint32(fff_data_file, "Frequency", &ctx->frequency, 1)) {
                     FURI_LOG_E(TAG, "Missing Frequency");
                     break;
                 }
 
-                // Load preset
                 if(!flipper_format_read_string(fff_data_file, "Preset", temp_str)) {
                     FURI_LOG_E(TAG, "Missing Preset");
                     break;
                 }
 
-                // Convert preset name from long format to short format
                 const char* preset_name_long = furi_string_get_cstr(temp_str);
                 const char* preset_name_short = preset_name_long;
 
@@ -755,7 +764,6 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                     preset_name_short = "CUSTOM";
                 }
 
-                // Get preset index by searching
                 size_t preset_index = subghz_setting_get_preset_count(app->setting);
                 for(size_t i = 0; i < subghz_setting_get_preset_count(app->setting); i++) {
                     if(!strcmp(
@@ -765,8 +773,6 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                     }
                 }
                 if(preset_index >= subghz_setting_get_preset_count(app->setting)) {
-                    FURI_LOG_E(
-                        TAG, "Failed to get preset index for %s, using AM650", preset_name_short);
                     preset_name_short = "AM650";
                     for(size_t i = 0; i < subghz_setting_get_preset_count(app->setting); i++) {
                         if(!strcmp(
@@ -777,7 +783,7 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                         }
                     }
                     if(preset_index >= subghz_setting_get_preset_count(app->setting)) {
-                        FURI_LOG_E(TAG, "Failed to get AM650 preset index!");
+                        FURI_LOG_E(TAG, "Failed to get preset index!");
                         break;
                     }
                 }
@@ -791,93 +797,110 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                     break;
                 }
 
-                // Set the preset
                 protopirate_preset_init(
                     app, preset_name_short, ctx->frequency, preset_data, preset_data_size);
 
-                // Start file encoder worker
-                app->decode_raw_file_worker_encoder = subghz_file_encoder_worker_alloc();
-                const char* device_name = SUBGHZ_DEVICE_CC1101_INT_NAME;
-                if(radio_device_loader_is_external(app->txrx->radio_device)) {
-                    device_name = SUBGHZ_DEVICE_CC1101_EXT_NAME;
-                }
-
-                if(subghz_file_encoder_worker_start(
-                       app->decode_raw_file_worker_encoder,
-                       furi_string_get_cstr(ctx->file_path),
-                       device_name)) {
-                    worker_started = true;
-                    ctx->state = DecodeStateDecodingRaw;
-                    FURI_LOG_I(TAG, "Started file encoder worker");
-                } else {
-                    FURI_LOG_E(TAG, "Failed to start file encoder worker");
-                    subghz_file_encoder_worker_free(app->decode_raw_file_worker_encoder);
-                    app->decode_raw_file_worker_encoder = NULL;
-                }
+                setup_ok = true;
             } while(false);
 
             flipper_format_free(fff_data_file);
             furi_string_free(temp_str);
+            furi_record_close(RECORD_STORAGE);
 
-            if(!worker_started) {
-                furi_string_set(ctx->result, "Failed to start decode");
-                furi_string_set(ctx->error_info, "Worker start failed");
+            if(!setup_ok) {
+                furi_string_set(ctx->result, "Failed to read file metadata");
+                furi_string_set(ctx->error_info, "Metadata read failed");
                 ctx->state = DecodeStateShowFailure;
                 ctx->result_display_counter = 0;
                 notification_message(app->notifications, &sequence_error);
+                break;
             }
+
+            FURI_LOG_I(
+                TAG,
+                "StartingWorker: Allocating raw reader - Free heap: %zu",
+                memmgr_get_free_heap());
+
+            ctx->raw_reader = raw_file_reader_alloc();
+            if(!ctx->raw_reader) {
+                FURI_LOG_E(TAG, "Failed to allocate raw reader");
+                furi_string_set(ctx->result, "Memory allocation failed");
+                furi_string_set(ctx->error_info, "Out of memory");
+                ctx->state = DecodeStateShowFailure;
+                ctx->result_display_counter = 0;
+                notification_message(app->notifications, &sequence_error);
+                break;
+            }
+
+            FURI_LOG_I(
+                TAG, "StartingWorker: Opening raw file - Free heap: %zu", memmgr_get_free_heap());
+
+            if(!raw_file_reader_open(ctx->raw_reader, furi_string_get_cstr(ctx->file_path))) {
+                FURI_LOG_E(TAG, "Failed to open raw file");
+                raw_file_reader_free(ctx->raw_reader);
+                ctx->raw_reader = NULL;
+                furi_string_set(ctx->result, "Failed to open RAW file");
+                furi_string_set(ctx->error_info, "File open failed");
+                ctx->state = DecodeStateShowFailure;
+                ctx->result_display_counter = 0;
+                notification_message(app->notifications, &sequence_error);
+                break;
+            }
+
+            ctx->state = DecodeStateDecodingRaw;
+            FURI_LOG_I(
+                TAG, "StartingWorker: Ready to decode - Free heap: %zu", memmgr_get_free_heap());
             break;
         }
 
         case DecodeStateDecodingRaw: {
-            // Check if worker is ready (give it a tick to initialize)
-            if(app->decode_raw_file_worker_encoder &&
-               !subghz_file_encoder_worker_is_running(app->decode_raw_file_worker_encoder)) {
-                // Worker not ready yet, wait
+            if(!ctx->raw_reader) {
+                FURI_LOG_E(TAG, "DecodingRaw: No raw reader");
+                ctx->state = DecodeStateShowFailure;
+                ctx->result_display_counter = 0;
                 break;
             }
 
-            bool done = protopirate_process_raw_file_samples(app, ctx);
+            bool level = false;
+            uint32_t duration = 0;
+            uint32_t samples_processed = 0;
 
-            if(done) {
-                // Stop the worker
-                if(app->decode_raw_file_worker_encoder) {
-                    if(subghz_file_encoder_worker_is_running(
-                           app->decode_raw_file_worker_encoder)) {
-                        subghz_file_encoder_worker_stop(app->decode_raw_file_worker_encoder);
+            while(samples_processed < SAMPLES_TO_READ_PER_TICK) {
+                if(!raw_file_reader_get_next(ctx->raw_reader, &level, &duration)) {
+                    FURI_LOG_I(TAG, "DecodingRaw: File finished, matches=%u", ctx->match_count);
+
+                    raw_file_reader_free(ctx->raw_reader);
+                    ctx->raw_reader = NULL;
+
+                    subghz_receiver_set_rx_callback(app->txrx->receiver, NULL, NULL);
+
+                    uint16_t history_count = protopirate_history_get_item(ctx->history);
+
+                    if(history_count > 0) {
+                        ctx->state = DecodeStateShowSuccess;
+                        ctx->selected_history_index = 0;
+                        ctx->showing_signal_info = false;
+                        ctx->result_display_counter = 0;
+                        notification_message(app->notifications, &sequence_success);
+                    } else {
+                        furi_string_printf(
+                            ctx->result,
+                            "RAW Signal\n\n"
+                            "Freq: %lu.%02lu MHz\n\n"
+                            "No ProtoPirate protocol\n"
+                            "detected in signal.",
+                            ctx->frequency / 1000000,
+                            (ctx->frequency % 1000000) / 10000);
+                        furi_string_set(ctx->error_info, "No protocol match");
+                        ctx->state = DecodeStateShowFailure;
+                        ctx->result_display_counter = 0;
+                        notification_message(app->notifications, &sequence_error);
                     }
-                    subghz_file_encoder_worker_free(app->decode_raw_file_worker_encoder);
-                    app->decode_raw_file_worker_encoder = NULL;
+                    break;
                 }
-
-                // Clear receiver callback
-                subghz_receiver_set_rx_callback(app->txrx->receiver, NULL, NULL);
-
-                // Check if we found any signals
-                uint16_t history_count = protopirate_history_get_item(ctx->history);
-
-                if(history_count > 0) {
-                    // First show success animation, then history list
-                    ctx->state = DecodeStateShowSuccess;
-                    ctx->selected_history_index = 0;
-                    ctx->showing_signal_info = false;
-                    ctx->result_display_counter = 0;
-                    notification_message(app->notifications, &sequence_success);
-                } else {
-                    // No signals found
-                    furi_string_printf(
-                        ctx->result,
-                        "RAW Signal\n\n"
-                        "Freq: %lu.%02lu MHz\n\n"
-                        "No ProtoPirate protocol\n"
-                        "detected in signal.",
-                        ctx->frequency / 1000000,
-                        (ctx->frequency % 1000000) / 10000);
-                    furi_string_set(ctx->error_info, "No protocol match");
-                    ctx->state = DecodeStateShowFailure;
-                    ctx->result_display_counter = 0;
-                    notification_message(app->notifications, &sequence_error);
-                }
+                furi_thread_yield();
+                subghz_receiver_decode(app->txrx->receiver, level, duration);
+                samples_processed++;
             }
             break;
         }
@@ -956,14 +979,18 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                 FuriString* history_stat_str = furi_string_alloc();
 
                 protopirate_get_frequency_modulation(app, frequency_str, modulation_str);
-                furi_string_printf(history_stat_str, "%u/%u", history_count, KIA_HISTORY_MAX);
+                furi_string_printf(
+                    history_stat_str, "%u/%u", history_count, PROTOPIRATE_HISTORY_MAX);
 
+                bool is_external = app->txrx->radio_device ?
+                                       radio_device_loader_is_external(app->txrx->radio_device) :
+                                       false;
                 protopirate_view_receiver_add_data_statusbar(
                     app->protopirate_receiver,
                     furi_string_get_cstr(frequency_str),
                     furi_string_get_cstr(modulation_str),
                     furi_string_get_cstr(history_stat_str),
-                    radio_device_loader_is_external(app->txrx->radio_device));
+                    is_external);
 
                 furi_string_free(frequency_str);
                 furi_string_free(modulation_str);
@@ -1032,8 +1059,11 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
             break;
         }
 
-        // Force view update to show animation
-        view_commit_model(app->view_about, true);
+        // Force view update to show animation - only when actually showing animation
+        if(ctx->state != DecodeStateDone && ctx->state != DecodeStateShowHistory &&
+           ctx->state != DecodeStateShowSignalInfo) {
+            view_commit_model(app->view_about, true);
+        }
     } else if(event.type == SceneManagerEventTypeBack) {
         // Handle back button navigation
         if(ctx->showing_signal_info) {
@@ -1054,27 +1084,20 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
 void protopirate_scene_sub_decode_on_exit(void* context) {
     ProtoPirateApp* app = context;
 
-    // Stop worker if still running
-    if(app->decode_raw_file_worker_encoder) {
-        if(subghz_file_encoder_worker_is_running(app->decode_raw_file_worker_encoder)) {
-            subghz_file_encoder_worker_stop(app->decode_raw_file_worker_encoder);
-        }
-        subghz_file_encoder_worker_free(app->decode_raw_file_worker_encoder);
-        app->decode_raw_file_worker_encoder = NULL;
-    }
-
-    // Clear receiver callback
     subghz_receiver_set_rx_callback(app->txrx->receiver, NULL, NULL);
 
     if(g_decode_ctx) {
+        if(g_decode_ctx->raw_reader) {
+            raw_file_reader_free(g_decode_ctx->raw_reader);
+            g_decode_ctx->raw_reader = NULL;
+        }
+
         close_file_handles(g_decode_ctx);
 
         if(g_decode_ctx->save_data) {
             flipper_format_free(g_decode_ctx->save_data);
         }
-        if(g_decode_ctx->history) {
-            protopirate_history_free(g_decode_ctx->history);
-        }
+
         furi_string_free(g_decode_ctx->file_path);
         furi_string_free(g_decode_ctx->protocol_name);
         furi_string_free(g_decode_ctx->result);
@@ -1084,13 +1107,18 @@ void protopirate_scene_sub_decode_on_exit(void* context) {
         g_decode_ctx = NULL;
     }
 
+    if(app->txrx->history) {
+        protopirate_history_reset(app->txrx->history);
+
+        FURI_LOG_D(TAG, "Freeing history %p", app->txrx->history);
+        protopirate_history_free(app->txrx->history);
+        app->txrx->history = NULL;
+    }
+
     view_set_draw_callback(app->view_about, NULL);
     view_set_input_callback(app->view_about, NULL);
     widget_reset(app->widget);
 
-    // Reset both view menu AND history when actually leaving (only if radio initialized)
     protopirate_view_receiver_reset_menu(app->protopirate_receiver);
-    if(app->radio_initialized && app->txrx->history) {
-        protopirate_history_reset(app->txrx->history);
-    }
 }
+#endif

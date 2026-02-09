@@ -1,4 +1,5 @@
 #include "ford_v0.h"
+#include "../protopirate_app_i.h"
 
 #define TAG "FordProtocolV0"
 
@@ -16,9 +17,9 @@ static const SubGhzBlockConst subghz_protocol_ford_v0_const = {
     .min_count_bit_for_found = 64,
 };
 
-#define FORD_V0_PREAMBLE_PAIRS 64
+#define FORD_V0_PREAMBLE_PAIRS 4
 #define FORD_V0_GAP_US         3500
-#define FORD_V0_TOTAL_BURSTS   3
+#define FORD_V0_TOTAL_BURSTS   6
 
 // =============================================================================
 // CRC MATRIX
@@ -56,7 +57,7 @@ typedef struct SubGhzProtocolDecoderFordV0 {
     uint32_t count;
     uint8_t bs_magic;
 } SubGhzProtocolDecoderFordV0;
-
+#ifdef ENABLE_EMULATE_FEATURE
 typedef struct SubGhzProtocolEncoderFordV0 {
     SubGhzProtocolEncoderBase base;
     SubGhzProtocolBlockEncoder encoder;
@@ -70,7 +71,7 @@ typedef struct SubGhzProtocolEncoderFordV0 {
     uint8_t bs;
     uint8_t bs_magic;
 } SubGhzProtocolEncoderFordV0;
-
+#endif
 typedef enum {
     FordV0DecoderStepReset = 0,
     FordV0DecoderStepPreamble,
@@ -91,6 +92,7 @@ static void decode_ford_v0(
     uint8_t* button,
     uint32_t* count,
     uint8_t* bs_magic);
+#ifdef ENABLE_EMULATE_FEATURE
 static void encode_ford_v0(
     uint8_t header_byte,
     uint32_t serial,
@@ -98,6 +100,7 @@ static void encode_ford_v0(
     uint32_t count,
     uint8_t bs,
     uint64_t* key1);
+#endif
 static bool ford_v0_process_data(SubGhzProtocolDecoderFordV0* instance);
 
 // =============================================================================
@@ -115,6 +118,7 @@ const SubGhzProtocolDecoder subghz_protocol_ford_v0_decoder = {
     .get_string = subghz_protocol_decoder_ford_v0_get_string,
 };
 
+#ifdef ENABLE_EMULATE_FEATURE
 const SubGhzProtocolEncoder subghz_protocol_ford_v0_encoder = {
     .alloc = subghz_protocol_encoder_ford_v0_alloc,
     .free = subghz_protocol_encoder_ford_v0_free,
@@ -122,6 +126,15 @@ const SubGhzProtocolEncoder subghz_protocol_ford_v0_encoder = {
     .stop = subghz_protocol_encoder_ford_v0_stop,
     .yield = subghz_protocol_encoder_ford_v0_yield,
 };
+#else
+const SubGhzProtocolEncoder subghz_protocol_ford_v0_encoder = {
+    .alloc = NULL,
+    .free = NULL,
+    .deserialize = NULL,
+    .stop = NULL,
+    .yield = NULL,
+};
+#endif
 
 const SubGhzProtocol ford_protocol_v0 = {
     .name = FORD_PROTOCOL_V0_NAME,
@@ -136,13 +149,13 @@ const SubGhzProtocol ford_protocol_v0 = {
 // BS CALCULATION
 // BS = (counter_low_byte + 0x6F + (button << 4)) & 0xFF
 // =============================================================================
-
+#ifdef ENABLE_EMULATE_FEATURE
 static uint8_t ford_v0_calculate_bs(uint32_t count, uint8_t button, uint8_t bs_magic) {
     //Do the BS calculation, move right the overflow bit if neccesary
     uint16_t result = ((uint16_t)count & 0xFF) + bs_magic + (button << 4);
     return (uint8_t)(result - ((result & 0xFF00) ? 0x80 : 0));
 }
-
+#endif
 // =============================================================================
 // CRC FUNCTIONS
 // =============================================================================
@@ -172,7 +185,7 @@ static uint8_t ford_v0_calculate_crc(uint8_t* buf) {
 
     return crc;
 }
-
+#ifdef ENABLE_EMULATE_FEATURE
 static uint8_t ford_v0_calculate_crc_for_tx(uint64_t key1, uint8_t bs) {
     uint8_t buf[16] = {0};
 
@@ -185,7 +198,7 @@ static uint8_t ford_v0_calculate_crc_for_tx(uint64_t key1, uint8_t bs) {
     uint8_t crc = ford_v0_calculate_crc(buf);
     return crc ^ 0x80;
 }
-
+#endif
 static bool ford_v0_verify_crc(uint64_t key1, uint16_t key2) {
     uint8_t buf[16] = {0};
 
@@ -272,7 +285,7 @@ static void decode_ford_v0(
 // =============================================================================
 // ENCODE FUNCTION
 // =============================================================================
-
+#ifdef ENABLE_EMULATE_FEATURE
 static void encode_ford_v0(
     uint8_t header_byte,
     uint32_t serial,
@@ -473,7 +486,7 @@ static void subghz_protocol_encoder_ford_v0_get_upload(SubGhzProtocolEncoderFord
         }
 
         if(burst < FORD_V0_TOTAL_BURSTS - 1) {
-            ADD_LEVEL(false, te_long * 20);
+            ADD_LEVEL(false, te_long * 100);
         }
     }
 
@@ -680,7 +693,7 @@ LevelDuration subghz_protocol_encoder_ford_v0_yield(void* context) {
 
     return ret;
 }
-
+#endif
 // =============================================================================
 // DECODER IMPLEMENTATION
 // =============================================================================
@@ -953,7 +966,7 @@ void subghz_protocol_decoder_ford_v0_get_string(void* context, FuriString* outpu
     else if(instance->button == 0x02)
         button_name = "Unlock";
     else if(instance->button == 0x04)
-        button_name = "Trunk";
+        button_name = "Boot";
 
     furi_string_cat_printf(
         output,
