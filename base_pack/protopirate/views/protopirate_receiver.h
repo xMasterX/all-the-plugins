@@ -13,7 +13,7 @@ void protopirate_view_receiver_set_callback(
     ProtoPirateReceiverCallback callback,
     void* context);
 
-ProtoPirateReceiver* protopirate_view_receiver_alloc(void);
+ProtoPirateReceiver* protopirate_view_receiver_alloc(bool auto_save);
 void protopirate_view_receiver_free(ProtoPirateReceiver* receiver);
 View* protopirate_view_receiver_get_view(ProtoPirateReceiver* receiver);
 
@@ -33,4 +33,7 @@ uint16_t protopirate_view_receiver_get_idx_menu(ProtoPirateReceiver* receiver);
 void protopirate_view_receiver_set_idx_menu(ProtoPirateReceiver* receiver, uint16_t idx);
 void protopirate_view_receiver_set_rssi(ProtoPirateReceiver* receiver, float rssi);
 void protopirate_view_receiver_set_lock(ProtoPirateReceiver* receiver, ProtoPirateLock lock);
+void protopirate_view_receiver_set_sub_decode_mode(
+    ProtoPirateReceiver* receiver,
+    bool sub_decode_mode);
 void protopirate_view_receiver_reset_menu(ProtoPirateReceiver* receiver);

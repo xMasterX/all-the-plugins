@@ -1,43 +1,62 @@
 // scenes/protopirate_scene_emulate.c
 #include "../protopirate_app_i.h"
+#ifdef ENABLE_EMULATE_FEATURE
 #include "../helpers/protopirate_storage.h"
 #include "../protocols/protocol_items.h"
 
 #define TAG "ProtoPirateEmulate"
 
+#define MIN_TX_TIME 666
 typedef struct {
     uint32_t original_counter;
     uint32_t current_counter;
     uint32_t serial;
     uint8_t original_button;
     FuriString* protocol_name;
+    const char* preset;
+    uint32_t freq;
     FlipperFormat* flipper_format;
     SubGhzTransmitter* transmitter;
     bool is_transmitting;
+    bool flag_stop_called;
 } EmulateContext;
 
 static EmulateContext* emulate_context = NULL;
 
-// Convert full FuriHal preset name to short name used by settings
-static const char* preset_name_to_short(const char* preset_name) {
-    if(!preset_name) return "AM650";
+#define TX_PRESET_POWER_COUNT 11
+const uint8_t tx_power_value[TX_PRESET_POWER_COUNT] = {
+    0,
+    0xC0,
+    0xC5,
+    0xCD,
+    0x86,
+    0x50,
+    0x37,
+    0x26,
+    0x1D,
+    0x17,
+    0x03,
+};
 
-    // Check for full FuriHal names
-    if(strstr(preset_name, "Ook650") || strstr(preset_name, "OOK650")) return "AM650";
-    if(strstr(preset_name, "Ook270") || strstr(preset_name, "OOK270")) return "AM270";
-    if(strstr(preset_name, "2FSKDev238") || strstr(preset_name, "Dev238")) return "FM238";
-    if(strstr(preset_name, "2FSKDev12K") || strstr(preset_name, "Dev12K")) return "FM12K";
-    if(strstr(preset_name, "2FSKDev476") || strstr(preset_name, "Dev476")) return "FM476";
+void stop_tx(ProtoPirateApp* app) {
+    FURI_LOG_I(TAG, "Stopping transmission");
 
-    // Check for short names already
-    if(strcmp(preset_name, "AM650") == 0) return "AM650";
-    if(strcmp(preset_name, "AM270") == 0) return "AM270";
-    if(strcmp(preset_name, "FM238") == 0) return "FM238";
-    if(strcmp(preset_name, "FM12K") == 0) return "FM12K";
-    if(strcmp(preset_name, "FM476") == 0) return "FM476";
+    // Stop async TX first
+    subghz_devices_stop_async_tx(app->txrx->radio_device);
 
-    // Default fallback
-    return "AM650";
+    // Stop the encoder
+    if(emulate_context && emulate_context->transmitter) {
+        subghz_transmitter_stop(emulate_context->transmitter);
+    }
+
+    furi_delay_ms(10);
+
+    subghz_devices_idle(app->txrx->radio_device);
+    app->txrx->txrx_state = ProtoPirateTxRxStateIDLE;
+    app->start_tx_time = 0;
+
+    FURI_LOG_I(TAG, "Transmission stopped, state set to IDLE");
+    notification_message(app->notifications, &sequence_blink_stop);
 }
 
 static void emulate_context_free(void) {
@@ -72,7 +91,7 @@ static uint8_t
         case InputKeyOk:
             return 0x2; // Unlock
         case InputKeyDown:
-            return 0x3; // Trunk
+            return 0x3; // Boot
         case InputKeyLeft:
             return 0x4; // Panic
         case InputKeyRight:
@@ -89,7 +108,7 @@ static uint8_t
         case InputKeyOk:
             return 0x1; // Unlock
         case InputKeyDown:
-            return 0x4; // Trunk
+            return 0x4; // Boot
         case InputKeyLeft:
             return 0x8; // Panic
         case InputKeyRight:
@@ -106,7 +125,7 @@ static uint8_t
         case InputKeyOk:
             return 0x4; // Unlock
         case InputKeyDown:
-            return 0x2; // Trunk
+            return 0x2; // Boot
         case InputKeyLeft:
             return 0x1; // Panic
         case InputKeyRight:
@@ -123,7 +142,7 @@ static uint8_t
         case InputKeyOk:
             return 0x2; // Unlock?
         case InputKeyDown:
-            return 0x4; // Trunk?
+            return 0x4; // Boot?
         case InputKeyLeft:
             return 0x8; // Panic?
         case InputKeyRight:
@@ -140,7 +159,7 @@ static uint8_t
         case InputKeyOk:
             return 0x2; // Unlock?
         case InputKeyDown:
-            return 0x3; // Trunk?
+            return 0x3; // Boot?
         case InputKeyLeft:
             return 0x4; // Panic?
         case InputKeyRight:
@@ -196,10 +215,18 @@ static void protopirate_emulate_draw_callback(Canvas* canvas, void* context) {
     snprintf(info_str, sizeof(info_str), "SN:%08lX", (unsigned long)emulate_context->serial);
     canvas_draw_str(canvas, 2, 20, info_str);
 
+    snprintf(
+        info_str,
+        sizeof(info_str),
+        "F:%lu.%02lu",
+        emulate_context->freq / 1000000,
+        (emulate_context->freq % 1000000) / 10000);
+    canvas_draw_str(canvas, 2, 30, info_str);
+
     // Counter - left aligned
     snprintf(
         info_str, sizeof(info_str), "CNT:%04lX", (unsigned long)emulate_context->current_counter);
-    canvas_draw_str(canvas, 2, 30, info_str);
+    canvas_draw_str(canvas, 68, 20, info_str);
 
     // Increment on right if changed
     if(emulate_context->current_counter > emulate_context->original_counter) {
@@ -208,29 +235,56 @@ static void protopirate_emulate_draw_callback(Canvas* canvas, void* context) {
             sizeof(info_str),
             "+%ld",
             (long)(emulate_context->current_counter - emulate_context->original_counter));
-        canvas_draw_str(canvas, 60, 30, info_str);
+        canvas_draw_str(canvas, 112, 20, info_str);
     }
 
+    snprintf(info_str, sizeof(info_str), "%s", emulate_context->preset);
+    canvas_draw_str(canvas, 95, 30, info_str);
+
     // Divider
-    canvas_draw_line(canvas, 0, 34, 127, 34);
+    //canvas_draw_line(canvas, 0, 34, 127, 34);
 
     // Button mapping - adjusted positioning
     canvas_set_font(canvas, FontSecondary);
 
-    // Row 1
-    canvas_draw_str_aligned(canvas, 64, 44, AlignCenter, AlignBottom, "^ Lock");
-
     // OK in Centre
-    canvas_draw_str_aligned(canvas, 64, 53, AlignCenter, AlignBottom, "[Unlock]");
+    char* unlock_text = "UNLOCK";
+    uint16_t width_button = canvas_string_width(canvas, unlock_text) + 8;
+    uint16_t height_button = canvas_current_font_height(canvas);
+    canvas_draw_rbox(
+        canvas, 64 - (width_button / 2), 45 - (height_button / 2), width_button, height_button, 3);
+    canvas_invert_color(canvas); //Switch to white
+    canvas_draw_str_aligned(canvas, 64, 49, AlignCenter, AlignBottom, unlock_text);
+    canvas_invert_color(canvas); // Back to Black
 
-    // Right Centre Row
-    canvas_draw_str(canvas, 98, 53, "0x8 >");
+    // Row 1
+    char* panic_text = "PANIC";
+    width_button = canvas_string_width(canvas, panic_text) + 8;
+    canvas_draw_rbox(
+        canvas, 64 - (width_button / 2), 33 - (height_button / 2), width_button, height_button, 3);
+    canvas_invert_color(canvas); //Switch to white
+    canvas_draw_str_aligned(canvas, 64, 37, AlignCenter, AlignBottom, "LOCK");
+    canvas_invert_color(canvas); // Back to Black
 
     // Left Centre Row
-    canvas_draw_str(canvas, 2, 53, "< Panic");
+    canvas_draw_rbox(canvas, 0, 46 - (height_button / 2), width_button, height_button, 3);
+    canvas_invert_color(canvas); //Switch to white
+    canvas_draw_str_aligned(canvas, (width_button / 2), 50, AlignCenter, AlignBottom, panic_text);
+    canvas_invert_color(canvas); // Back to Black
+
+    // Right Centre Row
+    canvas_draw_rbox(
+        canvas, 127 - width_button, 46 - (height_button / 2), width_button, height_button, 3);
+    canvas_invert_color(canvas); //Switch to white
+    canvas_draw_str_aligned(canvas, 127 - (width_button / 2), 50, AlignCenter, AlignBottom, "XXX");
+    canvas_invert_color(canvas); // Back to Black
 
     // Row 3
-    canvas_draw_str_aligned(canvas, 64, 63, AlignCenter, AlignBottom, "v Trunk");
+    canvas_draw_rbox(
+        canvas, 64 - (width_button / 2), 57 - (height_button / 2), width_button, height_button, 3);
+    canvas_invert_color(canvas); //Switch to white
+    canvas_draw_str_aligned(canvas, 64, 61, AlignCenter, AlignBottom, "BOOT");
+    canvas_invert_color(canvas); // Back to Black
 
     // Transmitting overlay
     if(emulate_context->is_transmitting) {
@@ -280,7 +334,6 @@ static bool protopirate_emulate_input_callback(InputEvent* event, void* context)
     } else if(event->type == InputTypeRelease) {
         // Stop transmission immediately on release
         if(ctx && ctx->is_transmitting) {
-            ctx->is_transmitting = false;
             view_dispatcher_send_custom_event(
                 app->view_dispatcher, ProtoPirateCustomEventEmulateStop);
             return true;
@@ -294,17 +347,9 @@ static bool protopirate_emulate_input_callback(InputEvent* event, void* context)
 void protopirate_scene_emulate_on_enter(void* context) {
     ProtoPirateApp* app = context;
 
-    // Safety: clean up any previous context that wasn't freed
     if(emulate_context != NULL) {
         FURI_LOG_W(TAG, "Previous emulate context not freed, cleaning up");
         emulate_context_free();
-    }
-
-    if(!protopirate_radio_init(app)) {
-        FURI_LOG_E(TAG, "Failed to initialize radio!");
-        notification_message(app->notifications, &sequence_error);
-        scene_manager_previous_scene(app->scene_manager);
-        return;
     }
 
     // Create emulate context
@@ -342,6 +387,32 @@ void protopirate_scene_emulate_on_enter(void* context) {
         }
 
         emulate_context->flipper_format = ff;
+
+        // Read frequency and preset from the saved file
+        uint32_t frequency = 433920000;
+        FuriString* preset_str = furi_string_alloc();
+
+        flipper_format_rewind(ff);
+        if(!flipper_format_read_uint32(ff, "Frequency", &frequency, 1)) {
+            FURI_LOG_W(TAG, "Failed to read frequency, using default 433.92MHz");
+        }
+
+        flipper_format_rewind(ff);
+        if(!flipper_format_read_string(ff, "Preset", preset_str)) {
+            FURI_LOG_W(TAG, "Failed to read preset, using AM650");
+            furi_string_set(preset_str, "AM650");
+        }
+
+        // Convert full preset name to short name
+        emulate_context->preset = preset_name_to_short(furi_string_get_cstr(preset_str));
+        FURI_LOG_I(
+            TAG,
+            "Using frequency %lu Hz, preset %s (from %s)",
+            (unsigned long)frequency,
+            emulate_context->preset,
+            furi_string_get_cstr(preset_str));
+        emulate_context->freq = frequency;
+        furi_string_free(preset_str);
 
         // Read protocol name
         flipper_format_rewind(ff);
@@ -396,10 +467,6 @@ void protopirate_scene_emulate_on_enter(void* context) {
             if(protocol->encoder && protocol->encoder->alloc) {
                 FURI_LOG_I(TAG, "Protocol has encoder support");
 
-                // Make sure the protocol registry is set in the environment
-                subghz_environment_set_protocol_registry(
-                    app->txrx->environment, &protopirate_protocol_registry);
-
                 // Try to create transmitter
                 emulate_context->transmitter =
                     subghz_transmitter_alloc_init(app->txrx->environment, proto_name);
@@ -445,6 +512,15 @@ void protopirate_scene_emulate_on_enter(void* context) {
     view_dispatcher_switch_to_view(app->view_dispatcher, ProtoPirateViewAbout);
 }
 
+uint8_t get_tx_preset_byte(uint8_t* preset_data) {
+#define MAX_PRESET_SIZE 128
+    uint8_t offset = 0;
+    while(preset_data[offset] && (offset < MAX_PRESET_SIZE)) {
+        offset += 2;
+    }
+    return (!preset_data[offset] ? offset + 3 : 0);
+}
+
 bool protopirate_scene_emulate_on_event(void* context, SceneManagerEvent event) {
     ProtoPirateApp* app = context;
     bool consumed = false;
@@ -476,70 +552,84 @@ bool protopirate_scene_emulate_on_event(void* context, SceneManagerEvent event) 
                     break;
                 }
 
-                // Read frequency and preset from the saved file
-                uint32_t frequency = 433920000;
-                FuriString* preset_str = furi_string_alloc();
+                //Preset Loading
+                uint8_t* preset_data = NULL;
+                bool free_custom_data = false;
 
-                flipper_format_rewind(emulate_context->flipper_format);
-                if(!flipper_format_read_uint32(
-                       emulate_context->flipper_format, "Frequency", &frequency, 1)) {
-                    FURI_LOG_W(TAG, "Failed to read frequency, using default 433.92MHz");
+                //Use the Custom Preset data from the file, if we have it.
+                uint32_t uint32_array_size;
+                if(strcmp(emulate_context->preset, "Custom") == 0) {
+                    flipper_format_rewind(emulate_context->flipper_format);
+                    if(flipper_format_get_value_count(
+                           emulate_context->flipper_format,
+                           "Custom_preset_data",
+                           &uint32_array_size) &&
+                       uint32_array_size > 0 && uint32_array_size < 1024) {
+                        preset_data = malloc(uint32_array_size);
+                        free_custom_data = true;
+                        if(!flipper_format_read_hex(
+                               emulate_context->flipper_format,
+                               "Custom_preset_data",
+                               preset_data,
+                               uint32_array_size)) {
+                            FURI_LOG_W(TAG, "Custom Preset not Loaded, trying AM650");
+                            free(preset_data);
+                            free_custom_data = false;
+                            preset_data =
+                                subghz_setting_get_preset_data_by_name(app->setting, "AM650");
+                            emulate_context->preset = "AM650";
+                        }
+                    }
+                } else {
+                    //NOT A CUStoM PRESET
+                    // Get preset data with fallback chain
+                    preset_data = subghz_setting_get_preset_data_by_name(
+                        app->setting, emulate_context->preset);
                 }
-
-                flipper_format_rewind(emulate_context->flipper_format);
-                if(!flipper_format_read_string(
-                       emulate_context->flipper_format, "Preset", preset_str)) {
-                    FURI_LOG_W(TAG, "Failed to read preset, using AM650");
-                    furi_string_set(preset_str, "AM650");
-                }
-
-                // Convert full preset name to short name
-                const char* preset_name_raw = furi_string_get_cstr(preset_str);
-                const char* preset_name = preset_name_to_short(preset_name_raw);
-                FURI_LOG_I(
-                    TAG,
-                    "Using frequency %lu Hz, preset %s (from %s)",
-                    (unsigned long)frequency,
-                    preset_name,
-                    preset_name_raw);
-
-                // Get preset data with fallback chain
-                uint8_t* preset_data =
-                    subghz_setting_get_preset_data_by_name(app->setting, preset_name);
 
                 if(!preset_data) {
-                    FURI_LOG_W(TAG, "Preset %s not found, trying AM650", preset_name);
+                    FURI_LOG_W(TAG, "Preset %s not found, trying AM650", emulate_context->preset);
                     preset_data = subghz_setting_get_preset_data_by_name(app->setting, "AM650");
-                    preset_name = "AM650";
+                    emulate_context->preset = "AM650";
                 }
                 if(!preset_data) {
                     FURI_LOG_W(TAG, "AM650 not found, trying FM476");
                     preset_data = subghz_setting_get_preset_data_by_name(app->setting, "FM476");
-                    preset_name = "FM476";
+                    emulate_context->preset = "FM476";
                 }
 
                 if(preset_data) {
+                    uint8_t preset_offset = 0;
+                    //Set the TX Power
+                    if(app->tx_power) {
+                        preset_offset = get_tx_preset_byte(preset_data);
+                        if(preset_offset)
+                            preset_data[preset_offset] = tx_power_value[app->tx_power];
+                    }
+
                     // Configure radio for TX
                     subghz_devices_reset(app->txrx->radio_device);
                     subghz_devices_idle(app->txrx->radio_device);
                     subghz_devices_load_preset(
                         app->txrx->radio_device, FuriHalSubGhzPresetCustom, preset_data);
-                    subghz_devices_set_frequency(app->txrx->radio_device, frequency);
+                    subghz_devices_set_frequency(app->txrx->radio_device, emulate_context->freq);
 
                     // Start transmission
                     subghz_devices_set_tx(app->txrx->radio_device);
+                    app->start_tx_time = furi_get_tick();
 
                     if(subghz_devices_start_async_tx(
                            app->txrx->radio_device,
                            subghz_transmitter_yield,
                            emulate_context->transmitter)) {
                         app->txrx->txrx_state = ProtoPirateTxRxStateTx;
-                        notification_message(app->notifications, &sequence_single_vibro);
+                        notification_message(app->notifications, &sequence_tx);
+                        notification_message(app->notifications, &sequence_blink_magenta_10);
                         FURI_LOG_I(
                             TAG,
                             "Started transmission: freq=%lu, preset=%s",
-                            (unsigned long)frequency,
-                            preset_name);
+                            (unsigned long)emulate_context->freq,
+                            emulate_context->preset);
                     } else {
                         FURI_LOG_E(TAG, "Failed to start async TX");
                         subghz_devices_idle(app->txrx->radio_device);
@@ -550,7 +640,9 @@ bool protopirate_scene_emulate_on_event(void* context, SceneManagerEvent event) 
                     notification_message(app->notifications, &sequence_error);
                 }
 
-                furi_string_free(preset_str);
+                if(free_custom_data)
+                    free(preset_data); //We have used the preset, I alloced it I have to free.
+
             } else {
                 FURI_LOG_E(TAG, "No transmitter available");
                 notification_message(app->notifications, &sequence_error);
@@ -562,40 +654,42 @@ bool protopirate_scene_emulate_on_event(void* context, SceneManagerEvent event) 
             FURI_LOG_I(TAG, "Stop event received, txrx_state=%d", app->txrx->txrx_state);
 
             if(app->txrx->txrx_state == ProtoPirateTxRxStateTx) {
-                FURI_LOG_I(TAG, "Stopping transmission");
-
-                // Stop async TX first
-                subghz_devices_stop_async_tx(app->txrx->radio_device);
-
-                // Stop the encoder
-                if(emulate_context && emulate_context->transmitter) {
-                    subghz_transmitter_stop(emulate_context->transmitter);
+                if((furi_get_tick() - app->start_tx_time) > MIN_TX_TIME) {
+                    stop_tx(app);
+                    emulate_context->is_transmitting = false;
+                } else {
+                    emulate_context->flag_stop_called = true;
                 }
-
-                furi_delay_ms(10);
-
-                subghz_devices_idle(app->txrx->radio_device);
-                app->txrx->txrx_state = ProtoPirateTxRxStateIDLE;
-
-                FURI_LOG_I(TAG, "Transmission stopped, state set to IDLE");
             }
-
-            notification_message(app->notifications, &sequence_blink_stop);
             consumed = true;
             break;
 
         case ProtoPirateCustomEventEmulateExit:
+            if(app->txrx->txrx_state == ProtoPirateTxRxStateTx) {
+                stop_tx(app);
+                emulate_context->is_transmitting = false;
+                emulate_context->flag_stop_called = false;
+            }
             scene_manager_previous_scene(app->scene_manager);
             consumed = true;
             break;
         }
     } else if(event.type == SceneManagerEventTypeTick) {
-        // Update display
+        // Update display (causes ViewPort lockup warning but works)
         view_commit_model(app->view_about, true);
 
         if(emulate_context && emulate_context->is_transmitting) {
             if(app->txrx->txrx_state == ProtoPirateTxRxStateTx) {
-                notification_message(app->notifications, &sequence_blink_magenta_10);
+                //Are we supposed to be stopping the TX from the MIN_TX
+                if((app->start_tx_time &&
+                    ((furi_get_tick() - app->start_tx_time) > MIN_TX_TIME)) &&
+                   emulate_context->flag_stop_called) {
+                    stop_tx(app);
+                    emulate_context->is_transmitting = false;
+                    emulate_context->flag_stop_called = false;
+                } else {
+                    notification_message(app->notifications, &sequence_blink_magenta_10);
+                }
             }
         }
 
@@ -642,3 +736,4 @@ void protopirate_scene_emulate_on_exit(void* context) {
     view_set_input_callback(app->view_about, NULL);
     view_set_context(app->view_about, NULL);
 }
+#endif

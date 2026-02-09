@@ -15,6 +15,7 @@
 
 extern const SubGhzProtocol vag_protocol;
 
+// Decoder functions
 void* subghz_protocol_decoder_vag_alloc(SubGhzEnvironment* environment);
 void subghz_protocol_decoder_vag_free(void* context);
 void subghz_protocol_decoder_vag_reset(void* context);
@@ -27,3 +28,11 @@ SubGhzProtocolStatus subghz_protocol_decoder_vag_serialize(
 SubGhzProtocolStatus
     subghz_protocol_decoder_vag_deserialize(void* context, FlipperFormat* flipper_format);
 void subghz_protocol_decoder_vag_get_string(void* context, FuriString* output);
+
+// Encoder functions
+void* subghz_protocol_encoder_vag_alloc(SubGhzEnvironment* environment);
+void subghz_protocol_encoder_vag_free(void* context);
+SubGhzProtocolStatus
+    subghz_protocol_encoder_vag_deserialize(void* context, FlipperFormat* flipper_format);
+void subghz_protocol_encoder_vag_stop(void* context);
+LevelDuration subghz_protocol_encoder_vag_yield(void* context);

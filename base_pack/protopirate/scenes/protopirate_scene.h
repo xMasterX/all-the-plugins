@@ -2,6 +2,7 @@
 #pragma once
 
 #include <gui/scene_manager.h>
+#include "../protopirate_app_i.h"
 
 // Generate scene id and total number
 #define ADD_SCENE(prefix, name, id) ProtoPirateScene##id,

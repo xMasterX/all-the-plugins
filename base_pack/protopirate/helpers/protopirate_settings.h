@@ -10,6 +10,7 @@
 typedef struct {
     uint32_t frequency;
     uint8_t preset_index;
+    uint8_t tx_power;
     bool auto_save;
     bool hopping_enabled;
 } ProtoPirateSettings;
