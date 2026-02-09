@@ -292,6 +292,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Counter | ![Tools Badge] | [by Krulknul](https://github.com/Krulknul/dolphin-counter) |  | [![UFW Badge]](https://lab.flipper.net/apps/counter) |
 | DCF77 Transmitter | ![Tools Badge] | [by arha](https://github.com/arha/flipper-dcf77) |  | [![UFW Badge]](https://lab.flipper.net/apps/dcf77) |
 | FlipBIP Crypto Tool | ![Tools Badge] | [by xtruan](https://github.com/xtruan/FlipBIP) |  | [![Author Badge]](https://lab.flipper.net/apps/flipbip) |
+| Flipper Wedge | ![Tools Badge] | [by Dangerous Things](https://github.com/DangerousThings/flipper-wedge) | Read NFC/RFID tags and type UIDs as HID keyboard via USB or BT | [![Author Badge]](https://lab.flipper.net/apps/flipper_wedge) |
 | Flipp Pomodoro Timer | ![Tools Badge] | [by Th3Un1q3](https://github.com/Th3Un1q3/flipp_pomodoro) |  | [![UFW Badge]](https://lab.flipper.net/apps/flipp_pomodoro) |
 | Chronometer | ![Tools Badge] | [by nmrr](https://github.com/nmrr/flipperzero-chronometer) |  | ![None Badge] |
 | HEX Editor | ![Tools Badge] | [by dunaevai135](https://github.com/dunaevai135/flipper-zero-hex_editor) |  | [![UFW Badge]](https://lab.flipper.net/apps/hex_editor) |
