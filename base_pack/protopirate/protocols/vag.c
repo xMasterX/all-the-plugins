@@ -67,14 +67,20 @@ static const uint32_t vag_tea_key_schedule[] = {0x0B46502D, 0x5E253718, 0x2BF93A
 
 static const char* vag_button_name(uint8_t btn) {
     switch(btn) {
-    case 1:
+    case 0x1:
         return "Unlock";
-    case 2:
+    case 0x2:
         return "Lock";
-    case 4:
-        return "Trunk";
+    case 0x4:
+        return "Boot";
+    case 0x10:
+        return "Unlock";
+    case 0x20:
+        return "Lock";
+    case 0x40:
+        return "Boot";
     default:
-        return "Unknown";
+        return "Unkn";
     }
 }
 
@@ -1111,14 +1117,14 @@ static uint8_t vag_btn_to_byte(uint8_t btn, uint8_t vag_type) {
         return btn;
     } else {
         switch(btn) {
-        case 1:
+        case 0x1:
             return 0x10;
-        case 2:
+        case 0x2:
             return 0x20;
-        case 4:
+        case 0x4:
             return 0x40;
         default:
-            return 0x20;
+            return btn;
         }
     }
 }
@@ -1671,13 +1677,14 @@ void subghz_protocol_decoder_vag_get_string(void* context, FuriString* output) {
             output,
             "%s %dbit\r\n"
             "Key1:%08lX%08lX\r\n"
-            "Key2:%04X Btn:%s\r\n"
+            "Key2:%04X Btn:%0X - %s\r\n"
             "Ser:%08lX Cnt:%06lX\r\n",
             vehicle_name,
             instance->data_count_bit,
             (unsigned long)(key1 >> 32),
             (unsigned long)(key1 & 0xFFFFFFFF),
             key2,
+            instance->btn,
             vag_button_name(instance->btn),
             (unsigned long)instance->serial,
             (unsigned long)instance->cnt);

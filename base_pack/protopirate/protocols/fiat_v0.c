@@ -4,6 +4,8 @@
 
 #define TAG "FiatProtocolV0"
 
+#define FIAT_PROTOCOL_V0_NAME "Fiat V0"
+
 static const SubGhzBlockConst subghz_protocol_fiat_v0_const = {
     .te_short = 200,
     .te_long = 400,
@@ -26,9 +28,10 @@ struct SubGhzProtocolDecoderFiatV0 {
     uint32_t data_low;
     uint32_t data_high;
     uint8_t bit_count;
-    uint32_t cnt;
-    uint32_t serial;
-    uint8_t btn;
+    uint32_t hop;
+    uint32_t fix;
+    uint8_t endbyte;
+    uint8_t final_count;
     uint32_t te_last;
 };
 
@@ -37,9 +40,9 @@ struct SubGhzProtocolEncoderFiatV0 {
     SubGhzProtocolBlockEncoder encoder;
     SubGhzBlockGeneric generic;
 
-    uint32_t cnt;
-    uint32_t serial;
-    uint8_t btn;
+    uint32_t hop;
+    uint32_t fix;
+    uint8_t endbyte;
 };
 
 typedef enum {
@@ -93,9 +96,9 @@ void* subghz_protocol_encoder_fiat_v0_alloc(SubGhzEnvironment* environment) {
     instance->encoder.is_running = false;
     instance->encoder.front = 0;
 
-    instance->cnt = 0;
-    instance->serial = 0;
-    instance->btn = 0;
+    instance->hop = 0;
+    instance->fix = 0;
+    instance->endbyte = 0;
 
     return instance;
 }
@@ -114,19 +117,13 @@ static void subghz_protocol_encoder_fiat_v0_get_upload(SubGhzProtocolEncoderFiat
     size_t index = 0;
 
     uint32_t te_short = subghz_protocol_fiat_v0_const.te_short;
-    uint32_t te_long = subghz_protocol_fiat_v0_const.te_long;
 
     FURI_LOG_I(
         TAG,
-        "Building upload: cnt=0x%08lX, serial=0x%08lX, btn=0x%02X",
-        instance->cnt,
-        instance->serial,
-        instance->btn);
-
-    uint64_t data = ((uint64_t)instance->cnt << 32) | instance->serial;
-
-    // Reverse the decoder's btn fix: decoder does (x << 1) | 1
-    uint8_t btn_to_send = instance->btn >> 1;
+        "Building upload: hop=0x%08lX, fix=0x%08lX, endbyte=0x%02X",
+        instance->hop,
+        instance->fix,
+        instance->endbyte);
 
     for(uint8_t burst = 0; burst < FIAT_V0_TOTAL_BURSTS; burst++) {
         if(burst > 0) {
@@ -134,85 +131,52 @@ static void subghz_protocol_encoder_fiat_v0_get_upload(SubGhzProtocolEncoderFiat
                 level_duration_make(false, FIAT_V0_INTER_BURST_GAP);
         }
 
-        // Preamble: HIGH-LOW pairs
+        // Preamble: alternating short pulses
         for(int i = 0; i < FIAT_V0_PREAMBLE_PAIRS; i++) {
             instance->encoder.upload[index++] = level_duration_make(true, te_short);
             instance->encoder.upload[index++] = level_duration_make(false, te_short);
         }
 
-        // Replace last preamble LOW with gap
+        // Extend last LOW to create the gap (~800us)
         instance->encoder.upload[index - 1] = level_duration_make(false, FIAT_V0_GAP_US);
 
-        // First bit (bit 63) - special handling after gap
-        bool first_bit = (data >> 63) & 1;
-        if(first_bit) {
-            // First bit is 1: LONG HIGH
-            instance->encoder.upload[index++] = level_duration_make(true, te_long);
-        } else {
-            // First bit is 0: SHORT HIGH + LONG LOW
-            instance->encoder.upload[index++] = level_duration_make(true, te_short);
-            instance->encoder.upload[index++] = level_duration_make(false, te_long);
-        }
+        // Combine hop and fix into 64-bit data
+        uint64_t data = ((uint64_t)instance->hop << 32) | instance->fix;
 
-        bool prev_bit = first_bit;
-
-        // Encode remaining 63 data bits (bits 62:0) using differential Manchester
-        for(int bit = 62; bit >= 0; bit--) {
+        // Manchester encode 64 bits of data
+        for(int bit = 63; bit >= 0; bit--) {
             bool curr_bit = (data >> bit) & 1;
 
-            if(!prev_bit && !curr_bit) {
-                // 0->0: SHORT HIGH + SHORT LOW
+            if(curr_bit) {
                 instance->encoder.upload[index++] = level_duration_make(true, te_short);
                 instance->encoder.upload[index++] = level_duration_make(false, te_short);
-            } else if(!prev_bit && curr_bit) {
-                // 0->1: LONG HIGH
-                instance->encoder.upload[index++] = level_duration_make(true, te_long);
-            } else if(prev_bit && !curr_bit) {
-                // 1->0: LONG LOW
-                instance->encoder.upload[index++] = level_duration_make(false, te_long);
-            } else {
-                // 1->1: SHORT LOW + SHORT HIGH
-                instance->encoder.upload[index++] = level_duration_make(false, te_short);
-                instance->encoder.upload[index++] = level_duration_make(true, te_short);
-            }
-
-            prev_bit = curr_bit;
-        }
-
-        // Encode 6 btn bits using same differential pattern
-        for(int bit = 5; bit >= 0; bit--) {
-            bool curr_bit = (btn_to_send >> bit) & 1;
-
-            if(!prev_bit && !curr_bit) {
-                instance->encoder.upload[index++] = level_duration_make(true, te_short);
-                instance->encoder.upload[index++] = level_duration_make(false, te_short);
-            } else if(!prev_bit && curr_bit) {
-                instance->encoder.upload[index++] = level_duration_make(true, te_long);
-            } else if(prev_bit && !curr_bit) {
-                instance->encoder.upload[index++] = level_duration_make(false, te_long);
             } else {
                 instance->encoder.upload[index++] = level_duration_make(false, te_short);
                 instance->encoder.upload[index++] = level_duration_make(true, te_short);
             }
-
-            prev_bit = curr_bit;
         }
 
-        // End marker - ensure we end with LOW
-        if(prev_bit) {
-            instance->encoder.upload[index++] = level_duration_make(false, te_short);
+        // Manchester encode 7 bits of endbyte (bits 6:0) - signal has 71 total bits
+        for(int bit = 6; bit >= 0; bit--) {
+            bool curr_bit = (instance->endbyte >> bit) & 1;
+
+            if(curr_bit) {
+                instance->encoder.upload[index++] = level_duration_make(true, te_short);
+                instance->encoder.upload[index++] = level_duration_make(false, te_short);
+            } else {
+                instance->encoder.upload[index++] = level_duration_make(false, te_short);
+                instance->encoder.upload[index++] = level_duration_make(true, te_short);
+            }
         }
-        instance->encoder.upload[index++] = level_duration_make(false, te_short * 8);
+
+        // End with extended LOW (will be followed by inter-burst gap or end)
+        instance->encoder.upload[index++] = level_duration_make(false, te_short * 4);
     }
 
     instance->encoder.size_upload = index;
     instance->encoder.front = 0;
 
-    FURI_LOG_I(
-        TAG,
-        "Upload built: %zu elements, btn_to_send=0x%02X",
-        instance->encoder.size_upload,
-        btn_to_send);
+    FURI_LOG_I(TAG, "Upload built: %zu elements", instance->encoder.size_upload);
 }
 
 SubGhzProtocolStatus
@@ -247,6 +211,7 @@ SubGhzProtocolStatus
             FURI_LOG_E(TAG, "Missing Bit");
             break;
         }
+        instance->generic.data_count_bit = 64;
 
         temp_str = furi_string_alloc();
         if(!flipper_format_read_string(flipper_format, "Key", temp_str)) {
@@ -280,15 +245,18 @@ SubGhzProtocolStatus
         furi_string_free(temp_str);
 
         instance->generic.data = key;
-        instance->cnt = (uint32_t)(key >> 32);
-        instance->serial = (uint32_t)(key & 0xFFFFFFFF);
+        instance->hop = (uint32_t)(key >> 32);
+        instance->fix = (uint32_t)(key & 0xFFFFFFFF);
 
         uint32_t btn_temp = 0;
         if(flipper_format_read_uint32(flipper_format, "Btn", &btn_temp, 1)) {
-            instance->btn = (uint8_t)btn_temp;
+            instance->endbyte = (uint8_t)btn_temp;
         } else {
-            instance->btn = 0;
+            instance->endbyte = 0;
         }
+        instance->generic.btn = instance->endbyte;
+        instance->generic.cnt = instance->hop;
+        instance->generic.serial = instance->fix;
 
         if(!flipper_format_read_uint32(
                flipper_format, "Repeat", (uint32_t*)&instance->encoder.repeat, 1)) {
@@ -296,14 +264,10 @@ SubGhzProtocolStatus
         }
 
         subghz_protocol_encoder_fiat_v0_get_upload(instance);
+
         instance->encoder.is_running = true;
 
-        FURI_LOG_I(
-            TAG,
-            "Encoder ready: cnt=0x%08lX, serial=0x%08lX, btn=0x%02X",
-            instance->cnt,
-            instance->serial,
-            instance->btn);
+        FURI_LOG_I(TAG, "Encoder ready: hop=0x%08lX, fix=0x%08lX", instance->hop, instance->fix);
 
         ret = SubGhzProtocolStatusOk;
     } while(false);
@@ -363,11 +327,26 @@ void subghz_protocol_decoder_fiat_v0_reset(void* context) {
     instance->data_low = 0;
     instance->data_high = 0;
     instance->bit_count = 0;
-    instance->cnt = 0;
-    instance->serial = 0;
-    instance->btn = 0;
+    instance->hop = 0;
+    instance->fix = 0;
+    instance->endbyte = 0;
+    instance->final_count = 0;
     instance->te_last = 0;
     instance->manchester_state = ManchesterStateMid1;
+}
+
+// Helper function to reset decoder to data state with proper Manchester initialization
+static void
+    fiat_v0_decoder_enter_data_state(SubGhzProtocolDecoderFiatV0* instance, uint32_t duration) {
+    instance->decoder_state = FiatV0DecoderStepData;
+    instance->preamble_count = 0;
+    instance->data_low = 0;
+    instance->data_high = 0;
+    instance->bit_count = 0;
+    instance->te_last = duration;
+    // Critical: Reset Manchester state when entering data mode
+    manchester_advance(
+        instance->manchester_state, ManchesterEventReset, &instance->manchester_state, NULL);
 }
 
 void subghz_protocol_decoder_fiat_v0_feed(void* context, bool level, uint32_t duration) {
@@ -406,76 +385,68 @@ void subghz_protocol_decoder_fiat_v0_feed(void* context, bool level, uint32_t du
 
     case FiatV0DecoderStepPreamble:
         if(level) {
+            // HIGH pulse during preamble - just track timing
+            if(duration < te_short) {
+                diff = te_short - duration;
+            } else {
+                diff = duration - te_short;
+            }
+            if(diff < te_delta) {
+                instance->preamble_count++;
+                instance->te_last = duration;
+            } else {
+                instance->decoder_state = FiatV0DecoderStepReset;
+            }
             return;
         }
+
+        // LOW pulse - check if it's the gap after preamble
         if(duration < te_short) {
             diff = te_short - duration;
-            if(diff < te_delta) {
-                instance->preamble_count++;
-                instance->te_last = duration;
-                if(instance->preamble_count >= 0x96) {
-                    if(duration < gap_threshold) {
-                        diff = gap_threshold - duration;
-                    } else {
-                        diff = duration - gap_threshold;
-                    }
-                    if(diff < te_delta) {
-                        instance->decoder_state = FiatV0DecoderStepData;
-                        instance->preamble_count = 0;
-                        instance->data_low = 0;
-                        instance->data_high = 0;
-                        instance->bit_count = 0;
-                        instance->te_last = duration;
-                        return;
-                    }
-                }
-            } else {
-                instance->decoder_state = FiatV0DecoderStepReset;
-                if(instance->preamble_count >= 0x96) {
-                    if(duration < gap_threshold) {
-                        diff = gap_threshold - duration;
-                    } else {
-                        diff = duration - gap_threshold;
-                    }
-                    if(diff < te_delta) {
-                        instance->decoder_state = FiatV0DecoderStepData;
-                        instance->preamble_count = 0;
-                        instance->data_low = 0;
-                        instance->data_high = 0;
-                        instance->bit_count = 0;
-                        instance->te_last = duration;
-                        return;
-                    }
-                }
-            }
         } else {
             diff = duration - te_short;
-            if(diff < te_delta) {
-                instance->preamble_count++;
-                instance->te_last = duration;
-            } else {
-                instance->decoder_state = FiatV0DecoderStepReset;
-            }
+        }
+
+        if(diff < te_delta) {
+            // Normal short LOW - continue preamble
+            instance->preamble_count++;
+            instance->te_last = duration;
+        } else {
+            // Not a short pulse - check if it's the gap
             if(instance->preamble_count >= 0x96) {
-                if(duration >= 799) {
-                    diff = duration - gap_threshold;
-                } else {
+                // We have enough preamble, check for gap
+                if(duration < gap_threshold) {
                     diff = gap_threshold - duration;
+                } else {
+                    diff = duration - gap_threshold;
                 }
                 if(diff < te_delta) {
-                    instance->decoder_state = FiatV0DecoderStepData;
-                    instance->preamble_count = 0;
-                    instance->data_low = 0;
-                    instance->data_high = 0;
-                    instance->bit_count = 0;
-                    instance->te_last = duration;
+                    // Valid gap detected - transition to data state
+                    fiat_v0_decoder_enter_data_state(instance, duration);
                     return;
                 }
+            }
+            // Invalid timing or not enough preamble
+            instance->decoder_state = FiatV0DecoderStepReset;
+        }
+
+        // Also check for gap even with valid short timing if we have enough preamble
+        if(instance->preamble_count >= 0x96 &&
+           instance->decoder_state == FiatV0DecoderStepPreamble) {
+            if(duration < gap_threshold) {
+                diff = gap_threshold - duration;
+            } else {
+                diff = duration - gap_threshold;
+            }
+            if(diff < te_delta) {
+                // Valid gap detected - transition to data state
+                fiat_v0_decoder_enter_data_state(instance, duration);
+                return;
             }
         }
         break;
 
-    case FiatV0DecoderStepData: {
+    case FiatV0DecoderStepData:
         ManchesterEvent event = ManchesterEventReset;
         if(duration < te_short) {
             diff = te_short - duration;
@@ -514,20 +485,68 @@ void subghz_protocol_decoder_fiat_v0_feed(void* context, bool level, uint32_t du
                 instance->bit_count++;
 
                 if(instance->bit_count == 0x40) {
-                    instance->serial = instance->data_low;
-                    instance->cnt = instance->data_high;
+                    instance->fix = instance->data_low;
+                    instance->hop = instance->data_high;
+                    FURI_LOG_D(
+                        TAG,
+                        "Bit 64: fix=0x%08lX, hop=0x%08lX, clearing data_low/data_high",
+                        instance->fix,
+                        instance->hop);
                     instance->data_low = 0;
                     instance->data_high = 0;
                 }
 
-                if(instance->bit_count > 0x46) {
-                    instance->btn = (uint8_t)((instance->data_low << 1) | 1);
+#ifndef REMOVE_LOGS
+                if(instance->bit_count > 0x40 && instance->bit_count <= 0x47) {
+                    uint8_t endbyte_bit_num = instance->bit_count - 0x40;
+                    uint8_t endbyte_bit_index = endbyte_bit_num - 1;
+                    uint8_t data_low_byte = (uint8_t)instance->data_low;
+                    char binary_str[9] = {0};
+                    for(int i = 7; i >= 0; i--) {
+                        binary_str[7 - i] = (data_low_byte & (1 << i)) ? '1' : '0';
+                    }
+                    FURI_LOG_D(
+                        TAG,
+                        "Bit %d (endbyte bit %d/%d): new_bit=%lu, data_low=0x%08lX (0x%02X), binary=0b%s",
+                        instance->bit_count,
+                        endbyte_bit_index,
+                        endbyte_bit_num - 1,
+                        (unsigned long)new_bit,
+                        instance->data_low,
+                        data_low_byte,
+                        binary_str);
+                }
+#endif
+                if(instance->bit_count == 0x47) {
+#ifndef REMOVE_LOGS
+                    uint8_t data_low_byte = (uint8_t)instance->data_low;
+                    char binary_str[9] = {0};
+                    for(int i = 7; i >= 0; i--) {
+                        binary_str[7 - i] = (data_low_byte & (1 << i)) ? '1' : '0';
+                    }
+                    FURI_LOG_D(
+                        TAG,
+                        "EXTRACTING AT BIT 71: bit_count=%d, data_low=0x%08lX (0x%02X), binary=0b%s, accumulated %d bits after bit 64",
+                        instance->bit_count,
+                        instance->data_low,
+                        data_low_byte,
+                        binary_str,
+                        instance->bit_count - 0x40);
+#endif
+                    instance->final_count = instance->bit_count;
+                    instance->endbyte = (uint8_t)instance->data_low;
 
-                    instance->generic.data = ((uint64_t)instance->cnt << 32) | instance->serial;
+                    FURI_LOG_D(
+                        TAG,
+                        "EXTRACTED ENDBYTE: endbyte=0x%02X (decimal=%d), expected=0x0D (13)",
+                        instance->endbyte,
+                        instance->endbyte);
+
+                    instance->generic.data = ((uint64_t)instance->hop << 32) | instance->fix;
                     instance->generic.data_count_bit = 71;
-                    instance->generic.serial = instance->serial;
-                    instance->generic.btn = instance->btn;
-                    instance->generic.cnt = instance->cnt;
+                    instance->generic.serial = instance->fix;
+                    instance->generic.btn = instance->endbyte;
+                    instance->generic.cnt = instance->hop;
 
                     if(instance->base.callback) {
                         instance->base.callback(&instance->base, instance->base.context);
@@ -539,10 +558,38 @@ void subghz_protocol_decoder_fiat_v0_feed(void* context, bool level, uint32_t du
                     instance->decoder_state = FiatV0DecoderStepReset;
                 }
             }
+        } else {
+            if(instance->bit_count == 0x47) {
+                // We have exactly 71 bits - extract endbyte
+                uint8_t data_low_byte = (uint8_t)instance->data_low;
+                instance->endbyte = data_low_byte;
+
+                FURI_LOG_D(
+                    TAG,
+                    "GAP PATH EXTRACTION (71 bits): bit_count=%d, endbyte=0x%02X",
+                    instance->bit_count,
+                    instance->endbyte);
+
+                instance->generic.data = ((uint64_t)instance->hop << 32) | instance->fix;
+                instance->generic.data_count_bit = 71;
+                instance->generic.serial = instance->fix;
+                instance->generic.btn = instance->endbyte;
+                instance->generic.cnt = instance->hop;
+
+                if(instance->base.callback) {
+                    instance->base.callback(&instance->base, instance->base.context);
+                }
+
+                instance->data_low = 0;
+                instance->data_high = 0;
+                instance->bit_count = 0;
+                instance->decoder_state = FiatV0DecoderStepReset;
+            } else if(instance->bit_count < 0x40) {
+                instance->decoder_state = FiatV0DecoderStepReset;
+            }
         }
         instance->te_last = duration;
         break;
-    }
     }
 }
 
@@ -566,24 +613,28 @@ SubGhzProtocolStatus subghz_protocol_decoder_fiat_v0_serialize(
 
     do {
         if(!flipper_format_write_uint32(flipper_format, "Frequency", &preset->frequency, 1)) break;
+
         if(!flipper_format_write_string_cstr(
                flipper_format, "Preset", furi_string_get_cstr(preset->name)))
             break;
+
         if(!flipper_format_write_string_cstr(
                flipper_format, "Protocol", instance->generic.protocol_name))
             break;
 
-        uint32_t bits = 71;
+        uint32_t bits = instance->generic.data_count_bit;
         if(!flipper_format_write_uint32(flipper_format, "Bit", &bits, 1)) break;
 
         char key_str[20];
-        snprintf(key_str, sizeof(key_str), "%08lX%08lX", instance->cnt, instance->serial);
+        snprintf(key_str, sizeof(key_str), "%08lX%08lX", instance->hop, instance->fix);
         if(!flipper_format_write_string_cstr(flipper_format, "Key", key_str)) break;
 
-        if(!flipper_format_write_uint32(flipper_format, "Cnt", &instance->cnt, 1)) break;
-        if(!flipper_format_write_uint32(flipper_format, "Serial", &instance->serial, 1)) break;
+        uint32_t temp = instance->hop;
+        if(!flipper_format_write_uint32(flipper_format, "Cnt", &temp, 1)) break;
 
-        uint32_t temp = instance->btn;
+        if(!flipper_format_write_uint32(flipper_format, "Serial", &instance->fix, 1)) break;
+
+        temp = instance->endbyte;
         if(!flipper_format_write_uint32(flipper_format, "Btn", &temp, 1)) break;
 
         ret = SubGhzProtocolStatusOk;
@@ -608,13 +659,14 @@ void subghz_protocol_decoder_fiat_v0_get_string(void* context, FuriString* outpu
         output,
         "%s %dbit\r\n"
         "Key:%08lX%08lX\r\n"
-        "Sn:%08lX Btn:%02X\r\n"
-        "Cnt:%08lX\r\n",
+        "Hop:%08lX\r\n"
+        "Sn:%08lX\r\n"
+        "EndByte:%02X\r\n",
         instance->generic.protocol_name,
         instance->generic.data_count_bit,
-        instance->cnt,
-        instance->serial,
-        instance->serial,
-        instance->btn,
-        instance->cnt);
+        instance->hop,
+        instance->fix,
+        instance->hop,
+        instance->fix,
+        instance->endbyte);
 }

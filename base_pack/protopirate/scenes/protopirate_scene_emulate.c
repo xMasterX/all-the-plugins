@@ -108,6 +108,18 @@ static uint8_t
     }
     // VAG
     else if(strstr(protocol, "VAG")) {
+        if(original == 0x10 || original == 0x20 || original == 0x40) {
+            switch(key) {
+            case InputKeyUp:
+                return 0x20; // Lock
+            case InputKeyOk:
+                return 0x10; // Unlock
+            case InputKeyDown:
+                return 0x40; // Boot
+            default:
+                return original;
+            }
+        }
         switch(key) {
         case InputKeyUp:
             return 0x2; // Lock
