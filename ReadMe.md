@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `11 Feb 19:45 GMT +3`
+### Apps checked & updated at `12 Feb 04:03 GMT +3`
 
 
 # Default pack
@@ -178,6 +178,8 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Flipper Golf | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperGolf) |  | ![None Badge] |
 | Flipper Drivin | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperDrivin) |  | ![None Badge] |
 | Prince Of Arabia | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperPrinceOfArabia) |  | ![None Badge] |
+| Mystic Balloon | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperMysticBalloon) |  | ![None Badge] |
+| Wolfenduino | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperWolfenstein) | like real wolf3d! | ![None Badge] |
 | Air Mouse | ![GPIO Badge] | [by ginkage](https://github.com/ginkage/FlippAirMouse/) |  | [![Author Badge]](https://lab.flipper.net/apps/air_mouse) |
 | Plantower PMSx003 sensor reader | ![GPIO Badge] | [by 3cky](https://github.com/3cky/flipperzero-airmon) |  | [![UFW Badge]](https://lab.flipper.net/apps/airmon) |
 | Bar code scanner emulator via COM port | ![GPIO Badge] | [by polarikus](https://github.com/polarikus/flipper-zero_bc_scanner_emulator) |  | [![Author Badge]](https://lab.flipper.net/apps/bc_scanner) |
