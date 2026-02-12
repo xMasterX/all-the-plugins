@@ -1,6 +1,7 @@
 // scenes/protopirate_scene_receiver.c
 #include "../protopirate_app_i.h"
 #include "../helpers/protopirate_storage.h"
+#include "views/protopirate_receiver.h"
 #include <notification/notification_messages.h>
 
 #define TAG                             "ProtoPirateSceneRx"
@@ -40,15 +41,11 @@ static void protopirate_scene_receiver_update_statusbar(void* context) {
         is_external = radio_device_loader_is_external(app->txrx->radio_device);
     }
 
-    // Show auto-save indicator in the history count area
-    if(app->auto_save) {
-        furi_string_printf(
-            history_stat_str,
-            "%u/%u",
-            protopirate_history_get_item(app->txrx->history),
-            PROTOPIRATE_DISPLAY_HISTORY_MAX);
-    }
-
+    furi_string_printf(
+        history_stat_str,
+        "%u/%u",
+        protopirate_history_get_item(app->txrx->history),
+        PROTOPIRATE_DISPLAY_HISTORY_MAX);
     // Pass actual external radio status
     protopirate_view_receiver_add_data_statusbar(
         app->protopirate_receiver,
@@ -249,6 +246,9 @@ void protopirate_scene_receiver_on_enter(void* context) {
 
     // Update lock state in view
     protopirate_view_receiver_set_lock(app->protopirate_receiver, app->lock);
+
+    // Update auto-save state in view
+    protopirate_view_receiver_set_autosave(app->protopirate_receiver, app->auto_save);
 
     //Not in Sub Decode Mode
     protopirate_view_receiver_set_sub_decode_mode(app->protopirate_receiver, false);

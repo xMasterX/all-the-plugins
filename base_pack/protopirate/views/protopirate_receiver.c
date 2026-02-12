@@ -92,6 +92,12 @@ void protopirate_view_receiver_set_lock(ProtoPirateReceiver* receiver, ProtoPira
         receiver->view, ProtoPirateReceiverModel * model, { model->lock = lock; }, true);
 }
 
+void protopirate_view_receiver_set_autosave(ProtoPirateReceiver* receiver, bool auto_save) {
+    furi_check(receiver);
+    with_view_model(
+        receiver->view, ProtoPirateReceiverModel * model, { model->auto_save = auto_save; }, true);
+}
+
 void protopirate_view_receiver_set_callback(
     ProtoPirateReceiver* receiver,
     ProtoPirateReceiverCallback callback,
