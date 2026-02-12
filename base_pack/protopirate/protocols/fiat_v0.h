@@ -12,6 +12,8 @@
 
 #include "../defines.h"
 
+#define FIAT_PROTOCOL_V0_NAME "Fiat V0"
+
 typedef struct SubGhzProtocolDecoderFiatV0 SubGhzProtocolDecoderFiatV0;
 typedef struct SubGhzProtocolEncoderFiatV0 SubGhzProtocolEncoderFiatV0;
 

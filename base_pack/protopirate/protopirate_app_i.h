@@ -80,7 +80,6 @@ void protopirate_preset_init(
     uint8_t* preset_data,
     size_t preset_data_size);
 
-bool protopirate_set_preset(ProtoPirateApp* app, const char* preset);
 const char* preset_name_to_short(const char* preset_name);
 
 void protopirate_get_frequency_modulation(

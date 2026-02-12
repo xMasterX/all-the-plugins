@@ -5,7 +5,9 @@ enum ProtoPirateSettingIndex {
     ProtoPirateSettingIndexFrequency,
     ProtoPirateSettingIndexHopping,
     ProtoPirateSettingIndexModulation,
+#ifdef ENABLE_EMULATE_FEATURE
     ProtoPirateSettingIndexTXPower,
+#endif
     ProtoPirateSettingIndexAutoSave,
     ProtoPirateSettingIndexLock,
 };
@@ -27,20 +29,20 @@ const char* const auto_save_text[AUTO_SAVE_COUNT] = {
     "ON",
 };
 
-#define TX_POWER_COUNT 11
+#ifdef ENABLE_EMULATE_FEATURE
+#define TX_POWER_COUNT 9
 const char* const tx_power_text[TX_POWER_COUNT] = {
     "Preset",
-    "12dBm",
-    "10dBm",
+    "10dBm +",
     "7dBm",
     "5dBm",
     "0dBm",
-    "-6dBm",
     "-10dBm",
     "-15dBm",
     "-20dBm",
     "-30dBm",
 };
+#endif
 
 uint8_t protopirate_scene_receiver_config_next_frequency(const uint32_t value, void* context) {
     furi_check(context);
@@ -167,6 +169,7 @@ static void protopirate_scene_receiver_config_set_auto_save(VariableItem* item) 
     variable_item_set_current_value_text(item, auto_save_text[index]);
 }
 
+#ifdef ENABLE_EMULATE_FEATURE
 static void protopirate_scene_receiver_config_set_tx_power(VariableItem* item) {
     ProtoPirateApp* app = variable_item_get_context(item);
     uint8_t index = variable_item_get_current_value_index(item);
@@ -174,6 +177,7 @@ static void protopirate_scene_receiver_config_set_tx_power(VariableItem* item) {
     app->tx_power = index;
     variable_item_set_current_value_text(item, tx_power_text[index]);
 }
+#endif
 
 static void
     protopirate_scene_receiver_config_var_list_enter_callback(void* context, uint32_t index) {
@@ -233,6 +237,7 @@ void protopirate_scene_receiver_config_on_enter(void* context) {
     variable_item_set_current_value_text(
         item, subghz_setting_get_preset_name(app->setting, value_index));
 
+#ifdef ENABLE_EMULATE_FEATURE
     // TX power option
     item = variable_item_list_add(
         app->variable_item_list,
@@ -242,7 +247,7 @@ void protopirate_scene_receiver_config_on_enter(void* context) {
         app);
     variable_item_set_current_value_index(item, app->tx_power);
     variable_item_set_current_value_text(item, tx_power_text[app->tx_power]);
-
+#endif
     // Auto-save option
     item = variable_item_list_add(
         app->variable_item_list,

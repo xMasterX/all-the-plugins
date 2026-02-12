@@ -17,26 +17,6 @@ void protopirate_preset_init(
     app->txrx->preset->data_size = preset_data_size;
 }
 
-bool protopirate_set_preset(ProtoPirateApp* app, const char* preset) {
-    if(!strcmp(preset, "FuriHalSubGhzPresetOok270Async")) {
-        furi_string_set(app->txrx->preset->name, "AM270");
-    } else if(!strcmp(preset, "FuriHalSubGhzPresetOok650Async")) {
-        furi_string_set(app->txrx->preset->name, "AM650");
-    } else if(!strcmp(preset, "FuriHalSubGhzPreset2FSKDev238Async")) {
-        furi_string_set(app->txrx->preset->name, "FM238");
-    } else if(!strcmp(preset, "FuriHalSubGhzPreset2FSKDev12KAsync")) {
-        furi_string_set(app->txrx->preset->name, "FM12K");
-    } else if(!strcmp(preset, "FuriHalSubGhzPreset2FSKDev476Async")) {
-        furi_string_set(app->txrx->preset->name, "FM476");
-    } else if(!strcmp(preset, "FuriHalSubGhzPresetCustom")) {
-        furi_string_set(app->txrx->preset->name, "CUSTOM");
-    } else {
-        FURI_LOG_E(TAG, "Unknown preset");
-        return false;
-    }
-    return true;
-}
-
 // Convert full FuriHal preset name to short name used by settings
 const char* preset_name_to_short(const char* preset_name) {
     if(!preset_name) return "AM650";
