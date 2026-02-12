@@ -11,6 +11,11 @@ bool protopirate_storage_init(void) {
 }
 
 static void sanitize_filename(const char* input, char* output, size_t output_size) {
+    if(!output || output_size == 0) return;
+    if(!input) {
+        output[0] = '\0';
+        return;
+    }
     size_t i = 0;
     size_t j = 0;
     while(input[i] != '\0' && j < output_size - 1) {
@@ -28,6 +33,7 @@ static void sanitize_filename(const char* input, char* output, size_t output_siz
 }
 
 bool protopirate_storage_get_next_filename(const char* protocol_name, FuriString* out_filename) {
+    if(!protocol_name || !out_filename) return false;
     Storage* storage = furi_record_open(RECORD_STORAGE);
     FuriString* temp_path = furi_string_alloc();
     uint32_t index = 0;
@@ -36,7 +42,7 @@ bool protopirate_storage_get_next_filename(const char* protocol_name, FuriString
     char safe_name[64];
     sanitize_filename(protocol_name, safe_name, sizeof(safe_name));
 
-    while(!found && index < 999) {
+    while(!found && index <= 999) {
         furi_string_printf(
             temp_path,
             "%s/%s_%03lu%s",
@@ -61,177 +67,209 @@ bool protopirate_storage_get_next_filename(const char* protocol_name, FuriString
 static bool protopirate_storage_write_capture_data(
     FlipperFormat* save_file,
     FlipperFormat* flipper_format) {
-    flipper_format_rewind(flipper_format);
+    furi_check(save_file);
+    furi_check(flipper_format);
+
+    bool status = true;
 
     FuriString* string_value = furi_string_alloc();
-    uint32_t uint32_value;
+    if(!string_value) {
+        FURI_LOG_E("ProtoPirate", "Failed to alloc string_value");
+        return false;
+    }
+
+    uint32_t uint32_value = 0;
     uint32_t uint32_array_size = 0;
 
-    if(flipper_format_read_string(flipper_format, "Protocol", string_value))
-        flipper_format_write_string(save_file, "Protocol", string_value);
+    /* Protocol */
+    PROTOPIRATE_COPY_STRING_OPTIONAL("Protocol");
 
-    flipper_format_rewind(flipper_format);
-    if(flipper_format_read_uint32(flipper_format, "Bit", &uint32_value, 1))
-        flipper_format_write_uint32(save_file, "Bit", &uint32_value, 1);
+    /* Bit */
+    PROTOPIRATE_COPY_U32_OPTIONAL("Bit");
 
+    /* Key (string OR u32 array) */
     flipper_format_rewind(flipper_format);
     if(flipper_format_read_string(flipper_format, "Key", string_value)) {
-        flipper_format_write_string(save_file, "Key", string_value);
+        if(!flipper_format_write_string(save_file, "Key", string_value)) {
+            PROTOPIRATE_FAIL_WRITE("Key");
+        }
     } else {
         flipper_format_rewind(flipper_format);
         if(flipper_format_get_value_count(flipper_format, "Key", &uint32_array_size) &&
-           uint32_array_size > 0 && uint32_array_size < 1024) {
-            uint32_t* uint32_array = malloc(sizeof(uint32_t) * uint32_array_size);
-            if(uint32_array) {
-                if(flipper_format_read_uint32(
-                       flipper_format, "Key", uint32_array, uint32_array_size))
-                    flipper_format_write_uint32(save_file, "Key", uint32_array, uint32_array_size);
-                free(uint32_array);
+           uint32_array_size > 0) {
+            if(uint32_array_size >= 1024) {
+                FURI_LOG_E("ProtoPirate", "Key too large: %lu", (unsigned long)uint32_array_size);
+                status = false;
+                goto cleanup;
             }
-        }
-    }
 
-    flipper_format_rewind(flipper_format);
-    if(flipper_format_read_uint32(flipper_format, "Frequency", &uint32_value, 1))
-        flipper_format_write_uint32(save_file, "Frequency", &uint32_value, 1);
+            uint32_t* uint32_array = malloc(sizeof(uint32_t) * uint32_array_size);
+            if(!uint32_array) {
+                FURI_LOG_E(
+                    "ProtoPirate",
+                    "Malloc failed: Key (%lu u32)",
+                    (unsigned long)uint32_array_size);
+                status = false;
+                goto cleanup;
+            }
 
-    flipper_format_rewind(flipper_format);
-    if(flipper_format_read_string(flipper_format, "Preset", string_value))
-        flipper_format_write_string(save_file, "Preset", string_value);
+            flipper_format_rewind(flipper_format);
+            if(!flipper_format_read_uint32(
+                   flipper_format, "Key", uint32_array, uint32_array_size)) {
+                free(uint32_array);
+                PROTOPIRATE_FAIL_READ("Key");
+            }
 
-    flipper_format_rewind(flipper_format);
-    if(flipper_format_get_value_count(flipper_format, "Custom_preset_module", &uint32_array_size) &&
-       uint32_array_size > 0) {
-        if(flipper_format_read_string(flipper_format, "Custom_preset_module", string_value))
-            flipper_format_write_string(save_file, "Custom_preset_module", string_value);
-    }
+            if(!flipper_format_write_uint32(save_file, "Key", uint32_array, uint32_array_size)) {
+                free(uint32_array);
+                PROTOPIRATE_FAIL_WRITE("Key");
+            }
 
-    flipper_format_rewind(flipper_format);
-    if(flipper_format_get_value_count(flipper_format, "Custom_preset_data", &uint32_array_size) &&
-       uint32_array_size > 0 && uint32_array_size < 1024) {
-        uint8_t* custom_data = malloc(uint32_array_size);
-        if(custom_data) {
-            if(flipper_format_read_hex(
-                   flipper_format, "Custom_preset_data", custom_data, uint32_array_size))
-                flipper_format_write_hex(
-                    save_file, "Custom_preset_data", custom_data, uint32_array_size);
-            free(custom_data);
-        }
-    }
-
-    flipper_format_rewind(flipper_format);
-    if(flipper_format_read_uint32(flipper_format, "TE", &uint32_value, 1))
-        flipper_format_write_uint32(save_file, "TE", &uint32_value, 1);
-
-    flipper_format_rewind(flipper_format);
-    if(flipper_format_read_uint32(flipper_format, "Serial", &uint32_value, 1))
-        flipper_format_write_uint32(save_file, "Serial", &uint32_value, 1);
-
-    flipper_format_rewind(flipper_format);
-    if(flipper_format_read_uint32(flipper_format, "Btn", &uint32_value, 1))
-        flipper_format_write_uint32(save_file, "Btn", &uint32_value, 1);
-
-    flipper_format_rewind(flipper_format);
-    if(flipper_format_read_uint32(flipper_format, "Cnt", &uint32_value, 1))
-        flipper_format_write_uint32(save_file, "Cnt", &uint32_value, 1);
-
-    flipper_format_rewind(flipper_format);
-    if(flipper_format_read_uint32(flipper_format, "BSMagic", &uint32_value, 1))
-        flipper_format_write_uint32(save_file, "BSMagic", &uint32_value, 1);
-
-    flipper_format_rewind(flipper_format);
-    if(flipper_format_read_uint32(flipper_format, "CRC", &uint32_value, 1))
-        flipper_format_write_uint32(save_file, "CRC", &uint32_value, 1);
-
-    flipper_format_rewind(flipper_format);
-    if(flipper_format_read_uint32(flipper_format, "Type", &uint32_value, 1))
-        flipper_format_write_uint32(save_file, "Type", &uint32_value, 1);
-
-    // VAG Key2 field
-    flipper_format_rewind(flipper_format);
-    uint8_t key2_buf[8];
-    if(flipper_format_read_hex(flipper_format, "Key2", key2_buf, 8))
-        flipper_format_write_hex(save_file, "Key2", key2_buf, 8);
-
-    // VAG KeyIdx field (which key was used)
-    flipper_format_rewind(flipper_format);
-    if(flipper_format_read_uint32(flipper_format, "KeyIdx", &uint32_value, 1))
-        flipper_format_write_uint32(save_file, "KeyIdx", &uint32_value, 1);
-
-    flipper_format_rewind(flipper_format);
-    if(flipper_format_read_uint32(flipper_format, "Seed", &uint32_value, 1))
-        flipper_format_write_uint32(save_file, "Seed", &uint32_value, 1);
-
-    flipper_format_rewind(flipper_format);
-    uint8_t val_field[2];
-    if(flipper_format_read_hex(flipper_format, "ValidationField", val_field, 2)) {
-        flipper_format_write_hex(save_file, "ValidationField", val_field, 2);
-    } else {
-        flipper_format_rewind(flipper_format);
-        if(flipper_format_read_uint32(flipper_format, "ValidationField", &uint32_value, 1))
-            flipper_format_write_uint32(save_file, "ValidationField", &uint32_value, 1);
-    }
-
-    flipper_format_rewind(flipper_format);
-    if(flipper_format_read_string(flipper_format, "Key_2", string_value))
-        flipper_format_write_string(save_file, "Key_2", string_value);
-
-    flipper_format_rewind(flipper_format);
-    uint8_t key1_buf[8];
-    if(flipper_format_read_hex(flipper_format, "Key1", key1_buf, 8))
-        flipper_format_write_hex(save_file, "Key1", key1_buf, 8);
-
-    flipper_format_rewind(flipper_format);
-    if(flipper_format_read_uint32(flipper_format, "Check", &uint32_value, 1))
-        flipper_format_write_uint32(save_file, "Check", &uint32_value, 1);
-
-    flipper_format_rewind(flipper_format);
-    if(flipper_format_get_value_count(flipper_format, "RAW_Data", &uint32_array_size) &&
-       uint32_array_size > 0 && uint32_array_size < 4096) {
-        uint32_t* uint32_array = malloc(sizeof(uint32_t) * uint32_array_size);
-        if(uint32_array) {
-            if(flipper_format_read_uint32(
-                   flipper_format, "RAW_Data", uint32_array, uint32_array_size))
-                flipper_format_write_uint32(
-                    save_file, "RAW_Data", uint32_array, uint32_array_size);
             free(uint32_array);
         }
     }
 
-    flipper_format_rewind(flipper_format);
-    if(flipper_format_read_uint32(flipper_format, "DataHi", &uint32_value, 1))
-        flipper_format_write_uint32(save_file, "DataHi", &uint32_value, 1);
+    /* Frequency */
+    PROTOPIRATE_COPY_U32_OPTIONAL("Frequency");
 
-    flipper_format_rewind(flipper_format);
-    if(flipper_format_read_uint32(flipper_format, "DataLo", &uint32_value, 1))
-        flipper_format_write_uint32(save_file, "DataLo", &uint32_value, 1);
+    /* Preset */
+    PROTOPIRATE_COPY_STRING_OPTIONAL("Preset");
 
-    flipper_format_rewind(flipper_format);
-    if(flipper_format_read_uint32(flipper_format, "RawCnt", &uint32_value, 1))
-        flipper_format_write_uint32(save_file, "RawCnt", &uint32_value, 1);
+    /* Custom_preset_module (only if present) */
+    PROTOPIRATE_COPY_STRING_IF_PRESENT("Custom_preset_module");
 
+    /* Custom_preset_data (only if present) */
     flipper_format_rewind(flipper_format);
-    if(flipper_format_read_uint32(flipper_format, "Encrypted", &uint32_value, 1))
-        flipper_format_write_uint32(save_file, "Encrypted", &uint32_value, 1);
+    if(flipper_format_get_value_count(flipper_format, "Custom_preset_data", &uint32_array_size) &&
+       uint32_array_size > 0) {
+        if(uint32_array_size >= 1024) {
+            FURI_LOG_E(
+                "ProtoPirate",
+                "Custom_preset_data too large: %lu",
+                (unsigned long)uint32_array_size);
+            status = false;
+            goto cleanup;
+        }
 
+        uint8_t* custom_data = malloc(uint32_array_size);
+        if(!custom_data) {
+            FURI_LOG_E(
+                "ProtoPirate",
+                "Malloc failed: Custom_preset_data (%lu bytes)",
+                (unsigned long)uint32_array_size);
+            status = false;
+            goto cleanup;
+        }
+
+        flipper_format_rewind(flipper_format);
+        if(!flipper_format_read_hex(
+               flipper_format, "Custom_preset_data", custom_data, uint32_array_size)) {
+            free(custom_data);
+            PROTOPIRATE_FAIL_READ("Custom_preset_data");
+        }
+
+        if(!flipper_format_write_hex(
+               save_file, "Custom_preset_data", custom_data, uint32_array_size)) {
+            free(custom_data);
+            PROTOPIRATE_FAIL_WRITE("Custom_preset_data");
+        }
+
+        free(custom_data);
+    }
+
+    /* TE / Serial / Btn / Cnt / BSMagic / CRC / Type */
+    PROTOPIRATE_COPY_U32_OPTIONAL("TE");
+    PROTOPIRATE_COPY_U32_OPTIONAL("Serial");
+    PROTOPIRATE_COPY_U32_OPTIONAL("Btn");
+    PROTOPIRATE_COPY_U32_OPTIONAL("Cnt");
+    PROTOPIRATE_COPY_U32_OPTIONAL("BSMagic");
+    PROTOPIRATE_COPY_U32_OPTIONAL("CRC");
+    PROTOPIRATE_COPY_U32_OPTIONAL("Type");
+
+    /* Key2 (VAG) */
+    uint8_t key2_buf[8];
+    PROTOPIRATE_COPY_HEX_FIXED_OPTIONAL("Key2", key2_buf, 8);
+
+    /* KeyIdx / Seed */
+    PROTOPIRATE_COPY_U32_OPTIONAL("KeyIdx");
+    PROTOPIRATE_COPY_U32_OPTIONAL("Seed");
+
+    /* ValidationField (hex[2] OR u32) */
     flipper_format_rewind(flipper_format);
-    if(flipper_format_read_uint32(flipper_format, "Decrypted", &uint32_value, 1))
-        flipper_format_write_uint32(save_file, "Decrypted", &uint32_value, 1);
+    uint8_t val_field[2];
+    if(flipper_format_read_hex(flipper_format, "ValidationField", val_field, 2)) {
+        if(!flipper_format_write_hex(save_file, "ValidationField", val_field, 2)) {
+            PROTOPIRATE_FAIL_WRITE("ValidationField");
+        }
+    } else {
+        flipper_format_rewind(flipper_format);
+        if(flipper_format_read_uint32(flipper_format, "ValidationField", &uint32_value, 1)) {
+            if(!flipper_format_write_uint32(save_file, "ValidationField", &uint32_value, 1)) {
+                PROTOPIRATE_FAIL_WRITE("ValidationField");
+            }
+        }
+    }
 
+    /* Key_2 */
+    PROTOPIRATE_COPY_STRING_OPTIONAL("Key_2");
+
+    /* Key1 */
+    uint8_t key1_buf[8];
+    PROTOPIRATE_COPY_HEX_FIXED_OPTIONAL("Key1", key1_buf, 8);
+
+    /* Check */
+    PROTOPIRATE_COPY_U32_OPTIONAL("Check");
+
+    /* RAW_Data (u32 array, only if present) */
     flipper_format_rewind(flipper_format);
-    if(flipper_format_read_uint32(flipper_format, "KIAVersion", &uint32_value, 1))
-        flipper_format_write_uint32(save_file, "KIAVersion", &uint32_value, 1);
+    if(flipper_format_get_value_count(flipper_format, "RAW_Data", &uint32_array_size) &&
+       uint32_array_size > 0) {
+        if(uint32_array_size >= 4096) {
+            FURI_LOG_E("ProtoPirate", "RAW_Data too large: %lu", (unsigned long)uint32_array_size);
+            status = false;
+            goto cleanup;
+        }
 
-    flipper_format_rewind(flipper_format);
-    if(flipper_format_read_uint32(flipper_format, "BS", &uint32_value, 1))
-        flipper_format_write_uint32(save_file, "BS", &uint32_value, 1);
+        uint32_t* raw_array = malloc(sizeof(uint32_t) * uint32_array_size);
+        if(!raw_array) {
+            FURI_LOG_E(
+                "ProtoPirate",
+                "Malloc failed: RAW_Data (%lu u32)",
+                (unsigned long)uint32_array_size);
+            status = false;
+            goto cleanup;
+        }
 
-    flipper_format_rewind(flipper_format);
-    if(flipper_format_read_string(flipper_format, "Manufacture", string_value))
-        flipper_format_write_string(save_file, "Manufacture", string_value);
+        flipper_format_rewind(flipper_format);
+        if(!flipper_format_read_uint32(flipper_format, "RAW_Data", raw_array, uint32_array_size)) {
+            free(raw_array);
+            PROTOPIRATE_FAIL_READ("RAW_Data");
+        }
 
+        if(!flipper_format_write_uint32(save_file, "RAW_Data", raw_array, uint32_array_size)) {
+            free(raw_array);
+            PROTOPIRATE_FAIL_WRITE("RAW_Data");
+        }
+
+        free(raw_array);
+    }
+
+    /* DataHi / DataLo / RawCnt / Encrypted / Decrypted / KIAVersion / BS */
+    PROTOPIRATE_COPY_U32_OPTIONAL("DataHi");
+    PROTOPIRATE_COPY_U32_OPTIONAL("DataLo");
+    PROTOPIRATE_COPY_U32_OPTIONAL("RawCnt");
+    PROTOPIRATE_COPY_U32_OPTIONAL("Encrypted");
+    PROTOPIRATE_COPY_U32_OPTIONAL("Decrypted");
+    PROTOPIRATE_COPY_U32_OPTIONAL("KIAVersion");
+    PROTOPIRATE_COPY_U32_OPTIONAL("BS");
+
+    /* Manufacture */
+    PROTOPIRATE_COPY_STRING_OPTIONAL("Manufacture");
+
+cleanup:
     furi_string_free(string_value);
-    return true;
+
+    return status;
 }
 
 bool protopirate_storage_save_temp(FlipperFormat* flipper_format) {
@@ -257,7 +295,10 @@ bool protopirate_storage_save_temp(FlipperFormat* flipper_format) {
             break;
         }
 
-        protopirate_storage_write_capture_data(save_file, flipper_format);
+        if(!protopirate_storage_write_capture_data(save_file, flipper_format)) {
+            FURI_LOG_E(TAG, "Failed to capture data");
+            break;
+        }
 
         result = true;
         FURI_LOG_I(TAG, "Saved temp file: %s", PROTOPIRATE_TEMP_FILE);
@@ -282,6 +323,10 @@ bool protopirate_storage_save_capture(
     FlipperFormat* flipper_format,
     const char* protocol_name,
     FuriString* out_path) {
+    furi_check(flipper_format);
+    furi_check(protocol_name);
+    furi_check(out_path);
+
     if(!protopirate_storage_init()) {
         FURI_LOG_E(TAG, "Failed to create app folder");
         return false;
@@ -310,7 +355,10 @@ bool protopirate_storage_save_capture(
             break;
         }
 
-        protopirate_storage_write_capture_data(save_file, flipper_format);
+        if(!protopirate_storage_write_capture_data(save_file, flipper_format)) {
+            FURI_LOG_E(TAG, "Failed to write capture data");
+            break;
+        }
 
         if(out_path) furi_string_set(out_path, file_path);
 

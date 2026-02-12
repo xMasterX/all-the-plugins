@@ -3,6 +3,8 @@
 #include "kia_generic.h"
 #include <lib/toolbox/manchester_decoder.h>
 
+#include "../defines.h"
+
 #define KIA_PROTOCOL_V5_NAME "Kia V5"
 
 typedef struct SubGhzProtocolDecoderKiaV5 SubGhzProtocolDecoderKiaV5;

@@ -2,6 +2,8 @@
 
 #include "kia_generic.h"
 
+#include "../defines.h"
+
 #define KIA_PROTOCOL_V3_V4_NAME "Kia V3/V4"
 
 extern const SubGhzProtocol kia_protocol_v3_v4;

@@ -10,6 +10,8 @@
 #include <lib/toolbox/manchester_decoder.h>
 #include <flipper_format/flipper_format.h>
 
+#include "../defines.h"
+
 #define SUBGHZ_PROTOCOL_STAR_LINE_NAME "Star Line"
 
 typedef struct SubGhzProtocolDecoderStarLine SubGhzProtocolDecoderStarLine;

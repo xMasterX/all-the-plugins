@@ -66,29 +66,12 @@ uint32_t subghz_protocol_keeloq_common_decrypt(const uint32_t data, const uint64
 uint64_t subghz_protocol_keeloq_common_normal_learning(uint32_t data, const uint64_t key);
 
 /** 
- * Secure Learning
- * @param data - serial number (28bit)
- * @param seed - seed number (32bit)
- * @param key - manufacture (64bit)
- * @return manufacture for this serial number (64bit)
- */
-uint64_t
-    subghz_protocol_keeloq_common_secure_learning(uint32_t data, uint32_t seed, const uint64_t key);
-
-/** 
  * Magic_xor_type1 Learning
  * @param data - serial number (28bit)
  * @param xor - magic xor (64bit)
  * @return manufacture for this serial number (64bit)
  */
 uint64_t subghz_protocol_keeloq_common_magic_xor_type1_learning(uint32_t data, uint64_t xor);
-
-/** Faac SLH (Spa) Learning
- * @param seed - seed number (32bit)
- * @param key - mfkey (64bit)
- * @return man_learning for this fix number (64bit)
- */
-uint64_t subghz_protocol_keeloq_common_faac_learning(const uint32_t seed, const uint64_t key);
 
 /** Magic_serial_type1 Learning
  * @param data - serial number (28bit)

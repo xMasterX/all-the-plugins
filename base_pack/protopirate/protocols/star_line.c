@@ -108,7 +108,7 @@ void* subghz_protocol_encoder_star_line_alloc(SubGhzEnvironment* environment) {
 }
 
 void subghz_protocol_encoder_star_line_free(void* context) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolEncoderStarLine* instance = context;
     furi_string_free(instance->manufacture_from_file);
     free(instance->encoder.upload);
@@ -201,7 +201,7 @@ bool subghz_protocol_star_line_create_data(
     uint16_t cnt,
     const char* manufacture_name,
     SubGhzRadioPreset* preset) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolEncoderStarLine* instance = context;
     instance->generic.serial = serial;
     instance->generic.cnt = cnt;
@@ -223,7 +223,7 @@ bool subghz_protocol_star_line_create_data(
 static bool subghz_protocol_encoder_star_line_get_upload(
     SubGhzProtocolEncoderStarLine* instance,
     uint8_t btn) {
-    furi_assert(instance);
+    furi_check(instance);
 
     // Gen new key
     if(!subghz_protocol_star_line_gen_data(instance, btn)) {
@@ -321,7 +321,7 @@ static SubGhzProtocolStatus subghz_protocol_encoder_star_line_serialize(
 
 SubGhzProtocolStatus
     subghz_protocol_encoder_star_line_deserialize(void* context, FlipperFormat* flipper_format) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolEncoderStarLine* instance = context;
     SubGhzProtocolStatus ret = SubGhzProtocolStatusError;
 
@@ -501,7 +501,7 @@ void* subghz_protocol_decoder_star_line_alloc(SubGhzEnvironment* environment) {
 }
 
 void subghz_protocol_decoder_star_line_free(void* context) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderStarLine* instance = context;
     furi_string_free(instance->manufacture_from_file);
 
@@ -509,7 +509,7 @@ void subghz_protocol_decoder_star_line_free(void* context) {
 }
 
 void subghz_protocol_decoder_star_line_reset(void* context) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderStarLine* instance = context;
     instance->decoder.parser_step = StarLineDecoderStepReset;
     // TODO
@@ -518,7 +518,7 @@ void subghz_protocol_decoder_star_line_reset(void* context) {
 }
 
 void subghz_protocol_decoder_star_line_feed(void* context, bool level, uint32_t duration) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderStarLine* instance = context;
 
     switch(instance->decoder.parser_step) {
@@ -626,7 +626,7 @@ static inline bool subghz_protocol_star_line_check_decrypt(
     uint32_t decrypt,
     uint8_t btn,
     uint32_t end_serial) {
-    furi_assert(instance);
+    furi_check(instance);
     if((decrypt >> 24 == btn) && ((((uint16_t)(decrypt >> 16)) & 0x00FF) == end_serial)) {
         instance->cnt = decrypt & 0x0000FFFF;
         return true;
@@ -776,7 +776,7 @@ static void subghz_protocol_star_line_check_remote_controller(
 }
 
 uint8_t subghz_protocol_decoder_star_line_get_hash_data(void* context) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderStarLine* instance = context;
     return subghz_protocol_blocks_get_hash_data(
         &instance->decoder, (instance->decoder.decode_count_bit / 8) + 1);
@@ -786,7 +786,7 @@ SubGhzProtocolStatus subghz_protocol_decoder_star_line_serialize(
     void* context,
     FlipperFormat* flipper_format,
     SubGhzRadioPreset* preset) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderStarLine* instance = context;
     subghz_protocol_star_line_check_remote_controller(
         &instance->generic, instance->keystore, &instance->manufacture_name);
@@ -853,7 +853,7 @@ SubGhzProtocolStatus subghz_protocol_decoder_star_line_serialize(
 
 SubGhzProtocolStatus
     subghz_protocol_decoder_star_line_deserialize(void* context, FlipperFormat* flipper_format) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderStarLine* instance = context;
     SubGhzProtocolStatus ret = SubGhzProtocolStatusError;
 
@@ -977,7 +977,7 @@ SubGhzProtocolStatus
 }
 
 void subghz_protocol_decoder_star_line_get_string(void* context, FuriString* output) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderStarLine* instance = context;
 
     subghz_protocol_star_line_check_remote_controller(

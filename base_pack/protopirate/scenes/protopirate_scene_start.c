@@ -23,7 +23,7 @@ typedef enum {
 static void protopirate_scene_start_open_saved_captures(ProtoPirateApp* app);
 
 static void protopirate_scene_start_submenu_callback(void* context, uint32_t index) {
-    furi_assert(context);
+    furi_check(context);
     ProtoPirateApp* app = context;
 
     // Handle "Saved Captures" directly here, not via custom event
@@ -129,7 +129,7 @@ static void protopirate_scene_start_open_saved_captures(ProtoPirateApp* app) {
 }
 
 void protopirate_scene_start_on_enter(void* context) {
-    furi_assert(context);
+    furi_check(context);
     ProtoPirateApp* app = context;
 
     submenu_add_item(
@@ -183,7 +183,7 @@ void protopirate_scene_start_on_enter(void* context) {
 }
 
 bool protopirate_scene_start_on_event(void* context, SceneManagerEvent event) {
-    furi_assert(context);
+    furi_check(context);
     ProtoPirateApp* app = context;
     bool consumed = false;
 
@@ -217,7 +217,7 @@ bool protopirate_scene_start_on_event(void* context, SceneManagerEvent event) {
 }
 
 void protopirate_scene_start_on_exit(void* context) {
-    furi_assert(context);
+    furi_check(context);
     ProtoPirateApp* app = context;
     submenu_reset(app->submenu);
 }

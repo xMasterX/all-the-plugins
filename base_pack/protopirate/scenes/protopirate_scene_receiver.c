@@ -10,10 +10,27 @@
 void protopirate_scene_receiver_view_callback(ProtoPirateCustomEvent event, void* context);
 
 static void protopirate_scene_receiver_update_statusbar(void* context) {
+    furi_check(context);
     ProtoPirateApp* app = context;
+
     FuriString* frequency_str = furi_string_alloc();
+    if(!frequency_str) {
+        FURI_LOG_E(TAG, "frequency_str allocation failed");
+        return;
+    }
     FuriString* modulation_str = furi_string_alloc();
+    if(!modulation_str) {
+        FURI_LOG_E(TAG, "modulation_str allocation failed");
+        furi_string_free(frequency_str);
+        return;
+    }
     FuriString* history_stat_str = furi_string_alloc();
+    if(!history_stat_str) {
+        FURI_LOG_E(TAG, "history_stat_str allocation failed");
+        furi_string_free(frequency_str);
+        furi_string_free(modulation_str);
+        return;
+    }
 
     protopirate_get_frequency_modulation(app, frequency_str, modulation_str);
 
@@ -25,12 +42,6 @@ static void protopirate_scene_receiver_update_statusbar(void* context) {
 
     // Show auto-save indicator in the history count area
     if(app->auto_save) {
-        furi_string_printf(
-            history_stat_str,
-            "%u/%u",
-            protopirate_history_get_item(app->txrx->history),
-            PROTOPIRATE_DISPLAY_HISTORY_MAX);
-    } else {
         furi_string_printf(
             history_stat_str,
             "%u/%u",
@@ -56,12 +67,18 @@ static void protopirate_scene_receiver_callback(
     SubGhzProtocolDecoderBase* decoder_base,
     void* context) {
     UNUSED(receiver);
-    furi_assert(context);
+    furi_check(decoder_base);
+    furi_check(context);
     ProtoPirateApp* app = context;
 
     FURI_LOG_I(TAG, "=== SIGNAL DECODED ===");
 
     FuriString* str_buff = furi_string_alloc();
+    if(!str_buff) {
+        FURI_LOG_E(TAG, "str_buff allocation failed");
+        return;
+    }
+
     subghz_protocol_decoder_base_get_string(decoder_base, str_buff);
     FURI_LOG_I(TAG, "%s", furi_string_get_cstr(str_buff));
 
@@ -75,6 +92,11 @@ static void protopirate_scene_receiver_callback(
             protopirate_history_get_item(app->txrx->history));
 
         FuriString* item_name = furi_string_alloc();
+        if(!item_name) {
+            FURI_LOG_E(TAG, "item_name allocation failed");
+            return;
+        }
+
         protopirate_history_get_text_item_menu(
             app->txrx->history, item_name, protopirate_history_get_item(app->txrx->history) - 1);
 
@@ -94,6 +116,12 @@ static void protopirate_scene_receiver_callback(
 
             if(ff) {
                 FuriString* protocol = furi_string_alloc();
+                if(!protocol) {
+                    FURI_LOG_E(TAG, "protocol allocation failed");
+                    furi_string_free(str_buff);
+                    return;
+                }
+
                 flipper_format_rewind(ff);
                 if(!flipper_format_read_string(ff, "Protocol", protocol)) {
                     furi_string_set_str(protocol, "Unknown");
@@ -104,6 +132,13 @@ static void protopirate_scene_receiver_callback(
                 furi_string_replace_all(protocol, " ", "_");
 
                 FuriString* saved_path = furi_string_alloc();
+                if(!protocol) {
+                    FURI_LOG_E(TAG, "saved_path allocation failed");
+                    furi_string_free(protocol);
+                    furi_string_free(str_buff);
+                    return;
+                }
+
                 if(protopirate_storage_save_capture(
                        ff, furi_string_get_cstr(protocol), saved_path)) {
                     FURI_LOG_I(TAG, "Auto-saved: %s", furi_string_get_cstr(saved_path));
@@ -133,6 +168,7 @@ static void protopirate_scene_receiver_callback(
 }
 
 void protopirate_scene_receiver_on_enter(void* context) {
+    furi_check(context);
     ProtoPirateApp* app = context;
 
     FURI_LOG_I(TAG, "=== ENTERING RECEIVER SCENE ===");
@@ -141,7 +177,8 @@ void protopirate_scene_receiver_on_enter(void* context) {
 #ifndef REMOVE_LOGS
     bool is_external =
         app->txrx->radio_device ? radio_device_loader_is_external(app->txrx->radio_device) : false;
-    const char* device_name = subghz_devices_get_name(app->txrx->radio_device);
+    const char* device_name =
+        app->txrx->radio_device ? subghz_devices_get_name(app->txrx->radio_device) : NULL;
     FURI_LOG_I(TAG, "Radio device: %s", device_name ? device_name : "NULL");
     FURI_LOG_I(TAG, "Is External: %s", is_external ? "YES" : "NO");
     FURI_LOG_I(TAG, "Frequency: %lu Hz", app->txrx->preset->frequency);
@@ -221,6 +258,7 @@ void protopirate_scene_receiver_on_enter(void* context) {
 }
 
 bool protopirate_scene_receiver_on_event(void* context, SceneManagerEvent event) {
+    furi_check(context);
     ProtoPirateApp* app = context;
     bool consumed = false;
 
@@ -273,7 +311,8 @@ bool protopirate_scene_receiver_on_event(void* context, SceneManagerEvent event)
         }
 
         // Update RSSI from the correct radio device (only if initialized)
-        if(app->radio_initialized && app->txrx->txrx_state == ProtoPirateTxRxStateRx) {
+        if(app->radio_initialized && app->txrx->txrx_state == ProtoPirateTxRxStateRx &&
+           app->txrx->radio_device) {
             float rssi = subghz_devices_get_rssi(app->txrx->radio_device);
             protopirate_view_receiver_set_rssi(app->protopirate_receiver, rssi);
 
@@ -300,6 +339,7 @@ bool protopirate_scene_receiver_on_event(void* context, SceneManagerEvent event)
 }
 
 void protopirate_scene_receiver_on_exit(void* context) {
+    furi_check(context);
     ProtoPirateApp* app = context;
 
     FURI_LOG_I(TAG, "=== EXITING RECEIVER SCENE ===");
@@ -337,7 +377,7 @@ void protopirate_scene_receiver_on_exit(void* context) {
 }
 
 void protopirate_scene_receiver_view_callback(ProtoPirateCustomEvent event, void* context) {
-    furi_assert(context);
+    furi_check(context);
     ProtoPirateApp* app = context;
     view_dispatcher_send_custom_event(app->view_dispatcher, event);
 }

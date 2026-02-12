@@ -19,6 +19,7 @@ struct FlipperFormat {
 
 RawFileReader* raw_file_reader_alloc(void) {
     RawFileReader* reader = malloc(sizeof(RawFileReader));
+    furi_check(reader);
     memset(reader, 0, sizeof(RawFileReader));
     return reader;
 }
@@ -58,14 +59,14 @@ static bool local_flipper_format_stream_read_value(Stream* stream, FuriString* v
             }
         }
 
-        for(uint16_t i = 0; i < was_read; i++) {
+        for(size_t i = 0; i < was_read; i++) {
             const uint8_t data = buffer[i];
 
             if(state == LeadingSpace) {
                 if(local_flipper_format_stream_is_space(data)) {
                     continue;
                 } else if(data == local_flipper_format_eoln) {
-                    stream_seek(stream, i - was_read, StreamOffsetFromCurrent);
+                    stream_seek(stream, (int32_t)i - (int32_t)was_read, StreamOffsetFromCurrent);
                     error = true;
                     break;
                 } else {
@@ -76,7 +77,8 @@ static bool local_flipper_format_stream_read_value(Stream* stream, FuriString* v
                 if(local_flipper_format_stream_is_space(data)) {
                     state = TrailingSpace;
                 } else if(data == local_flipper_format_eoln) {
-                    if(!stream_seek(stream, i - was_read, StreamOffsetFromCurrent)) {
+                    if(!stream_seek(
+                           stream, (int32_t)i - (int32_t)was_read, StreamOffsetFromCurrent)) {
                         error = true;
                     } else {
                         result = true;
@@ -89,7 +91,8 @@ static bool local_flipper_format_stream_read_value(Stream* stream, FuriString* v
             } else if(state == TrailingSpace) {
                 if(local_flipper_format_stream_is_space(data)) {
                     continue;
-                } else if(!stream_seek(stream, i - was_read, StreamOffsetFromCurrent)) {
+                } else if(!stream_seek(
+                              stream, (int32_t)i - (int32_t)was_read, StreamOffsetFromCurrent)) {
                     error = true;
                 } else {
                     *last = (data == local_flipper_format_eoln);
@@ -147,7 +150,8 @@ static bool local_flipper_format_stream_read_valid_key(Stream* stream, FuriStrin
                     if(accumulate) {
                         // we found the delimiter, move the rw pointer to the delimiter location
                         // and signal that we have found something
-                        if(!stream_seek(stream, i - was_read, StreamOffsetFromCurrent)) {
+                        if(!stream_seek(
+                               stream, (int32_t)i - (int32_t)was_read, StreamOffsetFromCurrent)) {
                             error = true;
                             break;
                         }

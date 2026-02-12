@@ -20,7 +20,7 @@ void protopirate_view_receiver_info_set_callback(
     ProtoPirateReceiverInfo* receiver_info,
     ProtoPirateReceiverInfoCallback callback,
     void* context) {
-    furi_assert(receiver_info);
+    furi_check(receiver_info);
     receiver_info->callback = callback;
     receiver_info->context = context;
 }
@@ -41,26 +41,26 @@ void protopirate_view_receiver_info_draw(Canvas* canvas, ProtoPirateReceiverInfo
 }
 
 bool protopirate_view_receiver_info_input(InputEvent* event, void* context) {
-    furi_assert(context);
-    UNUSED(context);
-    bool consumed = false;
+    furi_check(context);
+    ProtoPirateReceiverInfo* receiver_info = context;
 
-    if(event->type == InputTypeShort) {
-        if(event->key == InputKeyBack) {
-            consumed = true;
+    if(event->type == InputTypeShort && event->key == InputKeyBack) {
+        if(receiver_info->callback) {
+            receiver_info->callback(
+                ProtoPirateCustomEventViewReceiverBack, receiver_info->context);
         }
+        return true;
     }
-
-    return consumed;
+    return false;
 }
 
 void protopirate_view_receiver_info_enter(void* context) {
-    furi_assert(context);
+    furi_check(context);
     UNUSED(context);
 }
 
 void protopirate_view_receiver_info_exit(void* context) {
-    furi_assert(context);
+    furi_check(context);
     ProtoPirateReceiverInfo* receiver_info = context;
     with_view_model(
         receiver_info->view,
@@ -74,6 +74,7 @@ void protopirate_view_receiver_info_exit(void* context) {
 
 ProtoPirateReceiverInfo* protopirate_view_receiver_info_alloc() {
     ProtoPirateReceiverInfo* receiver_info = malloc(sizeof(ProtoPirateReceiverInfo));
+    furi_check(receiver_info);
 
     receiver_info->view = view_alloc();
     view_allocate_model(
@@ -98,7 +99,7 @@ ProtoPirateReceiverInfo* protopirate_view_receiver_info_alloc() {
 }
 
 void protopirate_view_receiver_info_free(ProtoPirateReceiverInfo* receiver_info) {
-    furi_assert(receiver_info);
+    furi_check(receiver_info);
 
     with_view_model(
         receiver_info->view,
@@ -114,14 +115,14 @@ void protopirate_view_receiver_info_free(ProtoPirateReceiverInfo* receiver_info)
 }
 
 View* protopirate_view_receiver_info_get_view(ProtoPirateReceiverInfo* receiver_info) {
-    furi_assert(receiver_info);
+    furi_check(receiver_info);
     return receiver_info->view;
 }
 
 void protopirate_view_receiver_info_set_protocol_name(
     ProtoPirateReceiverInfo* receiver_info,
     const char* protocol_name) {
-    furi_assert(receiver_info);
+    furi_check(receiver_info);
     with_view_model(
         receiver_info->view,
         ProtoPirateReceiverInfoModel * model,
@@ -132,7 +133,7 @@ void protopirate_view_receiver_info_set_protocol_name(
 void protopirate_view_receiver_info_set_info_text(
     ProtoPirateReceiverInfo* receiver_info,
     const char* info_text) {
-    furi_assert(receiver_info);
+    furi_check(receiver_info);
     with_view_model(
         receiver_info->view,
         ProtoPirateReceiverInfoModel * model,

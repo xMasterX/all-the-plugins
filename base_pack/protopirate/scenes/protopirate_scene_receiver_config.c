@@ -43,7 +43,7 @@ const char* const tx_power_text[TX_POWER_COUNT] = {
 };
 
 uint8_t protopirate_scene_receiver_config_next_frequency(const uint32_t value, void* context) {
-    furi_assert(context);
+    furi_check(context);
     ProtoPirateApp* app = context;
     uint8_t index = 0;
     for(uint8_t i = 0; i < subghz_setting_get_frequency_count(app->setting); i++) {
@@ -58,7 +58,7 @@ uint8_t protopirate_scene_receiver_config_next_frequency(const uint32_t value, v
 }
 
 uint8_t protopirate_scene_receiver_config_next_preset(const char* preset_name, void* context) {
-    furi_assert(context);
+    furi_check(context);
     ProtoPirateApp* app = context;
     uint8_t index = 0;
     for(uint8_t i = 0; i < subghz_setting_get_preset_count(app->setting); i++) {
@@ -75,7 +75,7 @@ uint8_t protopirate_scene_receiver_config_hopper_value_index(
     const uint32_t values[],
     uint8_t values_count,
     void* context) {
-    furi_assert(context);
+    furi_check(context);
     UNUSED(values_count);
     ProtoPirateApp* app = context;
 
@@ -177,7 +177,7 @@ static void protopirate_scene_receiver_config_set_tx_power(VariableItem* item) {
 
 static void
     protopirate_scene_receiver_config_var_list_enter_callback(void* context, uint32_t index) {
-    furi_assert(context);
+    furi_check(context);
     ProtoPirateApp* app = context;
     if(index == ProtoPirateSettingIndexLock) {
         view_dispatcher_send_custom_event(

@@ -10,6 +10,8 @@
 #include <lib/toolbox/manchester_decoder.h>
 #include <flipper_format/flipper_format.h>
 
+#include "../defines.h"
+
 #define FIAT_PROTOCOL_V0_NAME "Fiat V0"
 
 typedef struct SubGhzProtocolDecoderFiatV0 SubGhzProtocolDecoderFiatV0;

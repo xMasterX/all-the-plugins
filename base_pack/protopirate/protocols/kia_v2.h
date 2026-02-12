@@ -4,6 +4,8 @@
 #include <lib/toolbox/manchester_decoder.h>
 #include "protocols_common.h"
 
+#include "../defines.h"
+
 #define KIA_PROTOCOL_V2_NAME "Kia V2"
 
 typedef struct SubGhzProtocolDecoderKiaV2 SubGhzProtocolDecoderKiaV2;

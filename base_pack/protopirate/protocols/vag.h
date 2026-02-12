@@ -11,6 +11,8 @@
 #include <lib/toolbox/manchester_decoder.h>
 #include <flipper_format/flipper_format.h>
 
+#include "../defines.h"
+
 #define VAG_PROTOCOL_NAME "VAG"
 
 extern const SubGhzProtocol vag_protocol;

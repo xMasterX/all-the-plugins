@@ -84,7 +84,7 @@ static void protopirate_sub_decode_receiver_callback(
     SubGhzReceiver* receiver,
     SubGhzProtocolDecoderBase* decoder_base,
     void* context) {
-    furi_assert(context);
+    furi_check(context);
     ProtoPirateApp* app = context;
     SubDecodeContext* ctx = g_decode_ctx;
 
@@ -378,8 +378,10 @@ static void close_file_handles(SubDecodeContext* ctx) {
         flipper_format_free(ctx->ff);
         ctx->ff = NULL;
     }
-    furi_record_close(RECORD_STORAGE);
-    //ctx->storage = NULL;
+    if(ctx->storage) {
+        furi_record_close(RECORD_STORAGE);
+        ctx->storage = NULL;
+    }
 }
 
 // Receiver view callback for history navigation
@@ -425,6 +427,8 @@ void protopirate_scene_sub_decode_on_enter(void* context) {
         app->txrx->history = protopirate_history_alloc();
         if(!app->txrx->history) {
             FURI_LOG_E(TAG, "Failed to allocate history!");
+            free(g_decode_ctx);
+            g_decode_ctx = NULL;
             return;
         }
     }
@@ -714,7 +718,16 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
             FURI_LOG_I(TAG, "StartingWorker: Reading file metadata");
 
             Storage* storage = furi_record_open(RECORD_STORAGE);
+            if(!storage) {
+                FURI_LOG_E(TAG, "Failed to open storage");
+                break;
+            }
             FlipperFormat* fff_data_file = flipper_format_file_alloc(storage);
+            if(!fff_data_file) {
+                FURI_LOG_E(TAG, "Failed to allocate FlipperFormat");
+                break;
+            }
+
             FuriString* temp_str = furi_string_alloc();
             bool setup_ok = false;
 
@@ -803,9 +816,11 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                 setup_ok = true;
             } while(false);
 
-            flipper_format_free(fff_data_file);
+            if(fff_data_file) flipper_format_free(fff_data_file);
+
+            if(storage) furi_record_close(RECORD_STORAGE);
+
             furi_string_free(temp_str);
-            furi_record_close(RECORD_STORAGE);
 
             if(!setup_ok) {
                 furi_string_set(ctx->result, "Failed to read file metadata");
@@ -1083,6 +1098,8 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
 
 void protopirate_scene_sub_decode_on_exit(void* context) {
     ProtoPirateApp* app = context;
+
+    subghz_receiver_reset(app->txrx->receiver);
 
     subghz_receiver_set_rx_callback(app->txrx->receiver, NULL, NULL);
 

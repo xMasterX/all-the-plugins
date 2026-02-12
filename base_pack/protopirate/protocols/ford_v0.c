@@ -392,7 +392,7 @@ void* subghz_protocol_encoder_ford_v0_alloc(SubGhzEnvironment* environment) {
 }
 
 void subghz_protocol_encoder_ford_v0_free(void* context) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolEncoderFordV0* instance = context;
     if(instance->encoder.upload) {
         free(instance->encoder.upload);
@@ -401,7 +401,7 @@ void subghz_protocol_encoder_ford_v0_free(void* context) {
 }
 
 static void subghz_protocol_encoder_ford_v0_get_upload(SubGhzProtocolEncoderFordV0* instance) {
-    furi_assert(instance);
+    furi_check(instance);
     size_t index = 0;
 
     uint64_t tx_key1 = ~instance->key1;
@@ -500,7 +500,7 @@ static void subghz_protocol_encoder_ford_v0_get_upload(SubGhzProtocolEncoderFord
 
 SubGhzProtocolStatus
     subghz_protocol_encoder_ford_v0_deserialize(void* context, FlipperFormat* flipper_format) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolEncoderFordV0* instance = context;
     SubGhzProtocolStatus ret = SubGhzProtocolStatusError;
 
@@ -670,13 +670,13 @@ SubGhzProtocolStatus
 }
 
 void subghz_protocol_encoder_ford_v0_stop(void* context) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolEncoderFordV0* instance = context;
     instance->encoder.is_running = false;
 }
 
 LevelDuration subghz_protocol_encoder_ford_v0_yield(void* context) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolEncoderFordV0* instance = context;
 
     if(!instance->encoder.is_running || instance->encoder.repeat == 0) {
@@ -746,13 +746,13 @@ void* subghz_protocol_decoder_ford_v0_alloc(SubGhzEnvironment* environment) {
 }
 
 void subghz_protocol_decoder_ford_v0_free(void* context) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderFordV0* instance = context;
     free(instance);
 }
 
 void subghz_protocol_decoder_ford_v0_reset(void* context) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderFordV0* instance = context;
 
     instance->decoder.parser_step = FordV0DecoderStepReset;
@@ -771,7 +771,7 @@ void subghz_protocol_decoder_ford_v0_reset(void* context) {
 }
 
 void subghz_protocol_decoder_ford_v0_feed(void* context, bool level, uint32_t duration) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderFordV0* instance = context;
 
     uint32_t te_short = subghz_protocol_ford_v0_const.te_short;
@@ -874,7 +874,7 @@ void subghz_protocol_decoder_ford_v0_feed(void* context, bool level, uint32_t du
 }
 
 uint8_t subghz_protocol_decoder_ford_v0_get_hash_data(void* context) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderFordV0* instance = context;
     return subghz_protocol_blocks_get_hash_data(
         &instance->decoder, (instance->decoder.decode_count_bit / 8) + 1);
@@ -884,7 +884,7 @@ SubGhzProtocolStatus subghz_protocol_decoder_ford_v0_serialize(
     void* context,
     FlipperFormat* flipper_format,
     SubGhzRadioPreset* preset) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderFordV0* instance = context;
 
     SubGhzProtocolStatus ret =
@@ -913,7 +913,7 @@ SubGhzProtocolStatus subghz_protocol_decoder_ford_v0_serialize(
 
 SubGhzProtocolStatus
     subghz_protocol_decoder_ford_v0_deserialize(void* context, FlipperFormat* flipper_format) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderFordV0* instance = context;
 
     SubGhzProtocolStatus ret = subghz_block_generic_deserialize_check_count_bit(
@@ -952,7 +952,7 @@ SubGhzProtocolStatus
 }
 
 void subghz_protocol_decoder_ford_v0_get_string(void* context, FuriString* output) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderFordV0* instance = context;
 
     uint32_t code_found_hi = (uint32_t)(instance->key1 >> 32);

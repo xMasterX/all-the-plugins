@@ -10,6 +10,8 @@
 #include <lib/toolbox/manchester_decoder.h>
 #include <flipper_format/flipper_format.h>
 
+#include "../defines.h"
+
 #define PSA_PROTOCOL_NAME "PSA"
 
 typedef struct SubGhzProtocolDecoderPSA SubGhzProtocolDecoderPSA;

@@ -2,6 +2,8 @@
 
 #include "kia_generic.h"
 
+#include "../defines.h"
+
 #define KIA_PROTOCOL_V0_NAME "Kia V0"
 
 typedef struct SubGhzProtocolDecoderKIA SubGhzProtocolDecoderKIA;

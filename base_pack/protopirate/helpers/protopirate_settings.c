@@ -12,6 +12,7 @@
 void protopirate_settings_set_defaults(ProtoPirateSettings* settings) {
     settings->frequency = 433920000;
     settings->preset_index = 0;
+    settings->tx_power = 0;
     settings->auto_save = false;
     settings->hopping_enabled = false;
 }
@@ -34,6 +35,12 @@ void protopirate_settings_load(ProtoPirateSettings* settings) {
 
         if(!flipper_format_read_header(ff, header, &version)) {
             FURI_LOG_W(TAG, "Failed to read settings header");
+            furi_string_free(header);
+            break;
+        }
+
+        if(version != SETTINGS_FILE_VERSION) {
+            FURI_LOG_W(TAG, "Unsupported settings version %lu", (unsigned long)version);
             furi_string_free(header);
             break;
         }
@@ -71,7 +78,7 @@ void protopirate_settings_load(ProtoPirateSettings* settings) {
         // Read tx-power
         uint32_t tx_power_temp = 0;
         if(!flipper_format_read_uint32(ff, "TXPower", &tx_power_temp, 1)) {
-            FURI_LOG_W(TAG, "Failed to read auto-save, using default");
+            FURI_LOG_W(TAG, "Failed to read TXPower, using default");
             tx_power_temp = 0;
         }
         settings->tx_power = (uint8_t)tx_power_temp;

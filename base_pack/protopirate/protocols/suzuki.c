@@ -117,19 +117,19 @@ void* subghz_protocol_decoder_suzuki_alloc(SubGhzEnvironment* environment) {
 }
 
 void subghz_protocol_decoder_suzuki_free(void* context) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderSuzuki* instance = context;
     free(instance);
 }
 
 void subghz_protocol_decoder_suzuki_reset(void* context) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderSuzuki* instance = context;
     instance->decoder.parser_step = SuzukiDecoderStepReset;
 }
 
 void subghz_protocol_decoder_suzuki_feed(void* context, bool level, uint32_t duration) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderSuzuki* instance = context;
 
     switch(instance->decoder.parser_step) {
@@ -233,7 +233,7 @@ void subghz_protocol_decoder_suzuki_feed(void* context, bool level, uint32_t dur
 }
 
 uint8_t subghz_protocol_decoder_suzuki_get_hash_data(void* context) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderSuzuki* instance = context;
     return subghz_protocol_blocks_get_hash_data(
         &instance->decoder, (instance->generic.data_count_bit / 8) + 1);
@@ -243,7 +243,7 @@ SubGhzProtocolStatus subghz_protocol_decoder_suzuki_serialize(
     void* context,
     FlipperFormat* flipper_format,
     SubGhzRadioPreset* preset) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderSuzuki* instance = context;
 
     SubGhzProtocolStatus ret = SubGhzProtocolStatusError;
@@ -269,13 +269,13 @@ SubGhzProtocolStatus subghz_protocol_decoder_suzuki_serialize(
 
 SubGhzProtocolStatus
     subghz_protocol_decoder_suzuki_deserialize(void* context, FlipperFormat* flipper_format) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderSuzuki* instance = context;
     return subghz_block_generic_deserialize(&instance->generic, flipper_format);
 }
 
 void subghz_protocol_decoder_suzuki_get_string(void* context, FuriString* output) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderSuzuki* instance = context;
 
     uint64_t data = instance->generic.data;
@@ -315,7 +315,7 @@ void* subghz_protocol_encoder_suzuki_alloc(SubGhzEnvironment* environment) {
 }
 
 void subghz_protocol_encoder_suzuki_free(void* context) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolEncoderSuzuki* instance = context;
     if(instance->encoder.upload) {
         free(instance->encoder.upload);
@@ -329,7 +329,7 @@ void subghz_protocol_encoder_suzuki_free(void* context) {
  * Data encoding: SHORT HIGH = 0, LONG HIGH = 1
  */
 static void subghz_protocol_encoder_suzuki_get_upload(SubGhzProtocolEncoderSuzuki* instance) {
-    furi_assert(instance);
+    furi_check(instance);
 
     size_t index = 0;
 
@@ -373,7 +373,7 @@ static void subghz_protocol_encoder_suzuki_get_upload(SubGhzProtocolEncoderSuzuk
 
 SubGhzProtocolStatus
     subghz_protocol_encoder_suzuki_deserialize(void* context, FlipperFormat* flipper_format) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolEncoderSuzuki* instance = context;
     SubGhzProtocolStatus ret = SubGhzProtocolStatusError;
 
@@ -395,13 +395,13 @@ SubGhzProtocolStatus
 }
 
 void subghz_protocol_encoder_suzuki_stop(void* context) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolEncoderSuzuki* instance = context;
     instance->encoder.is_running = false;
 }
 
 LevelDuration subghz_protocol_encoder_suzuki_yield(void* context) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolEncoderSuzuki* instance = context;
 
     if(instance->encoder.repeat == 0 || !instance->encoder.is_running) {

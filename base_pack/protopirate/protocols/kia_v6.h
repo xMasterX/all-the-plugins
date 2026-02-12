@@ -12,6 +12,8 @@
 #include <flipper_format/flipper_format.h>
 #include "kia_generic.h"
 
+#include "../defines.h"
+
 #define KIA_PROTOCOL_V6_NAME "Kia V6"
 
 typedef struct SubGhzProtocolDecoderKiaV6 SubGhzProtocolDecoderKiaV6;

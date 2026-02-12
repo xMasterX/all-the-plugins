@@ -19,6 +19,7 @@ typedef struct {
     SubGhzTransmitter* transmitter;
     bool is_transmitting;
     bool flag_stop_called;
+    Storage* storage;
 } EmulateContext;
 
 static EmulateContext* emulate_context = NULL;
@@ -75,6 +76,11 @@ static void emulate_context_free(void) {
     if(emulate_context->protocol_name) {
         furi_string_free(emulate_context->protocol_name);
         emulate_context->protocol_name = NULL;
+    }
+
+    if(emulate_context->storage) {
+        furi_record_close(RECORD_STORAGE);
+        emulate_context->storage = NULL;
     }
 
     free(emulate_context);
@@ -372,33 +378,46 @@ void protopirate_scene_emulate_on_enter(void* context) {
     // Load the file
     if(app->loaded_file_path) {
         // Open storage once and keep track of it
-        Storage* storage = furi_record_open(RECORD_STORAGE);
-        FlipperFormat* ff = flipper_format_file_alloc(storage);
-
-        if(!flipper_format_file_open_existing(ff, furi_string_get_cstr(app->loaded_file_path))) {
-            FURI_LOG_E(
-                TAG, "Failed to open file: %s", furi_string_get_cstr(app->loaded_file_path));
-            flipper_format_free(ff);
-            furi_record_close(RECORD_STORAGE);
+        emulate_context->storage = furi_record_open(RECORD_STORAGE);
+        if(!emulate_context->storage) {
+            FURI_LOG_E(TAG, "Failed to open storage");
             emulate_context_free();
             notification_message(app->notifications, &sequence_error);
             scene_manager_previous_scene(app->scene_manager);
             return;
         }
 
-        emulate_context->flipper_format = ff;
+        emulate_context->flipper_format = flipper_format_file_alloc(emulate_context->storage);
+        if(!emulate_context->flipper_format) {
+            FURI_LOG_E(TAG, "Failed to allocate FlipperFormat");
+            emulate_context_free();
+            notification_message(app->notifications, &sequence_error);
+            scene_manager_previous_scene(app->scene_manager);
+            return;
+        }
+
+        if(!flipper_format_file_open_existing(
+               emulate_context->flipper_format, furi_string_get_cstr(app->loaded_file_path))) {
+            FURI_LOG_E(
+                TAG, "Failed to open file: %s", furi_string_get_cstr(app->loaded_file_path));
+            emulate_context_free();
+            notification_message(app->notifications, &sequence_error);
+            scene_manager_previous_scene(app->scene_manager);
+            return;
+        }
 
         // Read frequency and preset from the saved file
         uint32_t frequency = 433920000;
         FuriString* preset_str = furi_string_alloc();
 
-        flipper_format_rewind(ff);
-        if(!flipper_format_read_uint32(ff, "Frequency", &frequency, 1)) {
+        flipper_format_rewind(emulate_context->flipper_format);
+        if(!flipper_format_read_uint32(
+               emulate_context->flipper_format, "Frequency", &frequency, 1)) {
             FURI_LOG_W(TAG, "Failed to read frequency, using default 433.92MHz");
         }
 
-        flipper_format_rewind(ff);
-        if(!flipper_format_read_string(ff, "Preset", preset_str)) {
+        flipper_format_rewind(emulate_context->flipper_format);
+        if(!flipper_format_read_string(emulate_context->flipper_format, "Preset", preset_str)) {
             FURI_LOG_W(TAG, "Failed to read preset, using AM650");
             furi_string_set(preset_str, "AM650");
         }
@@ -415,29 +434,32 @@ void protopirate_scene_emulate_on_enter(void* context) {
         furi_string_free(preset_str);
 
         // Read protocol name
-        flipper_format_rewind(ff);
-        if(!flipper_format_read_string(ff, "Protocol", emulate_context->protocol_name)) {
+        flipper_format_rewind(emulate_context->flipper_format);
+        if(!flipper_format_read_string(
+               emulate_context->flipper_format, "Protocol", emulate_context->protocol_name)) {
             FURI_LOG_E(TAG, "Failed to read protocol name");
             furi_string_set(emulate_context->protocol_name, "Unknown");
         }
 
         // Read serial
-        flipper_format_rewind(ff);
-        if(!flipper_format_read_uint32(ff, "Serial", &emulate_context->serial, 1)) {
+        flipper_format_rewind(emulate_context->flipper_format);
+        if(!flipper_format_read_uint32(
+               emulate_context->flipper_format, "Serial", &emulate_context->serial, 1)) {
             FURI_LOG_W(TAG, "Failed to read serial");
             emulate_context->serial = 0;
         }
 
         // Read original button
-        flipper_format_rewind(ff);
+        flipper_format_rewind(emulate_context->flipper_format);
         uint32_t btn_temp = 0;
-        if(flipper_format_read_uint32(ff, "Btn", &btn_temp, 1)) {
+        if(flipper_format_read_uint32(emulate_context->flipper_format, "Btn", &btn_temp, 1)) {
             emulate_context->original_button = (uint8_t)btn_temp;
         }
 
         // Read counter
-        flipper_format_rewind(ff);
-        if(flipper_format_read_uint32(ff, "Cnt", &emulate_context->original_counter, 1)) {
+        flipper_format_rewind(emulate_context->flipper_format);
+        if(flipper_format_read_uint32(
+               emulate_context->flipper_format, "Cnt", &emulate_context->original_counter, 1)) {
             emulate_context->current_counter = emulate_context->original_counter;
         }
 
@@ -475,9 +497,9 @@ void protopirate_scene_emulate_on_enter(void* context) {
                     FURI_LOG_I(TAG, "Transmitter allocated successfully");
 
                     // Deserialize for transmission
-                    flipper_format_rewind(ff);
-                    SubGhzProtocolStatus status =
-                        subghz_transmitter_deserialize(emulate_context->transmitter, ff);
+                    flipper_format_rewind(emulate_context->flipper_format);
+                    SubGhzProtocolStatus status = subghz_transmitter_deserialize(
+                        emulate_context->transmitter, emulate_context->flipper_format);
 
                     if(status != SubGhzProtocolStatusOk) {
                         FURI_LOG_E(TAG, "Failed to deserialize transmitter, status: %d", status);
@@ -722,9 +744,6 @@ void protopirate_scene_emulate_on_exit(void* context) {
 
     // Free emulate context and all its resources
     emulate_context_free();
-
-    // Close storage record that was opened in on_enter
-    furi_record_close(RECORD_STORAGE);
 
     // Delete temp file if we were using one
     protopirate_storage_delete_temp();

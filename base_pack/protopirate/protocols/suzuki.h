@@ -10,6 +10,8 @@
 #include <lib/subghz/blocks/math.h>
 #include <flipper_format/flipper_format.h>
 
+#include "../defines.h"
+
 #define SUZUKI_PROTOCOL_NAME "Suzuki"
 
 extern const SubGhzProtocol suzuki_protocol;

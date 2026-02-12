@@ -11,6 +11,8 @@
 #include <flipper_format/flipper_format.h>
 #include <lib/toolbox/manchester_decoder.h>
 
+#include "../defines.h"
+
 #define FORD_PROTOCOL_V0_NAME "Ford V0"
 
 extern const SubGhzProtocol ford_protocol_v0;

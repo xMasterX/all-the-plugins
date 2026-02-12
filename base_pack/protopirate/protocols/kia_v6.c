@@ -363,13 +363,13 @@ void* kia_protocol_decoder_v6_alloc(SubGhzEnvironment* environment) {
 }
 
 void kia_protocol_decoder_v6_free(void* context) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderKiaV6* instance = context;
     free(instance);
 }
 
 void kia_protocol_decoder_v6_reset(void* context) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderKiaV6* instance = context;
     instance->decoder.parser_step = KiaV6DecoderStepReset;
     manchester_advance(
@@ -377,7 +377,7 @@ void kia_protocol_decoder_v6_reset(void* context) {
 }
 
 void kia_protocol_decoder_v6_feed(void* context, bool level, uint32_t duration) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderKiaV6* instance = context;
 
     uint32_t uVar4, uVar5;
@@ -546,7 +546,7 @@ LAB_reset:
 }
 
 uint8_t kia_protocol_decoder_v6_get_hash_data(void* context) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderKiaV6* instance = context;
 
     uint8_t hash = 0;
@@ -568,7 +568,7 @@ SubGhzProtocolStatus kia_protocol_decoder_v6_serialize(
     void* context,
     FlipperFormat* flipper_format,
     SubGhzRadioPreset* preset) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderKiaV6* instance = context;
 
     SubGhzProtocolStatus ret = SubGhzProtocolStatusError;
@@ -618,7 +618,7 @@ SubGhzProtocolStatus kia_protocol_decoder_v6_serialize(
 
 SubGhzProtocolStatus
     kia_protocol_decoder_v6_deserialize(void* context, FlipperFormat* flipper_format) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderKiaV6* instance = context;
 
     SubGhzProtocolStatus ret = SubGhzProtocolStatusError;
@@ -692,7 +692,7 @@ SubGhzProtocolStatus
 }
 
 void kia_protocol_decoder_v6_get_string(void* context, FuriString* output) {
-    furi_assert(context);
+    furi_check(context);
     SubGhzProtocolDecoderKiaV6* instance = context;
 
     kia_v6_decrypt(instance);
