@@ -1,5 +1,4 @@
 #include "minesweeper.h"
-//#include <args.h>
 
 static bool minesweeper_custom_event_callback(void* context, uint32_t custom_event) {
     furi_assert(context);
@@ -32,9 +31,9 @@ static MineSweeperApp* app_alloc() {
     // Alloc Scene Manager and set handlers for on_enter, on_event, on_exit 
     app->scene_manager = scene_manager_alloc(&minesweeper_scene_handlers, app);
     
-    // Alloc View Dispatcher and enable queue
+    // Alloc View Dispatcher
     app->view_dispatcher = view_dispatcher_alloc();
-    
+    //
     // Set View Dispatcher event callback context and callbacks
     view_dispatcher_set_event_callback_context(app->view_dispatcher, app);
     view_dispatcher_set_custom_event_callback(app->view_dispatcher, minesweeper_custom_event_callback);
@@ -54,11 +53,13 @@ static MineSweeperApp* app_alloc() {
         app->settings_info.board_height = 7;
         app->settings_info.difficulty = 0;
         app->feedback_enabled = 1;
+        app->wrap_enabled = 1;
 
         mine_sweeper_save_settings(app);
     } else {
         FURI_LOG_I(TAG, "Save file loaded sucessfully");
     }
+
 
     // Alloc views and add to view dispatcher
     app->start_screen = start_screen_alloc();
@@ -74,7 +75,8 @@ static MineSweeperApp* app_alloc() {
             app->settings_info.board_width,
             app->settings_info.board_height,
             app->settings_info.difficulty,
-            false);
+            false,
+            app->wrap_enabled);
 
     view_dispatcher_add_view(
         app->view_dispatcher,
@@ -104,7 +106,9 @@ static MineSweeperApp* app_alloc() {
 
 static void app_free(MineSweeperApp* app) {
     furi_assert(app);
-    
+
+    notification_message(app->notification, &sequence_reset_rgb);
+
     // Remove each view from View Dispatcher
     for (MineSweeperView minesweeper_view = (MineSweeperView)0; minesweeper_view < MineSweeperViewCount; minesweeper_view++) {
 
@@ -132,22 +136,23 @@ static void app_free(MineSweeperApp* app) {
 
     // Free app structure
     free(app);
-
 }
 
 int32_t minesweeper_app(void* p) {
     UNUSED(p);
 
     MineSweeperApp* app = app_alloc();
-    FURI_LOG_D(TAG, "Mine Sweeper app allocated with size : %d", sizeof(*app));
+    FURI_LOG_I(TAG, "Mine Sweeper app allocated with size : %d", sizeof(*app));
+
+    dolphin_deed(DolphinDeedPluginGameStart);
 
     // This will be the initial scene on app startup
     scene_manager_next_scene(app->scene_manager, MineSweeperSceneStartScreen);
 
     view_dispatcher_run(app->view_dispatcher);
-
+    
     app_free(app);
-    FURI_LOG_D(TAG, "Mine Sweeper app freed");
+    FURI_LOG_I(TAG, "Mine Sweeper app freed");
 
     return 0;
 }

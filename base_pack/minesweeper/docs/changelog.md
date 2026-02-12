@@ -1,17 +1,12 @@
-# Changelog
+## Version 1.6
+Fix: respect global mute/volume by routing game sounds through notification system.
 
-## Version 1.2.0 - 1/25/2024
+## Version 1.5
+Added setting to enable/disable wrapping around to the
+other side of the game board when the player moves
+across the edge.
 
-Added ability to toggle sound and haptic feedback.
-
-Minor reformats and fixes.
-
-## Version 1.1.0 - 1/11/2024
-
-Added haptic / led functionality
-
-Code Reformats
-
-## Version 1.0.0 - 1/10/2024
-
-Initial Full release for the game.
+## Version 1.4
+Bug fixed when resetting game on win/loss.
+Gain Flipper XP on game start and win.
+QOL Updates.

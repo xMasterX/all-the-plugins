@@ -1,11 +1,8 @@
-# Minesweeper Implementation for the Flipper Zero.
-
 ## Added features unique to this implementation:
 -	Enable board verifier for board generation to ensure unambiguous boards!
 -	Set board width and height
 -	Set difficulty
 -	A number of different button presses as shortcuts for game actions (see How To Play) 
-
 
 ## How To Play
 1. Up/Down/Left/Right Buttons to move around
@@ -19,9 +16,12 @@
 	- Change board width
 	- Change board height
 	- Change difficulty
-	- Ensure Solvable (**Important!**)- This option will enable the board verifier for board generation and can significantly increase wait times for generating a board. Currently this may lock up the view port on the loading animation, but it should eventually resolve and return to the game.
+	- Ensure Solvable (**Important!**) : This option will enable the board verifier for board generation and can significantly increase wait times for generating a board. Currently this may lock up the view port on the loading animation, but it should eventually resolve and return to the game.
+    - Enable Feedback : This option toggles the haptic and sound feedback for the game.
+    - Enable Wrap : This option toggles wrapping movement to the other side of the board when you move across the edge boundary.
 
 ## IMPORTANT NOTICE:
-The way I set the board up leaves the corners as safe starting positions!
+The way the board is set up leaves the corners as safe starting positions!
 
-In addition to this, with the "Ensure Solvable" option set to true, the board will always be solvable from 0,0! Without Ensure Solvable enabled in the settings the mine placement for the board generation is randomized and there is no guarantee that the game with be solvable without any guesses.
+In addition to this, with the "Ensure Solvable" option set to true, the board will always be solvable from 0,0!
+Without Ensure Solvable enabled in the settings there is no guarantee that the game will be solvable without any guesses.

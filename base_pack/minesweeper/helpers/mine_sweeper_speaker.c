@@ -1,7 +1,51 @@
 #include "mine_sweeper_speaker.h"
 #include "../minesweeper.h"
 
-static const float volume = 0.8f;
+#include <notification/notification_messages.h>
+#include <notification/notification_messages_notes.h>
+
+// Short, system-aware tones that respect global audio settings
+static const NotificationSequence sequence_minesweeper_ok = {
+    &message_note_g7,
+    &message_delay_50,
+    &message_sound_off,
+    NULL,
+};
+
+static const NotificationSequence sequence_minesweeper_flag = {
+    &message_note_g4,
+    &message_delay_50,
+    &message_sound_off,
+    NULL,
+};
+
+static const NotificationSequence sequence_minesweeper_oob = {
+    &message_note_f4,
+    &message_delay_50,
+    &message_sound_off,
+    NULL,
+};
+
+static const NotificationSequence sequence_minesweeper_wrap = {
+    &message_note_f7,
+    &message_delay_50,
+    &message_sound_off,
+    NULL,
+};
+
+static const NotificationSequence sequence_minesweeper_win = {
+    &message_note_a4,
+    &message_delay_100,
+    &message_sound_off,
+    NULL,
+};
+
+static const NotificationSequence sequence_minesweeper_lose = {
+    &message_note_c8,
+    &message_delay_100,
+    &message_sound_off,
+    NULL,
+};
 
 void mine_sweeper_play_ok_sound(void* context) {
     MineSweeperApp* app = context;
@@ -9,11 +53,7 @@ void mine_sweeper_play_ok_sound(void* context) {
     if (!app->feedback_enabled) {
         return;
     }
-
-    if(furi_hal_speaker_is_mine() || furi_hal_speaker_acquire(30)) {
-        furi_hal_speaker_start(NOTE_LOSE, volume);
-    }
-
+    notification_message(app->notification, &sequence_minesweeper_ok);
 }
 
 void mine_sweeper_play_flag_sound(void* context) {
@@ -22,11 +62,7 @@ void mine_sweeper_play_flag_sound(void* context) {
     if (!app->feedback_enabled) {
         return;
     }
-
-    if(furi_hal_speaker_is_mine() || furi_hal_speaker_acquire(30)) {
-        furi_hal_speaker_start(NOTE_FLAG, volume);
-    }
-
+    notification_message(app->notification, &sequence_minesweeper_flag);
 }
 
 void mine_sweeper_play_oob_sound(void* context) {
@@ -35,11 +71,16 @@ void mine_sweeper_play_oob_sound(void* context) {
     if (!app->feedback_enabled) {
         return;
     }
+    notification_message(app->notification, &sequence_minesweeper_oob);
+}
 
-    if(furi_hal_speaker_is_mine() || furi_hal_speaker_acquire(30)) {
-        furi_hal_speaker_start(NOTE_OOB, volume);
+void mine_sweeper_play_wrap_sound(void* context) {
+    MineSweeperApp* app = context;
+
+    if (!app->feedback_enabled) {
+        return;
     }
-
+    notification_message(app->notification, &sequence_minesweeper_wrap);
 }
 
 void mine_sweeper_play_win_sound(void* context) {
@@ -48,11 +89,7 @@ void mine_sweeper_play_win_sound(void* context) {
     if (!app->feedback_enabled) {
         return;
     }
-
-    if(furi_hal_speaker_is_mine() || furi_hal_speaker_acquire(30)) {
-        furi_hal_speaker_start(NOTE_WIN, volume);
-    }
-
+    notification_message(app->notification, &sequence_minesweeper_win);
 }
 
 void mine_sweeper_play_lose_sound(void* context) {
@@ -61,10 +98,7 @@ void mine_sweeper_play_lose_sound(void* context) {
     if (!app->feedback_enabled) {
         return;
     }
-    if(furi_hal_speaker_is_mine() || furi_hal_speaker_acquire(30)) {
-        furi_hal_speaker_start(NOTE_LOSE, volume);
-    }
-
+    notification_message(app->notification, &sequence_minesweeper_lose);
 }
 
 void mine_sweeper_stop_all_sound(void* context) {
@@ -73,9 +107,5 @@ void mine_sweeper_stop_all_sound(void* context) {
     if (!app->feedback_enabled) {
         return;
     }
-
-    if(furi_hal_speaker_is_mine()) {
-        furi_hal_speaker_stop();
-        furi_hal_speaker_release();
-    }
+    notification_message(app->notification, &sequence_reset_sound);
 }

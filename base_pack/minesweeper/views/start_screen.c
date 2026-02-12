@@ -9,7 +9,6 @@ struct StartScreen {
     View* view;
     void* context;
     StartScreenInputCallback input_callback;
-    StartScreenDrawCallback secondary_draw_callback;
 };
 
 typedef struct {
@@ -29,6 +28,7 @@ typedef struct {
     TextElement text2;
     TextElement text3;
     IconElement icon;
+    StartScreenDrawCallback secondary_draw_callback;
 } StartScreenModel;
 
 void start_screen_view_enter(void* context) {
@@ -107,6 +107,9 @@ void start_screen_view_draw_callback(Canvas* canvas, void* _model) {
             model->text3.text);
     }
 
+    if (model->secondary_draw_callback != NULL) {
+        model->secondary_draw_callback(canvas, model);
+    }
 }
 
 bool start_screen_view_input_callback(InputEvent* event, void* context) {
@@ -161,6 +164,7 @@ StartScreen* start_screen_alloc() {
             model->icon.x = 0;
             model->icon.y = 0;
             model->icon.animation = NULL;
+            model->secondary_draw_callback = NULL;
         },
         true);
 
@@ -199,13 +203,18 @@ void start_screen_reset(StartScreen* instance) {
         instance->view,
         StartScreenModel * model,
         {
+            if (model->icon.animation != NULL) {
+                icon_animation_stop(model->icon.animation);
+                icon_animation_free(model->icon.animation);
+                model->icon.animation = NULL;
+            }
             memset(&model->text1, 0, sizeof(model->text1));
             memset(&model->text2, 0, sizeof(model->text2));
             memset(&model->text3, 0, sizeof(model->text3));
+            model->secondary_draw_callback = NULL;
         },
         false);
     instance->input_callback = NULL;
-    instance->secondary_draw_callback = NULL;
 }
 
 View* start_screen_get_view(StartScreen* instance) {
@@ -220,7 +229,13 @@ void start_screen_set_input_callback(StartScreen* instance, StartScreenInputCall
 
 void start_screen_set_secondary_draw_callback(StartScreen* instance, StartScreenDrawCallback callback) {
     furi_assert(instance);
-    instance->secondary_draw_callback = callback;
+    with_view_model(
+        instance->view,
+        StartScreenModel * model,
+        {
+            model->secondary_draw_callback = callback;
+        },
+        true);
 }
 
 void start_screen_set_context(StartScreen* instance, void* context) {
@@ -266,12 +281,12 @@ void start_screen_set_text2(
         instance->view,
         StartScreenModel * model,
         {
-            model->text1.x = x;
-            model->text1.y = y;
-            model->text1.horizontal = horizontal;
-            model->text1.vertical = vertical;
-            model->text1.font = font;
-            model->text1.text = text;
+            model->text2.x = x;
+            model->text2.y = y;
+            model->text2.horizontal = horizontal;
+            model->text2.vertical = vertical;
+            model->text2.font = font;
+            model->text2.text = text;
         },
         true);
 }
@@ -290,12 +305,12 @@ void start_screen_set_text3(
         instance->view,
         StartScreenModel * model,
         {
-            model->text1.x = x;
-            model->text1.y = y;
-            model->text1.horizontal = horizontal;
-            model->text1.vertical = vertical;
-            model->text1.font = font;
-            model->text1.text = text;
+            model->text3.x = x;
+            model->text3.y = y;
+            model->text3.horizontal = horizontal;
+            model->text3.vertical = vertical;
+            model->text3.font = font;
+            model->text3.text = text;
         },
         true);
 }
@@ -311,11 +326,19 @@ void start_screen_set_icon_animation(
         instance->view,
         StartScreenModel * model,
         {
+            if (model->icon.animation != NULL) {
+                icon_animation_stop(model->icon.animation);
+                icon_animation_free(model->icon.animation);
+                model->icon.animation = NULL;
+            }
+
             model->icon.x = x;
             model->icon.y = y;
-            model->icon.animation = icon_animation_alloc(animation);
-            view_tie_icon_animation(instance->view, model->icon.animation);
+
+            if (animation != NULL) {
+                model->icon.animation = icon_animation_alloc(animation);
+                view_tie_icon_animation(instance->view, model->icon.animation);
+            }
         },
         true);
 }
-
