@@ -173,13 +173,14 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Drifter | ![Games Badge] | [by jean-edouard](https://github.com/jean-edouard/flipperzero-drifter) |  | [![Author Badge]](https://lab.flipper.net/apps/drifter) |
 | Wave | ![Games Badge] | [by Sladkisnovraper](https://github.com/Sladkisnovraper/Wave-game-for-Flipper-Zero) |  | [![Author Badge]](https://lab.flipper.net/apps/wave) |
 | Flipper Hero | ![Games Badge] | [by mentoster](https://github.com/mentoster/flipper-hero) |  | [![Author Badge]](https://lab.flipper.net/apps/flipper_hero) |
-| Flipper Arduventure | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperArduventure) |  | ![None Badge] |
-| Flipper Catacombs | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperCatacombs) |  | ![None Badge] |
-| Flipper Golf | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperGolf) |  | ![None Badge] |
-| Flipper Drivin | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperDrivin) |  | ![None Badge] |
-| Prince Of Arabia | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperPrinceOfArabia) |  | ![None Badge] |
-| Mystic Balloon | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperMysticBalloon) |  | ![None Badge] |
-| Wolfenduino | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperWolfenstein) | like real wolf3d! | ![None Badge] |
+| Flipper Arduventure | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperArduventure) |  | [![Author Badge]](https://lab.flipper.net/apps/arduventure) |
+| Flipper Catacombs | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperCatacombs) |  | [![Author Badge]](https://lab.flipper.net/apps/catacombs) |
+| Flipper Golf | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperGolf) |  | [![Author Badge]](https://lab.flipper.net/apps/ardugolf) |
+| Flipper Drivin | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperDrivin) |  | [![Author Badge]](https://lab.flipper.net/apps/arddrivin) |
+| Prince Of Arabia | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperPrinceOfArabia) |  | [![Author Badge]](https://lab.flipper.net/apps/princeofarabia) |
+| Mystic Balloon | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperMysticBalloon) |  | [![Author Badge]](https://lab.flipper.net/apps/myblab) |
+| Wolfenduino | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperWolfenstein) | like real wolf3d! | [![Author Badge]](https://lab.flipper.net/apps/wolfenduino) |
+| Race Game | ![Games Badge] | [by mrc19056](https://github.com/mrc19056/flipper-race-game) |  | [![Author Badge]](https://lab.flipper.net/apps/race_game) |
 | Air Mouse | ![GPIO Badge] | [by ginkage](https://github.com/ginkage/FlippAirMouse/) |  | [![Author Badge]](https://lab.flipper.net/apps/air_mouse) |
 | Plantower PMSx003 sensor reader | ![GPIO Badge] | [by 3cky](https://github.com/3cky/flipperzero-airmon) |  | [![UFW Badge]](https://lab.flipper.net/apps/airmon) |
 | Bar code scanner emulator via COM port | ![GPIO Badge] | [by polarikus](https://github.com/polarikus/flipper-zero_bc_scanner_emulator) |  | [![Author Badge]](https://lab.flipper.net/apps/bc_scanner) |
@@ -242,6 +243,8 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | R.O.B. Control | ![IR Badge] | [by riney](https://github.com/riney/flip_rob) | Flipper app to control a Nintendo R.O.B./Family Computer Robot | ![None Badge] |
 | Flame RNG | ![IR Badge] | [by OrionW06](https://github.com/OrionW06/Flame-RNG) |  | [![Author Badge]](https://lab.flipper.net/apps/flame_rng) |
 | LIDAR Emulator | ![IR Badge] | [by regaly](https://github.com/regaly/flipperzero-lidar_emulator) |  | [![Author Badge]](https://lab.flipper.net/apps/lidar_emulator) |
+| Timed Remote | ![IR Badge] | [by anders-dc](https://github.com/anders-dc/timed-remote) |  | [![Author Badge]](https://lab.flipper.net/apps/timed_remote) |
+| Pause Timer | ![IR Badge] | [by Matt-London](https://github.com/Matt-London/pause_timer) |  | [![Author Badge]](https://lab.flipper.net/apps/pause_timer) |
 | BPM Tapper | ![Media Badge] | [by panki27](https://github.com/panki27/bpm-tapper) |  | [![UFW Badge]](https://lab.flipper.net/apps/bpm_tapper) |
 | Flizzer Tracker | ![Media Badge] | [by LTVA1](https://github.com/LTVA1/flizzer_tracker) |  | [![Author Badge]](https://lab.flipper.net/apps/flizzer_tracker) |
 | Music Beeper | ![Media Badge] | [by qqMajiKpp / Haseo](https://github.com/qqmajikpp/) |  | ![None Badge] |
@@ -329,7 +332,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Lego Dimensions ToyPad Emu | ![USB Badge] | [by SegerEnd](https://github.com/SegerEnd/Flipper-Zero-LD-Toypad-Emulator) |  | [![Author Badge]](https://lab.flipper.net/apps/ldtoypad) |
 
 
-#### Catalog links checked at `13 Oct 2025 21:35 GMT +3`
+#### Catalog links checked at `17 Feb 2026 00:01 GMT +3`
 
 --- 
 
