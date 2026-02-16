@@ -21,3 +21,4 @@ bool audio_enabled();
 
 void game_setup();
 void game_loop();
+bool game_back_hold_action();

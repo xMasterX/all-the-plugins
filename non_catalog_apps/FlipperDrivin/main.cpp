@@ -225,6 +225,10 @@ extern "C" int32_t arduboy3d_app(void* p) {
         const uint32_t tick_hz = furi_kernel_get_tick_frequency();
         uint32_t period_ticks = (tick_hz + 15u) / 30u;
         if(period_ticks == 0) period_ticks = 1;
+        const uint32_t back_hold_ticks = ((tick_hz * 300u) + 999u) / 1000u;
+        bool back_hold_active = false;
+        bool back_hold_handled = false;
+        uint32_t back_hold_start = 0;
 
         uint32_t next_tick = furi_get_tick();
 
@@ -245,15 +249,34 @@ extern "C" int32_t arduboy3d_app(void* p) {
 
             InputEvent ev;
             while(q_local && (furi_message_queue_get(q_local, &ev, 0) == FuriStatusOk)) {
-                if(ev.key == InputKeyBack && ev.type == InputTypeLong) {
-                    uint8_t gst = (uint8_t)state;
-                    if(gst == 0) {
-                        st->exit_requested = true;
+                if(ev.key == InputKeyBack) {
+                    if(ev.type == InputTypePress) {
+                        back_hold_active = true;
+                        back_hold_handled = false;
+                        back_hold_start = furi_get_tick();
+                    } else if(ev.type == InputTypeRelease) {
+                        back_hold_active = false;
+                        back_hold_handled = false;
                     }
-                    break;
                 }
                 InputEvent tmp = ev;
                 Arduboy2Base::FlipperInputCallback(&tmp, a.inputContext());
+            }
+
+            if(back_hold_active && !back_hold_handled) {
+                now = furi_get_tick();
+                if((uint32_t)(now - back_hold_start) >= back_hold_ticks) {
+                    back_hold_handled = true;
+                    back_hold_active = false;
+
+                    furi_mutex_acquire(st->mutex, FuriWaitForever);
+                    bool should_exit = game_back_hold_action();
+                    furi_mutex_release(st->mutex);
+
+                    if(should_exit) {
+                        st->exit_requested = true;
+                    }
+                }
             }
 
             if(st->exit_requested) break;
