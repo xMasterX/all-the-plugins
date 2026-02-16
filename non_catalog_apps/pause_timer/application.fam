@@ -1,0 +1,13 @@
+App(
+    appid="pause_timer",
+    name="Pause Timer",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="pause_timer_app",
+    stack_size=2 * 1024,
+    sources=["*.c"],
+    cdefines=["PAUSE_TIMER_APP"],
+    fap_description="Pause your show when the ad break ends",
+    fap_version="1.0",
+    fap_category="Infrared",
+    fap_icon="pause_timer_10px.png",
+)

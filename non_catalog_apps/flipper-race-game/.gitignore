@@ -1,0 +1,8 @@
+# Build output
+*.fap
+*.elf
+dist/
+
+# ufbt local data
+.ufbt/
+.vscode/
