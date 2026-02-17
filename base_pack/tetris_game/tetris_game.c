@@ -503,11 +503,10 @@ int32_t tetris_game_app() {
         memcpy(newPiece, &tetris_state->currPiece, sizeof(tetris_state->currPiece));
         bool wasDownMove = false;
 
+        // TODO: This is inverted.  it returns true when the button is not pressed.
+        // see macro in input.c and do that
         if(!furi_hal_gpio_read(&gpio_button_right)) {
             if(downRepeatCounter > 3) {
-                for(int i = 0; i < 4; i++) {
-                    newPiece->p[i].y += 1;
-                }
                 downRepeatCounter = 0;
                 wasDownMove = true;
             } else {
@@ -516,9 +515,6 @@ int32_t tetris_game_app() {
         }
 
         if(tetris_state->hardDropping) {
-            for(int i = 0; i < 4; i++) {
-                newPiece->p[i].y += 1;
-            }
             wasDownMove = true;
         }
 
@@ -573,14 +569,13 @@ int32_t tetris_game_app() {
                     }
                 }
             } else if(event.type == EventTypeTick) {
-                // TODO: This is inverted.  it returns true when the button is not pressed.
-                // see macro in input.c and do that
-                if(furi_hal_gpio_read(&gpio_button_right)) {
-                    for(int i = 0; i < 4; i++) {
-                        newPiece->p[i].y += 1;
-                    }
-                    wasDownMove = true;
-                }
+                wasDownMove = true;
+            }
+        }
+
+        if(wasDownMove) {
+            for(int i = 0; i < 4; i++) {
+                newPiece->p[i].y += 1;
             }
         }
 
