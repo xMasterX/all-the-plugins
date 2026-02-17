@@ -325,7 +325,7 @@ static void tetris_game_apply_kick(Point points[], Point kick) {
 
 static bool tetris_game_is_valid_pos(TetrisState* tetris_state, Point* shape) {
     for(int i = 0; i < 4; i++) {
-        if(shape[i].x < 0 || shape[i].x > (FIELD_WIDTH - 1) ||
+        if(shape[i].y >= FIELD_HEIGHT || shape[i].x < 0 || shape[i].x > (FIELD_WIDTH - 1) ||
            tetris_state->playField[shape[i].y][shape[i].x] == true) {
             return false;
         }
