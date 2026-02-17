@@ -400,6 +400,10 @@ static void
 
     tetris_game_remove_curr_piece(tetris_state);
 
+    if(tetris_game_is_valid_pos(tetris_state, newPiece->p)) {
+        memcpy(&tetris_state->currPiece, newPiece, sizeof(tetris_state->currPiece));
+    }
+
     if(wasDownMove) {
         if(tetris_game_piece_at_bottom(tetris_state, newPiece)) {
             furi_timer_stop(tetris_state->timer);
@@ -448,10 +452,6 @@ static void
                 furi_timer_start(tetris_state->timer, tetris_state->fallSpeed);
             }
         }
-    }
-
-    if(tetris_game_is_valid_pos(tetris_state, newPiece->p)) {
-        memcpy(&tetris_state->currPiece, newPiece, sizeof(tetris_state->currPiece));
     }
 
     tetris_game_render_curr_piece(tetris_state);
