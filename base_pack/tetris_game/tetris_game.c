@@ -516,15 +516,15 @@ int32_t tetris_game_app() {
 
         if(tetris_state->hardDropping) {
             wasDownMove = true;
-        }
-
-        if(event_status == FuriStatusOk) {
+        } else if(event_status == FuriStatusOk) {
             if(event.type == EventTypeKey) {
                 if(event.input.type == InputTypePress || event.input.type == InputTypeLong ||
                    event.input.type == InputTypeRepeat) {
                     switch(event.input.key) {
                     case InputKeyUp:
-                        tetris_state->hardDropping = true;
+                        if(tetris_state->gameState == GameStatePlaying) {
+                            tetris_state->hardDropping = true;
+                        }
                         break;
                     case InputKeyDown:
                         break;
