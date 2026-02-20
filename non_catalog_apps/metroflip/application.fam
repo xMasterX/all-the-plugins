@@ -145,6 +145,7 @@ App(
     entry_point="tmoney_plugin_ep",
     requires=["metroflip"],
     sources=["scenes/plugins/tmoney.c"],
+    fal_embedded=True,
 )
 
 App(
