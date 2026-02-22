@@ -1,6 +1,9 @@
 #include "protocols_common.h"
 
 const char* protopirate_get_short_preset_name(const char* preset_name) {
+    if(!preset_name) {
+        return "UNKNOWN";
+    }
     if(!strcmp(preset_name, "FuriHalSubGhzPresetOok270Async")) {
         return "AM270";
     } else if(!strcmp(preset_name, "FuriHalSubGhzPresetOok650Async")) {

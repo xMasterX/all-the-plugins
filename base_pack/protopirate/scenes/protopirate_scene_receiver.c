@@ -129,7 +129,7 @@ static void protopirate_scene_receiver_callback(
                 furi_string_replace_all(protocol, " ", "_");
 
                 FuriString* saved_path = furi_string_alloc();
-                if(!protocol) {
+                if(!saved_path) {
                     FURI_LOG_E(TAG, "saved_path allocation failed");
                     furi_string_free(protocol);
                     furi_string_free(str_buff);
