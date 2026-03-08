@@ -64,6 +64,7 @@
 
 #define SEADER_TEXT_STORE_SIZE 128
 #define SEADER_MAX_ATR_SIZE    33
+#define MAX_FRAME_HEADERS      32
 
 enum SeaderCustomEvent {
     // Reserve first 100 events for button types and indexes, starting from 0
@@ -97,6 +98,24 @@ typedef struct {
     uint16_t current_line;
 } SeaderAPDURunnerContext;
 
+typedef enum {
+    SeaderSamStateIdle,
+    SeaderSamStateDetectPending,
+    SeaderSamStateConversation,
+    SeaderSamStateFinishing,
+    SeaderSamStateClearPending,
+    SeaderSamStateVersionPending,
+    SeaderSamStateSerialPending,
+} SeaderSamState;
+
+typedef enum {
+    SeaderSamIntentNone,
+    SeaderSamIntentReadPacs,
+    SeaderSamIntentReadPacs2,
+    SeaderSamIntentConfig,
+    SeaderSamIntentMaintenance,
+} SeaderSamIntent;
+
 struct Seader {
     bool revert_power;
     bool is_debug_enabled;
@@ -108,10 +127,13 @@ struct Seader {
     SeaderUartBridge* uart;
     SeaderCredential* credential;
     SamCommand_PR samCommand;
+    SeaderSamState sam_state;
+    SeaderSamIntent sam_intent;
     uint8_t ATR[SEADER_MAX_ATR_SIZE];
     size_t ATR_len;
 
     char text_store[SEADER_TEXT_STORE_SIZE + 1];
+    char read_error[SEADER_TEXT_STORE_SIZE + 1];
     FuriString* text_box_store;
 
     // Reusable strings to optimize scene string allocations
