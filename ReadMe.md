@@ -269,7 +269,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Seos | ![NFC Badge] | [by bettse](https://gitlab.com/bettse/flipper_seos) |  | [![Author Badge]](https://lab.flipper.net/apps/seos) |
 | SaFlip | ![NFC Badge] | [by aaronjamt](https://github.com/aaronjamt/saflip) |  | ![None Badge] |
 | NFC Comparator | ![NFC Badge] | [by acegoal07](https://github.com/acegoal07/FlipperZero_NFC_Comparator) |  | ![None Badge] |
-| Ami Toolkit | ![NFC Badge] | [by Firefox2100](https://github.com/Firefox2100/flipper-amiibo-toolkit) |  | ![None Badge] |
+| Ami Toolkit | ![NFC Badge] | [by Firefox2100](https://github.com/Firefox2100/ami-tool) |  | ![None Badge] |
 | NFC Login | ![NFC Badge] | [by Play2BReal](https://github.com/Play2BReal/NFC-Login) |  | ![None Badge] |
 | ISO15693-3 NFC Writer | ![NFC Badge] | [by ch4istO](https://github.com/ch4istO/unleashed-firmware/tree/dev/applications_user/iso15693_nfc_writer) |  | ![None Badge] |
 | VK Thermo | ![NFC Badge] | [by VivoKey Technologies](https://github.com/VivoKey/vkthermo-flipper) | Read temperature from VivoKey Thermo implants via ISO15693 NFC | ![None Badge] |
