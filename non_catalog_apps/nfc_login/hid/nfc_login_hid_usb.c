@@ -9,12 +9,10 @@
 static FuriHalUsbInterface* g_usb_previous_config = NULL;
 
 bool usb_hid_init(void) {
-    // CRITICAL: Only initialize USB - this function should ONLY be called for USB mode
     g_usb_previous_config = furi_hal_usb_get_config();
     furi_hal_usb_unlock();
     
     if(!furi_hal_usb_set_config(&usb_hid, NULL)) {
-        FURI_LOG_E(TAG, "USB HID: Failed to set USB config");
         return false;
     }
     
@@ -22,53 +20,35 @@ bool usb_hid_init(void) {
     uint8_t retries = HID_CONNECT_TIMEOUT_MS / HID_CONNECT_RETRY_MS;
     for(uint8_t i = 0; i < retries; i++) {
         if(furi_hal_hid_is_connected()) {
-            FURI_LOG_I(TAG, "USB HID: Connected");
             return true;
         }
         furi_delay_ms(HID_CONNECT_RETRY_MS);
     }
     
-    FURI_LOG_W(TAG, "USB HID: Connection timeout");
-    return furi_hal_hid_is_connected();
+    return false;
+}
+
+static void usb_hid_deinit_common(FuriHalUsbInterface* config) {
+    furi_hal_hid_kb_release_all();
+    furi_delay_ms(HID_INIT_DELAY_MS);
+    
+    if(config) {
+        furi_hal_usb_set_config(config, NULL);
+    } else {
+        furi_hal_usb_unlock();
+    }
+    
+    furi_delay_ms(HID_SETTLE_DELAY_MS);
 }
 
 void usb_hid_deinit(void) {
-    furi_hal_hid_kb_release_all();
-    furi_delay_ms(HID_INIT_DELAY_MS);
-    
-    if(g_usb_previous_config) {
-        furi_hal_usb_set_config(g_usb_previous_config, NULL);
-    } else {
-        furi_hal_usb_unlock();
-    }
-    
+    FuriHalUsbInterface* config = g_usb_previous_config;
     g_usb_previous_config = NULL;
-    furi_delay_ms(HID_SETTLE_DELAY_MS);
-    
-    FURI_LOG_I(TAG, "USB HID: Deinitialized");
-}
-
-FuriHalUsbInterface* usb_hid_get_previous_config(void) {
-    return g_usb_previous_config;
-}
-
-void usb_hid_set_previous_config(FuriHalUsbInterface* config) {
-    g_usb_previous_config = config;
+    usb_hid_deinit_common(config);
 }
 
 void usb_hid_deinit_with_restore(FuriHalUsbInterface* previous_config) {
-    furi_hal_hid_kb_release_all();
-    furi_delay_ms(HID_INIT_DELAY_MS);
-    
-    if(previous_config) {
-        furi_hal_usb_set_config(previous_config, NULL);
-    } else {
-        furi_hal_usb_unlock();
-    }
-    
-    furi_delay_ms(HID_SETTLE_DELAY_MS);
-    
-    FURI_LOG_I(TAG, "USB HID: Deinitialized with restore");
+    usb_hid_deinit_common(previous_config);
 }
 
 void usb_hid_release_all_keys(void) {
@@ -92,7 +72,6 @@ uint32_t usb_hid_type_password(App* app, const char* password) {
     
     uint32_t approx_typed_ms = 0;
     
-    
     // Type each character using USB ONLY
     for(size_t i = 0; password[i] != '\0'; i++) {
         unsigned char uc = (unsigned char)password[i];
@@ -106,9 +85,8 @@ uint32_t usb_hid_type_password(App* app, const char* password) {
             furi_delay_ms(KEY_RELEASE_DELAY_MS);
             approx_typed_ms += KEY_PRESS_DELAY_MS + KEY_RELEASE_DELAY_MS;
             
-            uint16_t delay = app->input_delay_ms;
-            furi_delay_ms(delay);
-            approx_typed_ms += delay;
+            furi_delay_ms(app->input_delay_ms);
+            approx_typed_ms += app->input_delay_ms;
         }
     }
     

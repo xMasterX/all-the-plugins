@@ -18,9 +18,6 @@
 #include "../storage/nfc_login_card_storage.h"
 #include "../hid/nfc_login_hid.h"
 
-#ifndef HAS_BLE_HID_API
-    #define HAS_BLE_HID_API 0
-#endif
 
 #undef TAG
 #define TAG "nfc_login_cli"
@@ -249,7 +246,8 @@ static void nfc_login_cli_add(PipeSide* pipe, FuriString* args, void* context) {
     const char* uid_hex = furi_string_get_cstr(uid_str);
     const char* password = furi_string_get_cstr(password_str);
     
-    if(strlen(name) == 0 || strlen(name) >= sizeof(app->cards[0].name)) {
+    size_t name_len = strlen(name);
+    if(name_len == 0 || name_len >= sizeof(app->cards[0].name)) {
         printf( "Error: Invalid name (max %zu chars).\r\n", sizeof(app->cards[0].name) - 1);
         furi_string_free(name_str);
         furi_string_free(uid_str);
@@ -268,7 +266,8 @@ static void nfc_login_cli_add(PipeSide* pipe, FuriString* args, void* context) {
         return;
     }
     
-    if(strlen(password) == 0 || strlen(password) >= MAX_PASSWORD_LEN) {
+    size_t password_len = strlen(password);
+    if(password_len == 0 || password_len >= MAX_PASSWORD_LEN) {
         printf( "Error: Invalid password (max %d chars).\r\n", MAX_PASSWORD_LEN - 1);
         furi_string_free(name_str);
         furi_string_free(uid_str);

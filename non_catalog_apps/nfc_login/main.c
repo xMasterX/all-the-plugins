@@ -6,8 +6,6 @@
 #include "scan/nfc_login_scan.h"
 #include "hid/nfc_login_hid.h"
 #include "scenes/scene_manager.h"
-#include "scenes/cards/edit_callbacks.h"
-#include "scenes/settings/settings_scene.h"
 #include "scenes/settings/passcode_canvas.h"
 #include "cli/nfc_login_cli.h"
 
@@ -40,19 +38,10 @@ int32_t nfc_login(void* p) {
         app_switch_to_view(app, ViewSubmenu);
     } else {
         bool has_passcode_set = has_passcode();
-        if(has_passcode_set) {
-            app->passcode_prompt_active = true;
-            app->passcode_sequence_len = 0;
-            memset(app->passcode_sequence, 0, sizeof(app->passcode_sequence));
-            app->widget_state = 7;
-            app_switch_to_view(app, ViewPasscodeCanvas);
-        } else {
-            app->passcode_prompt_active = true;
-            app->passcode_sequence_len = 0;
-            memset(app->passcode_sequence, 0, sizeof(app->passcode_sequence));
-            app->widget_state = 6;
-            app_switch_to_view(app, ViewPasscodeCanvas);
-        }
+        app->passcode_prompt_active = true;
+        app->passcode_sequence_len = 0;
+        app->widget_state = has_passcode_set ? 7 : 6;
+        app_switch_to_view(app, ViewPasscodeCanvas);
     }
     
     nfc_login_cli_register_commands(app);

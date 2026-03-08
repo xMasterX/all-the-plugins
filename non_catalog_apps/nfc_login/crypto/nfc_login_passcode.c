@@ -132,7 +132,13 @@ bool get_passcode_sequence(char* sequence_out, size_t sequence_buf_size) {
 
 // Encrypt passcode and save it to settings file
 bool set_passcode_sequence(const char* sequence) {
-    if(!sequence || strlen(sequence) == 0) {
+    if(!sequence) {
+        FURI_LOG_E(TAG, "set_passcode_sequence: Invalid sequence");
+        return false;
+    }
+    
+    size_t seq_len = strlen(sequence);
+    if(seq_len == 0) {
         FURI_LOG_E(TAG, "set_passcode_sequence: Invalid sequence");
         return false;
     }
@@ -152,10 +158,9 @@ bool set_passcode_sequence(const char* sequence) {
     }
     
     // Small delay to let crypto subsystem settle
-    furi_delay_ms(50);
+    furi_delay_ms(PASSCODE_DELAY_MS);
     
     // Encrypt the passcode
-    size_t seq_len = strlen(sequence);
     uint8_t* encrypted = malloc(seq_len + AES_BLOCK_SIZE);
     size_t encrypted_len = 0;
     
@@ -267,7 +272,7 @@ bool set_passcode_sequence(const char* sequence) {
     furi_record_close(RECORD_STORAGE);
     
     // Small delay to ensure file system operations complete
-    furi_delay_ms(50);
+    furi_delay_ms(PASSCODE_DELAY_MS);
     
     memset(encrypted, 0, encrypted_len);
     free(encrypted);
@@ -514,9 +519,7 @@ bool set_passcode_disabled(bool disabled) {
             storage_file_close(file);
             if(storage_file_open(file, NFC_CARDS_FILE_ENC, FSAM_WRITE, FSOM_CREATE_ALWAYS)) {
                 uint8_t header[3] = {0, 0, disabled ? PASSCODE_FLAG_DISABLED : 0};
-                if(storage_file_write(file, header, 3) == 3) {
-                    success = true;
-                }
+                success = (storage_file_write(file, header, 3) == 3);
                 storage_file_close(file);
             }
         }
@@ -524,9 +527,7 @@ bool set_passcode_disabled(bool disabled) {
         // File doesn't exist, create new header
         if(storage_file_open(file, NFC_CARDS_FILE_ENC, FSAM_WRITE, FSOM_CREATE_ALWAYS)) {
             uint8_t header[3] = {0, 0, disabled ? PASSCODE_FLAG_DISABLED : 0};
-            if(storage_file_write(file, header, 3) == 3) {
-                success = true;
-            }
+            success = (storage_file_write(file, header, 3) == 3);
             storage_file_close(file);
         }
     }

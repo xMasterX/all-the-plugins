@@ -124,8 +124,14 @@ bool decrypt_data(const uint8_t* input, size_t input_len, uint8_t* output, size_
 }
 
 bool encrypt_data_with_passcode_sequence(const uint8_t* input, size_t input_len, uint8_t* output, size_t* output_len, const char* sequence) {
-    if(!input || !output || !output_len || input_len == 0 || !sequence || strlen(sequence) == 0) {
+    if(!input || !output || !output_len || input_len == 0 || !sequence) {
         FURI_LOG_E(TAG, "encrypt_data_with_passcode_sequence: Invalid parameters");
+        return false;
+    }
+    
+    size_t seq_len = strlen(sequence);
+    if(seq_len == 0) {
+        FURI_LOG_E(TAG, "encrypt_data_with_passcode_sequence: Invalid sequence");
         return false;
     }
 
@@ -215,7 +221,12 @@ bool decrypt_data_with_passcode_sequence(const uint8_t* input, size_t input_len,
         return false;
     }
 
-    if(!sequence || strlen(sequence) == 0) {
+    if(!sequence) {
+        FURI_LOG_E(TAG, "decrypt_data_with_passcode_sequence: Invalid sequence");
+        return false;
+    }
+    
+    if(strlen(sequence) == 0) {
         FURI_LOG_E(TAG, "decrypt_data_with_passcode_sequence: Invalid sequence");
         return false;
     }

@@ -1,22 +1,14 @@
 #include "nfc_login_hid_ble.h"
 #include "../settings/nfc_login_settings.h"
+#include "../nfc_login_app.h"
 
 #include <furi_hal_bt.h>
 #include <furi.h>
 #include <string.h>
 
-#undef HAS_BLE_HID_API
-
-#ifdef __has_include
-    #if __has_include(<extra_profiles/hid_profile.h>) && __has_include(<bt/bt_service/bt.h>)
-        #include <extra_profiles/hid_profile.h>
-        #include <bt/bt_service/bt.h>
-        #define HAS_BLE_HID_API 1
-    #else
-        #define HAS_BLE_HID_API 0
-    #endif
-#else
-    #define HAS_BLE_HID_API 0
+#if HAS_BLE_HID_API
+    #include <extra_profiles/hid_profile.h>
+    #include <bt/bt_service/bt.h>
 #endif
 
 #if HAS_BLE_HID_API
@@ -26,13 +18,7 @@ static bool g_ble_is_connected = false;
 
 static void ble_connection_status_callback(BtStatus status, void* context) {
     UNUSED(context);
-    if(status == BtStatusConnected) {
-        g_ble_is_connected = true;
-        FURI_LOG_I(TAG, "BLE HID connected");
-    } else if(status < BtStatusConnected) {
-        g_ble_is_connected = false;
-        FURI_LOG_I(TAG, "BLE HID disconnected");
-    }
+    g_ble_is_connected = (status == BtStatusConnected);
 }
 
 bool ble_hid_init(void) {
@@ -45,7 +31,6 @@ bool ble_hid_init(void) {
     if(!g_bt_service) {
         g_bt_service = furi_record_open(RECORD_BT);
         if(!g_bt_service) {
-            FURI_LOG_E(TAG, "Failed to open BT service");
             return false;
         }
     }
@@ -53,14 +38,13 @@ bool ble_hid_init(void) {
     // Only disconnect if we're not already connected (Windows 11 doesn't like forced disconnects)
     if(!g_ble_is_connected) {
         bt_disconnect(g_bt_service);
-        furi_delay_ms(300); // Longer delay for Windows 11 compatibility
+        furi_delay_ms(BLE_DISCONNECT_DELAY_MS);
     }
     
     // Start BLE HID profile (or reuse existing)
     if(!g_ble_hid_profile) {
         g_ble_hid_profile = bt_profile_start(g_bt_service, ble_profile_hid, NULL);
         if(!g_ble_hid_profile) {
-            FURI_LOG_E(TAG, "Failed to start BLE HID profile");
             return false;
         }
     }
@@ -70,12 +54,11 @@ bool ble_hid_init(void) {
     
     // Start advertising (if not already active)
     if(!furi_hal_bt_is_active()) {
-        furi_delay_ms(150); // Longer delay for Windows 11
+        furi_delay_ms(BLE_ADVERTISE_DELAY_MS);
         furi_hal_bt_start_advertising();
-        furi_delay_ms(150);
+        furi_delay_ms(BLE_ADVERTISE_DELAY_MS);
     }
     
-    FURI_LOG_I(TAG, "BLE HID initialized and advertising");
     return true;
 }
 
@@ -83,23 +66,18 @@ void ble_hid_deinit(void) {
     if(g_bt_service) {
         bt_set_status_changed_callback(g_bt_service, NULL, NULL);
         bt_disconnect(g_bt_service);
-        furi_delay_ms(200);
-    }
-    
-    furi_hal_bt_stop_advertising();
-    g_ble_is_connected = false;
-    
-    if(g_ble_hid_profile && g_bt_service) {
-        bt_profile_restore_default(g_bt_service);
-        g_ble_hid_profile = NULL;
-    }
-    
-    if(g_bt_service) {
+        furi_delay_ms(BLE_DEINIT_DELAY_MS);
+        
+        if(g_ble_hid_profile) {
+            bt_profile_restore_default(g_bt_service);
+            g_ble_hid_profile = NULL;
+        }
+        
         furi_record_close(RECORD_BT);
         g_bt_service = NULL;
     }
     
-    FURI_LOG_I(TAG, "BLE HID deinitialized");
+    g_ble_is_connected = false;
 }
 
 bool ble_hid_is_ready(void) {
@@ -118,34 +96,19 @@ void ble_hid_release_all_keys(void) {
 }
 
 void ble_hid_press_key(uint16_t keycode) {
-    if(!g_ble_hid_profile) {
-        FURI_LOG_E(TAG, "BLE HID: Cannot press key - no profile");
-        return;
-    }
-    bool result = ble_profile_hid_kb_press(g_ble_hid_profile, keycode);
-    if(!result) {
-        FURI_LOG_W(TAG, "BLE HID: Key press failed for keycode 0x%04X", keycode);
+    if(g_ble_hid_profile) {
+        ble_profile_hid_kb_press(g_ble_hid_profile, keycode);
     }
 }
 
 void ble_hid_release_key(uint16_t keycode) {
-    if(!g_ble_hid_profile) {
-        FURI_LOG_E(TAG, "BLE HID: Cannot release key - no profile");
-        return;
-    }
-    bool result = ble_profile_hid_kb_release(g_ble_hid_profile, keycode);
-    if(!result) {
-        FURI_LOG_W(TAG, "BLE HID: Key release failed for keycode 0x%04X", keycode);
+    if(g_ble_hid_profile) {
+        ble_profile_hid_kb_release(g_ble_hid_profile, keycode);
     }
 }
 
 uint32_t ble_hid_type_password(App* app, const char* password) {
-    if(!password || !app) return 0;
-    
-    if(!g_ble_hid_profile) {
-        FURI_LOG_E(TAG, "BLE HID: No profile available");
-        return 0;
-    }
+    if(!password || !app || !g_ble_hid_profile) return 0;
     
     if(!app->layout_loaded) {
         app_load_keyboard_layout(app);
@@ -156,42 +119,22 @@ uint32_t ble_hid_type_password(App* app, const char* password) {
     // Type each character using BLE ONLY
     for(size_t i = 0; password[i] != '\0'; i++) {
         unsigned char uc = (unsigned char)password[i];
-        if(uc >= 128) {
-            FURI_LOG_W(TAG, "BLE HID: Skipping non-ASCII char 0x%02X", uc);
-            continue;
-        }
+        if(uc >= 128) continue;
         
         uint16_t full_keycode = app->layout[uc];
         if(full_keycode == HID_KEYBOARD_NONE) {
-            FURI_LOG_W(TAG, "BLE HID: No keycode for char '%c' (0x%02X)", uc, uc);
             continue;
         }
         
-        // Extract modifier and base keycode from full_keycode
-        // Format: full_keycode = (modifier << 8) | keycode
-        uint8_t modifier = (full_keycode >> 8) & 0xFF;
-        uint8_t base_keycode = full_keycode & 0xFF;
-        
-        // Send key with appropriate format based on modifier
-        if(modifier != 0) {
-            ble_profile_hid_kb_press(g_ble_hid_profile, full_keycode);
-        } else {
-            ble_profile_hid_kb_press(g_ble_hid_profile, base_keycode);
-        }
+        // BLE HID API accepts full_keycode format (same as USB)
+        ble_profile_hid_kb_press(g_ble_hid_profile, full_keycode);
         furi_delay_ms(KEY_PRESS_DELAY_MS);
-        
-        // Release - use same format as press
-        if(modifier != 0) {
-            ble_profile_hid_kb_release(g_ble_hid_profile, full_keycode);
-        } else {
-            ble_profile_hid_kb_release(g_ble_hid_profile, base_keycode);
-        }
+        ble_profile_hid_kb_release(g_ble_hid_profile, full_keycode);
         furi_delay_ms(KEY_RELEASE_DELAY_MS);
         approx_typed_ms += KEY_PRESS_DELAY_MS + KEY_RELEASE_DELAY_MS;
         
-        uint16_t delay = app->input_delay_ms;
-        furi_delay_ms(delay);
-        approx_typed_ms += delay;
+        furi_delay_ms(app->input_delay_ms);
+        approx_typed_ms += app->input_delay_ms;
     }
     
     // Press Enter if needed

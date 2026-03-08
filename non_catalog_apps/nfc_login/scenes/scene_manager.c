@@ -10,9 +10,6 @@
 #include "../hid/nfc_login_hid.h"
 #include "../crypto/nfc_login_passcode.h"
 
-#ifndef HAS_BLE_HID_API
-    #define HAS_BLE_HID_API 0
-#endif
 
 static bool app_navigation_callback(void* context);
 static void app_file_browser_callback(void* context);
@@ -104,7 +101,7 @@ static bool app_navigation_callback(void* context) {
         if(app->scanning) {
             app->scanning = false;
             // Wait a bit for scan thread to exit HID operations
-            furi_delay_ms(100);
+            furi_delay_ms(SCENE_DELAY_MS);
             if(app->scan_thread) {
                 furi_thread_join(app->scan_thread);
                 furi_thread_free(app->scan_thread);
@@ -455,13 +452,19 @@ bool app_widget_view_input_handler(InputEvent* event, void* context) {
                     furi_record_close(RECORD_STORAGE);
 
                     if(layout_count < MAX_LAYOUTS) {
+                        // Shift existing layouts down by one
                         for(size_t i = layout_count; i > 0; i--) {
                             STRNCPY_SAFE(layouts[i], layouts[i-1], sizeof(layouts[0]));
                         }
+                        // Insert default layout at position 0
                         STRNCPY_SAFE(layouts[0], "en-US.kl", sizeof(layouts[0]));
                         layout_count++;
-                        if(current_index >= 0) current_index++;
-                        else if(strcmp(current_layout, "en-US.kl") == 0) current_index = 0;
+                        // Adjust current_index if needed
+                        if(current_index >= 0) {
+                            current_index++;
+                        } else if(strcmp(current_layout, "en-US.kl") == 0) {
+                            current_index = 0;
+                        }
                     }
 
                     if(layout_count > 0) {

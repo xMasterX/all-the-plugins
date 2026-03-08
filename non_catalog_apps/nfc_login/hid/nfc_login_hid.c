@@ -22,10 +22,6 @@ void release_all_keys_with_mode(HidMode mode) {
     }
 }
 
-bool initialize_hid_and_wait(void) {
-    return initialize_hid_and_wait_with_mode(HidModeUsb);
-}
-
 bool initialize_hid_and_wait_with_mode(HidMode mode) {
     // CRITICAL: Route to correct implementation based on mode
     // BLE and USB are completely separate
@@ -37,10 +33,6 @@ bool initialize_hid_and_wait_with_mode(HidMode mode) {
     } else {
         return usb_hid_init();
     }
-}
-
-void deinitialize_hid_with_restore(FuriHalUsbInterface* previous_config) {
-    deinitialize_hid_with_restore_and_mode(previous_config, HidModeUsb);
 }
 
 void deinitialize_hid_with_restore_and_mode(FuriHalUsbInterface* previous_config, HidMode mode) {

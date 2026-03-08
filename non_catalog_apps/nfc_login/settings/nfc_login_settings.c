@@ -3,18 +3,6 @@
 #include "../nfc_login_app.h"
 #include "../hid/nfc_login_hid.h"
 
-// Check for BLE HID API availability directly (same logic as nfc_login_hid.c)
-#undef HAS_BLE_HID_API
-#ifdef __has_include
-    #if __has_include(<extra_profiles/hid_profile.h>) && __has_include(<bt/bt_service/bt.h>)
-        #define HAS_BLE_HID_API 1
-    #else
-        #define HAS_BLE_HID_API 0
-    #endif
-#else
-    #define HAS_BLE_HID_API 0
-#endif
-
 void app_load_keyboard_layout(App* app) {
     for(int i = 0; i < 128; i++) {
         app->layout[i] = HID_KEYBOARD_NONE;
@@ -217,18 +205,18 @@ void app_load_settings(App* app) {
                 }
                 // Copy the layout name, stopping at whitespace, newline, or null
                 size_t i = 0;
+                const char* src = layout_name;
                 while(i < sizeof(app->keyboard_layout) - 1 && 
-                      layout_name[i] != '\0' && 
-                      layout_name[i] != ' ' && 
-                      layout_name[i] != '\t' && 
-                      layout_name[i] != '\n' && 
-                      layout_name[i] != '\r') {
-                    app->keyboard_layout[i] = layout_name[i];
-                    i++;
+                      *src != '\0' && 
+                      *src != ' ' && 
+                      *src != '\t' && 
+                      *src != '\n' && 
+                      *src != '\r') {
+                    app->keyboard_layout[i++] = *src++;
                 }
                 app->keyboard_layout[i] = '\0';
                 // If we got an empty string, use default
-                if(app->keyboard_layout[0] == '\0') {
+                if(i == 0) {
                     strncpy(app->keyboard_layout, "en-US.kl", sizeof(app->keyboard_layout) - 1);
                     app->keyboard_layout[sizeof(app->keyboard_layout) - 1] = '\0';
                 }

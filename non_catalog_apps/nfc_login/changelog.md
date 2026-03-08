@@ -1,3 +1,8 @@
+v1.1.2:
+BLE cleanup and OFW compatibility fixes
+- **Fix**: Properly restore the original BLE profile on app exit so the Flipper reconnects without toggling Bluetooth
+- **Fix**: Adjusted icon include logic to build cleanly on Official Firmware while still supporting Momentum assets
+
 v1.1.1:
 Code cleanup and optimizations
 - **Code cleanup**: Removed redundant comments, debug logs, and unused code
@@ -7,7 +12,7 @@ v1.1.0:
 Major code refactoring and modularization + BLE HID support
 - **NEW: BLE HID Support**: Added Bluetooth Low Energy HID keyboard mode
   - Switch between USB and BLE HID modes in settings
-  - BLE device advertises as "Control <Flipper Name>"
+  - BLE device advertises as **Control (Flipper Name)**
   - Works on iOS, Android, and PC devices
   - BLE advertising starts immediately when BLE mode is selected
   - Compatible with both Official and Momentum firmware

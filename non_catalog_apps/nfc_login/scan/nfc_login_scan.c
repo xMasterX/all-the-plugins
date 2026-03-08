@@ -6,18 +6,6 @@
 #include <nfc/nfc_poller.h>
 #include <nfc/protocols/iso14443_3a/iso14443_3a.h>
 
-// Check for BLE HID API availability (same check as in nfc_login_hid_ble.c)
-#undef HAS_BLE_HID_API
-#ifdef __has_include
-    #if __has_include(<extra_profiles/hid_profile.h>) && __has_include(<bt/bt_service/bt.h>)
-        #define HAS_BLE_HID_API 1
-    #else
-        #define HAS_BLE_HID_API 0
-    #endif
-#else
-    #define HAS_BLE_HID_API 0
-#endif
-
 // NFC scanning thread
 int32_t app_scan_thread(void* context) {
     App* app = context;
@@ -59,27 +47,22 @@ int32_t app_scan_thread(void* context) {
             
             if(uid && uid_len > 0) {
                 int match_index = -1;
-                bool allow_type = false;
                 if(app->has_active_selection && app->active_card_index < app->card_count) {
                     if(app->cards[app->active_card_index].uid_len == uid_len &&
                        memcmp(app->cards[app->active_card_index].uid, uid, uid_len) == 0) {
                         match_index = (int)app->active_card_index;
-                        allow_type = true;
-                    } else {
-                        allow_type = false;
                     }
                 } else {
                     for(size_t i = 0; i < app->card_count; i++) {
                         if(app->cards[i].uid_len == uid_len &&
                            memcmp(app->cards[i].uid, uid, uid_len) == 0) {
                             match_index = (int)i;
-                            allow_type = true;
                             break;
                         }
                     }
                 }
                 
-                if(allow_type && match_index >= 0) {
+                if(match_index >= 0) {
                     if(!app->scanning) break;
                     
                     notification_message(app->notification, &sequence_success);
@@ -115,12 +98,11 @@ int32_t app_scan_thread(void* context) {
                                 // Windows 11 needs more time for pairing/connection
                                 uint8_t retries = 100; // 10 seconds max (Windows 11 needs more time)
                                 for(uint8_t i = 0; i < retries && !ble_hid_is_connected(); i++) {
-                                    furi_delay_ms(100);
+                                    furi_delay_ms(BLE_CONNECTION_RETRY_DELAY_MS);
                                 }
                             }
                         }
                         #else
-                        FURI_LOG_E(TAG, "Scan: BLE mode requested but API not available!");
                         hid_ready = false;
                         #endif
                     } else {
@@ -129,62 +111,25 @@ int32_t app_scan_thread(void* context) {
                     }
         
                     if(hid_ready) {
-                        if(!app->scanning) {
-                            // Only deinitialize USB, never BLE
-                            if(effective_mode == HidModeUsb) {
-                                deinitialize_hid_with_restore_and_mode(app->previous_usb_config, effective_mode);
-                                app->previous_usb_config = NULL;
-                            }
-                            break;
-                        }
+                        if(!app->scanning) break;
                         
                         furi_delay_ms(HID_POST_CONNECT_DELAY_MS);
-                        
-                        if(!app->scanning) {
-                            // Only deinitialize USB, never BLE
-                            if(effective_mode == HidModeUsb) {
-                                deinitialize_hid_with_restore_and_mode(app->previous_usb_config, effective_mode);
-                                app->previous_usb_config = NULL;
-                            }
-                            break;
-                        }
+                        if(!app->scanning) break;
                         
                         release_all_keys_with_mode(effective_mode);
+                        app_type_password(app, app->cards[match_index].password);
                         
-                        uint32_t typed_ms = app_type_password(app, app->cards[match_index].password);
+                        if(!app->scanning) break;
                         
-                        if(!app->scanning) {
-                            // Only deinitialize USB, never BLE
-                            if(effective_mode == HidModeUsb) {
-                                deinitialize_hid_with_restore_and_mode(app->previous_usb_config, effective_mode);
-                                app->previous_usb_config = NULL;
-                            }
-                            break;
-                        }
-                        
-                        if(typed_ms > 0) {
-                            furi_delay_ms(typed_ms);
-                        }
-                    } else {
-                        notification_message(app->notification, &sequence_error);
-                    }
-                    
-                    // CRITICAL: Only deinitialize USB after typing, NEVER BLE
-                    // BLE must stay connected for future scans
-                    if(app->scanning) {
+                        // Only deinitialize USB after typing, NEVER BLE
+                        // BLE must stay connected for future scans
                         if(effective_mode == HidModeUsb) {
                             deinitialize_hid_with_restore_and_mode(app->previous_usb_config, effective_mode);
                             app->previous_usb_config = NULL;
                         }
-                        // For BLE, do NOT deinitialize - keep connection alive
                         furi_delay_ms(HID_POST_TYPE_DELAY_MS);
                     } else {
-                        if(effective_mode == HidModeUsb) {
-                            deinitialize_hid_with_restore_and_mode(app->previous_usb_config, effective_mode);
-                            app->previous_usb_config = NULL;
-                        }
-                        // For BLE, do NOT deinitialize - keep connection alive
-                        break;
+                        notification_message(app->notification, &sequence_error);
                     }
                 } else {
                     if(app->has_active_selection) {
