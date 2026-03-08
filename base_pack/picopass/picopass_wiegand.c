@@ -125,6 +125,21 @@ void picopass_wiegand_format_description(wiegand_message_t* packed, FuriString* 
     }
 }
 
+const char* picopass_wiegand_format_name(WiegandFormat format) {
+    switch(format) {
+    case WiegandFormat_H10301:
+        return "H10301";
+    case WiegandFormat_C1k35s:
+        return "C1k35s";
+    case WiegandFormat_H10302:
+        return "H10302";
+    case WiegandFormat_H10304:
+        return "H10304";
+    default:
+        return "Unknown";
+    }
+}
+
 bool picopass_Pack_H10301(wiegand_card_t* card, wiegand_message_t* packed) {
     memset(packed, 0, sizeof(wiegand_message_t));
 

@@ -52,3 +52,4 @@ bool picopass_Unpack_H10304(wiegand_message_t* packed, wiegand_card_t* card);
 
 int picopass_wiegand_format_count(wiegand_message_t* packed);
 void picopass_wiegand_format_description(wiegand_message_t* packed, FuriString* description);
+const char* picopass_wiegand_format_name(WiegandFormat format);

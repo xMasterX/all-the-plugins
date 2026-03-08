@@ -165,6 +165,11 @@ void picopass_scene_card_menu_on_enter(void* context) {
         }
     }
 
+    // It is possible (https://www.youtube.com/watch?v=Eef70bSRl_0)
+    if(auth == PicopassDeviceAuthMethodNrMac) {
+        included[SubmenuIndexEmulate] = true;
+    }
+
     picopass_scene_card_menu_add_items(picopass, included);
 
     view_dispatcher_switch_to_view(picopass->view_dispatcher, PicopassViewMenu);
