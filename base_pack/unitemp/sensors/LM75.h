@@ -1,6 +1,6 @@
 /*
     Unitemp - Universal temperature reader
-    Copyright (C) 2022-2023  Victor Nikitchuk (https://github.com/quen0n)
+    Copyright (C) 2022-2026  Victor Nikitchuk (https://github.com/quen0n)
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,8 +19,8 @@
 #define UNITEMP_LM75
 
 #include "../unitemp.h"
-#include "../Sensors.h"
-extern const SensorType LM75;
+#include "../sensors.h"
+extern const SensorModel LM75;
 /**
  * @brief Allocating memory and setting initial values ​​for the LM75 sensor
  *
@@ -50,7 +50,7 @@ bool unitemp_LM75_deinit(Sensor* sensor);
  * @param sensor Pointer to sensor
  * @return Update status
  */
-UnitempStatus unitemp_LM75_update(Sensor* sensor);
+SensorStatus unitemp_LM75_update(Sensor* sensor);
 
 /**
  * @brief Free up sensor memory

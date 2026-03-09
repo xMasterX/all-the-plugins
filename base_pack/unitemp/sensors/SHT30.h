@@ -1,6 +1,6 @@
 /*
     Unitemp - Universal temperature reader
-    Copyright (C) 2022-2023  Victor Nikitchuk (https://github.com/quen0n)
+    Copyright (C) 2022-2026  Victor Nikitchuk (https://github.com/quen0n)
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,9 +19,9 @@
 #define UNITEMP_SHT30
 
 #include "../unitemp.h"
-#include "../Sensors.h"
-extern const SensorType SHT30;
-extern const SensorType GXHT30;
+#include "../sensors.h"
+extern const SensorModel SHT30;
+extern const SensorModel GXHT30;
 /**
  * @brief Allocating memory and setting initial values ​​for the SHT30 sensor
  *
@@ -58,7 +58,7 @@ bool unitemp_SHT30_I2C_deinit(Sensor* sensor);
  * @param sensor Pointer to sensor
  * @return Update status
  */
-UnitempStatus unitemp_SHT30_I2C_update(Sensor* sensor);
+SensorStatus unitemp_SHT30_I2C_update(Sensor* sensor);
 
 /**
  * @brief Free up sensor memory

@@ -1,6 +1,6 @@
 /*
     Unitemp - Universal temperature reader
-    Copyright (C) 2022-2023  Victor Nikitchuk (https://github.com/quen0n)
+    Copyright (C) 2022-2026  Victor Nikitchuk (https://github.com/quen0n)
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,8 +19,8 @@
 #define UNITEMP_BMP180
 
 #include "../unitemp.h"
-#include "../Sensors.h"
-extern const SensorType BMP180;
+#include "../sensors.h"
+extern const SensorModel BMP180;
 /**
  * @brief Allocating memory and setting initial values ​​for the BMP180 sensor
  *
@@ -50,7 +50,7 @@ bool unitemp_BMP180_I2C_deinit(Sensor* sensor);
  * @param sensor Pointer to sensor
  * @return Update status
  */
-UnitempStatus unitemp_BMP180_I2C_update(Sensor* sensor);
+SensorStatus unitemp_BMP180_I2C_update(Sensor* sensor);
 
 /**
  * @brief Free up sensor memory

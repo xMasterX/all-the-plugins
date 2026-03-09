@@ -1,6 +1,6 @@
 /*
     Unitemp - Universal temperature reader
-    Copyright (C) 2022-2023  Victor Nikitchuk (https://github.com/quen0n)
+    Copyright (C) 2022-2026  Victor Nikitchuk (https://github.com/quen0n)
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,12 +15,15 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#ifndef UNITEMP_AM2320
-#define UNITEMP_AM2320
 
-#include "../unitemp.h"
-#include "../Sensors.h"
-extern const SensorType AM2320_I2C;
+#include "../sensors.h"
+
+#ifndef AM2320_H_
+#define AM2320_H_
+
+extern const SensorModel AM2320_SW;
+extern const SensorModel AM2320_I2C;
+
 /**
  * @brief Allocating memory and setting initial values ​​for the AM2320 sensor
  *
@@ -50,7 +53,7 @@ bool unitemp_AM2320_I2C_deinit(Sensor* sensor);
  * @param sensor Pointer to sensor
  * @return Update status
  */
-UnitempStatus unitemp_AM2320_I2C_update(Sensor* sensor);
+SensorStatus unitemp_AM2320_I2C_update(Sensor* sensor);
 
 /**
  * @brief Free up sensor memory
@@ -59,4 +62,4 @@ UnitempStatus unitemp_AM2320_I2C_update(Sensor* sensor);
  */
 bool unitemp_AM2320_I2C_free(Sensor* sensor);
 
-#endif
+#endif //AM2320_H_

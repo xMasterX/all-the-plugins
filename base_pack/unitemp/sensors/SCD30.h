@@ -1,6 +1,6 @@
 /*
     Unitemp - Universal temperature reader
-    Copyright (C) 2022-2023  Victor Nikitchuk (https://github.com/quen0n)
+    Copyright (C) 2022-2026  Victor Nikitchuk (https://github.com/quen0n)
     Contributed by divinebird (https://github.com/divinebird)
 
     This program is free software: you can redistribute it and/or modify
@@ -20,8 +20,14 @@
 #define UNITEMP_SCD30
 
 #include "../unitemp.h"
-#include "../Sensors.h"
+#include "../sensors.h"
 
-extern const SensorType SCD30;
+bool unitemp_SCD30_alloc(Sensor* sensor, char* args);
+bool unitemp_SCD30_init(Sensor* sensor);
+bool unitemp_SCD30_deinit(Sensor* sensor);
+SensorStatus unitemp_SCD30_update(Sensor* sensor);
+bool unitemp_SCD30_free(Sensor* sensor);
+
+extern const SensorModel SCD30;
 
 #endif

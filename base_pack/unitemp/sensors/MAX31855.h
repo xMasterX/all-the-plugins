@@ -1,6 +1,6 @@
 /*
     Unitemp - Universal temperature reader
-    Copyright (C) 2022-2023  Victor Nikitchuk (https://github.com/quen0n)
+    Copyright (C) 2022-2026  Victor Nikitchuk (https://github.com/quen0n)
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,10 +19,10 @@
 #define UNITEMP_MAX31855
 
 #include "../unitemp.h"
-#include "../Sensors.h"
-#include "../interfaces/SPISensor.h"
+#include "../sensors.h"
+#include "../interfaces/spi_sensor.h"
 
-extern const SensorType MAX31855;
+extern const SensorModel MAX31855;
 
 /**
  * @brief Allocating memory and setting initial values ​​for the MAX31855 sensor
@@ -53,7 +53,7 @@ bool unitemp_MAX31855_deinit(Sensor* sensor);
  * @param sensor Pointer to sensor
  * @return Update status
  */
-UnitempStatus unitemp_MAX31855_update(Sensor* sensor);
+SensorStatus unitemp_MAX31855_update(Sensor* sensor);
 
 /**
  * @brief Free up sensor memory

@@ -1,6 +1,6 @@
 /*
     Unitemp - Universal temperature reader
-    Copyright (C) 2022-2023  Victor Nikitchuk (https://github.com/quen0n)
+    Copyright (C) 2022-2026  Victor Nikitchuk (https://github.com/quen0n)
     Contributed by g0gg0 (https://github.com/g3gg0)
 
     This program is free software: you can redistribute it and/or modify
@@ -20,8 +20,8 @@
 #define UNITEMP_BME680
 
 #include "../unitemp.h"
-#include "../Sensors.h"
-#include "../interfaces/I2CSensor.h"
+#include "../sensors.h"
+#include "../interfaces/i2c_sensor.h"
 
 typedef struct {
     uint16_t dig_T1;
@@ -74,7 +74,7 @@ typedef struct {
     int32_t t_fine;
 } BME680_instance;
 
-extern const SensorType BME680;
+extern const SensorModel BME680;
 /**
  * @brief Allocating memory and setting initial values ​​for the BMP680 sensor
  * @param sensor Pointer to the sensor to create
@@ -100,7 +100,7 @@ bool unitemp_BME680_deinit(Sensor* sensor);
  * @param sensor Pointer to sensor
  * @return Sensor poll status
  */
-UnitempStatus unitemp_BME680_update(Sensor* sensor);
+SensorStatus unitemp_BME680_update(Sensor* sensor);
 
 /**
  * @brief Free up sensor memory
