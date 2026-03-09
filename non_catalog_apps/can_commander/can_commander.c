@@ -10,8 +10,10 @@
 #include <string.h>
 #include <ctype.h>
 
-#define APP_MONITOR_KEEP_MAX   4096U
-#define APP_MONITOR_KEEP_TAIL  2500U
+#include "libraries/missing_api.h"
+
+#define APP_MONITOR_KEEP_MAX  4096U
+#define APP_MONITOR_KEEP_TAIL 2500U
 
 #define APP_RX_THREAD_STACK    (3U * 1024U)
 #define APP_RX_THREAD_INTERVAL 20U
@@ -33,9 +35,8 @@ static bool cancommander_scene_custom_event_callback(void* context, uint32_t eve
 static bool cancommander_scene_back_event_callback(void* context) {
     App* app = context;
 
-    if(
-        scene_manager_get_current_scene(app->scene_manager) == cancommander_scene_monitor &&
-        app->tool_active) {
+    if(scene_manager_get_current_scene(app->scene_manager) == cancommander_scene_monitor &&
+       app->tool_active) {
         app_append_monitor(app, "[auto] back pressed => tool stop");
         app_action_tool_stop(app);
     }
@@ -307,7 +308,8 @@ static bool app_custom_inject_slot_is_provisioned(const App* app, uint8_t slot_n
     return app->custom_inject_slot_provisioned[slot_number - 1U];
 }
 
-static void app_custom_inject_set_slot_provisioned(App* app, uint8_t slot_number, bool provisioned) {
+static void
+    app_custom_inject_set_slot_provisioned(App* app, uint8_t slot_number, bool provisioned) {
     if(!app || slot_number < 1U || slot_number > 5U) {
         return;
     }
@@ -394,16 +396,14 @@ static bool app_parse_obd_pid_token(const char* token, uint8_t* out_pid) {
         return true;
     }
 
-    if(
-        str_equals_ignore_case(token, "coolant") ||
-        str_equals_ignore_case(token, "coolant_temp") || str_equals_ignore_case(token, "temp")) {
+    if(str_equals_ignore_case(token, "coolant") || str_equals_ignore_case(token, "coolant_temp") ||
+       str_equals_ignore_case(token, "temp")) {
         *out_pid = 0x05U;
         return true;
     }
 
-    if(
-        str_equals_ignore_case(token, "throttle") ||
-        str_equals_ignore_case(token, "throttle_position")) {
+    if(str_equals_ignore_case(token, "throttle") ||
+       str_equals_ignore_case(token, "throttle_position")) {
         *out_pid = 0x11U;
         return true;
     }
@@ -423,9 +423,8 @@ static bool app_parse_obd_pid_token(const char* token, uint8_t* out_pid) {
         return true;
     }
 
-    if(
-        str_equals_ignore_case(token, "baro") ||
-        str_equals_ignore_case(token, "barometric_pressure")) {
+    if(str_equals_ignore_case(token, "baro") ||
+       str_equals_ignore_case(token, "barometric_pressure")) {
         *out_pid = 0x33U;
         return true;
     }
@@ -438,11 +437,8 @@ static bool app_parse_obd_pid_token(const char* token, uint8_t* out_pid) {
     return false;
 }
 
-static bool app_normalize_obd_pid_token(
-    const char* token,
-    char* out,
-    size_t out_size,
-    bool* out_mode01) {
+static bool
+    app_normalize_obd_pid_token(const char* token, char* out, size_t out_size, bool* out_mode01) {
     if(!out || out_size == 0U) {
         return false;
     }
@@ -476,36 +472,31 @@ static bool app_normalize_obd_pid_token(
         return true;
     }
 
-    if(
-        str_equals_ignore_case(token, "dtc_stored") ||
-        str_equals_ignore_case(token, "stored_dtc") ||
-        str_equals_ignore_case(token, "stored_dtcs")) {
+    if(str_equals_ignore_case(token, "dtc_stored") ||
+       str_equals_ignore_case(token, "stored_dtc") ||
+       str_equals_ignore_case(token, "stored_dtcs")) {
         app_copy_string(out, out_size, "dtc_stored");
         return true;
     }
 
-    if(
-        str_equals_ignore_case(token, "dtc_pending") ||
-        str_equals_ignore_case(token, "pending_dtc") ||
-        str_equals_ignore_case(token, "pending_dtcs")) {
+    if(str_equals_ignore_case(token, "dtc_pending") ||
+       str_equals_ignore_case(token, "pending_dtc") ||
+       str_equals_ignore_case(token, "pending_dtcs")) {
         app_copy_string(out, out_size, "dtc_pending");
         return true;
     }
 
-    if(
-        str_equals_ignore_case(token, "dtc_permanent") ||
-        str_equals_ignore_case(token, "permanent_dtc") ||
-        str_equals_ignore_case(token, "permanent_dtcs")) {
+    if(str_equals_ignore_case(token, "dtc_permanent") ||
+       str_equals_ignore_case(token, "permanent_dtc") ||
+       str_equals_ignore_case(token, "permanent_dtcs")) {
         app_copy_string(out, out_size, "dtc_permanent");
         return true;
     }
 
-    if(
-        str_equals_ignore_case(token, "clear_dtc") ||
-        str_equals_ignore_case(token, "clear_codes") ||
-        str_equals_ignore_case(token, "clear_dtcs") ||
-        str_equals_ignore_case(token, "clear_mil") ||
-        str_equals_ignore_case(token, "cel_reset")) {
+    if(str_equals_ignore_case(token, "clear_dtc") ||
+       str_equals_ignore_case(token, "clear_codes") ||
+       str_equals_ignore_case(token, "clear_dtcs") || str_equals_ignore_case(token, "clear_mil") ||
+       str_equals_ignore_case(token, "cel_reset")) {
         app_copy_string(out, out_size, "clear_dtcs");
         return true;
     }
@@ -551,8 +542,8 @@ static void app_format_event_line(const CcEvent* event, char* out, size_t out_si
             if(pos + 3U >= sizeof(data_hex)) {
                 break;
             }
-            const int w =
-                snprintf(data_hex + pos, sizeof(data_hex) - pos, "%02X", event->data.can_frame.data[i]);
+            const int w = snprintf(
+                data_hex + pos, sizeof(data_hex) - pos, "%02X", event->data.can_frame.data[i]);
             if(w <= 0) {
                 break;
             }
@@ -719,7 +710,8 @@ static int32_t app_rx_worker_thread(void* context) {
                 app->tool_active = false;
                 app_custom_inject_mark_all_unprovisioned(app);
                 app_append_monitor(app, "[uart] disconnected while polling");
-                view_dispatcher_send_custom_event(app->view_dispatcher, AppCustomEventMonitorUpdated);
+                view_dispatcher_send_custom_event(
+                    app->view_dispatcher, AppCustomEventMonitorUpdated);
             } else {
                 CcEvent event = {0};
                 bool updated = false;
@@ -737,7 +729,8 @@ static int32_t app_rx_worker_thread(void* context) {
                 }
 
                 if(updated && app->monitor_scene_active) {
-                    view_dispatcher_send_custom_event(app->view_dispatcher, AppCustomEventMonitorUpdated);
+                    view_dispatcher_send_custom_event(
+                        app->view_dispatcher, AppCustomEventMonitorUpdated);
                 }
             }
         }
@@ -775,7 +768,8 @@ void app_append_monitor(App* app, const char* fmt, ...) {
     }
 
     if(furi_string_size(app->monitor_text) > APP_MONITOR_KEEP_MAX) {
-        furi_string_right(app->monitor_text, furi_string_size(app->monitor_text) - APP_MONITOR_KEEP_TAIL);
+        furi_string_right(
+            app->monitor_text, furi_string_size(app->monitor_text) - APP_MONITOR_KEEP_TAIL);
     }
 
     if(furi_string_size(app->monitor_text) > 0U) {
@@ -834,7 +828,7 @@ bool app_args_set_key_value(char* args, size_t args_size, const char* key, const
     size_t used = 0;
 
     char* save_ptr = NULL;
-    char* token = strtok_r(scratch, " ", &save_ptr);
+    char* token = local_strtok_r(scratch, " ", &save_ptr);
     const size_t key_len = strlen(key);
 
     while(token) {
@@ -862,7 +856,8 @@ bool app_args_set_key_value(char* args, size_t args_size, const char* key, const
                 used += step;
             }
         } else {
-            const int wrote = snprintf(args + used, args_size - used, "%s%s", used ? " " : "", token);
+            const int wrote =
+                snprintf(args + used, args_size - used, "%s%s", used ? " " : "", token);
             if(wrote <= 0) {
                 return false;
             }
@@ -874,10 +869,11 @@ bool app_args_set_key_value(char* args, size_t args_size, const char* key, const
             used += step;
         }
 
-        token = strtok_r(NULL, " ", &save_ptr);
+        token = local_strtok_r(NULL, " ", &save_ptr);
     }
 
-    const int wrote = snprintf(args + used, args_size - used, "%s%s=%s", used ? " " : "", key, value);
+    const int wrote =
+        snprintf(args + used, args_size - used, "%s%s=%s", used ? " " : "", key, value);
     if(wrote <= 0) {
         return false;
     }
@@ -1000,7 +996,8 @@ void app_apply_edit(App* app) {
                 app->input_work,
                 sizeof(app->args_editor_items[app->input_arg_value_index].value) - 1U);
             app->args_editor_items[app->input_arg_value_index]
-                .value[sizeof(app->args_editor_items[app->input_arg_value_index].value) - 1U] = '\0';
+                .value[sizeof(app->args_editor_items[app->input_arg_value_index].value) - 1U] =
+                '\0';
 
             if(app->args_editor_target && app->args_editor_target_size > 0U) {
                 app->args_editor_target[0] = '\0';
@@ -1138,12 +1135,12 @@ void app_action_tool_start(App* app, CcToolId tool_id, const char* args, const c
         uint32_t count = 1U;
         uint32_t interval_ms = 250U;
 
-        if(!arg_get_value_last(args, "bus", bus_value, sizeof(bus_value)) || bus_value[0] == '\0') {
+        if(!arg_get_value_last(args, "bus", bus_value, sizeof(bus_value)) ||
+           bus_value[0] == '\0') {
             (void)arg_get_value_last(app->args_write_tool, "bus", bus_value, sizeof(bus_value));
         }
-        if(
-            strcmp(bus_value, "can0") != 0 && strcmp(bus_value, "can1") != 0 &&
-            strcmp(bus_value, "both") != 0) {
+        if(strcmp(bus_value, "can0") != 0 && strcmp(bus_value, "can1") != 0 &&
+           strcmp(bus_value, "both") != 0) {
             strncpy(bus_value, "can0", sizeof(bus_value) - 1U);
         }
 
@@ -1168,7 +1165,8 @@ void app_action_tool_start(App* app, CcToolId tool_id, const char* args, const c
 
         if(!arg_get_value_last(args, "data", data_value_raw, sizeof(data_value_raw)) ||
            data_value_raw[0] == '\0') {
-            (void)arg_get_value_last(app->args_write_tool, "data", data_value_raw, sizeof(data_value_raw));
+            (void)arg_get_value_last(
+                app->args_write_tool, "data", data_value_raw, sizeof(data_value_raw));
         }
 
         size_t used = 0U;
@@ -1268,10 +1266,9 @@ void app_action_tool_start(App* app, CcToolId tool_id, const char* args, const c
                 pid_token, canonical_pid, sizeof(canonical_pid), &is_mode01_pid);
         }
 
-        if(
-            canonical_pid[0] == '\0' &&
-            arg_get_value_last(app->args_obd_pid, "pid", pid_token, sizeof(pid_token)) &&
-            pid_token[0] != '\0') {
+        if(canonical_pid[0] == '\0' &&
+           arg_get_value_last(app->args_obd_pid, "pid", pid_token, sizeof(pid_token)) &&
+           pid_token[0] != '\0') {
             (void)app_normalize_obd_pid_token(
                 pid_token, canonical_pid, sizeof(canonical_pid), &is_mode01_pid);
         }
@@ -1282,15 +1279,15 @@ void app_action_tool_start(App* app, CcToolId tool_id, const char* args, const c
         }
 
         char bus_value[16] = {0};
-        if(!arg_get_value_last(args, "bus", bus_value, sizeof(bus_value)) || bus_value[0] == '\0') {
+        if(!arg_get_value_last(args, "bus", bus_value, sizeof(bus_value)) ||
+           bus_value[0] == '\0') {
             if(!arg_get_value_last(app->args_obd_pid, "bus", bus_value, sizeof(bus_value)) ||
                bus_value[0] == '\0') {
                 strncpy(bus_value, "can0", sizeof(bus_value) - 1U);
             }
         }
-        if(
-            strcmp(bus_value, "can0") != 0 && strcmp(bus_value, "can1") != 0 &&
-            strcmp(bus_value, "both") != 0) {
+        if(strcmp(bus_value, "can0") != 0 && strcmp(bus_value, "can1") != 0 &&
+           strcmp(bus_value, "both") != 0) {
             strncpy(bus_value, "can0", sizeof(bus_value) - 1U);
         }
 
@@ -1401,7 +1398,8 @@ static bool app_action_tool_config_exec(App* app, const char* args, CcStatusCode
     }
 
     app_set_status(app, "TOOL_CONFIG => %s", cc_status_to_string(status));
-    app_append_monitor(app, "[cmd] tool config args='%s' => %s", args, cc_status_to_string(status));
+    app_append_monitor(
+        app, "[cmd] tool config args='%s' => %s", args, cc_status_to_string(status));
 
     if(out_status) {
         *out_status = status;
@@ -1500,10 +1498,8 @@ static bool app_custom_inject_parse_u32_from_profile(
     return parse_u32_key_last(profile, key, base, out);
 }
 
-static bool app_custom_inject_parse_u64_from_profile(
-    const char* profile,
-    const char* key,
-    uint64_t* out) {
+static bool
+    app_custom_inject_parse_u64_from_profile(const char* profile, const char* key, uint64_t* out) {
     if(!profile || !key || !out) {
         return false;
     }
@@ -1650,7 +1646,8 @@ static const char* app_custom_inject_profile_for_slot(const App* app, uint8_t sl
     return app_custom_inject_slot_cptr(app, (uint8_t)(slot_number - 1U));
 }
 
-static bool app_custom_inject_validate_profile_id(App* app, uint8_t slot_number, uint32_t* out_id) {
+static bool
+    app_custom_inject_validate_profile_id(App* app, uint8_t slot_number, uint32_t* out_id) {
     const char* profile = app_custom_inject_profile_for_slot(app, slot_number);
     if(!profile) {
         app_set_status(app, "Custom Inject invalid slot %u", slot_number);
@@ -1669,11 +1666,8 @@ static bool app_custom_inject_validate_profile_id(App* app, uint8_t slot_number,
     return true;
 }
 
-static bool app_custom_inject_build_add_args(
-    App* app,
-    uint8_t slot_number,
-    char* out,
-    size_t out_size) {
+static bool
+    app_custom_inject_build_add_args(App* app, uint8_t slot_number, char* out, size_t out_size) {
     const char* profile = app_custom_inject_profile_for_slot(app, slot_number);
     if(!profile || !out || out_size == 0U) {
         return false;
@@ -1723,14 +1717,7 @@ static bool app_custom_inject_build_add_args(
         uint32_t mux_len = 0U;
         uint64_t mux_value = 0ULL;
         if(!app_custom_inject_parse_field_spec_from_profile(
-               app,
-               profile,
-               "mux_start",
-               "mux_len",
-               "mux_value",
-               &mux_start,
-               &mux_len,
-               &mux_value)) {
+               app, profile, "mux_start", "mux_len", "mux_value", &mux_start, &mux_len, &mux_value)) {
             app_set_status(app, "Custom Inject slot %u invalid mux args", slot_number);
             return false;
         }
@@ -1760,14 +1747,7 @@ static bool app_custom_inject_build_add_args(
         uint32_t sig_len = 0U;
         uint64_t sig_value = 0ULL;
         if(!app_custom_inject_parse_field_spec_from_profile(
-               app,
-               profile,
-               "sig_start",
-               "sig_len",
-               "sig_value",
-               &sig_start,
-               &sig_len,
-               &sig_value)) {
+               app, profile, "sig_start", "sig_len", "sig_value", &sig_start, &sig_len, &sig_value)) {
             app_set_status(app, "Custom Inject slot %u invalid field args", slot_number);
             return false;
         }
@@ -1788,11 +1768,8 @@ static bool app_custom_inject_build_add_args(
     return true;
 }
 
-static bool app_custom_inject_build_modify_args(
-    App* app,
-    uint8_t slot_number,
-    char* out,
-    size_t out_size) {
+static bool
+    app_custom_inject_build_modify_args(App* app, uint8_t slot_number, char* out, size_t out_size) {
     const char* profile = app_custom_inject_profile_for_slot(app, slot_number);
     if(!profile || !out || out_size == 0U) {
         return false;
@@ -1851,14 +1828,7 @@ static bool app_custom_inject_build_modify_args(
         uint32_t mux_len = 0U;
         uint64_t mux_value = 0ULL;
         if(!app_custom_inject_parse_field_spec_from_profile(
-               app,
-               profile,
-               "mux_start",
-               "mux_len",
-               "mux_value",
-               &mux_start,
-               &mux_len,
-               &mux_value)) {
+               app, profile, "mux_start", "mux_len", "mux_value", &mux_start, &mux_len, &mux_value)) {
             app_set_status(app, "Custom Inject slot %u invalid mux args", slot_number);
             return false;
         }
@@ -1897,14 +1867,7 @@ static bool app_custom_inject_build_modify_args(
         uint32_t sig_len = 0U;
         uint64_t sig_value = 0ULL;
         if(!app_custom_inject_parse_field_spec_from_profile(
-               app,
-               profile,
-               "sig_start",
-               "sig_len",
-               "sig_value",
-               &sig_start,
-               &sig_len,
-               &sig_value)) {
+               app, profile, "sig_start", "sig_len", "sig_value", &sig_start, &sig_len, &sig_value)) {
             app_set_status(app, "Custom Inject slot %u invalid field args", slot_number);
             return false;
         }
@@ -1932,11 +1895,8 @@ static bool app_custom_inject_build_modify_args(
     return true;
 }
 
-static bool app_custom_inject_build_inject_args(
-    App* app,
-    uint8_t slot_number,
-    char* out,
-    size_t out_size) {
+static bool
+    app_custom_inject_build_inject_args(App* app, uint8_t slot_number, char* out, size_t out_size) {
     const char* profile = app_custom_inject_profile_for_slot(app, slot_number);
     if(!profile || !out || out_size == 0U) {
         return false;
@@ -2103,10 +2063,8 @@ static void app_custom_inject_update_profile_bit(
     app_custom_inject_bytes_to_hex(mask, mask_hex);
     app_custom_inject_bytes_to_hex(force_value, value_hex);
 
-    app_args_set_key_value(
-        profile, sizeof(app->args_custom_inject_slots[0]), "mask", mask_hex);
-    app_args_set_key_value(
-        profile, sizeof(app->args_custom_inject_slots[0]), "value", value_hex);
+    app_args_set_key_value(profile, sizeof(app->args_custom_inject_slots[0]), "mask", mask_hex);
+    app_args_set_key_value(profile, sizeof(app->args_custom_inject_slots[0]), "value", value_hex);
 }
 
 static void app_custom_inject_update_profile_field(
@@ -2151,10 +2109,8 @@ static void app_custom_inject_update_profile_field(
     snprintf(sig_len, sizeof(sig_len), "%u", (unsigned)bit_len);
     snprintf(sig_value, sizeof(sig_value), "%llu", (unsigned long long)value);
 
-    app_args_set_key_value(
-        profile, sizeof(app->args_custom_inject_slots[0]), "mask", mask_hex);
-    app_args_set_key_value(
-        profile, sizeof(app->args_custom_inject_slots[0]), "value", value_hex);
+    app_args_set_key_value(profile, sizeof(app->args_custom_inject_slots[0]), "mask", mask_hex);
+    app_args_set_key_value(profile, sizeof(app->args_custom_inject_slots[0]), "value", value_hex);
     app_args_set_key_value(profile, sizeof(app->args_custom_inject_slots[0]), "sig", "1");
     app_args_set_key_value(
         profile, sizeof(app->args_custom_inject_slots[0]), "sig_start", sig_start);
@@ -2247,7 +2203,8 @@ void app_action_custom_inject_bit(App* app) {
     uint32_t bit = 0;
     uint32_t value = 0;
 
-    if(!parse_u32_key_last(app->args_custom_inject_bit, "slot", 10, &slot) || slot < 1U || slot > 5U) {
+    if(!parse_u32_key_last(app->args_custom_inject_bit, "slot", 10, &slot) || slot < 1U ||
+       slot > 5U) {
         app_set_status(app, "Custom Inject bit invalid slot");
         return;
     }
@@ -2313,7 +2270,11 @@ void app_action_custom_inject_clearbit(App* app) {
 
     char args[80] = {0};
     const int wrote = snprintf(
-        args, sizeof(args), "cmd=clearbit slot=%lu bit=%lu", (unsigned long)slot, (unsigned long)bit);
+        args,
+        sizeof(args),
+        "cmd=clearbit slot=%lu bit=%lu",
+        (unsigned long)slot,
+        (unsigned long)bit);
     if(wrote <= 0 || (size_t)wrote >= sizeof(args)) {
         app_set_status(app, "Custom Inject clearbit args too long");
         return;
@@ -2353,7 +2314,8 @@ void app_action_custom_inject_field(App* app) {
     }
 
     char value_text[32] = {0};
-    if(!arg_get_value_last(app->args_custom_inject_field, "value", value_text, sizeof(value_text))) {
+    if(!arg_get_value_last(
+           app->args_custom_inject_field, "value", value_text, sizeof(value_text))) {
         app_set_status(app, "Custom Inject field missing value");
         return;
     }
@@ -2559,7 +2521,8 @@ static bool app_storage_ensure_dir(Storage* storage, const char* dir_path) {
     return storage_dir_exists(storage, dir_path);
 }
 
-static void app_custom_inject_build_set_path(const char* set_name, char* out_path, size_t out_size) {
+static void
+    app_custom_inject_build_set_path(const char* set_name, char* out_path, size_t out_size) {
     if(!out_path || out_size == 0U) {
         return;
     }
@@ -2691,7 +2654,8 @@ bool app_custom_inject_save_slot_set(App* app, const char* set_name) {
         if(!flipper_format_file_open_always(ff, path)) {
             break;
         }
-        if(!flipper_format_write_header_cstr(ff, APP_CUSTOM_INJECT_SET_TYPE, APP_CUSTOM_INJECT_SET_VER)) {
+        if(!flipper_format_write_header_cstr(
+               ff, APP_CUSTOM_INJECT_SET_TYPE, APP_CUSTOM_INJECT_SET_VER)) {
             break;
         }
         if(!flipper_format_write_string_cstr(ff, "name", name_trim)) {
@@ -2749,7 +2713,8 @@ bool app_custom_inject_save_slot_set(App* app, const char* set_name) {
                 profile, "sig_len", "1", sig_len, sizeof(sig_len));
             app_custom_inject_profile_value_or_default(
                 profile, "sig_value", "0", sig_value, sizeof(sig_value));
-            app_custom_inject_profile_value_or_default(profile, "count", "1", count, sizeof(count));
+            app_custom_inject_profile_value_or_default(
+                profile, "count", "1", count, sizeof(count));
             app_custom_inject_profile_value_or_default(
                 profile, "interval_ms", "0", interval_ms, sizeof(interval_ms));
 
@@ -2862,7 +2827,8 @@ bool app_custom_inject_save_slot_set(App* app, const char* set_name) {
     furi_record_close(RECORD_STORAGE);
 
     if(ok) {
-        app_copy_string(app->custom_inject_set_name, sizeof(app->custom_inject_set_name), name_trim);
+        app_copy_string(
+            app->custom_inject_set_name, sizeof(app->custom_inject_set_name), name_trim);
         app_set_status(app, "Saved slot set: %s", name_trim);
     } else {
         app_set_status(app, "Save slot set failed");
@@ -3115,7 +3081,8 @@ void app_action_bus_set_cfg(App* app, CcBus bus, const char* args) {
         return;
     }
 
-    app_set_status(app, "BUS_SET_CFG %s => %s", cc_bus_to_string(bus), cc_status_to_string(status));
+    app_set_status(
+        app, "BUS_SET_CFG %s => %s", cc_bus_to_string(bus), cc_status_to_string(status));
     app_append_monitor(
         app,
         "[cmd] bus set cfg %s bitrate=%lu mode=%s => %s",
@@ -3139,8 +3106,10 @@ void app_action_bus_get_cfg(App* app, CcBus bus) {
         return;
     }
 
-    app_set_status(app, "BUS_GET_CFG %s => %s", cc_bus_to_string(bus), cc_status_to_string(status));
-    app_append_monitor(app, "[cmd] bus get cfg %s => %s", cc_bus_to_string(bus), cc_status_to_string(status));
+    app_set_status(
+        app, "BUS_GET_CFG %s => %s", cc_bus_to_string(bus), cc_status_to_string(status));
+    app_append_monitor(
+        app, "[cmd] bus get cfg %s => %s", cc_bus_to_string(bus), cc_status_to_string(status));
 }
 
 void app_action_bus_set_filter(App* app, CcBus bus, const char* args) {
@@ -3274,8 +3243,9 @@ void app_action_dbc_add(App* app, const char* args) {
         return;
     }
 
-    if(!parse_float_key(args, "factor", &def.factor) || !parse_float_key(args, "offset", &def.offset) ||
-       !parse_float_key(args, "min", &def.min) || !parse_float_key(args, "max", &def.max)) {
+    if(!parse_float_key(args, "factor", &def.factor) ||
+       !parse_float_key(args, "offset", &def.offset) || !parse_float_key(args, "min", &def.min) ||
+       !parse_float_key(args, "max", &def.max)) {
         app_set_status(app, "DBC_ADD parse error: factor/offset/min/max");
         return;
     }
@@ -3328,7 +3298,8 @@ void app_action_dbc_remove(App* app, const char* args) {
         return;
     }
 
-    app_set_status(app, "DBC_REMOVE sid=%lu => %s", (unsigned long)sid, cc_status_to_string(status));
+    app_set_status(
+        app, "DBC_REMOVE sid=%lu => %s", (unsigned long)sid, cc_status_to_string(status));
     app_append_monitor(
         app, "[cmd] dbc remove sid=%lu => %s", (unsigned long)sid, cc_status_to_string(status));
 }
@@ -3381,8 +3352,7 @@ static void app_set_default_args(App* app) {
 
     strncpy(app->args_obd_pid, "bus=can0 pid=0C interval_ms=250", sizeof(app->args_obd_pid) - 1U);
     strncpy(app->args_dbc_decode, "bus=both", sizeof(app->args_dbc_decode) - 1U);
-    strncpy(
-        app->args_custom_inject_start, "bus=can0", sizeof(app->args_custom_inject_start) - 1U);
+    strncpy(app->args_custom_inject_start, "bus=can0", sizeof(app->args_custom_inject_start) - 1U);
 
     app_custom_inject_reset_all_slots(app);
     strncpy(
@@ -3398,7 +3368,10 @@ static void app_set_default_args(App* app) {
         "slot=1 start=0 len=1 value=0",
         sizeof(app->args_custom_inject_field) - 1U);
     app->custom_inject_active_slot = 0U;
-    strncpy(app->custom_inject_edit_name, "slot_name=Slot1", sizeof(app->custom_inject_edit_name) - 1U);
+    strncpy(
+        app->custom_inject_edit_name,
+        "slot_name=Slot1",
+        sizeof(app->custom_inject_edit_name) - 1U);
     strncpy(app->custom_inject_edit_bus, "bus=can0", sizeof(app->custom_inject_edit_bus) - 1U);
     strncpy(app->custom_inject_edit_id, "id=000", sizeof(app->custom_inject_edit_id) - 1U);
     strncpy(app->custom_inject_edit_count, "count=1", sizeof(app->custom_inject_edit_count) - 1U);
@@ -3406,7 +3379,8 @@ static void app_set_default_args(App* app) {
         app->custom_inject_edit_interval,
         "interval_ms=0",
         sizeof(app->custom_inject_edit_interval) - 1U);
-    strncpy(app->custom_inject_edit_bit, "bit=0 value=1", sizeof(app->custom_inject_edit_bit) - 1U);
+    strncpy(
+        app->custom_inject_edit_bit, "bit=0 value=1", sizeof(app->custom_inject_edit_bit) - 1U);
     strncpy(
         app->custom_inject_edit_field,
         "start=0 len=1 value=0",
@@ -3434,13 +3408,9 @@ static void app_set_default_args(App* app) {
     strncpy(app->args_tool_config, "show=both", sizeof(app->args_tool_config) - 1U);
 
     strncpy(
-        app->args_bus_cfg_can0,
-        "bitrate=500000 mode=normal",
-        sizeof(app->args_bus_cfg_can0) - 1U);
+        app->args_bus_cfg_can0, "bitrate=500000 mode=normal", sizeof(app->args_bus_cfg_can0) - 1U);
     strncpy(
-        app->args_bus_cfg_can1,
-        "bitrate=500000 mode=normal",
-        sizeof(app->args_bus_cfg_can1) - 1U);
+        app->args_bus_cfg_can1, "bitrate=500000 mode=normal", sizeof(app->args_bus_cfg_can1) - 1U);
 
     strncpy(
         app->args_filter_can0,
@@ -3554,7 +3524,8 @@ void app_custom_inject_save(App* app) {
             break;
         }
 
-        if(!flipper_format_write_header_cstr(ff, APP_CUSTOM_INJECT_CFG_TYPE, APP_CUSTOM_INJECT_CFG_VER)) {
+        if(!flipper_format_write_header_cstr(
+               ff, APP_CUSTOM_INJECT_CFG_TYPE, APP_CUSTOM_INJECT_CFG_VER)) {
             break;
         }
 
@@ -3625,10 +3596,12 @@ static App* app_alloc(void) {
     }
 
     view_dispatcher_set_event_callback_context(app->view_dispatcher, app);
-    view_dispatcher_set_custom_event_callback(app->view_dispatcher, cancommander_scene_custom_event_callback);
+    view_dispatcher_set_custom_event_callback(
+        app->view_dispatcher, cancommander_scene_custom_event_callback);
     view_dispatcher_set_navigation_event_callback(
         app->view_dispatcher, cancommander_scene_back_event_callback);
-    view_dispatcher_set_tick_event_callback(app->view_dispatcher, cancommander_scene_tick_callback, 100);
+    view_dispatcher_set_tick_event_callback(
+        app->view_dispatcher, cancommander_scene_tick_callback, 100);
 
     app->submenu = submenu_alloc();
     if(!app->submenu) {
@@ -3642,7 +3615,8 @@ static App* app_alloc(void) {
         goto fail;
     }
 
-    view_dispatcher_add_view(app->view_dispatcher, AppViewTextBox, text_box_get_view(app->text_box));
+    view_dispatcher_add_view(
+        app->view_dispatcher, AppViewTextBox, text_box_get_view(app->text_box));
 
     app->text_input = text_input_alloc();
     if(!app->text_input) {

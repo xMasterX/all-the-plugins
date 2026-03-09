@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../libraries/missing_api.h"
+
 typedef struct {
     const char* value;
     const char* label;
@@ -49,9 +51,8 @@ static AppArgValueType args_editor_detect_type(const char* key, const char* valu
         return AppArgValueBus;
     }
 
-    if(
-        strcmp(key, "ascii") == 0 || strcmp(key, "ext") == 0 || strcmp(key, "rtr") == 0 ||
-        strcmp(key, "ext_match") == 0 || strcmp(key, "strict") == 0 || strcmp(key, "mux") == 0) {
+    if(strcmp(key, "ascii") == 0 || strcmp(key, "ext") == 0 || strcmp(key, "rtr") == 0 ||
+       strcmp(key, "ext_match") == 0 || strcmp(key, "strict") == 0 || strcmp(key, "mux") == 0) {
         return AppArgValueBool01;
     }
 
@@ -103,7 +104,8 @@ static const ArgChoice* args_editor_get_choices(AppArgValueType type, uint8_t* c
     }
 }
 
-static uint8_t args_editor_get_choice_index(const AppArgItem* item, const ArgChoice* choices, uint8_t count) {
+static uint8_t
+    args_editor_get_choice_index(const AppArgItem* item, const ArgChoice* choices, uint8_t count) {
     if(item->type == AppArgValueBool01) {
         return value_is_trueish(item->value) ? 1 : 0;
     }
@@ -121,7 +123,8 @@ static uint8_t args_editor_get_choice_index(const AppArgItem* item, const ArgCho
     return 0;
 }
 
-static void args_editor_apply_choice(AppArgItem* item, const ArgChoice* choices, uint8_t choice_index) {
+static void
+    args_editor_apply_choice(AppArgItem* item, const ArgChoice* choices, uint8_t choice_index) {
     strncpy(item->value, choices[choice_index].value, sizeof(item->value) - 1U);
     item->value[sizeof(item->value) - 1U] = '\0';
 }
@@ -174,7 +177,7 @@ static void args_editor_parse(App* app) {
     strncpy(scratch, app->args_editor_target, sizeof(scratch) - 1U);
 
     char* save_ptr = NULL;
-    char* token = strtok_r(scratch, " ", &save_ptr);
+    char* token = local_strtok_r(scratch, " ", &save_ptr);
 
     while(token && app->args_editor_count < APP_ARGS_EDITOR_MAX_ITEMS) {
         char* sep = strchr(token, '=');
@@ -193,7 +196,7 @@ static void args_editor_parse(App* app) {
             app->args_editor_count++;
         }
 
-        token = strtok_r(NULL, " ", &save_ptr);
+        token = local_strtok_r(NULL, " ", &save_ptr);
     }
 
     bool has_id = false;
@@ -436,9 +439,8 @@ static void args_editor_item_enter_callback(void* context, uint32_t index) {
         if(app->args_editor_apply_callback) {
             app->args_editor_apply_callback(app);
             scene_manager_previous_scene(app->scene_manager);
-            if(
-                scene_manager_get_current_scene(app->scene_manager) !=
-                app->args_editor_apply_next_scene) {
+            if(scene_manager_get_current_scene(app->scene_manager) !=
+               app->args_editor_apply_next_scene) {
                 scene_manager_next_scene(app->scene_manager, app->args_editor_apply_next_scene);
             }
         }
@@ -500,11 +502,11 @@ void cancommander_scene_args_editor_on_enter(void* context) {
 
     variable_item_list_set_enter_callback(app->var_list, args_editor_item_enter_callback, app);
 
-    if(app->args_editor_title) {
+    /*if(app->args_editor_title) {
         variable_item_list_set_header(app->var_list, app->args_editor_title);
     } else {
         variable_item_list_set_header(app->var_list, "Args");
-    }
+    }*/
 
     if(app->args_editor_selected_index >= app->args_editor_count) {
         app->args_editor_selected_index = 0;

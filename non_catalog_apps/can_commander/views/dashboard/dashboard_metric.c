@@ -4,9 +4,11 @@
 #include <stdio.h>
 #include <string.h>
 
-#define DASH_OBD_DTC_STORED    0U
-#define DASH_OBD_DTC_PENDING   1U
-#define DASH_OBD_DTC_PERMANENT 2U
+#include "../../libraries/missing_api.h"
+
+#define DASH_OBD_DTC_STORED     0U
+#define DASH_OBD_DTC_PENDING    1U
+#define DASH_OBD_DTC_PERMANENT  2U
 #define DASH_REVERSE_PHASE_INIT 0U
 #define DASH_REVERSE_PHASE_CAL  1U
 #define DASH_REVERSE_PHASE_MON  2U
@@ -103,9 +105,8 @@ static bool dashboard_parse_obd_dtc_line(
     size_t out_value_size,
     char* out_note,
     size_t out_note_size) {
-    if(
-        !text || !out_label || out_label_size == 0U || !out_value || out_value_size == 0U ||
-        !out_note || out_note_size == 0U) {
+    if(!text || !out_label || out_label_size == 0U || !out_value || out_value_size == 0U ||
+       !out_note || out_note_size == 0U) {
         return false;
     }
 
@@ -157,7 +158,7 @@ static bool dashboard_parse_obd_dtc_line(
     uint8_t total = 0U;
 
     char* save_ptr = NULL;
-    char* token = strtok_r(scratch, " ", &save_ptr);
+    char* token = local_strtok_r(scratch, " ", &save_ptr);
     while(token) {
         if(dashboard_is_dtc_code_token(token)) {
             total++;
@@ -178,7 +179,7 @@ static bool dashboard_parse_obd_dtc_line(
                 break;
             }
         }
-        token = strtok_r(NULL, " ", &save_ptr);
+        token = local_strtok_r(NULL, " ", &save_ptr);
     }
 
     if(total == 0U) {
@@ -268,10 +269,8 @@ static void dashboard_obd_dtc_recompute_categories(AppDashboardModel* model) {
     }
 }
 
-static bool dashboard_obd_dtc_add_unique(
-    AppDashboardModel* model,
-    uint8_t type_index,
-    const char* code) {
+static bool
+    dashboard_obd_dtc_add_unique(AppDashboardModel* model, uint8_t type_index, const char* code) {
     if(!model || type_index >= 3U || !code || !dashboard_is_dtc_code_token(code)) {
         return false;
     }
@@ -309,7 +308,8 @@ static CcBus dashboard_parse_bus(const char* text) {
     return CcBusCan0;
 }
 
-static bool dashboard_arg_get_value_last(const char* args, const char* key, char* out, size_t out_size) {
+static bool
+    dashboard_arg_get_value_last(const char* args, const char* key, char* out, size_t out_size) {
     if(!args || !key || !out || out_size == 0U) {
         return false;
     }
@@ -347,7 +347,8 @@ static bool dashboard_arg_get_value_last(const char* args, const char* key, char
     return found;
 }
 
-static bool dashboard_parse_u32_key_last(const char* args, const char* key, uint32_t base, uint32_t* out) {
+static bool
+    dashboard_parse_u32_key_last(const char* args, const char* key, uint32_t base, uint32_t* out) {
     char raw[32] = {0};
     if(!out || !dashboard_arg_get_value_last(args, key, raw, sizeof(raw))) {
         return false;
@@ -484,7 +485,8 @@ static void dashboard_update_write_cfg_from_args(AppDashboardModel* model, const
     }
 }
 
-static void dashboard_custom_slot_name_from_app(App* app, uint8_t slot_index, char* out, size_t out_size) {
+static void
+    dashboard_custom_slot_name_from_app(App* app, uint8_t slot_index, char* out, size_t out_size) {
     if(!out || out_size == 0U) {
         return;
     }
@@ -531,7 +533,8 @@ static uint8_t dashboard_ring_newest_index(uint8_t head, uint8_t capacity, uint8
     return (uint8_t)((newest + capacity - offset) % capacity);
 }
 
-static const DashboardSpeedSample* dashboard_speed_get(const AppDashboardModel* model, uint8_t offset) {
+static const DashboardSpeedSample*
+    dashboard_speed_get(const AppDashboardModel* model, uint8_t offset) {
     if(!model || offset >= model->speed_count) {
         return NULL;
     }
@@ -542,7 +545,8 @@ static const DashboardSpeedSample* dashboard_speed_get(const AppDashboardModel* 
     return sample->valid ? sample : NULL;
 }
 
-static const DashboardValChange* dashboard_val_get(const AppDashboardModel* model, uint8_t offset) {
+static const DashboardValChange*
+    dashboard_val_get(const AppDashboardModel* model, uint8_t offset) {
     if(!model || offset >= model->val_count) {
         return NULL;
     }
@@ -552,12 +556,14 @@ static const DashboardValChange* dashboard_val_get(const AppDashboardModel* mode
     return entry->valid ? entry : NULL;
 }
 
-static const DashboardUniqueEntry* dashboard_unique_get(const AppDashboardModel* model, uint8_t offset) {
+static const DashboardUniqueEntry*
+    dashboard_unique_get(const AppDashboardModel* model, uint8_t offset) {
     if(!model || offset >= model->unique_count) {
         return NULL;
     }
 
-    const uint8_t index = dashboard_ring_newest_index(model->unique_head, DASH_UNIQUE_HISTORY, offset);
+    const uint8_t index =
+        dashboard_ring_newest_index(model->unique_head, DASH_UNIQUE_HISTORY, offset);
     const DashboardUniqueEntry* entry = &model->unique_entries[index];
     return entry->valid ? entry : NULL;
 }
@@ -664,10 +670,7 @@ static void dashboard_reverse_format_bytes(
     out[out_size - 1U] = '\0';
 }
 
-static int8_t dashboard_reverse_find_slot(
-    const AppDashboardModel* model,
-    uint32_t id,
-    bool ext) {
+static int8_t dashboard_reverse_find_slot(const AppDashboardModel* model, uint32_t id, bool ext) {
     if(!model) {
         return -1;
     }
@@ -739,11 +742,7 @@ static void dashboard_metric_draw_write(Canvas* canvas, const AppDashboardModel*
 
     char line0[40] = {0};
     snprintf(
-        line0,
-        sizeof(line0),
-        "Bus:%s  ID:0x%s",
-        cc_bus_to_string(dashboard->write_bus),
-        id_text);
+        line0, sizeof(line0), "Bus:%s  ID:0x%s", cc_bus_to_string(dashboard->write_bus), id_text);
     canvas_draw_str(canvas, 2, 19, line0);
 
     char line1[42] = {0};
@@ -796,7 +795,8 @@ static void dashboard_metric_draw_speed(Canvas* canvas, const AppDashboardModel*
     if(page == 0U) {
         canvas_draw_str_aligned(canvas, 64, 2, AlignCenter, AlignTop, "Speed Test");
         if(!dashboard->speed_has_sample) {
-            canvas_draw_str_aligned(canvas, 64, 26, AlignCenter, AlignCenter, "Waiting for sample");
+            canvas_draw_str_aligned(
+                canvas, 64, 26, AlignCenter, AlignCenter, "Waiting for sample");
             canvas_draw_str_aligned(canvas, 64, 63, AlignCenter, AlignBottom, "L/R History");
             return;
         }
@@ -884,13 +884,23 @@ static void dashboard_metric_draw_valtrack(Canvas* canvas, const AppDashboardMod
             char line[32] = {0};
 
             if(dashboard->val_known[b0]) {
-                snprintf(v0, sizeof(v0), "%02X/%u", dashboard->val_bytes[b0], dashboard->val_byte_changes[b0]);
+                snprintf(
+                    v0,
+                    sizeof(v0),
+                    "%02X/%u",
+                    dashboard->val_bytes[b0],
+                    dashboard->val_byte_changes[b0]);
             } else {
                 snprintf(v0, sizeof(v0), "--/%u", dashboard->val_byte_changes[b0]);
             }
 
             if(dashboard->val_known[b1]) {
-                snprintf(v1, sizeof(v1), "%02X/%u", dashboard->val_bytes[b1], dashboard->val_byte_changes[b1]);
+                snprintf(
+                    v1,
+                    sizeof(v1),
+                    "%02X/%u",
+                    dashboard->val_bytes[b1],
+                    dashboard->val_byte_changes[b1]);
             } else {
                 snprintf(v1, sizeof(v1), "--/%u", dashboard->val_byte_changes[b1]);
             }
@@ -900,7 +910,8 @@ static void dashboard_metric_draw_valtrack(Canvas* canvas, const AppDashboardMod
         }
 
         char footer[40] = {0};
-        const uint8_t selected = (dashboard->val_selected_byte < 8U) ? dashboard->val_selected_byte : 0U;
+        const uint8_t selected =
+            (dashboard->val_selected_byte < 8U) ? dashboard->val_selected_byte : 0U;
         if(dashboard->val_known[selected]) {
             snprintf(
                 footer,
@@ -910,7 +921,12 @@ static void dashboard_metric_draw_valtrack(Canvas* canvas, const AppDashboardMod
                 dashboard->val_bytes[selected],
                 dashboard->val_byte_changes[selected]);
         } else {
-            snprintf(footer, sizeof(footer), "Sel B%u waiting chg:%u", selected, dashboard->val_byte_changes[selected]);
+            snprintf(
+                footer,
+                sizeof(footer),
+                "Sel B%u waiting chg:%u",
+                selected,
+                dashboard->val_byte_changes[selected]);
         }
         canvas_draw_str_aligned(canvas, 64, 63, AlignCenter, AlignBottom, footer);
     } else {
@@ -954,7 +970,11 @@ static void dashboard_metric_draw_valtrack(Canvas* canvas, const AppDashboardMod
         }
 
         char footer[32] = {0};
-        snprintf(footer, sizeof(footer), "Total changes: %lu", (unsigned long)dashboard->val_total_changes);
+        snprintf(
+            footer,
+            sizeof(footer),
+            "Total changes: %lu",
+            (unsigned long)dashboard->val_total_changes);
         canvas_draw_str_aligned(canvas, 64, 63, AlignCenter, AlignBottom, footer);
     }
 }
@@ -1042,7 +1062,8 @@ static void dashboard_metric_draw_dbc(Canvas* canvas, const AppDashboardModel* d
     if(page == 0U) {
         canvas_draw_str_aligned(canvas, 64, 2, AlignCenter, AlignTop, "DBC Decode");
         if(!dashboard->dbc_has_latest) {
-            canvas_draw_str_aligned(canvas, 64, 26, AlignCenter, AlignCenter, "Waiting for decoded data");
+            canvas_draw_str_aligned(
+                canvas, 64, 26, AlignCenter, AlignCenter, "Waiting for decoded data");
             canvas_draw_str_aligned(canvas, 64, 63, AlignCenter, AlignBottom, "L/R History");
             return;
         }
@@ -1073,7 +1094,8 @@ static void dashboard_metric_draw_dbc(Canvas* canvas, const AppDashboardModel* d
     } else {
         canvas_draw_str_aligned(canvas, 64, 2, AlignCenter, AlignTop, "Recent Signals");
         if(dashboard->dbc_count == 0U) {
-            canvas_draw_str_aligned(canvas, 64, 26, AlignCenter, AlignCenter, "No decoded signals yet");
+            canvas_draw_str_aligned(
+                canvas, 64, 26, AlignCenter, AlignCenter, "No decoded signals yet");
             canvas_draw_str_aligned(canvas, 64, 63, AlignCenter, AlignBottom, "L/R Latest");
             return;
         }
@@ -1130,11 +1152,17 @@ static void dashboard_metric_draw_reverse(Canvas* canvas, const AppDashboardMode
     canvas_draw_str_aligned(canvas, 64, 2, AlignCenter, AlignTop, "Phase");
     canvas_set_font(canvas, FontPrimary);
     canvas_draw_str_aligned(
-        canvas, 64, 11, AlignCenter, AlignTop, dashboard_reverse_phase_text(dashboard->reverse_phase));
+        canvas,
+        64,
+        11,
+        AlignCenter,
+        AlignTop,
+        dashboard_reverse_phase_text(dashboard->reverse_phase));
 
     canvas_set_font(canvas, FontSecondary);
     if(dashboard->reverse_phase == DASH_REVERSE_PHASE_CAL) {
-        canvas_draw_str_aligned(canvas, 64, 27, AlignCenter, AlignTop, "Don't trigger target signals");
+        canvas_draw_str_aligned(
+            canvas, 64, 27, AlignCenter, AlignTop, "Don't trigger target signals");
         canvas_draw_str_aligned(canvas, 64, 63, AlignCenter, AlignBottom, "OK: Exclude + clear");
         return;
     }
@@ -1163,7 +1191,10 @@ static void dashboard_metric_draw_reverse(Canvas* canvas, const AppDashboardMode
             char bytes_text[28] = {0};
             char row[56] = {0};
             dashboard_format_id(
-                dashboard->reverse_ext[index], dashboard->reverse_ids[index], id_text, sizeof(id_text));
+                dashboard->reverse_ext[index],
+                dashboard->reverse_ids[index],
+                id_text,
+                sizeof(id_text));
             dashboard_reverse_format_bytes(
                 dashboard->reverse_byte_mask[index],
                 dashboard->reverse_flash_until_ms[index],
@@ -1185,7 +1216,8 @@ static void dashboard_metric_draw_reverse(Canvas* canvas, const AppDashboardMode
         canvas_draw_str_aligned(
             canvas, 64, 63, AlignCenter, AlignBottom, "Too many changes. Increase calibration");
     } else {
-        canvas_draw_str_aligned(canvas, 64, 63, AlignCenter, AlignBottom, "U/D Scroll  OK Exclude");
+        canvas_draw_str_aligned(
+            canvas, 64, 63, AlignCenter, AlignBottom, "U/D Scroll  OK Exclude");
     }
 }
 
@@ -1267,7 +1299,8 @@ static bool dashboard_metric_draw_obd(Canvas* canvas, const AppDashboardModel* d
     return true;
 }
 
-static void dashboard_metric_draw_custom_inject(Canvas* canvas, const AppDashboardModel* dashboard) {
+static void
+    dashboard_metric_draw_custom_inject(Canvas* canvas, const AppDashboardModel* dashboard) {
     canvas_set_font(canvas, FontSecondary);
 
     const uint8_t page = (uint8_t)(dashboard->mode_page % 2U);
@@ -1276,8 +1309,9 @@ static void dashboard_metric_draw_custom_inject(Canvas* canvas, const AppDashboa
 
         for(uint8_t i = 0U; i < 5U; i++) {
             const bool used = dashboard->custom_slot_used[i];
-            const char* slot_name =
-                (dashboard->custom_slot_name[i][0] != '\0') ? dashboard->custom_slot_name[i] : "Slot";
+            const char* slot_name = (dashboard->custom_slot_name[i][0] != '\0') ?
+                                        dashboard->custom_slot_name[i] :
+                                        "Slot";
             char row[60] = {0};
 
             if(used) {
@@ -1414,10 +1448,8 @@ bool dashboard_metric_input(App* app, const InputEvent* event) {
         return false;
     }
 
-    if(
-        event->type != InputTypePress && event->type != InputTypeRepeat &&
-        event->type != InputTypeShort &&
-        event->type != InputTypeRelease) {
+    if(event->type != InputTypePress && event->type != InputTypeRepeat &&
+       event->type != InputTypeShort && event->type != InputTypeRelease) {
         return false;
     }
 
@@ -1432,10 +1464,9 @@ bool dashboard_metric_input(App* app, const InputEvent* event) {
         {
             const bool mode_supported =
                 (model->mode == AppDashboardWrite || model->mode == AppDashboardSpeed ||
-                 model->mode == AppDashboardValtrack ||
-                 model->mode == AppDashboardUniqueIds || model->mode == AppDashboardDbcDecode ||
-                 model->mode == AppDashboardCustomInject || model->mode == AppDashboardObdPid ||
-                 model->mode == AppDashboardReverse);
+                 model->mode == AppDashboardValtrack || model->mode == AppDashboardUniqueIds ||
+                 model->mode == AppDashboardDbcDecode || model->mode == AppDashboardCustomInject ||
+                 model->mode == AppDashboardObdPid || model->mode == AppDashboardReverse);
             if(mode_supported) {
                 const uint8_t key_bit = dashboard_input_key_bit(event->key);
                 if(event->type == InputTypeRelease) {
@@ -1444,21 +1475,21 @@ bool dashboard_metric_input(App* app, const InputEvent* event) {
                         consumed = true;
                     }
                 } else {
-                    const bool key_was_held =
-                        (key_bit != 0U) && ((model->input_hold_mask & key_bit) != 0U);
+                    const bool key_was_held = (key_bit != 0U) &&
+                                              ((model->input_hold_mask & key_bit) != 0U);
                     if(key_bit != 0U) {
                         model->input_hold_mask |= key_bit;
                     }
 
-                    if(
-                        model->mode == AppDashboardObdPid && model->obd_dtc_active &&
-                        (event->key == InputKeyLeft || event->key == InputKeyRight)) {
+                    if(model->mode == AppDashboardObdPid && model->obd_dtc_active &&
+                       (event->key == InputKeyLeft || event->key == InputKeyRight)) {
                         if(!key_was_held) {
                             if(event->key == InputKeyRight) {
                                 model->obd_dtc_page = (uint8_t)((model->obd_dtc_page + 1U) % 4U);
                             } else {
-                                model->obd_dtc_page =
-                                    (uint8_t)((model->obd_dtc_page == 0U) ? 3U : (model->obd_dtc_page - 1U));
+                                model->obd_dtc_page = (uint8_t)((model->obd_dtc_page == 0U) ?
+                                                                    3U :
+                                                                    (model->obd_dtc_page - 1U));
                             }
                             consumed = true;
                         }
@@ -1466,7 +1497,8 @@ bool dashboard_metric_input(App* app, const InputEvent* event) {
                         model->mode == AppDashboardObdPid && model->obd_dtc_active &&
                         (event->key == InputKeyUp || event->key == InputKeyDown)) {
                         const bool up = (event->key == InputKeyDown);
-                        const bool allow_scroll = (!key_was_held || event->type == InputTypeRepeat);
+                        const bool allow_scroll =
+                            (!key_was_held || event->type == InputTypeRepeat);
                         if(allow_scroll && model->obd_dtc_page > 0U) {
                             const uint8_t type_index = (uint8_t)(model->obd_dtc_page - 1U);
                             const uint8_t count = model->obd_dtc_count[type_index];
@@ -1487,7 +1519,8 @@ bool dashboard_metric_input(App* app, const InputEvent* event) {
                         model->mode == AppDashboardReverse &&
                         (event->key == InputKeyUp || event->key == InputKeyDown)) {
                         const bool up = (event->key == InputKeyDown);
-                        const bool allow_scroll = (!key_was_held || event->type == InputTypeRepeat);
+                        const bool allow_scroll =
+                            (!key_was_held || event->type == InputTypeRepeat);
                         if(allow_scroll) {
                             uint8_t selected = model->reverse_selected;
                             if(up && selected + 1U < model->reverse_count) {
@@ -1503,10 +1536,7 @@ bool dashboard_metric_input(App* app, const InputEvent* event) {
                     } else if(model->mode == AppDashboardReverse && event->key == InputKeyOk) {
                         if(!key_was_held) {
                             dashboard_reverse_clear_changes(model);
-                            strncpy(
-                                model->note,
-                                "Ignore list extended",
-                                sizeof(model->note) - 1U);
+                            strncpy(model->note, "Ignore list extended", sizeof(model->note) - 1U);
                             model->note[sizeof(model->note) - 1U] = '\0';
                             reverse_exclude_pre = true;
                             consumed = true;
@@ -1544,13 +1574,15 @@ bool dashboard_metric_input(App* app, const InputEvent* event) {
                             } else if(model->mode == AppDashboardDbcDecode) {
                                 model->dbc_selected = 0U;
                             } else if(model->mode == AppDashboardCustomInject) {
-                                model->custom_selected_slot = app_custom_inject_get_active_slot(app);
+                                model->custom_selected_slot =
+                                    app_custom_inject_get_active_slot(app);
                             }
                             consumed = true;
                         }
                     } else if(event->key == InputKeyUp || event->key == InputKeyDown) {
                         const bool up = (event->key == InputKeyDown);
-                        const bool allow_scroll = (!key_was_held || event->type == InputTypeRepeat);
+                        const bool allow_scroll =
+                            (!key_was_held || event->type == InputTypeRepeat);
                         if(allow_scroll) {
                             if(model->mode == AppDashboardSpeed) {
                                 if(model->mode_page == 1U && model->speed_count > 0U) {
@@ -1635,7 +1667,8 @@ bool dashboard_metric_input(App* app, const InputEvent* event) {
                 AppDashboardModel * model,
                 {
                     model->counter = write_counter_before_resend;
-                    snprintf(model->value, sizeof(model->value), "%lu", (unsigned long)model->counter);
+                    snprintf(
+                        model->value, sizeof(model->value), "%lu", (unsigned long)model->counter);
                     model->value[sizeof(model->value) - 1U] = '\0';
                 },
                 true);
@@ -1676,7 +1709,10 @@ void dashboard_update_obd(App* app, const CcEvent* event) {
                     strncpy(model->value, "Running", sizeof(model->value) - 1U);
                     model->value[sizeof(model->value) - 1U] = '\0';
                     model->unit[0] = '\0';
-                    strncpy(model->note, "Scanning stored/pending/permanent", sizeof(model->note) - 1U);
+                    strncpy(
+                        model->note,
+                        "Scanning stored/pending/permanent",
+                        sizeof(model->note) - 1U);
                     model->note[sizeof(model->note) - 1U] = '\0';
                 }
 
@@ -1695,16 +1731,17 @@ void dashboard_update_obd(App* app, const CcEvent* event) {
                             char scratch[96] = {0};
                             strncpy(scratch, right, sizeof(scratch) - 1U);
                             char* save_ptr = NULL;
-                            char* token = strtok_r(scratch, " ", &save_ptr);
+                            char* token = local_strtok_r(scratch, " ", &save_ptr);
                             while(token) {
                                 if(dashboard_is_dtc_code_token(token)) {
                                     (void)dashboard_obd_dtc_add_unique(model, type_index, token);
                                 }
-                                token = strtok_r(NULL, " ", &save_ptr);
+                                token = local_strtok_r(NULL, " ", &save_ptr);
                             }
                         }
 
-                        if(model->obd_dtc_selected[type_index] >= model->obd_dtc_count[type_index]) {
+                        if(model->obd_dtc_selected[type_index] >=
+                           model->obd_dtc_count[type_index]) {
                             model->obd_dtc_selected[type_index] =
                                 (model->obd_dtc_count[type_index] == 0U) ?
                                     0U :
@@ -2045,7 +2082,8 @@ void dashboard_update_unique_ids(App* app, const CcEvent* event) {
             }
 
             model->counter = model->unique_total;
-            snprintf(model->value, sizeof(model->value), "%lu", (unsigned long)model->unique_total);
+            snprintf(
+                model->value, sizeof(model->value), "%lu", (unsigned long)model->unique_total);
 
             if(parsed_delta) {
                 char id_text[12] = {0};
@@ -2080,9 +2118,8 @@ void dashboard_update_reverse(App* app, const CcEvent* event) {
     const bool is_exclude_summary = strstr(text, "exclude_pre applied") != NULL;
 
     // Ignore high-volume calibration summary lines to avoid UI stalls on busy buses.
-    if(
-        !is_change && !is_calibration_start && !is_monitoring_start && !is_monitoring_complete &&
-        !is_read_mode && !is_exclude_summary) {
+    if(!is_change && !is_calibration_start && !is_monitoring_start && !is_monitoring_complete &&
+       !is_read_mode && !is_exclude_summary) {
         return;
     }
 
@@ -2162,8 +2199,10 @@ void dashboard_update_dbc_decode(App* app, const CcEvent* event) {
 
             strncpy(model->title, "DBC DECODE", sizeof(model->title) - 1U);
             model->title[sizeof(model->title) - 1U] = '\0';
-            snprintf(model->label, sizeof(model->label), "SID %u", (unsigned)event->data.dbc_decode.sid);
-            snprintf(model->value, sizeof(model->value), "%.2f", (double)event->data.dbc_decode.value);
+            snprintf(
+                model->label, sizeof(model->label), "SID %u", (unsigned)event->data.dbc_decode.sid);
+            snprintf(
+                model->value, sizeof(model->value), "%.2f", (double)event->data.dbc_decode.value);
             strncpy(model->unit, event->data.dbc_decode.unit, sizeof(model->unit) - 1U);
             model->unit[sizeof(model->unit) - 1U] = '\0';
             snprintf(
@@ -2228,7 +2267,13 @@ void dashboard_update_custom_inject(App* app, const CcEvent* event) {
             unsigned long interval_ms = 0UL;
             unsigned long remaining = 0UL;
 
-            if(sscanf(text, "slot=%u tracking bus=%15s id=0x%lx %7s", &slot, bus_name, &frame_id, ext_std) == 4 &&
+            if(sscanf(
+                   text,
+                   "slot=%u tracking bus=%15s id=0x%lx %7s",
+                   &slot,
+                   bus_name,
+                   &frame_id,
+                   ext_std) == 4 &&
                slot >= 1U && slot <= 5U) {
                 const uint8_t idx = (uint8_t)(slot - 1U);
                 model->custom_slot_used[idx] = true;
@@ -2306,8 +2351,9 @@ void dashboard_update_custom_inject(App* app, const CcEvent* event) {
                 app_custom_inject_set_active_slot(app, idx);
             } else if(sscanf(text, "custom_inject slots_used=%lu", &count) == 1) {
                 model->counter = (uint32_t)count;
-            } else if(strstr(text, "inject sequence complete") || strstr(text, "pending injection canceled") ||
-                      strstr(text, "inject aborted")) {
+            } else if(
+                strstr(text, "inject sequence complete") ||
+                strstr(text, "pending injection canceled") || strstr(text, "inject aborted")) {
                 model->custom_pending = false;
                 model->custom_pending_remaining = 0U;
             } else if(strstr(text, "all slots cleared")) {
@@ -2323,7 +2369,11 @@ void dashboard_update_custom_inject(App* app, const CcEvent* event) {
             model->title[sizeof(model->title) - 1U] = '\0';
             strncpy(model->label, "Slot", sizeof(model->label) - 1U);
             model->label[sizeof(model->label) - 1U] = '\0';
-            snprintf(model->value, sizeof(model->value), "%u", (unsigned)(model->custom_selected_slot + 1U));
+            snprintf(
+                model->value,
+                sizeof(model->value),
+                "%u",
+                (unsigned)(model->custom_selected_slot + 1U));
             model->unit[0] = '\0';
             strncpy(model->note, text, sizeof(model->note) - 1U);
             model->note[sizeof(model->note) - 1U] = '\0';

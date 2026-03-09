@@ -6,11 +6,13 @@
 
 #include <string.h>
 
-#define CC_PACKET_RAW_MAX   (CC_MAX_PAYLOAD + 32U)
-#define CC_PACKET_ENC_MAX   (CC_MAX_PAYLOAD + 40U)
-#define CC_RX_STREAM_SIZE   2048U
-#define CC_EVENT_QUEUE_LEN  48U
-#define CC_WAIT_SLICE_MS    20U
+#include "missing_api.h"
+
+#define CC_PACKET_RAW_MAX  (CC_MAX_PAYLOAD + 32U)
+#define CC_PACKET_ENC_MAX  (CC_MAX_PAYLOAD + 40U)
+#define CC_RX_STREAM_SIZE  2048U
+#define CC_EVENT_QUEUE_LEN 48U
+#define CC_WAIT_SLICE_MS   20U
 
 typedef enum {
     CcKindCmd = 0x01,
@@ -636,7 +638,8 @@ static bool cc_exec(
     return ok;
 }
 
-static void cc_uart_rx_callback(FuriHalSerialHandle* handle, FuriHalSerialRxEvent event, void* context) {
+static void
+    cc_uart_rx_callback(FuriHalSerialHandle* handle, FuriHalSerialRxEvent event, void* context) {
     if(!(event & FuriHalSerialRxEventData) || !context) {
         return;
     }
@@ -853,14 +856,7 @@ bool cc_client_bus_set_filter(
     payload[10] = ext ? 1U : 0U;
 
     return cc_exec(
-        client,
-        CcCmdBusSetFilter,
-        payload,
-        sizeof(payload),
-        out_status,
-        NULL,
-        NULL,
-        300);
+        client, CcCmdBusSetFilter, payload, sizeof(payload), out_status, NULL, NULL, 300);
 }
 
 bool cc_client_bus_clear_filter(CcClient* client, CcBus bus, CcStatusCode* out_status) {
@@ -870,14 +866,7 @@ bool cc_client_bus_clear_filter(CcClient* client, CcBus bus, CcStatusCode* out_s
 
     const uint8_t payload[1] = {(uint8_t)bus};
     return cc_exec(
-        client,
-        CcCmdBusClearFilter,
-        payload,
-        sizeof(payload),
-        out_status,
-        NULL,
-        NULL,
-        300);
+        client, CcCmdBusClearFilter, payload, sizeof(payload), out_status, NULL, NULL, 300);
 }
 
 bool cc_client_send_frame(
@@ -901,14 +890,7 @@ bool cc_client_send_frame(
     memcpy(&payload[7], data, 8);
 
     return cc_exec(
-        client,
-        CcCmdBusSendFrame,
-        payload,
-        sizeof(payload),
-        out_status,
-        NULL,
-        NULL,
-        300);
+        client, CcCmdBusSendFrame, payload, sizeof(payload), out_status, NULL, NULL, 300);
 }
 
 bool cc_client_tool_start(
@@ -920,7 +902,7 @@ bool cc_client_tool_start(
         return false;
     }
 
-    const uint16_t args_len = args ? (uint16_t)strnlen(args, CC_MAX_PAYLOAD - 1U) : 0;
+    const uint16_t args_len = args ? (uint16_t)local_strnlen(args, CC_MAX_PAYLOAD - 1U) : 0;
 
     if(args && args[args_len] != '\0') {
         return false;
@@ -933,14 +915,7 @@ bool cc_client_tool_start(
     }
 
     return cc_exec(
-        client,
-        CcCmdToolStart,
-        payload,
-        (uint16_t)(1 + args_len),
-        out_status,
-        NULL,
-        NULL,
-        400);
+        client, CcCmdToolStart, payload, (uint16_t)(1 + args_len), out_status, NULL, NULL, 400);
 }
 
 bool cc_client_tool_stop(CcClient* client, CcStatusCode* out_status) {
@@ -952,20 +927,13 @@ bool cc_client_tool_status(CcClient* client, CcStatusCode* out_status) {
 }
 
 bool cc_client_tool_config(CcClient* client, const char* args, CcStatusCode* out_status) {
-    const uint16_t args_len = args ? (uint16_t)strnlen(args, CC_MAX_PAYLOAD) : 0;
+    const uint16_t args_len = args ? (uint16_t)local_strnlen(args, CC_MAX_PAYLOAD) : 0;
     if(args && args[args_len] != '\0') {
         return false;
     }
 
     return cc_exec(
-        client,
-        CcCmdToolConfig,
-        (const uint8_t*)args,
-        args_len,
-        out_status,
-        NULL,
-        NULL,
-        300);
+        client, CcCmdToolConfig, (const uint8_t*)args, args_len, out_status, NULL, NULL, 300);
 }
 
 bool cc_client_dbc_clear(CcClient* client, CcStatusCode* out_status) {
@@ -995,20 +963,13 @@ bool cc_client_dbc_add_signal(
 
     memset(&payload[26], 0, CC_UNIT_TEXT_LEN);
     if(def->unit[0]) {
-        memcpy(&payload[26], def->unit, strnlen(def->unit, CC_UNIT_TEXT_LEN));
+        memcpy(&payload[26], def->unit, local_strnlen(def->unit, CC_UNIT_TEXT_LEN));
     }
 
     cc_write_u16_le(&payload[38], def->sid);
 
     return cc_exec(
-        client,
-        CcCmdDbcAddSignal,
-        payload,
-        sizeof(payload),
-        out_status,
-        NULL,
-        NULL,
-        400);
+        client, CcCmdDbcAddSignal, payload, sizeof(payload), out_status, NULL, NULL, 400);
 }
 
 bool cc_client_dbc_remove_signal(CcClient* client, uint16_t sid, CcStatusCode* out_status) {
@@ -1016,14 +977,7 @@ bool cc_client_dbc_remove_signal(CcClient* client, uint16_t sid, CcStatusCode* o
     cc_write_u16_le(payload, sid);
 
     return cc_exec(
-        client,
-        CcCmdDbcRemoveSignal,
-        payload,
-        sizeof(payload),
-        out_status,
-        NULL,
-        NULL,
-        300);
+        client, CcCmdDbcRemoveSignal, payload, sizeof(payload), out_status, NULL, NULL, 300);
 }
 
 bool cc_client_dbc_list(CcClient* client, CcStatusCode* out_status) {

@@ -4,6 +4,8 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "../libraries/missing_api.h"
+
 typedef enum {
     CustomInjectBytesToInject = 0,
     CustomInjectBytesValue,
@@ -76,7 +78,7 @@ static bool cancommander_scene_custom_inject_parse_bytes_list(const char* list, 
     strncpy(scratch, list, sizeof(scratch) - 1U);
 
     char* save_ptr = NULL;
-    char* token = strtok_r(scratch, ",", &save_ptr);
+    char* token = local_strtok_r(scratch, ",", &save_ptr);
     bool any = false;
     while(token) {
         while(*token == ' ' || *token == '\t') {
@@ -99,7 +101,7 @@ static bool cancommander_scene_custom_inject_parse_bytes_list(const char* list, 
             any = true;
         }
 
-        token = strtok_r(NULL, ",", &save_ptr);
+        token = local_strtok_r(NULL, ",", &save_ptr);
     }
 
     return any;
@@ -111,13 +113,15 @@ static bool cancommander_scene_custom_inject_apply_bytes_to_slot(App* app) {
     }
 
     bool selected[8] = {0};
-    if(!cancommander_scene_custom_inject_parse_bytes_list(app->custom_inject_edit_bytes, selected)) {
+    if(!cancommander_scene_custom_inject_parse_bytes_list(
+           app->custom_inject_edit_bytes, selected)) {
         app_set_status(app, "Bytes list invalid (use 0..7 comma-separated)");
         return false;
     }
 
     uint8_t value_bytes[8] = {0};
-    if(!cancommander_scene_custom_inject_parse_hex_bytes(app->custom_inject_edit_value_hex, value_bytes)) {
+    if(!cancommander_scene_custom_inject_parse_hex_bytes(
+           app->custom_inject_edit_value_hex, value_bytes)) {
         app_set_status(app, "Value must be 8 bytes hex");
         return false;
     }
@@ -143,8 +147,10 @@ static bool cancommander_scene_custom_inject_apply_bytes_to_slot(App* app) {
     }
 
     app_args_set_key_value(slot_args, sizeof(app->args_custom_inject_slots[0]), "mask", mask_hex);
-    app_args_set_key_value(slot_args, sizeof(app->args_custom_inject_slots[0]), "value", value_hex);
-    app_args_set_key_value(slot_args, sizeof(app->args_custom_inject_slots[0]), "xor", "0000000000000000");
+    app_args_set_key_value(
+        slot_args, sizeof(app->args_custom_inject_slots[0]), "value", value_hex);
+    app_args_set_key_value(
+        slot_args, sizeof(app->args_custom_inject_slots[0]), "xor", "0000000000000000");
     app_args_set_key_value(slot_args, sizeof(app->args_custom_inject_slots[0]), "sig", "0");
     app_args_set_key_value(slot_args, sizeof(app->args_custom_inject_slots[0]), "ext", "0");
     app_custom_inject_save(app);
@@ -179,7 +185,8 @@ void cancommander_scene_custom_inject_bytes_menu_on_enter(void* context) {
 
     submenu_set_selected_item(
         app->submenu,
-        scene_manager_get_scene_state(app->scene_manager, cancommander_scene_custom_inject_bytes_menu));
+        scene_manager_get_scene_state(
+            app->scene_manager, cancommander_scene_custom_inject_bytes_menu));
 
     view_dispatcher_switch_to_view(app->view_dispatcher, AppViewSubmenu);
 }
