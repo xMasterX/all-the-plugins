@@ -236,6 +236,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Longwave Clock | ![GPIO Badge] | [by m7i-org](https://github.com/m7i-org/flipper_longwave_clock) | read more details in original repo | [![Author Badge]](https://lab.flipper.net/apps/longwave_clock) |
 | INA Meter | ![GPIO Badge] | [by cepetr](https://github.com/cepetr/flipper-tina) |  | [![Author Badge]](https://lab.flipper.net/apps/ina_meter) |
 | Nearby Files | ![GPIO Badge] | [by Stichoza](https://github.com/Stichoza/flipper-nearby-files) |  | [![Author Badge]](https://lab.flipper.net/apps/nearby_files) |
+| CAN Commander | ![GPIO Badge] | [by MatthewKuKanich](https://github.com/MatthewKuKanich/CAN_Commander) |  | ![None Badge] |
 | IR Remote | ![IR Badge] | [by Hong5489](https://github.com/Hong5489/ir_remote) | improvements [by friebel](https://github.com/RogueMaster/flipperzero-firmware-wPlugins/pull/535) - Hold Option, RAW support [by d4ve10](https://github.com/d4ve10/ir_remote/tree/infrared_hold_option) | ![None Badge] |
 | IR Intervalometer | ![IR Badge] | [by Nitepone](https://github.com/Nitepone/flipper-intervalometer) |  | [![UFW Badge]](https://lab.flipper.net/apps/sony_intervalometer) |
 | IR Xbox Controller | ![IR Badge] | [by gebeto](https://github.com/gebeto/flipper-xbox-controller) |  | [![Author Badge]](https://lab.flipper.net/apps/xbox_controller) |
