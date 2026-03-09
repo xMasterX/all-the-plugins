@@ -19,7 +19,7 @@
 #define UNTIEMP_UTILS_H_
 
 #include "notification/notification.h"
-#include "sensors.h"
+#include "../sensors.h"
 
 typedef enum {
     EnvironmentStateUndefined,
