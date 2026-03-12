@@ -269,10 +269,8 @@ void unitemp_scene_sensor_edit_on_enter(void* context) {
             gpio_pin = ((OneWireSensor*)sensor->instance)->bus->bus_pin;
         } else if(sensor->model->interface == &unitemp_singlewire) {
             gpio_pin = ((SingleWireSensor*)sensor->instance)->data_pin;
-            unitemp_gpio_unlock(gpio_pin);
         } else if(sensor->model->interface == &unitemp_spi) {
             gpio_pin = ((SPISensor*)sensor->instance)->cs_pin;
-            unitemp_gpio_unlock(gpio_pin);
         }
 
         uint8_t aviable_gpio_count =

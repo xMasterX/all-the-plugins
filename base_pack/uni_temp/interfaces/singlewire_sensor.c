@@ -93,7 +93,8 @@ bool unitemp_singlewire_init(Sensor* sensor) {
         GpioModeOutputOpenDrain, // Operation mode - open drain
         GpioPullUp, // Force pull-up of the data line to power
         GpioSpeedVeryHigh); // Operating speed - maximum
-    return true;
+    sensor->last_polling_time = furi_get_tick();
+    return (unitemp_singlewire_update(sensor) == UT_SENSORSTATUS_OK);
 }
 
 bool unitemp_singlewire_deinit(Sensor* sensor) {

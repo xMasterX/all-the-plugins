@@ -191,29 +191,33 @@ bool unitemp_onewire_scan(OneWireSensor* ow_sensor) {
 
     //One wire bus scan
     unitemp_onewire_bus_init(ow_sensor->bus);
+    unitemp_onewire_bus_strong_mode(ow_sensor->bus, false);
+
     uint8_t* id = NULL;
     do {
-        id = unitemp_onewire_bus_enum_next(ow_sensor->bus);
-    } while(unitemp_onewire_id_exist(id));
+        do {
+            id = unitemp_onewire_bus_enum_next(ow_sensor->bus);
+        } while(unitemp_onewire_id_exist(id));
 
-    if(id == NULL) {
-        unitemp_onewire_bus_enum_init();
-        id = unitemp_onewire_bus_enum_next(ow_sensor->bus);
-        if(unitemp_onewire_id_exist(id)) {
-            do {
-                id = unitemp_onewire_bus_enum_next(ow_sensor->bus);
-            } while(unitemp_onewire_id_exist(id) && id != NULL);
-        }
         if(id == NULL) {
-            memset(ow_sensor->deviceID, 0, 8);
-            ow_sensor->family_code = 0;
-            unitemp_onewire_bus_deinit(ow_sensor->bus);
-
-            return false;
+            unitemp_onewire_bus_enum_init();
+            id = unitemp_onewire_bus_enum_next(ow_sensor->bus);
+            if(unitemp_onewire_id_exist(id)) {
+                do {
+                    id = unitemp_onewire_bus_enum_next(ow_sensor->bus);
+                } while(unitemp_onewire_id_exist(id) && id != NULL);
+            }
+            if(id == NULL) {
+                memset(ow_sensor->deviceID, 0, 8);
+                ow_sensor->family_code = 0;
+                break;
+            }
         }
-    }
+    } while(0);
 
+    unitemp_onewire_bus_strong_mode(ow_sensor->bus, false);
     unitemp_onewire_bus_deinit(ow_sensor->bus);
+    if(id == NULL) return false;
 
     memcpy(ow_sensor->deviceID, id, 8);
     ow_sensor->family_code = id[0];
