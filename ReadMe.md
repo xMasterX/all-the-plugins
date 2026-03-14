@@ -277,6 +277,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | ULCFKey | ![NFC Badge] | [by noproto](https://github.com/noproto/xero-firmware/tree/dev/applications/system) | Crack counterfeit ULC cards | ![None Badge] |
 | UL-C Relay | ![NFC Badge] | [by noproto](https://github.com/noproto/xero-firmware/tree/dev/applications/system) | Relay Ultralight C authentication | ![None Badge] |
 | UL-C Bruteforce | ![NFC Badge] | [by noproto](https://github.com/noproto/xero-firmware/tree/dev/applications/system) | Bruteforce Ultralight C authentication | ![None Badge] |
+| ULCFKey Next | ![NFC Badge] | [by noproto](https://github.com/zc-public/breakme-resources/tree/main/flipper_apps/ulcfkey_next) | Initial Flipper app version with tearing support | ![None Badge] |
 | RFID Beacon | ![RFID Badge] | [by nmrr](https://github.com/nmrr/flipperzero-rfidbeacon)  | `A letter/number Morse beacon on 125 kHz` | ![None Badge] |
 | EM4100 universal keys generator (for RFID Fuzzer) | ![RFID Badge] | [by Milk-Cool](https://github.com/Milk-Cool/fz-em4100-generator) |  | [![Author Badge]](https://lab.flipper.net/apps/key_generator) |
 | (Q)M100 UHF RFID | ![RFID Badge] | [by frux-c](https://github.com/frux-c/uhf_rfid) | WIP -> (+Added icon by @xMasterX) | [![UFW Badge]](https://lab.flipper.net/apps/uhf_rfid) |
