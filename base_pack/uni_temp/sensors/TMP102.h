@@ -15,42 +15,35 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#ifndef UNITEMP_SHT30
-#define UNITEMP_SHT30
+#ifndef TMP102_H_
+#define TMP102_H_
 
 #include "../unitemp.h"
 #include "../sensors.h"
-extern const SensorModel SHT30;
-extern const SensorModel GXHT30;
+
+extern const SensorModel TMP102;
 /**
- * @brief Allocating memory and setting initial values ​​for the SHT30 sensor
+ * @brief Allocating memory and setting initial values ​​for the TMP102 sensor
  *
  * @param sensor Pointer to the sensor to create
  * @return The truth about success
  */
-bool unitemp_SHT30_I2C_alloc(Sensor* sensor, char* args);
+bool unitemp_TMP102_alloc(Sensor* sensor, char* args);
 
 /**
- * @brief SHT30 sensor initialization
+ * @brief Initializing the TMP102 sensor
  *
  * @param sensor Pointer to sensor
  * @return True if initialization is successful
  */
-bool unitemp_SHT30_init(Sensor* sensor);
-/**
- * @brief GXHT30 sensor initialization
- *
- * @param sensor Pointer to sensor
- * @return True if initialization is successful
- */
-bool unitemp_GXHT30_init(Sensor* sensor);
+bool unitemp_TMP102_init(Sensor* sensor);
 
 /**
  * @brief Deinitializing the sensor
  *
  * @param sensor Pointer to sensor
  */
-bool unitemp_SHT30_I2C_deinit(Sensor* sensor);
+bool unitemp_TMP102_deinit(Sensor* sensor);
 
 /**
  * @brief Updating values ​​from sensor
@@ -58,13 +51,13 @@ bool unitemp_SHT30_I2C_deinit(Sensor* sensor);
  * @param sensor Pointer to sensor
  * @return Update status
  */
-SensorStatus unitemp_SHT30_I2C_update(Sensor* sensor);
+SensorStatus unitemp_TMP102_update(Sensor* sensor);
 
 /**
  * @brief Free up sensor memory
  *
  * @param sensor Pointer to sensor
  */
-bool unitemp_SHT30_I2C_free(Sensor* sensor);
+bool unitemp_TMP102_free(Sensor* sensor);
 
-#endif
+#endif //TMP102_H_
