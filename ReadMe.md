@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `22 Mar 10:46 GMT +3`
+### Apps checked & updated at `27 Mar 02:05 GMT +3`
 
 
 # Default pack
@@ -330,6 +330,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Flipper Time Tracker | ![Tools Badge] | [by MassivDash](https://github.com/MassivDash/flipper-tracker) |  | [![Author Badge]](https://lab.flipper.net/apps/trackerflipx) |
 | IconEdit | ![Tools Badge] | [by rdefeo](https://github.com/rdefeo/iconedit) |  | [![Author Badge]](https://lab.flipper.net/apps/iconedit) |
 | CAN Tools | ![Tools Badge] | [by MatthewKuKanich](https://github.com/MatthewKuKanich/FlipperCANTools/tree/main/can_tools) |  | ![None Badge] |
+| Theme Manager | ![Tools Badge] | [by Hoasker](https://github.com/Hoasker/flipper-theme-manager) |  | [![Author Badge]](https://lab.flipper.net/apps/theme_manager) |
 | USB HID Autofire | ![USB Badge] | [by pbek](https://github.com/pbek/usb_hid_autofire) |  | [![UFW Badge]](https://lab.flipper.net/apps/usb_hid_autofire) |
 | USB Consumer Control | ![USB Badge] | [by WithSecureLabs](https://github.com/WithSecureLabs/usb-consumer-control/tree/main) |  | ![None Badge] |
 | HID File Transfer | ![USB Badge] | [by Kavakuo](https://github.com/Kavakuo/HID-File-Transfer) | Get client app in [original repo](https://github.com/Kavakuo/HID-File-Transfer) | ![None Badge] |
