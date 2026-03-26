@@ -17,7 +17,10 @@ void passy_secure_messaging_adjust_parity(uint8_t key[16]) {
     }
 }
 
-void passy_secure_messaging_key_diversification(uint8_t input[20], size_t input_len, uint8_t* output) {
+void passy_secure_messaging_key_diversification(
+    uint8_t input[20],
+    size_t input_len,
+    uint8_t* output) {
     uint8_t sha[20];
     mbedtls_sha1_context ctx;
     mbedtls_sha1_init(&ctx);
