@@ -353,7 +353,7 @@ void seos_characteristic_write_request(void* context, BitBuffer* attribute_value
     bit_buffer_append_bytes(seos_characteristic->rx_buffer, data + 1, len - 1);
 
     // Only parse if end-of-message flag found
-    if((flags & BLE_FLAG_EOM) == BLE_FLAG_EOM) return;
+    if((flags & BLE_FLAG_EOM) != BLE_FLAG_EOM) return;
 
     if(seos_characteristic->flow_mode == FLOW_READER) {
         seos_characteristic_reader_flow(
