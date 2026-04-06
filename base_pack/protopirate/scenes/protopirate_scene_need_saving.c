@@ -2,10 +2,8 @@
 #include "../protopirate_app_i.h"
 #include "proto_pirate_icons.h"
 
-static void protopirate_scene_need_saving_callback(
-    GuiButtonType result,
-    InputType type,
-    void* context) {
+static void
+    protopirate_scene_need_saving_callback(GuiButtonType result, InputType type, void* context) {
     furi_assert(context);
     ProtoPirateApp* app = context;
 
@@ -33,17 +31,9 @@ void protopirate_scene_need_saving_on_enter(void* context) {
         "All unsaved data\nwill be lost!");
 
     widget_add_button_element(
-        app->widget,
-        GuiButtonTypeRight,
-        "Stay",
-        protopirate_scene_need_saving_callback,
-        app);
+        app->widget, GuiButtonTypeRight, "Stay", protopirate_scene_need_saving_callback, app);
     widget_add_button_element(
-        app->widget,
-        GuiButtonTypeLeft,
-        "Exit",
-        protopirate_scene_need_saving_callback,
-        app);
+        app->widget, GuiButtonTypeLeft, "Exit", protopirate_scene_need_saving_callback, app);
 
     view_dispatcher_switch_to_view(app->view_dispatcher, ProtoPirateViewWidget);
 }
@@ -61,6 +51,21 @@ bool protopirate_scene_need_saving_on_event(void* context, SceneManagerEvent eve
             scene_manager_previous_scene(app->scene_manager);
             return true;
         } else if(event.event == ProtoPirateCustomEventSceneExit) {
+            // Full teardown: put radio to sleep, free worker and history
+            protopirate_sleep(app);
+
+            protopirate_view_receiver_reset_menu(app->protopirate_receiver);
+            if(app->radio_initialized && app->txrx->history) {
+                protopirate_history_reset(app->txrx->history);
+            }
+
+            if(app->txrx->history) {
+                FURI_LOG_D(TAG, "Freeing history %p", app->txrx->history);
+                protopirate_history_free(app->txrx->history);
+                app->txrx->history = NULL;
+            } else {
+                FURI_LOG_D(TAG, "History was NULL, skipping free");
+            }
             scene_manager_search_and_switch_to_previous_scene(
                 app->scene_manager, ProtoPirateSceneStart);
             return true;
