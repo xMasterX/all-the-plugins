@@ -1,0 +1,44 @@
+name: Feature request
+description: Suggest a new toggle, handler, or behaviour
+title: "[feat] <short description>"
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What feature
+      description: One paragraph — what does the feature do, from the user's point of view
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: What's the problem this solves? Who needs it?
+    validations:
+      required: true
+
+  - type: textarea
+    id: can_id
+    attributes:
+      label: Known CAN ID / signal name (if any)
+      description: |
+        If this is a CAN-injection feature, paste the CAN ID and signal name
+        and link the public source you got it from (opendbc, mikegapinski,
+        upstream Tesla-OPEN-CAN-MOD MR, etc.). If you don't know yet, leave
+        blank — we'll figure it out together.
+      placeholder: "0x273 VCFRONT_lighting bit X — opendbc tesla_model3.dbc line Y"
+
+  - type: textarea
+    id: tier
+    attributes:
+      label: Where it fits in the roadmap
+      description: |
+        Have a look at ROADMAP.md. Is this Tier 1 (trivial port), Tier 2/3
+        (stateful), Tier 4 (safety-gated), or completely new territory?
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else

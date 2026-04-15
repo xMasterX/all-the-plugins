@@ -1,0 +1,109 @@
+name: Car compatibility report
+description: Tell us whether the app worked on your specific Tesla
+title: "[compat] <Model> <Year> <HW> <Firmware> — <region>"
+labels: ["compatibility"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this to confirm the app works (or doesn't) on your car. We use
+        these reports to build the compatibility matrix in the README.
+
+  - type: dropdown
+    id: model
+    attributes:
+      label: Tesla model
+      options:
+        - Model 3
+        - Model 3 Highland
+        - Model Y
+        - Model Y Juniper
+        - Model S (2021+)
+        - Model X (2021+)
+        - Model S (2016-2020)
+        - Model X (2016-2020)
+        - Cybertruck
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: year
+    attributes:
+      label: Year
+      placeholder: "2024"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: hw
+    attributes:
+      label: HW version
+      options:
+        - HW4
+        - HW3
+        - HW2.5
+        - HW2
+        - HW1 (Mobileye)
+        - Unknown / not sure
+    validations:
+      required: true
+
+  - type: input
+    id: firmware
+    attributes:
+      label: Tesla firmware version
+      description: Settings → Software → Software Version (e.g. 2026.2.11)
+      placeholder: "2026.2.11"
+    validations:
+      required: true
+
+  - type: input
+    id: region
+    attributes:
+      label: Region / market
+      description: This affects which UI toggles are exposed (Traffic Light, etc.)
+      placeholder: "China / Europe / North America / Korea / ..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: App mode used
+      options:
+        - Auto Detect
+        - Force HW3
+        - Force HW4
+        - Legacy
+    validations:
+      required: true
+
+  - type: dropdown
+    id: force_fsd
+    attributes:
+      label: Force FSD setting
+      options:
+        - "OFF (using car's Traffic Light toggle)"
+        - "ON (region without the Traffic Light toggle)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: result
+    attributes:
+      label: Result
+      options:
+        - Worked — FSD activated and remained stable
+        - Worked — FSD activated, some glitches (please describe)
+        - Did not work — FSD never activated
+        - Did not work — error or crash (please describe)
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Frame counters, error counters, screen messages, dashcam timing, anything that helps
+      placeholder: "RX/TX/Err counts, behaviour observed, what you tried..."

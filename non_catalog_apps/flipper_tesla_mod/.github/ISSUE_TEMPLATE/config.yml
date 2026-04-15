@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Hardware questions
+    url: https://github.com/hypery11/flipper-tesla-fsd/blob/main/HARDWARE.md
+    about: Wiring, alternative CAN modules, ESP32 port — see HARDWARE.md first
+  - name: Roadmap & feature priority
+    url: https://github.com/hypery11/flipper-tesla-fsd/blob/main/ROADMAP.md
+    about: What's planned next, by tier
+  - name: Security disclosure
+    url: https://github.com/hypery11/flipper-tesla-fsd/blob/main/SECURITY.md
+    about: Found something dangerous? Email instead of opening a public issue.
