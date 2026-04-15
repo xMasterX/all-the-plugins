@@ -1,0 +1,16 @@
+App(
+    appid="claude_remote_ble",
+    name="Agentic Remote",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="claude_remote_ble_app",
+    requires=["gui", "bt"],
+    stack_size=4 * 1024,
+    fap_category="Bluetooth",
+    fap_version="0.28",
+    fap_icon="claude_remote.png",
+    fap_description="One-handed Bluetooth remote for AI coding agents (Claude Code). 5-button D-pad control, macros, offline manual + quiz.",
+    fap_author="Kasen Sansonetti",
+    fap_icon_assets="images",
+    cdefines=["HID_TRANSPORT_BLE"],
+    fap_libs=["ble_profile"],
+)
