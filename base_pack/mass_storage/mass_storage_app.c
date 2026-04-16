@@ -47,7 +47,6 @@ MassStorageApp* mass_storage_app_alloc(char* arg) {
     app->dialogs = furi_record_open(RECORD_DIALOGS);
 
     app->view_dispatcher = view_dispatcher_alloc();
-    
 
     app->scene_manager = scene_manager_alloc(&mass_storage_scene_handlers, app);
 
