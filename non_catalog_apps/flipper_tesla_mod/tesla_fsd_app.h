@@ -11,7 +11,7 @@
 #include "libraries/mcp_can_2515.h"
 #include "fsd_logic/fsd_handler.h"
 
-#define TESLA_FSD_VERSION "2.8.0"
+#define TESLA_FSD_VERSION "2.9.0"
 
 typedef enum {
     TeslaFSDSceneMainMenu,
@@ -67,6 +67,7 @@ typedef struct {
     bool precondition;       // periodic 0x082 inject for battery preheat
     OpMode op_mode;          // Active / ListenOnly / Service
     uint8_t mcp_clock;       // 0 = 16MHz (default), 1 = 8MHz
+    bool gtw_shield;         // 0x7FF ban defense shield
 
     // extras toggles (BETA — need on-vehicle verification per CAN ID)
     bool extra_hazard_lights;
