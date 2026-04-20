@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `20 Apr 22:53 GMT +3`
+### Apps checked & updated at `21 Apr 02:14 GMT +3`
 
 
 # Default pack
@@ -252,6 +252,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Timed Remote | ![IR Badge] | [by anders-dc](https://github.com/anders-dc/timed-remote) |  | [![Author Badge]](https://lab.flipper.net/apps/timed_remote) |
 | Pause Timer | ![IR Badge] | [by Matt-London](https://github.com/Matt-London/pause_timer) |  | [![Author Badge]](https://lab.flipper.net/apps/pause_timer) |
 | FlipIRFreq | ![IR Badge] | [by jsammarco](https://github.com/jsammarco/FlipIRFreq) | Send IR in carrier or low-frequency pulse modes with adjustable frequency, duty cycle, and output | ![None Badge] |
+| TagTinker | ![IR Badge] | [by i12bp8](https://github.com/i12bp8/TagTinker) |  | ![None Badge] |
 | BPM Tapper | ![Media Badge] | [by panki27](https://github.com/panki27/bpm-tapper) |  | [![UFW Badge]](https://lab.flipper.net/apps/bpm_tapper) |
 | Flizzer Tracker | ![Media Badge] | [by LTVA1](https://github.com/LTVA1/flizzer_tracker) |  | [![Author Badge]](https://lab.flipper.net/apps/flizzer_tracker) |
 | Music Beeper | ![Media Badge] | [by qqMajiKpp / Haseo](https://github.com/qqmajikpp/) |  | ![None Badge] |
