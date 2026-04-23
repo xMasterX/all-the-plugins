@@ -1,3 +1,36 @@
+## v1.1
+
+Multiple memory leaks fixes and improved memory safety in the Metroflip codebase 
+to prevent crashes and out-of-memory errors on Flipper Zero devices.
+This entire version is authored by FatherDivine.
+
+Changes Made:
+
+- Orca changes
+  - Added Orca AID variant 0xF013F2 (detected as bytes F0 13 F2) based on user testing
+  - Fixed array size from 89 to 90 to accommodate new AID entry
+
+- Ventra/Ultralight File Loading Fix
+  -  Added "NTAG/Ultralight" device type string (used by Flipper NFC library)
+  -  Now loads any Ultralight card even without Ventra signature
+  -  Files saved by Metroflip now load properly
+
+- Buffer Size Verification
+  -  Verified all static buffer sizes are sufficient for their data formats
+  -  Fixed get_navigo_service_provider() buffer from 8 to 12 bytes
+
+- Memory Leak Fixes
+  -  read_calypso_data() - Fixed memory leak when data not found
+  -  get_country_string() - Changed from malloc to static buffer
+  -  Unused nfc_scanner_alloc() calls - Removed from 8 plugins
+  -  Transit display functions - Converted to static buffers
+
+- Memory Safety Improvements
+  -  CalypsoCardData initialization - Initialize pointers to NULL for safe cleanup
+  -  Allocation failure handling - Added NULL checks for malloc returns
+  -  Cleanup on failure - Added proper cleanup path for card data on early exit
+  -  NULL checks in cleanup - Added check for ctx->card in calypso_on_exit
+
 ## v1.0
 - Suica Fixes
 - New Cards:

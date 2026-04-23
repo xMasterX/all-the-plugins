@@ -39,15 +39,15 @@
 #define TAG "Metroflip:Scene:Tmoney"
 
 // ISO7816 constants, check ISO7816Protocol.kt in metrodroid
-#define CLASS_ISO7816 0x00
-#define CLASS_90 0x90
+#define CLASS_ISO7816              0x00
+#define CLASS_90                   0x90
 #define INSTRUCTION_ISO7816_SELECT 0xA4
-#define SELECT_BY_NAME 0x04
-#define STATUS_OK 0x90
-#define STATUS_OK_2 0x00
+#define SELECT_BY_NAME             0x04
+#define STATUS_OK                  0x90
+#define STATUS_OK_2                0x00
 
 // From KSX6924Application.kt
-#define INS_GET_BALANCE 0x4c
+#define INS_GET_BALANCE  0x4c
 #define BALANCE_RESP_LEN 4
 
 static int tmoney_send_iso7816_command(
@@ -174,8 +174,7 @@ static NfcCommand tmoney_poller_callback(NfcGenericEvent event, void* context) {
                 }
 
                 // Send balance command: CLASS_90, get balance, P1=0, P2=0, Le=4
-                uint8_t balance_cmd[] = {
-                    CLASS_90, INS_GET_BALANCE, 0x00, 0x00, 0x04};
+                uint8_t balance_cmd[] = {CLASS_90, INS_GET_BALANCE, 0x00, 0x00, 0x04};
 
                 // Send read balance command
                 error = tmoney_send_iso7816_command(
@@ -207,7 +206,7 @@ static NfcCommand tmoney_poller_callback(NfcGenericEvent event, void* context) {
                 FURI_LOG_I(TAG, "Balance read successfully");
 
                 uint32_t balance_value = (balance_data[0] << 24) | (balance_data[1] << 16) |
-                                (balance_data[2] << 8) | balance_data[3];
+                                         (balance_data[2] << 8) | balance_data[3];
 
                 furi_string_printf(parsed_data, "Balance: %lu KRW", balance_value);
 
@@ -244,7 +243,6 @@ static void tmoney_on_enter(Metroflip* app) {
     popup_set_icon(popup, 0, 3, &I_RFIDDolphinReceive_97x61);
 
     // Start worker
-    nfc_scanner_alloc(app->nfc);
     app->poller = nfc_poller_alloc(app->nfc, NfcProtocolIso14443_4a);
     nfc_poller_start(app->poller, tmoney_poller_callback, app);
 

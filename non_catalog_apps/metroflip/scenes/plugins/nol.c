@@ -39,13 +39,13 @@ bool nol_parse(const MfDesfireData* data, FuriString* parsed_data) {
         uint8_t* nol_file = simple_array_get_data(file_data->data);
         uint32_t nol_serial_number = bit_lib_get_bits_32(nol_file, 61, 32);
 
-        uint32_t first_group  = (nol_serial_number / 10000000U) % 1000U;  // top 3 digits
-        uint32_t middle_group = (nol_serial_number / 10000U)     % 1000U;  // next 3
-        uint32_t last_group   =  nol_serial_number               % 10000U; // last 4
-        
+        uint32_t first_group = (nol_serial_number / 10000000U) % 1000U; // top 3 digits
+        uint32_t middle_group = (nol_serial_number / 10000U) % 1000U; // next 3
+        uint32_t last_group = nol_serial_number % 10000U; // last 4
+
         furi_string_set(parsed_data, "\e#nol\n\nSerial No.: ");
-        furi_string_cat_printf(parsed_data, "%03ld %03ld %04ld",
-                               first_group, middle_group, last_group);
+        furi_string_cat_printf(
+            parsed_data, "%03ld %03ld %04ld", first_group, middle_group, last_group);
         parsed = true;
     } while(false);
 
@@ -128,7 +128,6 @@ static void nol_on_enter(Metroflip* app) {
 
         // Start worker
         view_dispatcher_switch_to_view(app->view_dispatcher, MetroflipViewPopup);
-        nfc_scanner_alloc(app->nfc);
         app->poller = nfc_poller_alloc(app->nfc, NfcProtocolMfDesfire);
         nfc_poller_start(app->poller, nol_poller_callback, app);
 

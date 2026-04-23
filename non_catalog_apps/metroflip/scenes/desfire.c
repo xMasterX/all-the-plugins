@@ -7,6 +7,8 @@
 
 bool app_id_matches(uint32_t input, const MfDesfireApplicationId* expected) {
     if(!expected) return false; // don't check expected->data (it's a fixed array)
+    // AIDs in the cards[] array are stored as big-endian values
+    // e.g., AID 0x010000 means bytes: 01 00 00
     uint8_t bytes[MF_DESFIRE_APP_ID_SIZE] = {
         (input >> 16) & 0xFF, (input >> 8) & 0xFF, input & 0xFF};
     return memcmp(bytes, expected->data, MF_DESFIRE_APP_ID_SIZE) == 0;
@@ -19,7 +21,7 @@ typedef struct {
     bool locked;
 } TransitCardInfo;
 
-TransitCardInfo cards[89] = {
+TransitCardInfo cards[90] = {
     {0x000001, "MAD TTP / MNL beep", "CRTM / AFPI", true},
     {0x000002, "MNL beep", "AFPI", true},
     {0x000003, "MNL beep", "AFPI", true},
@@ -31,7 +33,10 @@ TransitCardInfo cards[89] = {
     {0x004063, "DOH Travel Pass", "Qatar Rail", true},
     {0x004078, "nol", "RTA", false},
     {0x008057, "NORTIC", "NRPA", true},
-    {0x010000, "Breeze / Compass / EASY / FREEDOM / Urbana", "MARTA / TransLink / MIA County / PATCO / LPP", true},
+    {0x010000,
+     "Breeze / Compass / EASY / FREEDOM / Urbana",
+     "MARTA / TransLink / MIA County / PATCO / LPP",
+     true},
     {0x012340, "ECN motion", "MoTCW", true},
     {0x012350, "ECN motion", "MoTCW", true},
     {0x012360, "ECN motion", "MoTCW", true},
@@ -56,6 +61,7 @@ TransitCardInfo cards[89] = {
     {0x171108, "MNL TRIPKO", "JourneyTech", true},
     {0x227508, "Umo", "Cubic", true},
     {0x3010F2, "SEA ORCA", "ORCA", true},
+    {0xF013F2, "SEA ORCA", "ORCA", true},
     {0x314553, "opal", "Opal", false},
     {0x315441, "ATH ATH.ENA", "OASA", true},
     {0x31594F, "LHR Oyster", "TfL", true},
@@ -117,8 +123,26 @@ const char* desfire_type(const MfDesfireData* data) {
     if(!data) return "Unknown Card";
     if(!data->application_ids) return "Unknown Card";
 
+    const uint32_t card_app_id_count = simple_array_get_count(data->application_ids);
+    FURI_LOG_I(
+        "Metroflip:DesfireManager", "Found %lu application IDs", (unsigned long)card_app_id_count);
+
+    // Log all AIDs found on the card for debugging
+    for(uint32_t j = 0; j < card_app_id_count; ++j) {
+        const MfDesfireApplicationId* app_ptr =
+            (const MfDesfireApplicationId*)simple_array_cget(data->application_ids, j);
+        if(app_ptr) {
+            FURI_LOG_I(
+                "Metroflip:DesfireManager",
+                "AID[%lu]: %02X %02X %02X",
+                (unsigned long)j,
+                app_ptr->data[0],
+                app_ptr->data[1],
+                app_ptr->data[2]);
+        }
+    }
+
     for(int i = 0; i < num_cards; i++) {
-        const uint32_t card_app_id_count = simple_array_get_count(data->application_ids);
         for(uint32_t j = 0; j < card_app_id_count; ++j) {
             const MfDesfireApplicationId* app_ptr =
                 (const MfDesfireApplicationId*)simple_array_cget(data->application_ids, j);

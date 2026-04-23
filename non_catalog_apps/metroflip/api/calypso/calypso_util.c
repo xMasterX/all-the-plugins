@@ -4,7 +4,7 @@
 #include "calypso_util.h"
 #include "../metroflip/metroflip_api.h"
 #define CALYPSO_MAX_FILE_COUNT (10U)
-#define CALYPSO_MAX_FILE_SIZE (30U)
+#define CALYPSO_MAX_FILE_SIZE  (30U)
 CalypsoElement make_calypso_final_element(
     const char* key,
     int size,
@@ -32,22 +32,26 @@ uint8_t* read_calypso_data(FlipperFormat* format, const char* app_id, const char
         // For every line in the flipper format file
         // We read the entire line's hex and store it in the byte_array_buffer
         if(!flipper_format_read_hex(
-               format,
-               furi_string_get_cstr(entry_preamble),
-               byte_array_buffer,
-               29)) {
-            FURI_LOG_W("calypso", "app %s file %s not found. payload: %s", app_id, file_id, furi_string_get_cstr(entry_preamble));
+               format, furi_string_get_cstr(entry_preamble), byte_array_buffer, 29)) {
+            FURI_LOG_W(
+                "calypso",
+                "app %s file %s not found. payload: %s",
+                app_id,
+                file_id,
+                furi_string_get_cstr(entry_preamble));
             found = false;
-            break;} else {
-                FURI_LOG_I("calypso", "FOUND %s", furi_string_get_cstr(entry_preamble));
-                found = true;
-            }
+            break;
+        } else {
+            FURI_LOG_I("calypso", "FOUND %s", furi_string_get_cstr(entry_preamble));
+            found = true;
+        }
     }
     furi_string_free(entry_preamble);
-    if (found) {
+    if(found) {
         FURI_LOG_I("calypso", "25th byte: %02X", byte_array_buffer[25]);
         return byte_array_buffer;
     } else {
+        free(byte_array_buffer);
         return NULL;
     }
 }
@@ -410,8 +414,9 @@ const char* get_country_string(int country_num) {
     case 376:
         return "Israel";
     default: {
-        char* country = malloc(4 * sizeof(char));
-        snprintf(country, 4, "%d", country_num);
+        // Use static buffer to avoid memory leak - caller doesn't need to free
+        static char country[8];
+        snprintf(country, sizeof(country), "%d", country_num);
         return country;
     }
     }
