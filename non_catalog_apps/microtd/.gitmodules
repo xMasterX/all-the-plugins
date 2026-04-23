@@ -1,0 +1,9 @@
+[submodule "lib"]
+	path = lib
+	url = https://github.com/apfxtech/arduboylib.git
+[submodule "apps/games/microcity/lib"]
+	branch = main
+[submodule "apps/games/microtd/lib"]
+	branch = main
+[submodule "apps/games/arduventure/lib"]
+	branch = main

@@ -1,0 +1,16 @@
+App(
+    appid="microtd",
+    name="Tower Defense",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="arduboy_app",
+    cdefines=["ARDUINO", "ARDUBOY_COLOR_ORIGINAL", "ARDULIB_SWAP_AB", "ARDULIB_USE_TONES"],
+    requires=["gui"],
+    sources=["lib/scr/*.cpp", "game/microtd.cpp"],
+    stack_size=8 * 1024,
+    fap_category="Games",
+    fap_icon="icon.png",
+    fap_author="@apfxtech",
+    fap_weburl="https://github.com/apfxtech/FlipperTowerDefense.git",
+    fap_version="1.0",
+    fap_description="Tower defense game ported from Arduboy.",
+)
