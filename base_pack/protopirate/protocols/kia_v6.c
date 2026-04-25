@@ -863,17 +863,14 @@ void kia_protocol_decoder_v6_get_string(void* context, FuriString* output) {
 
 #ifdef ENABLE_EMULATE_FEATURE
 
-#define KIA_V6_PREAMBLE_PAIRS_1  640
-#define KIA_V6_PREAMBLE_PAIRS_2  38
-#define KIA_V6_TE_SHORT          200
-#define KIA_V6_TE_LONG           400
-#define KIA_V6_UPLOAD_SIZE       1928
+#define KIA_V6_PREAMBLE_PAIRS_1 640
+#define KIA_V6_PREAMBLE_PAIRS_2 38
+#define KIA_V6_TE_SHORT         200
+#define KIA_V6_TE_LONG          400
+#define KIA_V6_UPLOAD_SIZE      1928
 
-static inline void kia_v6_encode_manchester_bit(
-    LevelDuration* upload,
-    size_t* index,
-    bool bit,
-    uint32_t te) {
+static inline void
+    kia_v6_encode_manchester_bit(LevelDuration* upload, size_t* index, bool bit, uint32_t te) {
     if(bit) {
         upload[(*index)++] = level_duration_make(false, te);
         upload[(*index)++] = level_duration_make(true, te);
@@ -944,14 +941,12 @@ static void kia_protocol_encoder_v6_build_upload(SubGhzProtocolEncoderKiaV6* ins
     size_t index = 0;
 
     kia_v6_encode_message(
-        instance->encoder.upload, &index, KIA_V6_PREAMBLE_PAIRS_1,
-        p1_lo, p1_hi, p2_lo, p2_hi, p3);
+        instance->encoder.upload, &index, KIA_V6_PREAMBLE_PAIRS_1, p1_lo, p1_hi, p2_lo, p2_hi, p3);
 
     instance->encoder.upload[index++] = level_duration_make(false, KIA_V6_TE_LONG);
 
     kia_v6_encode_message(
-        instance->encoder.upload, &index, KIA_V6_PREAMBLE_PAIRS_2,
-        p1_lo, p1_hi, p2_lo, p2_hi, p3);
+        instance->encoder.upload, &index, KIA_V6_PREAMBLE_PAIRS_2, p1_lo, p1_hi, p2_lo, p2_hi, p3);
 
     instance->encoder.upload[index++] = level_duration_make(false, KIA_V6_TE_LONG);
 
@@ -986,8 +981,7 @@ void* kia_protocol_encoder_v6_alloc(SubGhzEnvironment* environment) {
     instance->base.protocol = &kia_protocol_v6;
     instance->generic.protocol_name = instance->base.protocol->name;
     instance->encoder.size_upload = 2000;
-    instance->encoder.upload =
-        malloc(instance->encoder.size_upload * sizeof(LevelDuration));
+    instance->encoder.upload = malloc(instance->encoder.size_upload * sizeof(LevelDuration));
     if(!instance->encoder.upload) {
         free(instance);
         return NULL;

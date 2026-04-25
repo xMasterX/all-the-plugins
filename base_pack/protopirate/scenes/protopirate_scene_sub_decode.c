@@ -83,11 +83,7 @@ static void protopirate_scene_sub_decode_update_receiver_statusbar(
     bool is_external =
         app->txrx->radio_device ? radio_device_loader_is_external(app->txrx->radio_device) : false;
     protopirate_view_receiver_add_data_statusbar(
-        app->protopirate_receiver,
-        frequency_str,
-        modulation_str,
-        history_stat_str,
-        is_external);
+        app->protopirate_receiver, frequency_str, modulation_str, history_stat_str, is_external);
 }
 
 static bool psa_subdecode_item_needs_bruteforce(ProtoPirateApp* app, uint16_t idx) {
@@ -157,7 +153,6 @@ static void psa_bf_done_cb_sub_decode(void* context) {
         app->view_dispatcher, ProtoPirateCustomEventPsaBruteforceComplete);
 }
 
-
 // Forward declaration
 static void protopirate_scene_sub_decode_widget_callback(
     GuiButtonType result,
@@ -183,23 +178,14 @@ static void protopirate_sub_decode_receiver_callback(
 
     FURI_LOG_I(TAG, "=== SIGNAL DECODED FROM FILE ===");
 
-    // Add to history
-    size_t free_heap_before = memmgr_get_free_heap();
-    size_t max_free_block_before = memmgr_heap_get_max_free_block();
     if(protopirate_history_add_to_history(ctx->history, decoder_base, app->txrx->preset)) {
         ctx->match_count++;
-        protopirate_history_note_signal_allocated(
-            ctx->history, free_heap_before, max_free_block_before);
         FURI_LOG_I(TAG, "Added signal %u to history", ctx->match_count);
 
-        // Send update event to refresh animation
         view_dispatcher_send_custom_event(
             app->view_dispatcher, ProtoPirateCustomEventSubDecodeUpdate);
-    } else if(protopirate_history_is_low_memory(ctx->history)) {
-        FURI_LOG_W(TAG, "History capture paused due to low memory");
     }
 
-    // Reset receiver to continue looking for more signals
     subghz_receiver_reset(receiver);
 }
 
@@ -508,8 +494,26 @@ static void protopirate_scene_sub_decode_widget_callback(
 void protopirate_scene_sub_decode_on_enter(void* context) {
     ProtoPirateApp* app = context;
 
-    if(app->radio_initialized) {
-        protopirate_rx_stack_resume_after_tx(app);
+    if(!protopirate_ensure_receiver_view(app) || !protopirate_ensure_widget(app) ||
+       !protopirate_ensure_view_about(app)) {
+        notification_message(app->notifications, &sequence_error);
+        scene_manager_previous_scene(app->scene_manager);
+        return;
+    }
+
+    if(!app->radio_initialized && !protopirate_radio_init(app)) {
+        FURI_LOG_E(TAG, "Failed to initialize radio for sub decode scene");
+        notification_message(app->notifications, &sequence_error);
+        scene_manager_previous_scene(app->scene_manager);
+        return;
+    }
+
+    protopirate_rx_stack_resume_after_tx(app);
+    if(!app->txrx->receiver) {
+        FURI_LOG_E(TAG, "Failed to allocate receiver for sub decode scene");
+        notification_message(app->notifications, &sequence_error);
+        scene_manager_previous_scene(app->scene_manager);
+        return;
     }
 
     FURI_LOG_I(TAG, "Sub decode scene enter - Free heap: %zu", memmgr_get_free_heap());
@@ -730,9 +734,7 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                     (unsigned int)s->decrypted_type,
                     (unsigned long)s->decrypted_seed);
                 protopirate_history_set_item_str(
-                    ctx->history,
-                    ctx->selected_history_index,
-                    furi_string_get_cstr(new_str));
+                    ctx->history, ctx->selected_history_index, furi_string_get_cstr(new_str));
                 furi_string_free(new_str);
                 protopirate_history_commit_loaded(ctx->history);
                 notification_message(app->notifications, &sequence_success);
@@ -1199,10 +1201,7 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                 // Get full text for body
                 furi_string_reset(text);
                 protopirate_history_get_text_item_detail(
-                    ctx->history,
-                    ctx->selected_history_index,
-                    text,
-                    app->txrx->environment);
+                    ctx->history, ctx->selected_history_index, text, app->txrx->environment);
                 widget_add_text_scroll_element(
                     app->widget, 0, 0, 128, 50, furi_string_get_cstr(text));
 

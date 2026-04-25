@@ -40,7 +40,8 @@ ProtoPirateProtocolRegistryFilter protopirate_get_protocol_registry_filter_for_p
 const SubGhzProtocolRegistry*
     protopirate_get_protocol_registry_by_filter(ProtoPirateProtocolRegistryFilter filter);
 
-const char* protopirate_get_protocol_registry_filter_name(ProtoPirateProtocolRegistryFilter filter);
+const char*
+    protopirate_get_protocol_registry_filter_name(ProtoPirateProtocolRegistryFilter filter);
 
 // Timing information for protocol analysis
 typedef struct {

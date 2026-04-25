@@ -3,7 +3,7 @@
 
 // Original implementation by @lupettohf
 
-#define MITSUBISHI_BIT_COUNT 96
+#define MITSUBISHI_BIT_COUNT  96
 #define MITSUBISHI_DATA_BYTES 12
 
 static const SubGhzBlockConst subghz_protocol_mitsubishi_const = {
@@ -61,7 +61,10 @@ static void mitsubishi_reset_payload(SubGhzProtocolDecoderMitsubishi* instance) 
     memset(instance->decode_data, 0, sizeof(instance->decode_data));
 }
 
-static bool mitsubishi_collect_pair(SubGhzProtocolDecoderMitsubishi* instance, uint32_t high, uint32_t low) {
+static bool mitsubishi_collect_pair(
+    SubGhzProtocolDecoderMitsubishi* instance,
+    uint32_t high,
+    uint32_t low) {
     bool bit_value;
 
     if(mitsubishi_is_short(high) && mitsubishi_is_long(low)) {
@@ -91,9 +94,8 @@ static void mitsubishi_publish_frame(SubGhzProtocolDecoderMitsubishi* instance) 
     mitsubishi_unscramble_payload(payload);
 
     instance->generic.data_count_bit = instance->bit_count;
-    instance->generic.serial =
-        ((uint32_t)payload[0] << 24) | ((uint32_t)payload[1] << 16) | ((uint32_t)payload[2] << 8) |
-        payload[3];
+    instance->generic.serial = ((uint32_t)payload[0] << 24) | ((uint32_t)payload[1] << 16) |
+                               ((uint32_t)payload[2] << 8) | payload[3];
     instance->generic.cnt = ((uint16_t)payload[4] << 8) | payload[5];
     instance->generic.btn = payload[6];
 

@@ -4,9 +4,9 @@
 // Original implementation by @lupettohf
 
 #define PORSCHE_CAYENNE_BIT_COUNT 64
-#define PC_TE_SYNC 3370U
-#define PC_TE_GAP 5930U
-#define PC_SYNC_MIN 15
+#define PC_TE_SYNC                3370U
+#define PC_TE_GAP                 5930U
+#define PC_SYNC_MIN               15
 
 static const SubGhzBlockConst subghz_protocol_porsche_cayenne_const = {
     .te_short = 1680,
@@ -52,11 +52,11 @@ static void porsche_cayenne_compute_frame(
     uint8_t r_m = b1;
     uint8_t r_l = b2;
 
-#define ROTATE24(rh, rm, rl)            \
-    do {                                \
-        uint8_t _ch = ((rh) >> 7) & 1U; \
-        uint8_t _cm = ((rm) >> 7) & 1U; \
-        uint8_t _cl = ((rl) >> 7) & 1U; \
+#define ROTATE24(rh, rm, rl)                 \
+    do {                                     \
+        uint8_t _ch = ((rh) >> 7) & 1U;      \
+        uint8_t _cm = ((rm) >> 7) & 1U;      \
+        uint8_t _cl = ((rl) >> 7) & 1U;      \
         (rh) = (uint8_t)(((rh) << 1) | _cm); \
         (rm) = (uint8_t)(((rm) << 1) | _cl); \
         (rl) = (uint8_t)(((rl) << 1) | _ch); \
@@ -88,8 +88,8 @@ static void porsche_cayenne_compute_frame(
     pkt[2] = b2;
     pkt[3] = b3;
     pkt[4] = (uint8_t)(((a9a >> 2) & 0x3F) | ((~cnt_lo & 0x03U) << 6));
-    pkt[5] = (uint8_t)(
-        (~cnt_lo & 0xC0U) | ((a9a & 0x03U) << 4) | (a9b & 0x0CU) | ((~cnt_lo >> 2) & 0x03U));
+    pkt[5] = (uint8_t)((~cnt_lo & 0xC0U) | ((a9a & 0x03U) << 4) | (a9b & 0x0CU) |
+                       ((~cnt_lo >> 2) & 0x03U));
     pkt[6] = (uint8_t)(((a9b & 0x03U) << 6) | ((a9c >> 2) & 0x3CU) | ((~cnt_lo >> 4) & 0x03U));
     pkt[7] = (uint8_t)(((a9b >> 4) & 0x0FU) | ((a9c & 0x0FU) << 4));
 }
@@ -211,7 +211,8 @@ void subghz_protocol_decoder_porsche_cayenne_feed(void* context, bool level, uin
             if(DURATION_DIFF(duration, PC_TE_SYNC) < te_delta) {
                 // keep collecting sync pairs
             } else if(
-                instance->sync_count >= PC_SYNC_MIN && DURATION_DIFF(duration, PC_TE_GAP) < te_delta) {
+                instance->sync_count >= PC_SYNC_MIN &&
+                DURATION_DIFF(duration, PC_TE_GAP) < te_delta) {
                 instance->decoder.parser_step = PorscheCayenneDecoderStepGapLow;
             } else {
                 instance->decoder.parser_step = PorscheCayenneDecoderStepReset;
@@ -220,7 +221,8 @@ void subghz_protocol_decoder_porsche_cayenne_feed(void* context, bool level, uin
             if(DURATION_DIFF(duration, PC_TE_SYNC) < te_delta) {
                 instance->sync_count++;
             } else if(
-                instance->sync_count >= PC_SYNC_MIN && DURATION_DIFF(duration, PC_TE_GAP) < te_delta) {
+                instance->sync_count >= PC_SYNC_MIN &&
+                DURATION_DIFF(duration, PC_TE_GAP) < te_delta) {
                 instance->decoder.parser_step = PorscheCayenneDecoderStepGapHigh;
             } else {
                 instance->decoder.parser_step = PorscheCayenneDecoderStepReset;

@@ -42,7 +42,8 @@ static void psa_tea_build_schedule(const uint32_t* key, PsaTeaSchedule* out) {
     }
 }
 
-static inline void psa_tea_encrypt_with_schedule(uint32_t* v0, uint32_t* v1, const PsaTeaSchedule* sched) {
+static inline void
+    psa_tea_encrypt_with_schedule(uint32_t* v0, uint32_t* v1, const PsaTeaSchedule* sched) {
     for(int i = 0; i < TEA_ROUNDS; i++) {
         *v0 += (sched->s0[i] ^ (((*v1 >> 5) ^ (*v1 << 4)) + *v1));
         *v1 += (sched->s1[i] ^ (((*v0 >> 5) ^ (*v0 << 4)) + *v0));
@@ -163,8 +164,7 @@ const SubGhzProtocol psa_protocol = {
     .name = PSA_PROTOCOL_NAME,
     .type = SubGhzProtocolTypeDynamic,
     .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_FM |
-            SubGhzProtocolFlag_Decodable |
-            SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Load,
+            SubGhzProtocolFlag_Decodable | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Load,
     .decoder = &subghz_protocol_psa_decoder,
     .encoder = &subghz_protocol_psa_encoder,
 };
@@ -950,7 +950,6 @@ static bool psa_brute_force_decrypt_bf1(
     uint8_t* buffer,
     uint32_t w0,
     uint32_t w1) {
-
     PsaTeaSchedule bf1_sched;
     psa_tea_build_schedule(PSA_BF1_KEY_SCHEDULE, &bf1_sched);
 
@@ -1025,7 +1024,7 @@ static bool psa_brute_force_decrypt_bf2(
 static void psa_fill_bf_state_from_buffer(PsaBfState* state, uint8_t* buffer) {
     state->decrypted_button = (buffer[5] >> 4) & 0xF;
     state->decrypted_serial = ((uint32_t)buffer[3] << 8) | ((uint32_t)buffer[2] << 16) |
-                             (uint32_t)buffer[4];
+                              (uint32_t)buffer[4];
     state->decrypted_counter = ((uint32_t)buffer[7] << 8) | ((uint32_t)buffer[6] << 16) |
                                (uint32_t)buffer[8] | (((uint32_t)buffer[5] & 0xF) << 24);
     state->decrypted_crc = (uint16_t)buffer[9];
@@ -1089,8 +1088,7 @@ void psa_brute_force_run(PsaBfState* state) {
             return;
         }
         if((counter & (PSA_BF_PROGRESS_INTERVAL - 1)) == 0) {
-            state->progress_current =
-                (PSA_BF1_END - PSA_BF1_START) + (counter - PSA_BF2_START);
+            state->progress_current = (PSA_BF1_END - PSA_BF1_START) + (counter - PSA_BF2_START);
         }
 
         uint32_t working_key[4] = {
@@ -1146,10 +1144,14 @@ static bool parse_hex_key_str(const char* str, uint64_t* out) {
         char c = str[i];
         if(c == ' ') continue;
         uint8_t nibble;
-        if(c >= '0' && c <= '9') nibble = c - '0';
-        else if(c >= 'A' && c <= 'F') nibble = c - 'A' + 10;
-        else if(c >= 'a' && c <= 'f') nibble = c - 'a' + 10;
-        else return false;
+        if(c >= '0' && c <= '9')
+            nibble = c - '0';
+        else if(c >= 'A' && c <= 'F')
+            nibble = c - 'A' + 10;
+        else if(c >= 'a' && c <= 'f')
+            nibble = c - 'a' + 10;
+        else
+            return false;
         *out = (*out << 4) | nibble;
     }
     return true;
@@ -1223,9 +1225,9 @@ static void psa_handle_decoded_frame(SubGhzProtocolDecoderPSA* instance, uint8_t
     instance->decrypted_crc = 0;
     instance->decrypted_seed = 0;
     instance->decrypted = 0x00;
-    instance->mode_serialize =
-        psa_direct_xor_allowed_by_key2((uint8_t)(instance->key2_low >> 8)) ? direct_xor_mode :
-                                                                              0x36;
+    instance->mode_serialize = psa_direct_xor_allowed_by_key2((uint8_t)(instance->key2_low >> 8)) ?
+                                   direct_xor_mode :
+                                   0x36;
     instance->status_flag = 0x80;
 
     FURI_LOG_I(
@@ -1307,12 +1309,12 @@ static void psa_decrypt_router(SubGhzProtocolDecoderPSA* instance) {
         }
         FURI_LOG_W(TAG, "Direct XOR decryption FAILED");
     } else if(mode == 0x36) {
-
         FURI_LOG_I(TAG, "TEA BF deferred - use Brute force in receiver info");
         return;
     } else {
         FURI_LOG_I(TAG, "Mode uninitialized (0x00) - trying direct XOR or BF");
-        if(psa_direct_xor_allowed_by_key2(key2_high_byte) && psa_direct_xor_decrypt(instance, buffer)) {
+        if(psa_direct_xor_allowed_by_key2(key2_high_byte) &&
+           psa_direct_xor_decrypt(instance, buffer)) {
             instance->mode_serialize = 0x23;
             instance->decrypted = 0x50;
             FURI_LOG_I(TAG, "Direct XOR decryption SUCCESS");
@@ -1655,7 +1657,7 @@ void subghz_protocol_decoder_psa_feed(void* context, bool level, uint32_t durati
     case PSADecoderState3:
         if(duration >= 250) {
             if(duration >= PSA_TE_LONG_250 && duration < PSA_TE_LONG_300) {
-                    if(instance->pattern_counter > PSA_PATTERN_THRESHOLD_2) {
+                if(instance->pattern_counter > PSA_PATTERN_THRESHOLD_2) {
                     FURI_LOG_I(
                         TAG,
                         "[State3->State4] Transition detected with pattern_cnt=%lu",

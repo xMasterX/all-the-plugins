@@ -34,7 +34,6 @@ static const SubGhzProtocol* const protopirate_protocol_registry_am_items[] = {
     &subaru_protocol,
     &vag_protocol,
     &subghz_protocol_star_line,
-    &honda_static_protocol,
 };
 
 static const SubGhzProtocol* const protopirate_protocol_registry_fm_items[] = {
@@ -45,6 +44,7 @@ static const SubGhzProtocol* const protopirate_protocol_registry_fm_items[] = {
     &kia_protocol_v5,
     &kia_protocol_v6,
     &ford_protocol_v1,
+    &honda_static_protocol,
     &mazda_v0_protocol,
     &kia_protocol_v7,
     &mitsubishi_v0_protocol,
@@ -74,13 +74,13 @@ static const SubGhzProtocolRegistry protopirate_protocol_registry_fm = {
     .size = COUNT_OF(protopirate_protocol_registry_fm_items),
 };
 
-#define PROTOPIRATE_CC1101_REG_MDMCFG2         0x12U
-#define PROTOPIRATE_CC1101_MOD_FORMAT_MASK     0x70U
-#define PROTOPIRATE_CC1101_MOD_FORMAT_2FSK     0x00U
-#define PROTOPIRATE_CC1101_MOD_FORMAT_GFSK     0x10U
-#define PROTOPIRATE_CC1101_MOD_FORMAT_ASK_OOK  0x30U
-#define PROTOPIRATE_CC1101_MOD_FORMAT_4FSK     0x40U
-#define PROTOPIRATE_CC1101_MOD_FORMAT_MSK      0x70U
+#define PROTOPIRATE_CC1101_REG_MDMCFG2        0x12U
+#define PROTOPIRATE_CC1101_MOD_FORMAT_MASK    0x70U
+#define PROTOPIRATE_CC1101_MOD_FORMAT_2FSK    0x00U
+#define PROTOPIRATE_CC1101_MOD_FORMAT_GFSK    0x10U
+#define PROTOPIRATE_CC1101_MOD_FORMAT_ASK_OOK 0x30U
+#define PROTOPIRATE_CC1101_MOD_FORMAT_4FSK    0x40U
+#define PROTOPIRATE_CC1101_MOD_FORMAT_MSK     0x70U
 
 static bool protopirate_preset_try_get_register(
     const uint8_t* preset_data,
@@ -146,7 +146,8 @@ const SubGhzProtocolRegistry*
     }
 }
 
-const char* protopirate_get_protocol_registry_filter_name(ProtoPirateProtocolRegistryFilter filter) {
+const char*
+    protopirate_get_protocol_registry_filter_name(ProtoPirateProtocolRegistryFilter filter) {
     switch(filter) {
     case ProtoPirateProtocolRegistryFilterAM:
         return "AM";

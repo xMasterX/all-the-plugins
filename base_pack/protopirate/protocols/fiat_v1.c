@@ -21,17 +21,17 @@
 //
 // Original implementation by @lupettohf
 
-#define FIAT_MARELLI_PREAMBLE_PULSE_MIN 35
-#define FIAT_MARELLI_PREAMBLE_PULSE_MAX 450
-#define FIAT_MARELLI_PREAMBLE_MIN 48
-#define FIAT_MARELLI_MAX_DATA_BITS 104
-#define FIAT_MARELLI_MIN_DATA_BITS 104
-#define FIAT_MARELLI_GAP_TE_MULT 4
-#define FIAT_MARELLI_SYNC_TE_MIN_MULT 4
-#define FIAT_MARELLI_SYNC_TE_MAX_MULT 12
-#define FIAT_MARELLI_RETX_GAP_MIN 5000
-#define FIAT_MARELLI_RETX_SYNC_MIN 400
-#define FIAT_MARELLI_RETX_SYNC_MAX 2800
+#define FIAT_MARELLI_PREAMBLE_PULSE_MIN  35
+#define FIAT_MARELLI_PREAMBLE_PULSE_MAX  450
+#define FIAT_MARELLI_PREAMBLE_MIN        48
+#define FIAT_MARELLI_MAX_DATA_BITS       104
+#define FIAT_MARELLI_MIN_DATA_BITS       104
+#define FIAT_MARELLI_GAP_TE_MULT         4
+#define FIAT_MARELLI_SYNC_TE_MIN_MULT    4
+#define FIAT_MARELLI_SYNC_TE_MAX_MULT    12
+#define FIAT_MARELLI_RETX_GAP_MIN        5000
+#define FIAT_MARELLI_RETX_SYNC_MIN       400
+#define FIAT_MARELLI_RETX_SYNC_MAX       2800
 #define FIAT_MARELLI_TE_TYPE_AB_BOUNDARY 180
 
 static uint8_t fiat_marelli_crc8(const uint8_t* data, size_t len) {
@@ -105,13 +105,13 @@ static void fiat_marelli_rebuild_data_words_from_raw(SubGhzProtocolDecoderFiatMa
     instance->extra_data = 0;
 
     for(uint8_t i = 0; i < 64; i++) {
-        instance->generic.data =
-            (instance->generic.data << 1) | (fiat_marelli_get_raw_bit(instance->raw_data, i) ? 1U : 0U);
+        instance->generic.data = (instance->generic.data << 1) |
+                                 (fiat_marelli_get_raw_bit(instance->raw_data, i) ? 1U : 0U);
     }
 
     for(uint8_t i = 64; i < FIAT_MARELLI_MAX_DATA_BITS; i++) {
-        instance->extra_data =
-            (instance->extra_data << 1) | (fiat_marelli_get_raw_bit(instance->raw_data, i) ? 1U : 0U);
+        instance->extra_data = (instance->extra_data << 1) |
+                               (fiat_marelli_get_raw_bit(instance->raw_data, i) ? 1U : 0U);
     }
 
     instance->bit_count = FIAT_MARELLI_MAX_DATA_BITS;
@@ -168,10 +168,7 @@ static void fiat_marelli_prepare_data(SubGhzProtocolDecoderFiatMarelli* instance
     instance->generic.data_count_bit = 0;
     memset(instance->raw_data, 0, sizeof(instance->raw_data));
     manchester_advance(
-        instance->manchester_state,
-        ManchesterEventReset,
-        &instance->manchester_state,
-        NULL);
+        instance->manchester_state, ManchesterEventReset, &instance->manchester_state, NULL);
     fiat_marelli_set_state(instance, FiatMarelliDecoderStepData, "sync accepted");
 }
 
@@ -196,10 +193,9 @@ static void fiat_marelli_rebuild_raw_data(SubGhzProtocolDecoderFiatMarelli* inst
     instance->bit_count = instance->generic.data_count_bit;
 
     if(instance->bit_count >= 56) {
-        instance->generic.serial = ((uint32_t)instance->raw_data[2] << 24) |
-                                   ((uint32_t)instance->raw_data[3] << 16) |
-                                   ((uint32_t)instance->raw_data[4] << 8) |
-                                   ((uint32_t)instance->raw_data[5]);
+        instance->generic.serial =
+            ((uint32_t)instance->raw_data[2] << 24) | ((uint32_t)instance->raw_data[3] << 16) |
+            ((uint32_t)instance->raw_data[4] << 8) | ((uint32_t)instance->raw_data[5]);
         instance->generic.btn = (instance->raw_data[6] >> 4) & 0x0F;
         instance->generic.cnt = (instance->raw_data[7] >> 3) & 0x1F;
     }
@@ -285,8 +281,9 @@ void subghz_protocol_decoder_fiat_marelli_feed(void* context, bool level, uint32
     furi_check(context);
     SubGhzProtocolDecoderFiatMarelli* instance = context;
 
-    uint32_t te_short = instance->te_detected ? instance->te_detected
-                                              : (uint32_t)subghz_protocol_fiat_marelli_const.te_short;
+    uint32_t te_short = instance->te_detected ?
+                            instance->te_detected :
+                            (uint32_t)subghz_protocol_fiat_marelli_const.te_short;
     uint32_t te_long = te_short * 2;
     uint32_t te_delta = te_short / 2;
     if(te_delta < 30) te_delta = 30;
@@ -329,7 +326,8 @@ void subghz_protocol_decoder_fiat_marelli_feed(void* context, bool level, uint32
                     instance, FiatMarelliDecoderStepReset, "preamble too short");
             }
         } else {
-            fiat_marelli_set_state(instance, FiatMarelliDecoderStepReset, "invalid preamble pulse");
+            fiat_marelli_set_state(
+                instance, FiatMarelliDecoderStepReset, "invalid preamble pulse");
         }
         break;
 
@@ -363,10 +361,7 @@ void subghz_protocol_decoder_fiat_marelli_feed(void* context, bool level, uint32
         if(event != ManchesterEventReset) {
             bool data_bit = false;
             if(manchester_advance(
-                   instance->manchester_state,
-                   event,
-                   &instance->manchester_state,
-                   &data_bit)) {
+                   instance->manchester_state, event, &instance->manchester_state, &data_bit)) {
                 uint32_t new_bit = data_bit ? 1U : 0U;
 
                 if(instance->bit_count < FIAT_MARELLI_MAX_DATA_BITS) {
@@ -442,8 +437,8 @@ uint8_t subghz_protocol_decoder_fiat_marelli_get_hash_data(void* context) {
         .decode_count_bit =
             instance->generic.data_count_bit > 64 ? 64 : instance->generic.data_count_bit,
     };
-    uint8_t hash = subghz_protocol_blocks_get_hash_data(
-        &decoder, (decoder.decode_count_bit / 8) + 1);
+    uint8_t hash =
+        subghz_protocol_blocks_get_hash_data(&decoder, (decoder.decode_count_bit / 8) + 1);
     uint32_t x = instance->extra_data;
     for(uint8_t i = 0; i < 4; i++) {
         hash ^= (uint8_t)(x >> (i * 8));
@@ -478,11 +473,10 @@ SubGhzProtocolStatus
     furi_check(context);
     SubGhzProtocolDecoderFiatMarelli* instance = context;
 
-    SubGhzProtocolStatus ret =
-        subghz_block_generic_deserialize_check_count_bit(
-            &instance->generic,
-            flipper_format,
-            subghz_protocol_fiat_marelli_const.min_count_bit_for_found);
+    SubGhzProtocolStatus ret = subghz_block_generic_deserialize_check_count_bit(
+        &instance->generic,
+        flipper_format,
+        subghz_protocol_fiat_marelli_const.min_count_bit_for_found);
 
     if(ret == SubGhzProtocolStatusOk) {
         if(instance->generic.data_count_bit != FIAT_MARELLI_MAX_DATA_BITS) {

@@ -86,9 +86,7 @@ bool protopirate_storage_save_capture(
     FuriString* out_path);
 
 // Save a capture to a specific file path (user-chosen name)
-bool protopirate_storage_save_capture_to_path(
-    FlipperFormat* flipper_format,
-    const char* full_path);
+bool protopirate_storage_save_capture_to_path(FlipperFormat* flipper_format, const char* full_path);
 
 // Save to temp file for emulation
 bool protopirate_storage_save_temp(FlipperFormat* flipper_format);
@@ -121,4 +119,3 @@ bool protopirate_storage_save_history_capture(
     FlipperFormat* flipper_format,
     uint32_t seq,
     FuriString* out_path);
-    

@@ -358,9 +358,7 @@ cleanup:
     return status;
 }
 
-bool protopirate_storage_save_capture_to_path(
-    FlipperFormat* flipper_format,
-    const char* full_path) {
+bool protopirate_storage_save_capture_to_path(FlipperFormat* flipper_format, const char* full_path) {
     furi_check(flipper_format);
     furi_check(full_path);
 
