@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `25 Apr 04:14 GMT +3`
+### Apps checked & updated at `27 Apr 23:40 GMT +3`
 
 
 # Default pack
@@ -183,9 +183,10 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Mystic Balloon | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperMysticBalloon) |  | [![Author Badge]](https://lab.flipper.net/apps/myblab) |
 | Wolfenduino | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/FlipperWolfenstein) | like real wolf3d! | [![Author Badge]](https://lab.flipper.net/apps/wolfenduino) |
 | Race Game | ![Games Badge] | [by mrc19056](https://github.com/mrc19056/flipper-race-game) |  | [![Author Badge]](https://lab.flipper.net/apps/race_game) |
-| Maze of doom | ![Games Badge] | [by apfxtech](https://git.aperturefox.ru/FlipperZero/MyFlipperApps/src/branch/main/apps/games) | like real wolf3d! | ![None Badge] |
-| MicroCity | ![Games Badge] | [by apfxtech](https://git.aperturefox.ru/FlipperZero/MyFlipperApps/src/branch/main/apps/games) | like real wolf3d! | ![None Badge] |
-| Tower Defense | ![Games Badge] | [by apfxtech](https://git.aperturefox.ru/FlipperZero/MyFlipperApps/src/branch/main/apps/games) | like real wolf3d! | ![None Badge] |
+| Maze of doom | ![Games Badge] | [by apfxtech](https://git.aperturefox.ru/FlipperZero/MyFlipperApps/src/branch/main/apps/games) |  | ![None Badge] |
+| MicroCity | ![Games Badge] | [by apfxtech](https://git.aperturefox.ru/FlipperZero/MyFlipperApps/src/branch/main/apps/games) | | ![None Badge] |
+| Tower Defense | ![Games Badge] | [by apfxtech](https://git.aperturefox.ru/FlipperZero/MyFlipperApps/src/branch/main/apps/games) |  | ![None Badge] |
+| Oregon Trail | ![Games Badge] | [by jlaughter](https://github.com/jlaughter/flipper_oregon_trail) |  | ![None Badge] |
 | Air Mouse | ![GPIO Badge] | [by ginkage](https://github.com/ginkage/FlippAirMouse/) |  | [![Author Badge]](https://lab.flipper.net/apps/air_mouse) |
 | Plantower PMSx003 sensor reader | ![GPIO Badge] | [by 3cky](https://github.com/3cky/flipperzero-airmon) |  | [![UFW Badge]](https://lab.flipper.net/apps/airmon) |
 | Bar code scanner emulator via COM port | ![GPIO Badge] | [by polarikus](https://github.com/polarikus/flipper-zero_bc_scanner_emulator) |  | [![Author Badge]](https://lab.flipper.net/apps/bc_scanner) |
