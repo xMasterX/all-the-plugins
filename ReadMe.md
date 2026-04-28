@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `27 Apr 23:40 GMT +3`
+### Apps checked & updated at `29 Apr 02:33 GMT +3`
 
 
 # Default pack
@@ -63,8 +63,9 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Rolling Flaws | ![SubGhz Badge] | [by CodeAllNight & jamisonderek](https://github.com/jamisonderek/flipper-zero-tutorials/tree/main/subghz/apps/rolling-flaws) |  | ![None Badge] |
 | Radio Scanner | ![SubGhz Badge] | [by RocketGod](https://github.com/RocketGod-git/Flipper-Zero-Radio-Scanner) | Scans frequencies available to the CC1101 and plays them over the speaker so you can hear them. | ![None Badge] |
 | Sub-GHz Scheduler | ![SubGhz Badge] | [by shalebridge](https://github.com/shalebridge/flipper-subghz-scheduler) | Remake to work with all types of keys by @xMasterX | [![Author Badge]](https://lab.flipper.net/apps/subghz_scheduler) |
-| Flipper Share | ![SubGhz Badge] | [by lomalkin](https://github.com/lomalkin/flipper-zero-apps/blob/-/flipper_share) | | [![Author Badge]](https://lab.flipper.net/apps/flipper_share) |
-| ProtoPirate | ![SubGhz Badge] | [by RocketGod](https://github.com/RocketGod-git/ProtoPirate) | Keyfob analysis toolkit that can decode and decrypt keys (no emulation) | ![None Badge] |
+| **Flipper Share** | ![SubGhz Badge] | [by lomalkin](https://github.com/lomalkin/flipper-zero-apps/blob/-/flipper_share) | | [![Author Badge]](https://lab.flipper.net/apps/flipper_share) |
+| **ProtoPirate** | ![SubGhz Badge] | [by RocketGod](https://github.com/RocketGod-git/ProtoPirate) | Keyfob analysis toolkit that can decode and decrypt keys (no emulation) | ![None Badge] |
+| **SubGHz WarDriving** | ![SubGhz Badge] | [by Dmitry422](https://github.com/Dmitry422/subghz_wardriving) | Collect and autosave subghz signals with GPS (NMEA-UART) module, based on features from Momentum FW (by @WillyJL) | ![None Badge] |
 | **NFC Maker** plugin | ![NFC Badge] | [by Willy-JL](https://github.com/Flipper-XFW/Xtreme-Firmware/tree/dev/applications/external/nfc_maker) | make tags with URLs, Wifi and other things | ![None Badge] |
 | MIFARE Classic Editor | ![NFC Badge] | [by TollyH](https://github.com/TollyH/flipper-apps/tree/main/mfc-editor) | edit dumps on flipper | [![Author Badge]](https://lab.flipper.net/apps/mfc_editor) |
 | **RFID Fuzzer** | ![RFID Badge] | [by @gid9798](https://github.com/DarkFlippers/Multi_Fuzzer) | original by Ganapati & xMasterX | [![UFW Badge]](https://lab.flipper.net/apps/fuzzer_rfid) |
@@ -77,8 +78,8 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | HEX Viewer | ![Tools Badge] | [by QtRoS](https://github.com/QtRoS/flipper-zero-hex-viewer) |  | [![UFW Badge]](https://lab.flipper.net/apps/hex_viewer) |
 | Text Viewer | ![Tools Badge] | [by Willy-JL](https://github.com/Flipper-XFW/Xtreme-Firmware/tree/dev/applications/external/text_viewer) | original by kowalski7cc & kyhwana | [![UFW Badge]](https://lab.flipper.net/apps/text_viewer) |
 | DTMF Dolphin | ![Tools Badge] | [by litui](https://github.com/litui/dtmf_dolphin) |  | [![UFW Badge]](https://lab.flipper.net/apps/dtmf_dolphin) |
-| Quac! Remote | ![Tools Badge] | [by rdefeo](https://github.com/rdefeo/quac) | Various fixes by @Willy-JL, Last SubGHz and Link file Fixes by @xMasterX, and first subghz fixes by Dmitry | [![Author Badge]](https://lab.flipper.net/apps/quac) |
-| FlipNote (Text Editor) | ![Tools Badge] | [by morty517](https://github.com/morty517/flipnote) | + added custom keyboard with extra symbols | [![Author Badge]](https://lab.flipper.net/apps/flipnote) |
+| **Quac! Remote** | ![Tools Badge] | [by rdefeo](https://github.com/rdefeo/quac) | Various fixes by @Willy-JL, Last SubGHz and Link file Fixes by @xMasterX, and first subghz fixes by Dmitry | [![Author Badge]](https://lab.flipper.net/apps/quac) |
+| **FlipNote (Text Editor)** | ![Tools Badge] | [by morty517](https://github.com/morty517/flipnote) | + added custom keyboard with extra symbols | [![Author Badge]](https://lab.flipper.net/apps/flipnote) |
 | ESP8266 Deauther plugin | ![GPIO Badge] | [by SequoiaSan](https://github.com/SequoiaSan/FlipperZero-Wifi-ESP8266-Deauther-Module) |  | ![None Badge] |
 | WiFi Scanner plugin | ![GPIO Badge] | [by SequoiaSan](https://github.com/SequoiaSan/FlipperZero-WiFi-Scanner_Module) |  | ![None Badge] |
 | GPIO: Sentry Safe plugin | ![GPIO Badge] | [by H4ckd4ddy](https://github.com/H4ckd4ddy/flipperzero-sentry-safe-plugin) |  | [![UFW Badge]](https://lab.flipper.net/apps/gpio_sentry_safe) |
