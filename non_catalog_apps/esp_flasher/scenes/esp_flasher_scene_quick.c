@@ -19,6 +19,8 @@ enum QuickState {
     QuickWROOMBoot_Marauder,
     QuickS3Boot,
     QuickS3Boot_Marauder,
+    QuickC5Boot,
+    QuickC5Boot_Marauder,
     QuickWROOM,
     QuickWROOM_Marauder,
     QuickS2,
@@ -26,6 +28,8 @@ enum QuickState {
     QuickS2_Blackmagic,
     QuickS3,
     QuickS3_Marauder,
+    QuickC5,
+    QuickC5_Marauder,
 };
 
 void esp_flasher_scene_quick_submenu_callback(void* context, uint32_t index) {
@@ -49,9 +53,11 @@ void esp_flasher_scene_quick_on_enter(void* context) {
     case QuickS2Boot:
     case QuickWROOMBoot:
     case QuickS3Boot:
+    case QuickC5Boot:
     case QuickWROOM:
     case QuickS2:
     case QuickS3:
+    case QuickC5:
         submenu_set_header(submenu, "Choose ESP32 Type:");
         submenu_add_item(
             submenu,
@@ -73,6 +79,12 @@ void esp_flasher_scene_quick_on_enter(void* context) {
             app);
         submenu_add_item(
             submenu,
+            "C5 (auto bootloader)",
+            QuickC5Boot,
+            esp_flasher_scene_quick_submenu_callback,
+            app);
+        submenu_add_item(
+            submenu,
             "Other ESP32-WROOM",
             QuickWROOM,
             esp_flasher_scene_quick_submenu_callback,
@@ -81,6 +93,8 @@ void esp_flasher_scene_quick_on_enter(void* context) {
             submenu, "Other ESP32-S2", QuickS2, esp_flasher_scene_quick_submenu_callback, app);
         submenu_add_item(
             submenu, "Other ESP32-S3", QuickS3, esp_flasher_scene_quick_submenu_callback, app);
+        submenu_add_item(
+            submenu, "Other ESP32-C5", QuickC5, esp_flasher_scene_quick_submenu_callback, app);
         break;
     case QuickS2Boot_Marauder:
     case QuickS2Boot_Blackmagic:
@@ -120,6 +134,16 @@ void esp_flasher_scene_quick_on_enter(void* context) {
             esp_flasher_scene_quick_submenu_callback,
             app);
         break;
+    case QuickC5Boot_Marauder:
+    case QuickC5_Marauder:
+        submenu_set_header(submenu, "Choose Firmware:");
+        submenu_add_item(
+            submenu,
+            "Marauder (has Evil Portal)",
+            state > QuickC5 ? QuickC5_Marauder : QuickC5Boot_Marauder,
+            esp_flasher_scene_quick_submenu_callback,
+            app);
+        break;
     default:
         break;
     }
@@ -139,7 +163,8 @@ bool esp_flasher_scene_quick_on_event(void* context, SceneManagerEvent event) {
 
         bool enter_bootloader = false;
         bool s3 = false;
-        const char* boot = NULL; // 0x1000 (or 0x0 on S3)
+        bool c5 = false;
+        const char* boot = NULL; // 0x1000 (or 0x0 on S3 / 0x2000 on C5)
         const char* part = NULL; // 0x8000
         const char* app0 = NULL; // 0xE000
         const char* firm = NULL; // 0x10000
@@ -148,9 +173,11 @@ bool esp_flasher_scene_quick_on_event(void* context, SceneManagerEvent event) {
         case QuickS2Boot:
         case QuickWROOMBoot:
         case QuickS3Boot:
+        case QuickC5Boot:
         case QuickWROOM:
         case QuickS2:
         case QuickS3:
+        case QuickC5:
             // Select first item of submenu
             scene_manager_set_scene_state(
                 app->scene_manager, EspFlasherSceneQuick, event.event + 1);
@@ -197,6 +224,16 @@ bool esp_flasher_scene_quick_on_event(void* context, SceneManagerEvent event) {
             firm = APP_ASSETS_PATH("marauder/s3/esp32_marauder.multiboardS3.bin");
             break;
 
+        case QuickC5Boot_Marauder:
+            enter_bootloader = true;
+            /* fallthrough */
+        case QuickC5_Marauder:
+            c5 = true;
+            boot = APP_ASSETS_PATH("marauder/c5/bootloader.bin");
+            part = APP_ASSETS_PATH("marauder/c5/partitions.bin");
+            firm = APP_ASSETS_PATH("marauder/c5/esp32_marauder.esp32c5devkitc1.bin");
+            break;
+
         default:
             consumed = false;
             return consumed;
@@ -213,6 +250,7 @@ bool esp_flasher_scene_quick_on_event(void* context, SceneManagerEvent event) {
         app->bin_file_path_custom[0] = '\0';
 
         app->selected_flash_options[SelectedFlashS3Mode] = s3;
+        app->selected_flash_options[SelectedFlashC5Mode] = c5;
         if(boot) {
             app->selected_flash_options[SelectedFlashBoot] = true;
             strncpy(app->bin_file_path_boot, boot, sizeof(app->bin_file_path_boot));
@@ -238,7 +276,9 @@ bool esp_flasher_scene_quick_on_event(void* context, SceneManagerEvent event) {
     } else if(event.type == SceneManagerEventTypeBack) {
         uint32_t state = scene_manager_get_scene_state(app->scene_manager, EspFlasherSceneQuick);
         // Pressing back from submenu, check if in submenu, select corresponding item in quick flash menu
-        if(state > QuickS3)
+        if(state > QuickC5)
+            state = QuickC5;
+        else if(state > QuickS3)
             state = QuickS3;
         else if(state > QuickS2)
             state = QuickS2;
@@ -246,6 +286,8 @@ bool esp_flasher_scene_quick_on_event(void* context, SceneManagerEvent event) {
             state = QuickWROOM;
         else if(state > QuickS3Boot)
             state = QuickS3Boot;
+        else if(state > QuickC5Boot)
+            state = QuickC5Boot;
         else if(state > QuickWROOMBoot)
             state = QuickWROOMBoot;
         else if(state > QuickS2Boot)
