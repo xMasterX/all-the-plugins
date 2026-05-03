@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `29 Apr 02:33 GMT +3`
+### Apps checked & updated at `4 May 01:43 GMT +3`
 
 
 # Default pack
@@ -247,6 +247,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Tesla Mod (CAN bus) | ![GPIO Badge] | [by hypery11](https://github.com/hypery11/flipper-tesla-fsd) |  | ![None Badge] |
 | Video Game Module Console | ![GPIO Badge] | [by jblanked](https://github.com/jblanked/Video-Game-Module-Console) | Flash VGM with this firmware [Link](https://github.com/jblanked/Flipper-GameBoy) | [![Author Badge]](https://lab.flipper.net/apps/video_game_module_console) |
 | W5500 LAN Tester | ![GPIO Badge] | [by dok2d](https://github.com/dok2d/fz-W5500-lan-analyse) |  | [![Author Badge]](https://lab.flipper.net/apps/lan_tester) |
+| 24Cxx Programmer | ![GPIO Badge] | [by kamylwnb](https://github.com/kamylwnb/24cxxprog) |  | [![Author Badge]](https://lab.flipper.net/apps/24cxxprog) |
 | IR Remote | ![IR Badge] | [by Hong5489](https://github.com/Hong5489/ir_remote) | improvements [by friebel](https://github.com/RogueMaster/flipperzero-firmware-wPlugins/pull/535) - Hold Option, RAW support [by d4ve10](https://github.com/d4ve10/ir_remote/tree/infrared_hold_option) | ![None Badge] |
 | IR Intervalometer | ![IR Badge] | [by Nitepone](https://github.com/Nitepone/flipper-intervalometer) |  | [![UFW Badge]](https://lab.flipper.net/apps/sony_intervalometer) |
 | IR Xbox Controller | ![IR Badge] | [by gebeto](https://github.com/gebeto/flipper-xbox-controller) |  | [![Author Badge]](https://lab.flipper.net/apps/xbox_controller) |
