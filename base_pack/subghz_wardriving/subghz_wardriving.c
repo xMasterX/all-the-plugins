@@ -6,6 +6,8 @@
 #include <float_tools.h>
 #include "subghz_wardriving_i.h"
 
+#include <expansion/expansion.h>
+
 #define TAG "SubGhzWarDrivingApp"
 
 bool subghz_custom_event_callback(void* context, uint32_t event) {
@@ -28,6 +30,9 @@ void subghz_tick_event_callback(void* context) {
 
 SubGhz* subghz_alloc() {
     SubGhz* subghz = malloc(sizeof(SubGhz));
+
+    expansion_disable(furi_record_open(RECORD_EXPANSION));
+    furi_record_close(RECORD_EXPANSION);
 
     subghz->file_path = furi_string_alloc();
     subghz->file_path_tmp = furi_string_alloc();
@@ -248,6 +253,9 @@ void subghz_free(SubGhz* subghz) {
     }
 
     subghz_wardriving_last_settings_free(subghz->last_settings);
+
+    expansion_enable(furi_record_open(RECORD_EXPANSION));
+    furi_record_close(RECORD_EXPANSION);
 
     // The rest
     free(subghz);

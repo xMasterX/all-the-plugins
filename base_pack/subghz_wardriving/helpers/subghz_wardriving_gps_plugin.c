@@ -1,18 +1,18 @@
 #include "subghz_wardriving_gps.h"
 
-#include <expansion/expansion.h>
+//#include <expansion/expansion.h>
 #include <loader/firmware_api/firmware_api.h>
 #include <inttypes.h>
 
 #define TAG "SubGhzWarDrivingGPS"
 
 SubGhzGPS* subghz_gps_plugin_init(uint32_t baudrate) {
-    bool connected = expansion_is_connected(furi_record_open(RECORD_EXPANSION));
-    furi_record_close(RECORD_EXPANSION);
-    if(connected) return NULL;
+    //bool connected = expansion_is_connected(furi_record_open(RECORD_EXPANSION));
+    //furi_record_close(RECORD_EXPANSION);
+    //if(connected) return NULL;
 
-    expansion_disable(furi_record_open(RECORD_EXPANSION));
-    furi_record_close(RECORD_EXPANSION);
+    //expansion_disable(furi_record_open(RECORD_EXPANSION));
+    //furi_record_close(RECORD_EXPANSION);
 
     Storage* storage = furi_record_open(RECORD_STORAGE);
     FlipperApplication* plugin_app = flipper_application_alloc(storage, firmware_api_interface);
@@ -64,8 +64,8 @@ SubGhzGPS* subghz_gps_plugin_init(uint32_t baudrate) {
     flipper_application_free(plugin_app);
     furi_record_close(RECORD_STORAGE);
 
-    expansion_enable(furi_record_open(RECORD_EXPANSION));
-    furi_record_close(RECORD_EXPANSION);
+    //expansion_enable(furi_record_open(RECORD_EXPANSION));
+    //furi_record_close(RECORD_EXPANSION);
     return NULL;
 }
 
@@ -75,6 +75,6 @@ void subghz_gps_plugin_deinit(SubGhzGPS* subghz_gps) {
     free(subghz_gps);
     furi_record_close(RECORD_STORAGE);
 
-    expansion_enable(furi_record_open(RECORD_EXPANSION));
-    furi_record_close(RECORD_EXPANSION);
+    //expansion_enable(furi_record_open(RECORD_EXPANSION));
+    //furi_record_close(RECORD_EXPANSION);
 }
