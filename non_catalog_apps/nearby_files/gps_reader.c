@@ -12,8 +12,20 @@ typedef enum {
 static const int gps_baudrates[] = {4800, 9600, 19200, 38400, 57600, 115200};
 static const int default_baudrate_index = 1; // 9600
 
+static bool gps_reader_is_supported_baudrate(uint32_t baudrate) {
+    for(size_t i = 0; i < sizeof(gps_baudrates) / sizeof(gps_baudrates[0]); i++) {
+        if((uint32_t)gps_baudrates[i] == baudrate) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 // Forward declarations
 static void gps_reader_parse_nmea(GpsReader* gps_reader, char* line);
+static void gps_reader_start_worker(GpsReader* gps_reader);
+static void gps_reader_stop_worker(GpsReader* gps_reader);
 
 static void
     gps_reader_on_irq_cb(FuriHalSerialHandle* handle, FuriHalSerialRxEvent ev, void* context) {
@@ -29,7 +41,11 @@ static void
 static bool gps_reader_serial_init(GpsReader* gps_reader) {
     furi_assert(!gps_reader->serial_handle);
 
-    FURI_LOG_I("GPS", "Attempting to acquire GPS UART channel %d", GPS_UART_CH);
+    furi_mutex_acquire(gps_reader->mutex, FuriWaitForever);
+    const uint32_t baudrate = gps_reader->baudrate;
+    furi_mutex_release(gps_reader->mutex);
+
+    FURI_LOG_D("GPS", "Attempting to acquire GPS UART channel %d", GPS_UART_CH);
 
     // Try to acquire GPS UART channel with error handling
     gps_reader->serial_handle = furi_hal_serial_control_acquire(GPS_UART_CH);
@@ -45,8 +61,8 @@ static bool gps_reader_serial_init(GpsReader* gps_reader) {
         "GPS",
         "GPS UART channel %d acquired, initializing at %lu baud",
         GPS_UART_CH,
-        gps_reader->baudrate);
-    furi_hal_serial_init(gps_reader->serial_handle, gps_reader->baudrate);
+        (unsigned long)baudrate);
+    furi_hal_serial_init(gps_reader->serial_handle, baudrate);
     furi_hal_serial_async_rx_start(
         gps_reader->serial_handle, gps_reader_on_irq_cb, gps_reader, false);
 
@@ -213,13 +229,33 @@ static int32_t gps_reader_worker(void* context) {
     return 0;
 }
 
-GpsReader* gps_reader_alloc(void) {
+static void gps_reader_start_worker(GpsReader* gps_reader) {
+    gps_reader->rx_stream = furi_stream_buffer_alloc(GPS_RX_BUF_SIZE, 1);
+    gps_reader->thread =
+        furi_thread_alloc_ex("GpsReaderWorker", 1024, gps_reader_worker, gps_reader);
+    furi_thread_start(gps_reader->thread);
+}
+
+static void gps_reader_stop_worker(GpsReader* gps_reader) {
+    furi_thread_flags_set(furi_thread_get_id(gps_reader->thread), WorkerEvtStop);
+    furi_thread_join(gps_reader->thread);
+    furi_thread_free(gps_reader->thread);
+    gps_reader->thread = NULL;
+    gps_reader->rx_stream = NULL;
+}
+
+GpsReader* gps_reader_alloc(uint32_t initial_baudrate) {
     GpsReader* gps_reader = malloc(sizeof(GpsReader));
 
     gps_reader->mutex = furi_mutex_alloc(FuriMutexTypeNormal);
-    gps_reader->rx_stream = furi_stream_buffer_alloc(GPS_RX_BUF_SIZE, 1);
+    gps_reader->rx_stream = NULL;
+    gps_reader->thread = NULL;
     gps_reader->serial_handle = NULL;
-    gps_reader->baudrate = gps_baudrates[default_baudrate_index]; // TODO: Check other baudrates
+    if(gps_reader_is_supported_baudrate(initial_baudrate)) {
+        gps_reader->baudrate = initial_baudrate;
+    } else {
+        gps_reader->baudrate = gps_baudrates[default_baudrate_index];
+    }
 
     // Initialize coordinates as invalid
     gps_reader->coordinates.valid = false;
@@ -228,10 +264,7 @@ GpsReader* gps_reader_alloc(void) {
     gps_reader->coordinates.module_detected = false;
     gps_reader->coordinates.satellite_count = 0;
 
-    // Start worker thread
-    gps_reader->thread =
-        furi_thread_alloc_ex("GpsReaderWorker", 1024, gps_reader_worker, gps_reader);
-    furi_thread_start(gps_reader->thread);
+    gps_reader_start_worker(gps_reader);
 
     return gps_reader;
 }
@@ -239,10 +272,7 @@ GpsReader* gps_reader_alloc(void) {
 void gps_reader_free(GpsReader* gps_reader) {
     furi_assert(gps_reader);
 
-    // Stop worker thread
-    furi_thread_flags_set(furi_thread_get_id(gps_reader->thread), WorkerEvtStop);
-    furi_thread_join(gps_reader->thread);
-    furi_thread_free(gps_reader->thread);
+    gps_reader_stop_worker(gps_reader);
 
     furi_mutex_free(gps_reader->mutex);
 
@@ -257,4 +287,42 @@ GpsCoordinates gps_reader_get_coordinates(GpsReader* gps_reader) {
     furi_mutex_release(gps_reader->mutex);
 
     return coords;
+}
+
+uint32_t gps_reader_get_baudrate(GpsReader* gps_reader) {
+    furi_assert(gps_reader);
+
+    furi_mutex_acquire(gps_reader->mutex, FuriWaitForever);
+    const uint32_t baudrate = gps_reader->baudrate;
+    furi_mutex_release(gps_reader->mutex);
+
+    return baudrate;
+}
+
+bool gps_reader_set_baudrate(GpsReader* gps_reader, uint32_t baudrate) {
+    furi_assert(gps_reader);
+
+    if(!gps_reader_is_supported_baudrate(baudrate)) {
+        FURI_LOG_E("GPS", "Unsupported baudrate: %lu", (unsigned long)baudrate);
+        return false;
+    }
+
+    furi_mutex_acquire(gps_reader->mutex, FuriWaitForever);
+    if(gps_reader->baudrate == baudrate) {
+        furi_mutex_release(gps_reader->mutex);
+        return true;
+    }
+
+    gps_reader->baudrate = baudrate;
+    gps_reader->coordinates.valid = false;
+    gps_reader->coordinates.module_detected = false;
+    gps_reader->coordinates.satellite_count = 0;
+    furi_mutex_release(gps_reader->mutex);
+
+    // Full worker restart ensures the new baudrate takes effect immediately
+    // without stale serial or buffered RX state from the previous session.
+    gps_reader_stop_worker(gps_reader);
+    gps_reader_start_worker(gps_reader);
+
+    return true;
 }

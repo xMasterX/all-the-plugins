@@ -6,6 +6,7 @@ App(
     stack_size=4 * 1024,
     fap_icon="nearby_files_10px.png",
     fap_category="GPIO",
+    fap_icon_assets="icons",
     fap_private_libs=[
         Lib(
             name="minmea",
@@ -13,7 +14,7 @@ App(
             cdefines=["timegm=mktime"],
         ),
     ],
-    fap_version="1.5",
+    fap_version="1.7",
     fap_author="Stichoza",
     fap_description="A GPS-enabled file browser that displays files sorted by distance from your current location.",
 )
