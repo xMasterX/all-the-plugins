@@ -2,6 +2,7 @@
 #include <lib/subghz/receiver.h>
 #include <toolbox/stream/stream.h>
 #include <flipper_format/flipper_format.h>
+#include <flipper_format/flipper_format_i.h>
 
 #include <furi.h>
 
@@ -164,7 +165,7 @@ const char* subghz_wardriving_history_get_protocol_name(SubGhzHistory* instance,
     }
     flipper_format_rewind(item->flipper_string);
     if(!flipper_format_read_string(item->flipper_string, "Protocol", instance->tmp_string)) {
-        FURI_LOG_E(TAG, "Missing Protocol");
+        FURI_LOG_E(TAG, "Missing Protocol get_protocol_name");
         furi_string_reset(instance->tmp_string);
     }
     return furi_string_get_cstr(instance->tmp_string);
@@ -184,35 +185,12 @@ FlipperFormat* subghz_wardriving_history_get_raw_data(SubGhzHistory* instance, u
     furi_assert(instance);
     SubGhzHistoryItem* item = SubGhzHistoryItemArray_get(instance->history->data, idx);
     if(item->flipper_string) {
-        //Update latitude and longitude if present
-        float temp_lat = NAN;
-        float temp_lon = NAN;
-
-        temp_lat = item->latitude;
-        temp_lon = item->longitude;
-
-        if(!flipper_format_insert_or_update_float(
-               item->flipper_string, "Lat", (float*)&temp_lat, 1) ||
-           !flipper_format_insert_or_update_float(
-               item->flipper_string, "Lon", (float*)&temp_lon, 1)) {
-            flipper_format_rewind(item->flipper_string);
-            //Fallback to older keys "Latitute", "Longitude"
-            if(!flipper_format_insert_or_update_float(
-                   item->flipper_string, "Latitute", (float*)&temp_lat, 1) ||
-               !flipper_format_insert_or_update_float(
-                   item->flipper_string, "Longitude", (float*)&temp_lon, 1)) {
-                FURI_LOG_W(TAG, "Problem updating Lat and Lon (optional)");
-                flipper_format_rewind(item->flipper_string);
-            }
-        } else {
-            flipper_format_rewind(item->flipper_string);
-        }
-
         return item->flipper_string;
     } else {
         return NULL;
     }
 }
+
 bool subghz_wardriving_history_get_text_space_left(
     SubGhzHistory* instance,
     FuriString* output,
@@ -319,66 +297,41 @@ bool subghz_wardriving_history_add_to_history(
     item->flipper_string = flipper_format_string_alloc();
     subghz_protocol_decoder_base_serialize(decoder_base, item->flipper_string, preset);
 
-    if(decoder_base->protocol && decoder_base->protocol->decoder &&
-       decoder_base->protocol->decoder->get_string) {
-        decoder_base->protocol->decoder->get_string(decoder_base, item->item_str);
-        instance->last_index_write++;
-        return true;
-    }
-
-    FuriString* text = furi_string_alloc();
-
     do {
         if(!flipper_format_rewind(item->flipper_string)) {
             FURI_LOG_E(TAG, "Rewind error");
             break;
         }
         if(!flipper_format_read_string(item->flipper_string, "Protocol", instance->tmp_string)) {
-            FURI_LOG_E(TAG, "Missing Protocol");
+            FURI_LOG_E(TAG, "Missing Protocol add_to_history");
             break;
-        }
-        if(!strcmp(furi_string_get_cstr(instance->tmp_string), "KeeLoq")) {
-            furi_string_set(instance->tmp_string, "KL ");
-            if(!flipper_format_read_string(item->flipper_string, "Manufacture", text)) {
-                FURI_LOG_E(TAG, "Missing Protocol");
-                break;
-            }
-            furi_string_cat(instance->tmp_string, text);
-        }
-        if(!flipper_format_rewind(item->flipper_string)) {
-            FURI_LOG_E(TAG, "Rewind error");
-            break;
-        }
-        uint8_t key_data[sizeof(uint64_t)] = {0};
-        if(!flipper_format_read_hex(item->flipper_string, "Key", key_data, sizeof(uint64_t))) {
-            FURI_LOG_D(TAG, "No Key");
-        }
-        uint64_t data = 0;
-        for(uint8_t i = 0; i < sizeof(uint64_t); i++) {
-            data = (data << 8) | key_data[i];
-        }
-        if(data != 0) {
-            if(!(uint32_t)(data >> 32)) {
-                furi_string_printf(
-                    item->item_str,
-                    "%s %lX",
-                    furi_string_get_cstr(instance->tmp_string),
-                    (uint32_t)(data & 0xFFFFFFFF));
-            } else {
-                furi_string_printf(
-                    item->item_str,
-                    "%s %lX%08lX",
-                    furi_string_get_cstr(instance->tmp_string),
-                    (uint32_t)(data >> 32),
-                    (uint32_t)(data & 0xFFFFFFFF));
-            }
-        } else {
-            furi_string_printf(item->item_str, "%s", furi_string_get_cstr(instance->tmp_string));
         }
 
+        // Rewind to line before Protocol
+        Stream* stream = flipper_format_get_raw_stream(item->flipper_string);
+        if(!stream_seek_to_char(stream, '\n', StreamDirectionBackward)) {
+            FURI_LOG_E(TAG, "Seek 1 failed");
+            break;
+        }
+        if(!stream_seek(stream, 1, StreamOffsetFromCurrent)) {
+            FURI_LOG_E(TAG, "Seek 2 failed");
+            break;
+        }
+        // Insert Lat and Lon at the right place
+        if(!stream_insert_format(stream, "Lat: %f\n", (double)latitude)) {
+            FURI_LOG_E(TAG, "Unable to add Lat");
+            break;
+        }
+        if(!stream_insert_format(stream, "Lon: %f\n", (double)longitude)) {
+            FURI_LOG_E(TAG, "Unable to add Lon");
+            break;
+        }
     } while(false);
 
-    furi_string_free(text);
+    furi_check(
+        decoder_base->protocol && decoder_base->protocol->decoder &&
+        decoder_base->protocol->decoder->get_string);
+    decoder_base->protocol->decoder->get_string(decoder_base, item->item_str);
     instance->last_index_write++;
     return true;
 }
