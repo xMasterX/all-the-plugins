@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `4 May 01:43 GMT +3`
+### Apps checked & updated at `8 May 18:36 GMT +3`
 
 
 # Default pack
@@ -93,6 +93,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | **UART Terminal** | ![GPIO Badge] | [by cool4uma](https://github.com/cool4uma/UART_Terminal/tree/main) | New mode, other improvements by @rnadyrshin | [![UFW Badge]](https://lab.flipper.net/apps/uart_terminal) |
 | **SWD Probe** | ![GPIO Badge] | [by g3gg0](https://github.com/g3gg0/flipper-swd_probe) |  | [![UFW Badge]](https://lab.flipper.net/apps/swd_probe) |
 | ESP32-CAM -> Camera Suite | ![GPIO Badge] | [by CodyTolene](https://github.com/CodyTolene/Flipper-Zero-Camera-Suite) |  | [![Author Badge]](https://lab.flipper.net/apps/camera_suite) |
+| Nearby Files | ![GPIO Badge] | [by Stichoza](https://github.com/Stichoza/flipper-nearby-files) | With add to file option and GPS Baudrate settings | [![Author Badge]](https://lab.flipper.net/apps/nearby_files) |
 | WAV Player | ![Media Badge] | [OFW: DrZlo13](https://github.com/flipperdevices/flipperzero-firmware/tree/zlo/wav-player) | Fixed and improved by [LTVA1](https://github.com/LTVA1/wav_player) -> Also outputs audio on `PA6` `3(A6)` pin | [![UFW Badge]](https://lab.flipper.net/apps/wav_player) |
 | Metronome | ![Media Badge] | [by panki27](https://github.com/panki27/Metronome) |  | [![UFW Badge]](https://lab.flipper.net/apps/metronome) |
 | Morse Code | ![Media Badge] | [by wh00hw](https://github.com/wh00hw/MorseCodeFAP) |  | [![UFW Badge]](https://lab.flipper.net/apps/morse_code) |
@@ -242,7 +243,6 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | ESP32 Ghost | ![GPIO Badge] | [by Spooks4576 & jaylikesbunda](https://github.com/Spooks4576/ghost_esp_app) | read more details in original repo, [ESP32 firmware link](https://github.com/Spooks4576/Ghost_ESP/tree/main) | ![None Badge] |
 | Longwave Clock | ![GPIO Badge] | [by m7i-org](https://github.com/m7i-org/flipper_longwave_clock) | read more details in original repo | [![Author Badge]](https://lab.flipper.net/apps/longwave_clock) |
 | INA Meter | ![GPIO Badge] | [by cepetr](https://github.com/cepetr/flipper-tina) |  | [![Author Badge]](https://lab.flipper.net/apps/ina_meter) |
-| Nearby Files | ![GPIO Badge] | [by Stichoza](https://github.com/Stichoza/flipper-nearby-files) |  | [![Author Badge]](https://lab.flipper.net/apps/nearby_files) |
 | CAN Commander | ![GPIO Badge] | [by MatthewKuKanich](https://github.com/MatthewKuKanich/CAN_Commander) |  | ![None Badge] |
 | Tesla Mod (CAN bus) | ![GPIO Badge] | [by hypery11](https://github.com/hypery11/flipper-tesla-fsd) |  | ![None Badge] |
 | Video Game Module Console | ![GPIO Badge] | [by jblanked](https://github.com/jblanked/Video-Game-Module-Console) | Flash VGM with this firmware [Link](https://github.com/jblanked/Flipper-GameBoy) | [![Author Badge]](https://lab.flipper.net/apps/video_game_module_console) |
