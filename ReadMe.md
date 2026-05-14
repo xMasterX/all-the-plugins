@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `8 May 18:36 GMT +3`
+### Apps checked & updated at `14 May 14:20 GMT +3`
 
 
 # Default pack
@@ -299,6 +299,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | T5577 Multiwriter | ![RFID Badge] | [by Leptopt1los](https://github.com/Leptopt1los/t5577_multiwriter) | | [![UFW Badge]](https://lab.flipper.net/apps/t5577_multiwriter) |
 | T5577 Raw Writer | ![RFID Badge] | [by zinongli](https://github.com/zinongli/T5577_Raw_Writer) | | [![Author Badge]](https://lab.flipper.net/apps/t5577_writer) |
 | FDX-B Maker | ![RFID Badge] | [by snowsign](https://github.com/snowsign/fdxb-maker) | | [![Author Badge]](https://lab.flipper.net/apps/fdxb_maker) |
+| RFID Metal Detector | ![RFID Badge] | [by hnsvrdmn](https://github.com/hnsvrdmn/flipper-rfid-metal-detector)  |  | ![None Badge] |
 | Enhanced Sub-GHz Chat | ![SubGhz Badge] | [by twisted-pear](https://github.com/twisted-pear/esubghz_chat) |  | [![UFW Badge]](https://lab.flipper.net/apps/esubghz_chat) |
 | TPMS Reader | ![SubGhz Badge] | [by wosk](https://github.com/wosk/flipperzero-tpms/tree/main) |  | [![UFW Badge]](https://lab.flipper.net/apps/tpms) |
 | ShapShup | ![SubGhz Badge] | [by derskythe](https://github.com/derskythe/flipperzero-shapshup) | RAW files preview (+fixed app exit) | ![None Badge] |
