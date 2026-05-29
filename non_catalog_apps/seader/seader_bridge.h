@@ -9,11 +9,14 @@
 #include <furi.h>
 #include <furi_hal.h>
 
+#include "t_1_logic.h"
+
 // https://ww1.microchip.com/downloads/en/DeviceDoc/00001561C.pdf
-#define SEADER_UART_RX_BUF_SIZE (300)
+#define SEADER_UART_RX_BUF_SIZE (272)
 #define SEADER_CCID_SLOT_COUNT  (2U)
 
 typedef struct BitBuffer BitBuffer;
+typedef struct SeaderWorker SeaderWorker;
 
 typedef struct {
     uint8_t uart_ch;
@@ -39,20 +42,6 @@ typedef struct {
     SeaderCcidSlotState slots[SEADER_CCID_SLOT_COUNT];
 } SeaderCcidState;
 
-typedef struct {
-    /* ICC information field size for T=1. */
-    uint8_t ifsc;
-    /* Host NAD used for T=1 block exchange. */
-    uint8_t nad;
-    /* Last transmit I-block sequence bit. */
-    uint8_t send_pcb;
-    /* Last receive I-block sequence bit. */
-    uint8_t recv_pcb;
-    BitBuffer* tx_buffer;
-    size_t tx_buffer_offset;
-    BitBuffer* rx_buffer;
-} SeaderT1State;
-
 struct SeaderUartBridge {
     SeaderUartConfig cfg;
     SeaderUartConfig cfg_new;
@@ -67,7 +56,6 @@ struct SeaderUartBridge {
 
     SeaderUartState st;
 
-    uint8_t rx_buf[SEADER_UART_RX_BUF_SIZE];
     uint8_t tx_buf[SEADER_UART_RX_BUF_SIZE];
     size_t tx_len;
 
