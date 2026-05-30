@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `24 May 01:57 GMT +3`
+### Apps checked & updated at `30 May 23:56 GMT +3`
 
 
 # Default pack
@@ -249,6 +249,8 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | W5500 LAN Tester | ![GPIO Badge] | [by dok2d](https://github.com/dok2d/fz-W5500-lan-analyse) |  | [![Author Badge]](https://lab.flipper.net/apps/lan_tester) |
 | 24Cxx Programmer | ![GPIO Badge] | [by kamylwnb](https://github.com/kamylwnb/24cxxprog) |  | [![Author Badge]](https://lab.flipper.net/apps/24cxxprog) |
 | SSD1306 Test | ![GPIO Badge] | [by martinbogo](https://github.com/martinbogo/ssd1306_test) |  | ![None Badge] |
+| GPS Track | ![GPIO Badge] | [by xumbax](https://github.com/xumbax/GPS-Track) |  | ![None Badge] |
+| BME280 Vario | ![GPIO Badge] | [by xumbax](https://github.com/xumbax/flipper-vario) |  | ![None Badge] |
 | IR Remote | ![IR Badge] | [by Hong5489](https://github.com/Hong5489/ir_remote) | improvements [by friebel](https://github.com/RogueMaster/flipperzero-firmware-wPlugins/pull/535) - Hold Option, RAW support [by d4ve10](https://github.com/d4ve10/ir_remote/tree/infrared_hold_option) | ![None Badge] |
 | IR Intervalometer | ![IR Badge] | [by Nitepone](https://github.com/Nitepone/flipper-intervalometer) |  | [![UFW Badge]](https://lab.flipper.net/apps/sony_intervalometer) |
 | IR Xbox Controller | ![IR Badge] | [by gebeto](https://github.com/gebeto/flipper-xbox-controller) |  | [![Author Badge]](https://lab.flipper.net/apps/xbox_controller) |
