@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `30 May 23:56 GMT +3`
+### Apps checked & updated at `4 Jun 03:29 GMT +3`
 
 
 # Default pack
@@ -318,6 +318,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Sub Duplicate Finder | ![SubGhz Badge] | [by Endika](https://github.com/Endika/flipper-sub-dup) |  | [![Author Badge]](https://lab.flipper.net/apps/sub_dup_finder) |
 | Allstar Firefly 318ALD31K | ![SubGhz Badge] | [by jlaughter](https://github.com/jlaughter/flipper-allstar-firefly) |  | ![None Badge] |
 | wM-Buster| ![SubGhz Badge] | [by i12bp8](https://github.com/i12bp8/wmbuster) | EU wM-Bus listener | ![None Badge] |
+| Sub-GHz RAW Edit | ![SubGhz Badge] | [by Lechnio](https://github.com/Lechnio/SubGHz-RAW-Edit) |  | [![Author Badge]](https://lab.flipper.net/apps/subghz_raw_edit) |
 | Analog Clock | ![Tools Badge] | [by scrolltex](https://github.com/scrolltex/flipper_analog_clock) |  | [![UFW Badge]](https://lab.flipper.net/apps/analog_clock) |
 | Brainfuck interpreter | ![Tools Badge] | [by nymda](https://github.com/nymda/FlipperZeroBrainfuck) |  | [![UFW Badge]](https://lab.flipper.net/apps/brainfuck) |
 | Ceasar Cipher | ![Tools Badge] | [by panki27](https://github.com/panki27/caesar-cipher) |  | [![UFW Badge]](https://lab.flipper.net/apps/caesar_cipher) |
