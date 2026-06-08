@@ -20,6 +20,14 @@ typedef enum {
     Gen2PollerErrorAccess,
 } Gen2PollerError;
 
+// Gen2 sub-classification, refined from coarse to specific.
+typedef enum {
+    Gen2TypeUnknown, // Not a Gen2 card
+    Gen2TypeAts, // Recognised by a known magic ATS fingerprint
+    Gen2TypeCuid, // Block 0 directly writable (CUID), confirmed by write probe
+    Gen2TypeCuidStaticNonce, // CUID that also returns a static (non-random) nonce
+} Gen2Type;
+
 // Possible write problems, sorted by priority top to bottom
 typedef union {
     uint8_t all_problems;
@@ -79,6 +87,13 @@ typedef NfcCommand (*Gen2PollerCallback)(Gen2PollerEvent event, void* context);
 typedef struct Gen2Poller Gen2Poller;
 
 Gen2PollerError gen2_poller_detect(Nfc* nfc);
+
+// Detects whether the card is Gen2 and classifies its sub-type (ATS / CUID /
+// CUID with static nonce). Returns Gen2PollerErrorNone when any Gen2 type is found.
+Gen2PollerError gen2_poller_detect_type(Nfc* nfc, Gen2Type* type);
+
+// Human-readable label for a Gen2 sub-type (e.g. "Gen2: CUID").
+const char* gen2_type_get_name(Gen2Type type);
 
 Gen2Poller* gen2_poller_alloc(Nfc* nfc);
 

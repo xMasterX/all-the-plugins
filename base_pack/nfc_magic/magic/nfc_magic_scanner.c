@@ -22,6 +22,7 @@ struct NfcMagicScanner {
 
     Gen4Password gen4_password;
     Gen4* gen4_data;
+    Gen2Type gen2_type;
     bool magic_protocol_detected;
 
     NfcMagicScannerCallback callback;
@@ -39,6 +40,7 @@ static const NfcProtocol nfc_magic_scanner_not_magic_protocols[] = {
 static void nfc_magic_scanner_reset(NfcMagicScanner* instance) {
     instance->session_state = NfcMagicScannerSessionStateIdle;
     instance->current_protocol = NfcMagicProtocolGen1;
+    instance->gen2_type = Gen2TypeUnknown;
 }
 
 NfcMagicScanner* nfc_magic_scanner_alloc(Nfc* nfc) {
@@ -88,9 +90,11 @@ static int32_t nfc_magic_scanner_worker(void* context) {
                     break;
                 }
             } else if(instance->current_protocol == NfcMagicProtocolGen2) {
-                Gen2PollerError error = gen2_poller_detect(instance->nfc);
+                Gen2Type gen2_type = Gen2TypeUnknown;
+                Gen2PollerError error = gen2_poller_detect_type(instance->nfc, &gen2_type);
                 instance->magic_protocol_detected = (error == Gen2PollerErrorNone);
                 if(instance->magic_protocol_detected) {
+                    instance->gen2_type = gen2_type;
                     break;
                 }
             } else if(instance->current_protocol == NfcMagicProtocolClassic) {
@@ -107,6 +111,7 @@ static int32_t nfc_magic_scanner_worker(void* context) {
             NfcMagicScannerEvent event = {
                 .type = NfcMagicScannerEventTypeDetected,
                 .data.protocol = instance->current_protocol,
+                .data.gen2_type = instance->gen2_type,
             };
             instance->callback(event, instance->context);
             break;

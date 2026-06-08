@@ -109,6 +109,7 @@ struct NfcMagicApp {
 
     Nfc* nfc;
     NfcMagicProtocol protocol;
+    Gen2Type gen2_type;
     NfcMagicScanner* scanner;
     NfcPoller* poller;
     Gen1aPoller* gen1a_poller;

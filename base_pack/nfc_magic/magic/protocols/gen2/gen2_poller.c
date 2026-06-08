@@ -216,6 +216,174 @@ Gen2PollerError gen2_poller_detect(Nfc* nfc) {
     return detect_ctx.error;
 }
 
+// --- Gen2 sub-type classification (CUID write probe + static-nonce detection) ---
+
+#define GEN2_STATIC_NONCE_SAMPLES (3)
+
+// Default sector-0 keys tried for the CUID write probe. Blank/fresh magic cards
+// (and blank normal cards) use FF..FF; matching Proxmark3 we try B then A.
+typedef struct {
+    MfClassicKeyType key_type;
+    MfClassicKey key;
+} Gen2ProbeKey;
+
+static const Gen2ProbeKey gen2_cuid_probe_keys[] = {
+    {MfClassicKeyTypeB, {.data = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}}},
+    {MfClassicKeyTypeA, {.data = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}}},
+};
+
+typedef struct {
+    Gen2Poller* poller;
+    FuriThreadId thread_id;
+    MfClassicKey key;
+    MfClassicKeyType key_type;
+    bool cuid_writable;
+    MfClassicNt nt;
+    bool nt_valid;
+} Gen2DetectContext;
+
+static NfcCommand gen2_poller_cuid_probe_callback(NfcGenericEvent event, void* context) {
+    furi_assert(context);
+    furi_assert(event.event_data);
+    furi_assert(event.instance);
+
+    Gen2DetectContext* ctx = context;
+    Gen2Poller* instance = ctx->poller;
+    Iso14443_3aPollerEvent* iso3_event = event.event_data;
+    instance->iso3_poller = event.instance;
+    instance->auth_state = Gen2AuthStateIdle;
+
+    if(iso3_event->type == Iso14443_3aPollerEventTypeReady) {
+        Gen2PollerError error = gen2_poller_auth(instance, 0, &ctx->key, ctx->key_type, NULL);
+        if(error == Gen2PollerErrorNone) {
+            gen2_poller_probe_block0_writable(instance, &ctx->cuid_writable);
+            // The probe only sends the first write phase. The card is now awaiting
+            // the data phase, so we deliberately send nothing more and return Stop
+            // below to drop the field — block 0 is never written.
+        }
+    }
+
+    furi_thread_flags_set(ctx->thread_id, GEN2_POLLER_THREAD_FLAG_DETECTED);
+    return NfcCommandStop;
+}
+
+static NfcCommand gen2_poller_nt_probe_callback(NfcGenericEvent event, void* context) {
+    furi_assert(context);
+    furi_assert(event.event_data);
+    furi_assert(event.instance);
+
+    Gen2DetectContext* ctx = context;
+    Gen2Poller* instance = ctx->poller;
+    Iso14443_3aPollerEvent* iso3_event = event.event_data;
+    instance->iso3_poller = event.instance;
+    ctx->nt_valid = false;
+
+    if(iso3_event->type == Iso14443_3aPollerEventTypeReady) {
+        // Plain auth step 1 only: read the tag nonce, never complete the handshake.
+        // No key needed.
+        Gen2PollerError error = gen2_poller_get_nt(instance, 0, MfClassicKeyTypeA, &ctx->nt);
+        ctx->nt_valid = (error == Gen2PollerErrorNone);
+    }
+
+    furi_thread_flags_set(ctx->thread_id, GEN2_POLLER_THREAD_FLAG_DETECTED);
+    return NfcCommandStop;
+}
+
+// Runs one short poller session (a single card activation), so each call starts
+// from a fresh RF field — the reset that static-nonce detection relies on.
+static void gen2_poller_run_detect_session(
+    Gen2Poller* instance,
+    NfcGenericCallback callback,
+    Gen2DetectContext* ctx) {
+    ctx->thread_id = furi_thread_get_current_id();
+    nfc_poller_start(instance->poller, callback, ctx);
+    furi_thread_flags_wait(GEN2_POLLER_THREAD_FLAG_DETECTED, FuriFlagWaitAny, FuriWaitForever);
+    furi_thread_flags_clear(GEN2_POLLER_THREAD_FLAG_DETECTED);
+    nfc_poller_stop(instance->poller);
+}
+
+static bool gen2_poller_probe_cuid(Gen2Poller* instance) {
+    for(size_t i = 0; i < COUNT_OF(gen2_cuid_probe_keys); i++) {
+        Gen2DetectContext ctx = {
+            .poller = instance,
+            .key = gen2_cuid_probe_keys[i].key,
+            .key_type = gen2_cuid_probe_keys[i].key_type,
+            .cuid_writable = false,
+        };
+        gen2_poller_run_detect_session(instance, gen2_poller_cuid_probe_callback, &ctx);
+        if(ctx.cuid_writable) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool gen2_poller_probe_static_nonce(Gen2Poller* instance) {
+    MfClassicNt nonces[GEN2_STATIC_NONCE_SAMPLES];
+    size_t valid = 0;
+
+    for(size_t i = 0; i < GEN2_STATIC_NONCE_SAMPLES; i++) {
+        Gen2DetectContext ctx = {
+            .poller = instance,
+            .nt_valid = false,
+        };
+        gen2_poller_run_detect_session(instance, gen2_poller_nt_probe_callback, &ctx);
+        if(ctx.nt_valid) {
+            nonces[valid++] = ctx.nt;
+        }
+    }
+
+    // Need at least two readings to decide. A 32-bit random/PRNG nonce repeating
+    // across fresh activations is effectively impossible, so any repeat means the
+    // card emits a static nonce.
+    if(valid < 2) {
+        return false;
+    }
+    for(size_t i = 0; i < valid; i++) {
+        for(size_t j = i + 1; j < valid; j++) {
+            if(memcmp(nonces[i].data, nonces[j].data, sizeof(MfClassicNt)) == 0) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+Gen2PollerError gen2_poller_detect_type(Nfc* nfc, Gen2Type* type) {
+    furi_assert(nfc);
+    furi_assert(type);
+
+    *type = Gen2TypeUnknown;
+
+    // 1. Known-ATS fingerprint: cheap, no auth, identifies a recognisable subset.
+    if(gen2_poller_detect(nfc) == Gen2PollerErrorNone) {
+        *type = Gen2TypeAts;
+        return Gen2PollerErrorNone;
+    }
+
+    // 2. Behavioural CUID confirmation, then static-nonce classification.
+    Gen2Poller* instance = gen2_poller_alloc(nfc);
+    if(gen2_poller_probe_cuid(instance)) {
+        *type = gen2_poller_probe_static_nonce(instance) ? Gen2TypeCuidStaticNonce : Gen2TypeCuid;
+    }
+    gen2_poller_free(instance);
+
+    return (*type != Gen2TypeUnknown) ? Gen2PollerErrorNone : Gen2PollerErrorNotPresent;
+}
+
+const char* gen2_type_get_name(Gen2Type type) {
+    switch(type) {
+    case Gen2TypeCuid:
+        return "Gen2: CUID";
+    case Gen2TypeCuidStaticNonce:
+        return "Gen2: CUID Static Nonce (MF-3.2)";
+    case Gen2TypeAts:
+    case Gen2TypeUnknown:
+    default:
+        return "Gen2";
+    }
+}
+
 NfcCommand gen2_poller_idle_handler(Gen2Poller* instance) {
     furi_assert(instance);
 

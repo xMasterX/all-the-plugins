@@ -28,8 +28,10 @@ void nfc_magic_scene_magic_info_on_enter(void* context) {
         widget_add_string_element(
             widget, 0, 0, AlignLeft, AlignTop, FontPrimary, "Magic card detected!");
     }
-    furi_string_cat_printf(
-        message, "Magic Type: %s", nfc_magic_protocols_get_name(instance->protocol));
+    const char* type_name = (instance->protocol == NfcMagicProtocolGen2) ?
+                                gen2_type_get_name(instance->gen2_type) :
+                                nfc_magic_protocols_get_name(instance->protocol);
+    furi_string_cat_printf(message, "Magic Type: %s", type_name);
     widget_add_text_box_element(
         widget, 0, 10, 128, 54, AlignLeft, AlignTop, furi_string_get_cstr(message), false);
 

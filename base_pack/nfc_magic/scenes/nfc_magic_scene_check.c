@@ -7,6 +7,7 @@ void nfc_magic_check_worker_callback(NfcMagicScannerEvent event, void* context) 
 
     if(event.type == NfcMagicScannerEventTypeDetected) {
         instance->protocol = event.data.protocol;
+        instance->gen2_type = event.data.gen2_type;
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventWorkerSuccess);
     } else if(event.type == NfcMagicScannerEventTypeDetectedNotMagic) {

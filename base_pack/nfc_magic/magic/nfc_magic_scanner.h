@@ -3,6 +3,7 @@
 #include "protocols/gen4/gen4.h"
 #include <nfc/nfc.h>
 #include "protocols/nfc_magic_protocols.h"
+#include "protocols/gen2/gen2_poller.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,6 +17,7 @@ typedef enum {
 
 typedef struct {
     NfcMagicProtocol protocol;
+    Gen2Type gen2_type; // Valid when protocol == NfcMagicProtocolGen2
 } NfcMagicScannerEventData;
 
 typedef struct {
