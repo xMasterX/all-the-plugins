@@ -293,28 +293,34 @@ static NfcCommand gen2_poller_nt_probe_callback(NfcGenericEvent event, void* con
     return NfcCommandStop;
 }
 
-// Runs one short poller session (a single card activation), so each call starts
-// from a fresh RF field — the reset that static-nonce detection relies on.
+// Runs one detection session in its own freshly-allocated Gen2Poller, so each call
+// starts from a fresh RF field (the reset static-nonce detection relies on). A fresh
+// poller per session is mandatory, not just convenient: an NfcPoller can be started
+// only once. Stopping a session resets the shared Nfc config_state to Idle, and only
+// nfc_poller_alloc (via iso14443_3a_poller_alloc -> nfc_config) sets it back to Done,
+// so restarting the same poller would trip nfc_start's config_state check.
 static void gen2_poller_run_detect_session(
-    Gen2Poller* instance,
+    Nfc* nfc,
     NfcGenericCallback callback,
     Gen2DetectContext* ctx) {
+    ctx->poller = gen2_poller_alloc(nfc);
     ctx->thread_id = furi_thread_get_current_id();
-    nfc_poller_start(instance->poller, callback, ctx);
+    nfc_poller_start(ctx->poller->poller, callback, ctx);
     furi_thread_flags_wait(GEN2_POLLER_THREAD_FLAG_DETECTED, FuriFlagWaitAny, FuriWaitForever);
     furi_thread_flags_clear(GEN2_POLLER_THREAD_FLAG_DETECTED);
-    nfc_poller_stop(instance->poller);
+    nfc_poller_stop(ctx->poller->poller);
+    gen2_poller_free(ctx->poller);
+    ctx->poller = NULL;
 }
 
-static bool gen2_poller_probe_cuid(Gen2Poller* instance) {
+static bool gen2_poller_probe_cuid(Nfc* nfc) {
     for(size_t i = 0; i < COUNT_OF(gen2_cuid_probe_keys); i++) {
         Gen2DetectContext ctx = {
-            .poller = instance,
             .key = gen2_cuid_probe_keys[i].key,
             .key_type = gen2_cuid_probe_keys[i].key_type,
             .cuid_writable = false,
         };
-        gen2_poller_run_detect_session(instance, gen2_poller_cuid_probe_callback, &ctx);
+        gen2_poller_run_detect_session(nfc, gen2_poller_cuid_probe_callback, &ctx);
         if(ctx.cuid_writable) {
             return true;
         }
@@ -322,16 +328,15 @@ static bool gen2_poller_probe_cuid(Gen2Poller* instance) {
     return false;
 }
 
-static bool gen2_poller_probe_static_nonce(Gen2Poller* instance) {
+static bool gen2_poller_probe_static_nonce(Nfc* nfc) {
     MfClassicNt nonces[GEN2_STATIC_NONCE_SAMPLES];
     size_t valid = 0;
 
     for(size_t i = 0; i < GEN2_STATIC_NONCE_SAMPLES; i++) {
         Gen2DetectContext ctx = {
-            .poller = instance,
             .nt_valid = false,
         };
-        gen2_poller_run_detect_session(instance, gen2_poller_nt_probe_callback, &ctx);
+        gen2_poller_run_detect_session(nfc, gen2_poller_nt_probe_callback, &ctx);
         if(ctx.nt_valid) {
             nonces[valid++] = ctx.nt;
         }
@@ -372,12 +377,11 @@ Gen2PollerError gen2_poller_detect_type(Nfc* nfc, Gen2Type* type) {
         return Gen2PollerErrorNone;
     }
 
-    // 2. Behavioural CUID confirmation, then static-nonce classification.
-    Gen2Poller* instance = gen2_poller_alloc(nfc);
-    if(gen2_poller_probe_cuid(instance)) {
-        *type = gen2_poller_probe_static_nonce(instance) ? Gen2TypeCuidStaticNonce : Gen2TypeCuid;
+    // 2. Behavioural CUID confirmation, then static-nonce classification. Each probe
+    // runs in its own poller session (allocated per session in run_detect_session).
+    if(gen2_poller_probe_cuid(nfc)) {
+        *type = gen2_poller_probe_static_nonce(nfc) ? Gen2TypeCuidStaticNonce : Gen2TypeCuid;
     }
-    gen2_poller_free(instance);
 
     return (*type != Gen2TypeUnknown) ? Gen2PollerErrorNone : Gen2PollerErrorNotPresent;
 }
