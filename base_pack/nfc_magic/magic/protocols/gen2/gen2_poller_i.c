@@ -118,8 +118,13 @@ static Gen2PollerError gen2_poller_get_nt_common(
                 instance->tx_plain_buffer,
                 instance->rx_plain_buffer,
                 GEN2_POLLER_MAX_FWT);
+            // A bare tag nonce carries no CRC, so WrongCrc is the expected
+            // "success" here. Anything else - including a CRC-valid (None) frame,
+            // which is not a nonce - means no nonce was read; report it as an error
+            // so callers never treat an unwritten nt as valid.
             if(error != Iso14443_3aErrorWrongCrc) {
-                ret = mf_classic_process_error(error);
+                ret = (error == Iso14443_3aErrorNone) ? MfClassicErrorProtocol :
+                                                        mf_classic_process_error(error);
                 break;
             }
         }

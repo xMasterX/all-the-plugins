@@ -256,10 +256,14 @@ static NfcCommand gen2_poller_cuid_probe_callback(NfcGenericEvent event, void* c
     if(iso3_event->type == Iso14443_3aPollerEventTypeReady) {
         Gen2PollerError error = gen2_poller_auth(instance, 0, &ctx->key, ctx->key_type, NULL);
         if(error == Gen2PollerErrorNone) {
-            gen2_poller_probe_block0_writable(instance, &ctx->cuid_writable);
-            // The probe only sends the first write phase. The card is now awaiting
-            // the data phase, so we deliberately send nothing more and return Stop
-            // below to drop the field — block 0 is never written.
+            // The probe sends only the first write phase and reads the ACK/NAK.
+            // We never send the data phase: returning Stop below drops the field,
+            // so block 0 cannot be written whether the card ACKed or NAKed.
+            Gen2PollerError probe_error =
+                gen2_poller_probe_block0_writable(instance, &ctx->cuid_writable);
+            if(probe_error != Gen2PollerErrorNone) {
+                FURI_LOG_D(TAG, "Block 0 write probe did not complete: %d", probe_error);
+            }
         }
     }
 
@@ -337,6 +341,13 @@ static bool gen2_poller_probe_static_nonce(Gen2Poller* instance) {
     // across fresh activations is effectively impossible, so any repeat means the
     // card emits a static nonce.
     if(valid < 2) {
+        // Inconclusive (card removed / unstable RF): report not-static, but log it
+        // so a missed static-nonce classification can be diagnosed.
+        FURI_LOG_D(
+            TAG,
+            "Static-nonce check inconclusive: %u/%u valid samples",
+            (unsigned)valid,
+            GEN2_STATIC_NONCE_SAMPLES);
         return false;
     }
     for(size_t i = 0; i < valid; i++) {

@@ -22,7 +22,7 @@ typedef enum {
 
 // Gen2 sub-classification, refined from coarse to specific.
 typedef enum {
-    Gen2TypeUnknown, // Not a Gen2 card
+    Gen2TypeUnknown, // Not a Gen2 card, or Gen2 not yet classified
     Gen2TypeAts, // Recognised by a known magic ATS fingerprint
     Gen2TypeCuid, // Block 0 directly writable (CUID), confirmed by write probe
     Gen2TypeCuidStaticNonce, // CUID that also returns a static (non-random) nonce
