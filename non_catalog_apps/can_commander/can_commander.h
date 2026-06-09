@@ -16,7 +16,30 @@
 #include "libraries/can_commander_uart.h"
 #include "scenes_config/scene_functions.h"
 
-#define PROGRAM_VERSION "v2.0.0"
+#define PROGRAM_VERSION "v2.3.1"
+#define APP_FW_MIN_MAJOR 2U
+#define APP_FW_MIN_MINOR 2U
+#define APP_FW_MIN_STRING "v2.2"
+#define APP_FW_UPDATE_URL "www.cancommander.com"
+#define APP_DBC_CFG_MAX_SIGNALS 16U
+#define APP_DBC_CFG_MAX_MAPS    16U
+#define APP_DBC_CFG_LABEL_MAX   16U
+#define APP_DBC_CFG_SIGNAL_NAME_MAX 18U
+#define APP_CUSTOM_INJECT_SLOT_ARGS_MAX 320U
+#define APP_SMART_INJECT_PROFILE_EXT ".injprof"
+#define APP_SMART_INJECT_PROFILE_LEGACY_EXT ".cfg"
+#define APP_DBC_DECODE_PROFILE_EXT ".dbcprof"
+#define APP_DBC_DECODE_PROFILE_LEGACY_EXT ".dcfg"
+#define APP_SMART_INJECT_PROFILE_DIR APP_DATA_PATH("injection_profiles")
+#define APP_SMART_INJECT_PROFILE_LEGACY_DIR APP_DATA_PATH("slot_sets")
+#define APP_DBC_DECODE_PROFILE_DIR APP_DATA_PATH("dbc_profiles")
+#define APP_DBC_DECODE_PROFILE_LEGACY_DIR APP_DATA_PATH("dbc_configs")
+#define APP_SMART_INJECT_PROFILE_FILETYPE "CANCommanderInjectionProfile"
+#define APP_SMART_INJECT_PROFILE_LEGACY_FILETYPE "CANCommanderSlotSet"
+#define APP_DBC_DECODE_PROFILE_FILETYPE "CANCommanderDbcProfile"
+#define APP_DBC_DECODE_PROFILE_LEGACY_FILETYPE "CANCommanderDbcConfig"
+#define APP_SMART_INJECT_PROFILE_VER 1U
+#define APP_DBC_DECODE_PROFILE_VER 1U
 
 typedef enum {
     AppViewSubmenu = 0,
@@ -46,6 +69,7 @@ typedef enum {
     AppDashboardObdPid,
     AppDashboardDbcDecode,
     AppDashboardCustomInject,
+    AppDashboardReplay,
 } AppDashboardMode;
 
 typedef enum {
@@ -75,6 +99,20 @@ typedef struct App App;
 typedef void (*AppArgsApplyCallback)(App* app);
 
 typedef struct {
+    bool used;
+    int64_t raw;
+    char label[APP_DBC_CFG_LABEL_MAX];
+} AppDbcValueMap;
+
+typedef struct {
+    bool used;
+    CcDbcSignalDef def;
+    char signal_name[APP_DBC_CFG_SIGNAL_NAME_MAX];
+    uint8_t map_count;
+    AppDbcValueMap maps[APP_DBC_CFG_MAX_MAPS];
+} AppDbcSignalCache;
+
+typedef struct {
     char key[APP_ARGS_EDITOR_KEY_MAX];
     char value[APP_ARGS_EDITOR_VALUE_MAX];
     AppArgValueType type;
@@ -95,11 +133,14 @@ struct App {
     FuriMutex* mutex;
     FuriThread* rx_worker;
     bool rx_worker_stop;
+    bool app_ready;
 
     CcClient* client;
     bool connected;
     bool tool_active;
     bool monitor_scene_active;
+    bool monitor_update_pending;
+    uint32_t monitor_last_update_ms;
     AppDashboardMode dashboard_mode;
 
     FuriString* monitor_text;
@@ -121,8 +162,9 @@ struct App {
     char args_reverse_read[128];
     char args_obd_pid[96];
     char args_dbc_decode[64];
+    char args_replay[128];
     char args_custom_inject_start[64];
-    char args_custom_inject_slots[5][220];
+    char args_custom_inject_slots[5][APP_CUSTOM_INJECT_SLOT_ARGS_MAX];
     char args_custom_inject_bit[64];
     char args_custom_inject_clearbit[48];
     char args_custom_inject_field[80];
@@ -136,6 +178,7 @@ struct App {
 
     char args_dbc_add[220];
     char args_dbc_remove[48];
+    char args_wifi_cfg[192];
 
     char* args_editor_target;
     size_t args_editor_target_size;
@@ -172,6 +215,21 @@ struct App {
     char custom_inject_edit_mux_len[24];
     char custom_inject_edit_mux_value[24];
     char custom_inject_set_name[32];
+    char dbc_config_name[32];
+    char dbc_config_save_name[32];
+    AppDbcSignalCache* dbc_config_signals;
+    uint8_t dbc_config_signal_count;
+
+    uint8_t led_brightness;
+
+    bool fw_version_check_pending;
+    bool fw_version_received;
+    bool fw_version_checked;
+    bool fw_version_warn_pending;
+    bool fw_version_warn_shown;
+    uint8_t fw_version_major;
+    uint8_t fw_version_minor;
+    char fw_version_string[16];
 
     CcToolId pending_tool_start_id;
     char pending_tool_start_name[24];
@@ -186,6 +244,7 @@ bool app_args_set_key_value(char* args, size_t args_size, const char* key, const
 
 bool app_connect(App* app, bool force_reconnect);
 bool app_require_connected(App* app);
+void app_verify_firmware_version(App* app);
 
 void app_begin_edit(App* app, char* destination, size_t destination_size, const char* header_text);
 void app_apply_edit(App* app);
@@ -206,6 +265,8 @@ void app_begin_args_editor_apply(
 void app_action_ping(App* app);
 void app_action_get_info(App* app);
 void app_action_stats(App* app);
+void app_action_wifi_get_cfg(App* app);
+void app_action_wifi_set_cfg(App* app, const char* args);
 
 void app_action_start_read_all(App* app);
 void app_action_tool_start(App* app, CcToolId tool_id, const char* args, const char* label);
@@ -244,5 +305,10 @@ void app_action_dbc_clear(App* app);
 void app_action_dbc_add(App* app, const char* args);
 void app_action_dbc_remove(App* app, const char* args);
 void app_action_dbc_list(App* app);
+void app_dbc_config_reset(App* app);
+bool app_dbc_config_save_file(App* app, const char* config_name);
+bool app_dbc_config_load_file(App* app, const char* file_path, bool apply_to_firmware);
+const char* app_dbc_config_lookup_label(const App* app, uint16_t sid, int64_t raw);
+const char* app_dbc_config_lookup_signal_name(const App* app, uint16_t sid);
 
 int32_t cancommander_main(void* p);

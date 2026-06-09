@@ -568,14 +568,12 @@ static const DashboardUniqueEntry*
     return entry->valid ? entry : NULL;
 }
 
-static const DashboardDbcEntry* dashboard_dbc_get(const AppDashboardModel* model, uint8_t offset) {
-    if(!model || offset >= model->dbc_count) {
-        return NULL;
+static uint8_t dashboard_dbc_page_count(const AppDashboardModel* model) {
+    if(!model || model->dbc_signal_count == 0U) {
+        return 1U;
     }
 
-    const uint8_t index = dashboard_ring_newest_index(model->dbc_head, DASH_DBC_HISTORY, offset);
-    const DashboardDbcEntry* entry = &model->dbc_entries[index];
-    return entry->valid ? entry : NULL;
+    return (uint8_t)(1U + model->dbc_signal_count);
 }
 
 static const char* dashboard_custom_event_get(const AppDashboardModel* model, uint8_t offset) {
@@ -586,6 +584,101 @@ static const char* dashboard_custom_event_get(const AppDashboardModel* model, ui
     const uint8_t index =
         dashboard_ring_newest_index(model->custom_recent_head, DASH_CUSTOM_HISTORY, offset);
     return model->custom_recent[index];
+}
+
+static int8_t dashboard_dbc_find_signal_slot(const AppDashboardModel* model, uint16_t sid) {
+    if(!model) {
+        return -1;
+    }
+
+    for(uint8_t i = 0U; i < model->dbc_signal_count; i++) {
+        if(model->dbc_signals[i].sid == sid) {
+            return (int8_t)i;
+        }
+    }
+    return -1;
+}
+
+static void dashboard_dbc_sync_registered(AppDashboardModel* model, const App* app) {
+    if(!model || !app) {
+        return;
+    }
+
+    DashboardDbcEntry ordered[APP_DBC_CFG_MAX_SIGNALS] = {0};
+    uint8_t count = 0U;
+
+    for(uint8_t cfg_index = 0U; cfg_index < APP_DBC_CFG_MAX_SIGNALS && app->dbc_config_signals;
+        cfg_index++) {
+        const AppDbcSignalCache* cfg = &app->dbc_config_signals[cfg_index];
+        if(!cfg->used) {
+            continue;
+        }
+        if(count >= APP_DBC_CFG_MAX_SIGNALS) {
+            break;
+        }
+
+        DashboardDbcEntry seed = {0};
+        seed.sid = cfg->def.sid;
+        seed.bus = cfg->def.bus;
+        seed.frame_id = cfg->def.id;
+        seed.in_range = true;
+        if(cfg->signal_name[0] != '\0') {
+            strncpy(seed.signal_name, cfg->signal_name, sizeof(seed.signal_name) - 1U);
+            seed.signal_name[sizeof(seed.signal_name) - 1U] = '\0';
+        } else {
+            snprintf(seed.signal_name, sizeof(seed.signal_name), "SID%u", (unsigned)cfg->def.sid);
+            seed.signal_name[sizeof(seed.signal_name) - 1U] = '\0';
+        }
+        strncpy(seed.unit, cfg->def.unit, sizeof(seed.unit) - 1U);
+        seed.unit[sizeof(seed.unit) - 1U] = '\0';
+
+        const int8_t prev_slot = dashboard_dbc_find_signal_slot(model, cfg->def.sid);
+        if(prev_slot >= 0) {
+            ordered[count] = model->dbc_signals[(uint8_t)prev_slot];
+            if(ordered[count].sid == 0U) {
+                ordered[count].sid = cfg->def.sid;
+            }
+            if(ordered[count].bus > CcBusBoth) {
+                ordered[count].bus = cfg->def.bus;
+            }
+            if(ordered[count].frame_id == 0U) {
+                ordered[count].frame_id = cfg->def.id;
+            }
+            if(cfg->signal_name[0] != '\0') {
+                strncpy(
+                    ordered[count].signal_name,
+                    cfg->signal_name,
+                    sizeof(ordered[count].signal_name) - 1U);
+                ordered[count].signal_name[sizeof(ordered[count].signal_name) - 1U] = '\0';
+            } else if(ordered[count].signal_name[0] == '\0') {
+                snprintf(
+                    ordered[count].signal_name,
+                    sizeof(ordered[count].signal_name),
+                    "SID%u",
+                    (unsigned)cfg->def.sid);
+                ordered[count].signal_name[sizeof(ordered[count].signal_name) - 1U] = '\0';
+            }
+        } else {
+            ordered[count] = seed;
+        }
+        count++;
+    }
+
+    memset(model->dbc_signals, 0, sizeof(model->dbc_signals));
+    if(count > 0U) {
+        memcpy(model->dbc_signals, ordered, sizeof(DashboardDbcEntry) * count);
+    }
+    model->dbc_signal_count = count;
+
+    if(model->dbc_signal_selected >= model->dbc_signal_count) {
+        model->dbc_signal_selected =
+            (model->dbc_signal_count == 0U) ? 0U : (uint8_t)(model->dbc_signal_count - 1U);
+    }
+
+    const uint8_t max_page = (model->dbc_signal_count == 0U) ? 0U : model->dbc_signal_count;
+    if(model->mode_page > max_page) {
+        model->mode_page = max_page;
+    }
 }
 
 static void dashboard_format_id(bool ext, uint32_t id, char* out, size_t out_size) {
@@ -1058,50 +1151,26 @@ static void dashboard_metric_draw_unique(Canvas* canvas, const AppDashboardModel
 static void dashboard_metric_draw_dbc(Canvas* canvas, const AppDashboardModel* dashboard) {
     canvas_set_font(canvas, FontSecondary);
 
-    const uint8_t page = (uint8_t)(dashboard->mode_page % 2U);
+    const uint8_t page_count = dashboard_dbc_page_count(dashboard);
+    uint8_t page = dashboard->mode_page;
+    if(page >= page_count) {
+        page = 0U;
+    }
+
     if(page == 0U) {
-        canvas_draw_str_aligned(canvas, 64, 2, AlignCenter, AlignTop, "DBC Decode");
-        if(!dashboard->dbc_has_latest) {
+        canvas_draw_str_aligned(canvas, 64, 2, AlignCenter, AlignTop, "DBC Overview");
+
+        if(dashboard->dbc_signal_count == 0U) {
             canvas_draw_str_aligned(
-                canvas, 64, 26, AlignCenter, AlignCenter, "Waiting for decoded data");
-            canvas_draw_str_aligned(canvas, 64, 63, AlignCenter, AlignBottom, "L/R History");
+                canvas, 64, 28, AlignCenter, AlignCenter, "No registered signals");
+            canvas_draw_str_aligned(
+                canvas, 64, 63, AlignCenter, AlignBottom, "Add/load DBC config");
             return;
         }
 
-        char label[24] = {0};
-        char value[24] = {0};
-        char footer[40] = {0};
-        snprintf(label, sizeof(label), "SID %u", (unsigned)dashboard->dbc_latest.sid);
-        snprintf(value, sizeof(value), "%.2f", (double)dashboard->dbc_latest.value);
-        snprintf(
-            footer,
-            sizeof(footer),
-            "%s 0x%lX %s",
-            cc_bus_to_string(dashboard->dbc_latest.bus),
-            (unsigned long)dashboard->dbc_latest.frame_id,
-            dashboard->dbc_latest.in_range ? "ok" : "oor");
-
-        canvas_draw_rframe(canvas, 2, 12, 124, 50, 4);
-        canvas_set_font(canvas, FontSecondary);
-        canvas_draw_str_aligned(canvas, 64, 18, AlignCenter, AlignTop, label);
-        canvas_set_font(canvas, FontBigNumbers);
-        canvas_draw_str_aligned(canvas, 64, 38, AlignCenter, AlignCenter, value);
-        canvas_set_font(canvas, FontPrimary);
-        canvas_draw_str_aligned(
-            canvas, 64, 58, AlignCenter, AlignBottom, dashboard->dbc_latest.unit);
-        canvas_set_font(canvas, FontSecondary);
-        canvas_draw_str_aligned(canvas, 64, 63, AlignCenter, AlignBottom, footer);
-    } else {
-        canvas_draw_str_aligned(canvas, 64, 2, AlignCenter, AlignTop, "Recent Signals");
-        if(dashboard->dbc_count == 0U) {
-            canvas_draw_str_aligned(
-                canvas, 64, 26, AlignCenter, AlignCenter, "No decoded signals yet");
-            canvas_draw_str_aligned(canvas, 64, 63, AlignCenter, AlignBottom, "L/R Latest");
-            return;
-        }
-        uint8_t selected = dashboard->dbc_selected;
-        if(selected >= dashboard->dbc_count) {
-            selected = (uint8_t)(dashboard->dbc_count - 1U);
+        uint8_t selected = dashboard->dbc_signal_selected;
+        if(selected >= dashboard->dbc_signal_count) {
+            selected = (uint8_t)(dashboard->dbc_signal_count - 1U);
         }
 
         uint8_t start = 0U;
@@ -1110,51 +1179,121 @@ static void dashboard_metric_draw_dbc(Canvas* canvas, const AppDashboardModel* d
         }
 
         for(uint8_t i = 0U; i < 4U; i++) {
-            const uint8_t offset = (uint8_t)(start + i);
-            if(offset >= dashboard->dbc_count) {
+            const uint8_t signal_index = (uint8_t)(start + i);
+            if(signal_index >= dashboard->dbc_signal_count) {
                 break;
             }
 
-            const DashboardDbcEntry* entry = dashboard_dbc_get(dashboard, offset);
-            if(!entry) {
-                continue;
-            }
+            const DashboardDbcEntry* entry = &dashboard->dbc_signals[signal_index];
+            const char* signal_name = entry->signal_name[0] ? entry->signal_name : "Signal";
+            char signal_short[12] = {0};
+            strncpy(signal_short, signal_name, sizeof(signal_short) - 1U);
 
             char row[34] = {0};
-            snprintf(
-                row,
-                sizeof(row),
-                "%c S%u %.1f%s",
-                (offset == selected) ? '>' : ' ',
-                (unsigned)entry->sid,
-                (double)entry->value,
-                entry->unit);
-            canvas_draw_str(canvas, 2, (int32_t)(22 + i * 10U), row);
+            if(entry->valid) {
+                if(entry->mapped && entry->mapped_label[0] != '\0') {
+                    char mapped_short[12] = {0};
+                    strncpy(mapped_short, entry->mapped_label, sizeof(mapped_short) - 1U);
+                    snprintf(
+                        row,
+                        sizeof(row),
+                        "%c %s %s",
+                        (signal_index == selected) ? '>' : ' ',
+                        signal_short,
+                        mapped_short);
+                } else {
+                    snprintf(
+                        row,
+                        sizeof(row),
+                        "%c %s %.1f%s",
+                        (signal_index == selected) ? '>' : ' ',
+                        signal_short,
+                        (double)entry->value,
+                        entry->unit);
+                }
+            } else {
+                snprintf(
+                    row,
+                    sizeof(row),
+                    "%c %s --",
+                    (signal_index == selected) ? '>' : ' ',
+                    signal_short);
+            }
+            canvas_draw_str(canvas, 2, (int32_t)(18 + i * 11U), row);
         }
 
-        const DashboardDbcEntry* selected_entry = dashboard_dbc_get(dashboard, selected);
-        char footer[34] = {0};
-        if(selected_entry) {
-            snprintf(
-                footer,
-                sizeof(footer),
-                "%s 0x%lX %s",
-                cc_bus_to_string(selected_entry->bus),
-                (unsigned long)selected_entry->frame_id,
-                selected_entry->in_range ? "ok" : "oor");
-        }
+        char footer[40] = {0};
+        snprintf(
+            footer,
+            sizeof(footer),
+            "U/D Scroll  L/R Signal  %u/%u",
+            (unsigned)(page + 1U),
+            (unsigned)page_count);
         canvas_draw_str_aligned(canvas, 64, 63, AlignCenter, AlignBottom, footer);
+        return;
+    }
+
+    const uint8_t signal_index = (uint8_t)(page - 1U);
+    if(signal_index >= dashboard->dbc_signal_count) {
+        canvas_draw_str_aligned(canvas, 64, 30, AlignCenter, AlignCenter, "Invalid signal page");
+        return;
+    }
+
+    const DashboardDbcEntry* entry = &dashboard->dbc_signals[signal_index];
+    char title[24] = {0};
+    snprintf(title, sizeof(title), "Signal %u/%u", (unsigned)page, (unsigned)page_count);
+    canvas_draw_str_aligned(canvas, 64, 2, AlignCenter, AlignTop, title);
+
+    canvas_draw_rframe(canvas, 2, 12, 124, 50, 4);
+
+    const char* signal_name = entry->signal_name[0] ? entry->signal_name : "Signal";
+    canvas_draw_str_aligned(canvas, 64, 18, AlignCenter, AlignTop, signal_name);
+
+    if(!entry->valid) {
+        canvas_draw_str_aligned(canvas, 64, 39, AlignCenter, AlignCenter, "Waiting for data");
+        canvas_draw_str_aligned(canvas, 64, 63, AlignCenter, AlignBottom, "L/R Navigate");
+        return;
+    }
+
+    if(entry->mapped && entry->mapped_label[0] != '\0') {
+        char secondary[40] = {0};
+        if(entry->unit[0] != '\0') {
+            snprintf(
+                secondary,
+                sizeof(secondary),
+                "raw:%lld val:%.2f %s",
+                (long long)entry->raw,
+                (double)entry->value,
+                entry->unit);
+        } else {
+            snprintf(
+                secondary,
+                sizeof(secondary),
+                "raw:%lld val:%.2f",
+                (long long)entry->raw,
+                (double)entry->value);
+        }
+
+        canvas_set_font(canvas, FontPrimary);
+        canvas_draw_str_aligned(canvas, 64, 38, AlignCenter, AlignCenter, entry->mapped_label);
+        canvas_set_font(canvas, FontSecondary);
+        canvas_draw_str_aligned(canvas, 64, 56, AlignCenter, AlignBottom, secondary);
+    } else {
+        char value[24] = {0};
+        snprintf(value, sizeof(value), "%.2f", (double)entry->value);
+        canvas_set_font(canvas, FontBigNumbers);
+        canvas_draw_str_aligned(canvas, 64, 38, AlignCenter, AlignCenter, value);
+        canvas_set_font(canvas, FontPrimary);
+        canvas_draw_str_aligned(canvas, 64, 58, AlignCenter, AlignBottom, entry->unit);
     }
 }
 
 static void dashboard_metric_draw_reverse(Canvas* canvas, const AppDashboardModel* dashboard) {
-    canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str_aligned(canvas, 64, 2, AlignCenter, AlignTop, "Phase");
     canvas_set_font(canvas, FontPrimary);
     canvas_draw_str_aligned(
         canvas,
         64,
-        11,
+        2,
         AlignCenter,
         AlignTop,
         dashboard_reverse_phase_text(dashboard->reverse_phase));
@@ -1299,6 +1438,114 @@ static bool dashboard_metric_draw_obd(Canvas* canvas, const AppDashboardModel* d
     return true;
 }
 
+static void dashboard_metric_draw_replay(Canvas* canvas, const AppDashboardModel* dashboard) {
+    /*  Fixed layout (Y positions never change):
+     *    Y  2  Title
+     *    Y 14  Bus / ID line
+     *    Y 24  Frames line
+     *    Y 34  State-specific info line
+     *    Y 44  State-specific detail line
+     *    Y 63  Footer / controls
+     */
+
+    /* Row 0 — Title */
+    canvas_set_font(canvas, FontSecondary);
+    canvas_draw_str_aligned(canvas, 64, 2, AlignCenter, AlignTop, "CAN Replay");
+
+    /* Row 1 — Bus / ID (always shown) */
+    char id_text[16] = {0};
+    if(dashboard->replay_id[0] != '\0') {
+        snprintf(id_text, sizeof(id_text), "0x%s", dashboard->replay_id);
+    } else {
+        strncpy(id_text, "--", sizeof(id_text) - 1U);
+    }
+    char line_bus[42] = {0};
+    snprintf(
+        line_bus,
+        sizeof(line_bus),
+        "Bus:%s  ID:%s %s",
+        dashboard->replay_bus[0] ? dashboard->replay_bus : "--",
+        id_text,
+        dashboard->replay_ext ? "ext" : "std");
+    canvas_draw_str(canvas, 2, 19, line_bus);
+
+    /* Row 2 — Frames (always shown) */
+    char line_frames[32] = {0};
+    snprintf(
+        line_frames,
+        sizeof(line_frames),
+        "Frames: %u/%u",
+        (unsigned)dashboard->replay_frames,
+        (unsigned)dashboard->replay_max_frames);
+    canvas_draw_str(canvas, 2, 29, line_frames);
+
+    /* Row 3+4 — State-specific content */
+    if(dashboard->replay_state == 1U) {
+        /* RECORDING */
+        uint32_t elapsed_ms = 0U;
+        if(dashboard->replay_record_start_ms > 0U) {
+            elapsed_ms = furi_get_tick() - dashboard->replay_record_start_ms;
+        }
+        char rec_line[32] = {0};
+        snprintf(
+            rec_line,
+            sizeof(rec_line),
+            "** RECORDING **  %lu.%lus",
+            (unsigned long)(elapsed_ms / 1000U),
+            (unsigned long)((elapsed_ms / 100U) % 10U));
+        canvas_set_font(canvas, FontPrimary);
+        canvas_draw_str_aligned(canvas, 64, 38, AlignCenter, AlignCenter, rec_line);
+        canvas_set_font(canvas, FontSecondary);
+
+        canvas_draw_str_aligned(canvas, 64, 63, AlignCenter, AlignBottom, "Press [OK] to Stop");
+    } else if(dashboard->replay_state == 2U) {
+        /* REPLAYING */
+        char progress_line[32] = {0};
+        snprintf(
+            progress_line,
+            sizeof(progress_line),
+            "Frame: %u/%u",
+            (unsigned)dashboard->replay_progress,
+            (unsigned)dashboard->replay_total);
+        canvas_draw_str(canvas, 2, 39, progress_line);
+
+        uint32_t total_loops = dashboard->replay_count_cfg;
+        uint32_t current_loop = (total_loops >= dashboard->replay_remaining) ?
+                                    (total_loops - dashboard->replay_remaining + 1U) :
+                                    1U;
+        if(current_loop > total_loops) current_loop = total_loops;
+        char loop_line[32] = {0};
+        snprintf(
+            loop_line,
+            sizeof(loop_line),
+            "Loop: %lu/%lu",
+            (unsigned long)current_loop,
+            (unsigned long)total_loops);
+        canvas_draw_str(canvas, 2, 49, loop_line);
+
+        canvas_draw_str_aligned(
+            canvas, 64, 63, AlignCenter, AlignBottom, "[OK] or [DOWN] to Stop");
+    } else {
+        /* IDLE */
+        if(dashboard->replay_frames > 0U) {
+            char loops_line[32] = {0};
+            snprintf(
+                loops_line,
+                sizeof(loops_line),
+                "Loops: < %u >",
+                (unsigned)dashboard->replay_count_cfg);
+            canvas_draw_str(canvas, 2, 39, loops_line);
+
+            canvas_draw_str_aligned(
+                canvas, 64, 49, AlignCenter, AlignCenter, "[OK] Play  [UP] Clear");
+            canvas_draw_str_aligned(canvas, 64, 63, AlignCenter, AlignBottom, "[L/R] Loops");
+        } else {
+            canvas_draw_str_aligned(
+                canvas, 64, 63, AlignCenter, AlignBottom, "Press [OK] to Record");
+        }
+    }
+}
+
 static void
     dashboard_metric_draw_custom_inject(Canvas* canvas, const AppDashboardModel* dashboard) {
     canvas_set_font(canvas, FontSecondary);
@@ -1404,6 +1651,9 @@ void dashboard_metric_draw(Canvas* canvas, const AppDashboardModel* dashboard) {
     case AppDashboardCustomInject:
         dashboard_metric_draw_custom_inject(canvas, dashboard);
         return;
+    case AppDashboardReplay:
+        dashboard_metric_draw_replay(canvas, dashboard);
+        return;
     default:
         break;
     }
@@ -1456,6 +1706,12 @@ bool dashboard_metric_input(App* app, const InputEvent* event) {
     bool consumed = false;
     uint8_t inject_slot = 0xFFU;
     bool reverse_exclude_pre = false;
+    uint8_t replay_action = 0U;
+    uint16_t replay_count_for_play = 0U;
+    bool reverse_open_bittrack = false;
+    bool reverse_open_replay = false;
+    uint32_t reverse_selected_id = 0U;
+    bool reverse_selected_ext = false;
     bool write_resend = false;
     uint32_t write_counter_before_resend = 0U;
     with_view_model(
@@ -1466,7 +1722,8 @@ bool dashboard_metric_input(App* app, const InputEvent* event) {
                 (model->mode == AppDashboardWrite || model->mode == AppDashboardSpeed ||
                  model->mode == AppDashboardValtrack || model->mode == AppDashboardUniqueIds ||
                  model->mode == AppDashboardDbcDecode || model->mode == AppDashboardCustomInject ||
-                 model->mode == AppDashboardObdPid || model->mode == AppDashboardReverse);
+                 model->mode == AppDashboardObdPid || model->mode == AppDashboardReverse ||
+                 model->mode == AppDashboardReplay);
             if(mode_supported) {
                 const uint8_t key_bit = dashboard_input_key_bit(event->key);
                 if(event->type == InputTypeRelease) {
@@ -1481,8 +1738,46 @@ bool dashboard_metric_input(App* app, const InputEvent* event) {
                         model->input_hold_mask |= key_bit;
                     }
 
-                    if(model->mode == AppDashboardObdPid && model->obd_dtc_active &&
-                       (event->key == InputKeyLeft || event->key == InputKeyRight)) {
+                    if(model->mode == AppDashboardReplay) {
+                        if(!key_was_held) {
+                            if(model->replay_state == 0U) {
+                                if(event->key == InputKeyOk) {
+                                    if(model->replay_frames > 0U) {
+                                        replay_count_for_play = model->replay_count_cfg;
+                                        replay_action = 1U;
+                                    } else {
+                                        replay_action = 2U;
+                                    }
+                                    consumed = true;
+                                } else if(event->key == InputKeyUp && model->replay_frames > 0U) {
+                                    replay_action = 3U;
+                                    consumed = true;
+                                } else if(event->key == InputKeyLeft) {
+                                    if(model->replay_count_cfg > 1U) {
+                                        model->replay_count_cfg--;
+                                    }
+                                    consumed = true;
+                                } else if(event->key == InputKeyRight) {
+                                    if(model->replay_count_cfg < 99U) {
+                                        model->replay_count_cfg++;
+                                    }
+                                    consumed = true;
+                                }
+                            } else if(model->replay_state == 1U) {
+                                if(event->key == InputKeyOk) {
+                                    replay_action = 4U;
+                                    consumed = true;
+                                }
+                            } else if(model->replay_state == 2U) {
+                                if(event->key == InputKeyOk || event->key == InputKeyDown) {
+                                    replay_action = 4U;
+                                    consumed = true;
+                                }
+                            }
+                        }
+                    } else if(
+                        model->mode == AppDashboardObdPid && model->obd_dtc_active &&
+                        (event->key == InputKeyLeft || event->key == InputKeyRight)) {
                         if(!key_was_held) {
                             if(event->key == InputKeyRight) {
                                 model->obd_dtc_page = (uint8_t)((model->obd_dtc_page + 1U) % 4U);
@@ -1545,6 +1840,38 @@ bool dashboard_metric_input(App* app, const InputEvent* event) {
                         model->mode == AppDashboardReverse &&
                         (event->key == InputKeyLeft || event->key == InputKeyRight)) {
                         if(!key_was_held) {
+                            if((event->key == InputKeyRight || event->key == InputKeyLeft) &&
+                               model->reverse_phase == DASH_REVERSE_PHASE_MON &&
+                               model->reverse_count > 0U) {
+                                uint8_t selected = model->reverse_selected;
+                                if(selected >= model->reverse_count) {
+                                    selected = (uint8_t)(model->reverse_count - 1U);
+                                }
+                                reverse_selected_id = model->reverse_ids[selected];
+                                reverse_selected_ext = model->reverse_ext[selected];
+                                if(event->key == InputKeyRight) {
+                                    reverse_open_bittrack = true;
+                                } else {
+                                    reverse_open_replay = true;
+                                }
+                            }
+                            consumed = true;
+                        }
+                    } else if(
+                        model->mode == AppDashboardDbcDecode &&
+                        (event->key == InputKeyLeft || event->key == InputKeyRight)) {
+                        if(!key_was_held) {
+                            const uint8_t page_count = dashboard_dbc_page_count(model);
+                            if(event->key == InputKeyRight) {
+                                model->mode_page =
+                                    (uint8_t)((model->mode_page + 1U >= page_count) ?
+                                                  0U :
+                                                  (model->mode_page + 1U));
+                            } else {
+                                model->mode_page = (uint8_t)((model->mode_page == 0U) ?
+                                                                 (page_count - 1U) :
+                                                                 (model->mode_page - 1U));
+                            }
                             consumed = true;
                         }
                     } else if(event->key == InputKeyOk && model->mode == AppDashboardWrite) {
@@ -1563,6 +1890,11 @@ bool dashboard_metric_input(App* app, const InputEvent* event) {
                             inject_slot = model->custom_selected_slot;
                             consumed = true;
                         }
+                    } else if(event->key == InputKeyOk && model->mode == AppDashboardDbcDecode) {
+                        if(!key_was_held) {
+                            model->mode_page = 0U;
+                            consumed = true;
+                        }
                     } else if(event->key == InputKeyOk && model->mode_page == 1U) {
                         if(!key_was_held) {
                             if(model->mode == AppDashboardSpeed) {
@@ -1571,8 +1903,6 @@ bool dashboard_metric_input(App* app, const InputEvent* event) {
                                 model->val_selected = 0U;
                             } else if(model->mode == AppDashboardUniqueIds) {
                                 model->unique_selected = 0U;
-                            } else if(model->mode == AppDashboardDbcDecode) {
-                                model->dbc_selected = 0U;
                             } else if(model->mode == AppDashboardCustomInject) {
                                 model->custom_selected_slot =
                                     app_custom_inject_get_active_slot(app);
@@ -1619,11 +1949,12 @@ bool dashboard_metric_input(App* app, const InputEvent* event) {
                                     consumed = true;
                                 }
                             } else if(model->mode == AppDashboardDbcDecode) {
-                                if(model->mode_page == 1U && model->dbc_count > 0U) {
-                                    if(up && model->dbc_selected + 1U < model->dbc_count) {
-                                        model->dbc_selected++;
-                                    } else if(!up && model->dbc_selected > 0U) {
-                                        model->dbc_selected--;
+                                if(model->mode_page == 0U && model->dbc_signal_count > 0U) {
+                                    if(up &&
+                                       model->dbc_signal_selected + 1U < model->dbc_signal_count) {
+                                        model->dbc_signal_selected++;
+                                    } else if(!up && model->dbc_signal_selected > 0U) {
+                                        model->dbc_signal_selected--;
                                     }
                                     consumed = true;
                                 }
@@ -1652,12 +1983,87 @@ bool dashboard_metric_input(App* app, const InputEvent* event) {
         },
         true);
 
+    if(replay_action == 1U) {
+        char cmd[48] = {0};
+        snprintf(
+            cmd, sizeof(cmd), "cmd=replay count=%u speed=100", (unsigned)replay_count_for_play);
+        app_action_tool_config(app, cmd);
+    } else if(replay_action == 2U) {
+        app_action_tool_config(app, "cmd=record");
+    } else if(replay_action == 3U) {
+        app_action_tool_config(app, "cmd=clear");
+    } else if(replay_action == 4U) {
+        app_action_tool_config(app, "cmd=stop");
+    }
+
     if(inject_slot < 5U) {
         app_custom_inject_set_active_slot(app, inject_slot);
         app_action_custom_inject_inject(app, (uint8_t)(inject_slot + 1U));
     }
     if(reverse_exclude_pre) {
         app_action_tool_config(app, "exclude_pre=1");
+    }
+    if(reverse_open_bittrack) {
+        char bus_name[16] = {0};
+        if(!dashboard_arg_get_value_last(
+               app->args_reverse_auto, "bus", bus_name, sizeof(bus_name))) {
+            strncpy(bus_name, "can0", sizeof(bus_name) - 1U);
+        }
+        if(strcmp(bus_name, "can0") != 0 && strcmp(bus_name, "can1") != 0 &&
+           strcmp(bus_name, "both") != 0) {
+            strncpy(bus_name, "can0", sizeof(bus_name) - 1U);
+        }
+
+        char id_text[12] = {0};
+        if(reverse_selected_ext) {
+            snprintf(id_text, sizeof(id_text), "%08lX", (unsigned long)reverse_selected_id);
+        } else {
+            snprintf(
+                id_text, sizeof(id_text), "%03lX", (unsigned long)(reverse_selected_id & 0x7FFU));
+        }
+
+        snprintf(
+            app->args_bittrack,
+            sizeof(app->args_bittrack),
+            "bus=%s id=%s ext=%u",
+            bus_name,
+            id_text,
+            reverse_selected_ext ? 1U : 0U);
+        app->args_bittrack[sizeof(app->args_bittrack) - 1U] = '\0';
+
+        app_action_tool_stop(app);
+        app_action_tool_start(app, CcToolBittrack, app->args_bittrack, "bittrack");
+    }
+    if(reverse_open_replay) {
+        char bus_name[16] = {0};
+        if(!dashboard_arg_get_value_last(
+               app->args_reverse_auto, "bus", bus_name, sizeof(bus_name))) {
+            strncpy(bus_name, "can0", sizeof(bus_name) - 1U);
+        }
+        if(strcmp(bus_name, "can0") != 0 && strcmp(bus_name, "can1") != 0 &&
+           strcmp(bus_name, "both") != 0) {
+            strncpy(bus_name, "can0", sizeof(bus_name) - 1U);
+        }
+
+        char id_text[12] = {0};
+        if(reverse_selected_ext) {
+            snprintf(id_text, sizeof(id_text), "%08lX", (unsigned long)reverse_selected_id);
+        } else {
+            snprintf(
+                id_text, sizeof(id_text), "%03lX", (unsigned long)(reverse_selected_id & 0x7FFU));
+        }
+
+        snprintf(
+            app->args_replay,
+            sizeof(app->args_replay),
+            "bus=%s id=%s ext=%u",
+            bus_name,
+            id_text,
+            reverse_selected_ext ? 1U : 0U);
+        app->args_replay[sizeof(app->args_replay) - 1U] = '\0';
+
+        app_action_tool_stop(app);
+        app_action_tool_start(app, CcToolReplay, app->args_replay, "replay");
     }
     if(write_resend) {
         app_action_tool_start(app, CcToolWrite, app->args_write_tool, "write");
@@ -1757,7 +2163,7 @@ void dashboard_update_obd(App* app, const CcEvent* event) {
                     model->note[sizeof(model->note) - 1U] = '\0';
                 }
             },
-            true);
+            false);
         return;
     }
 
@@ -1770,7 +2176,7 @@ void dashboard_update_obd(App* app, const CcEvent* event) {
                 model->obd_dtc_complete = false;
                 model->obd_dtc_page = 0U;
             },
-            true);
+            false);
     }
 
     char label[32] = {0};
@@ -1838,7 +2244,7 @@ void dashboard_update_obd(App* app, const CcEvent* event) {
             strncpy(model->note, note, sizeof(model->note) - 1U);
             model->note[sizeof(model->note) - 1U] = '\0';
         },
-        true);
+        false);
 }
 
 void dashboard_update_write(App* app, const CcEvent* event) {
@@ -1886,7 +2292,7 @@ void dashboard_update_write(App* app, const CcEvent* event) {
 
             model->note[sizeof(model->note) - 1U] = '\0';
         },
-        true);
+        false);
 }
 
 void dashboard_update_speed(App* app, const CcEvent* event) {
@@ -1953,7 +2359,7 @@ void dashboard_update_speed(App* app, const CcEvent* event) {
                 model->note[sizeof(model->note) - 1U] = '\0';
             }
         },
-        true);
+        false);
 }
 
 void dashboard_update_valtrack(App* app, const CcEvent* event) {
@@ -2026,7 +2432,7 @@ void dashboard_update_valtrack(App* app, const CcEvent* event) {
             model->unit[sizeof(model->unit) - 1U] = '\0';
             model->note[sizeof(model->note) - 1U] = '\0';
         },
-        true);
+        false);
 }
 
 void dashboard_update_unique_ids(App* app, const CcEvent* event) {
@@ -2099,7 +2505,7 @@ void dashboard_update_unique_ids(App* app, const CcEvent* event) {
             }
             model->note[sizeof(model->note) - 1U] = '\0';
         },
-        true);
+        false);
 }
 
 void dashboard_update_reverse(App* app, const CcEvent* event) {
@@ -2164,7 +2570,7 @@ void dashboard_update_reverse(App* app, const CcEvent* event) {
             strncpy(model->note, text, sizeof(model->note) - 1U);
             model->note[sizeof(model->note) - 1U] = '\0';
         },
-        true);
+        false);
 }
 
 void dashboard_update_dbc_decode(App* app, const CcEvent* event) {
@@ -2182,10 +2588,30 @@ void dashboard_update_dbc_decode(App* app, const CcEvent* event) {
             slot->sid = event->data.dbc_decode.sid;
             slot->bus = event->data.dbc_decode.bus;
             slot->frame_id = event->data.dbc_decode.frame_id;
+            slot->raw = event->data.dbc_decode.raw;
             slot->value = event->data.dbc_decode.value;
             slot->in_range = event->data.dbc_decode.in_range;
             strncpy(slot->unit, event->data.dbc_decode.unit, sizeof(slot->unit) - 1U);
             slot->unit[sizeof(slot->unit) - 1U] = '\0';
+            const char* signal_name = app_dbc_config_lookup_signal_name(app, slot->sid);
+            if(signal_name && signal_name[0] != '\0') {
+                strncpy(slot->signal_name, signal_name, sizeof(slot->signal_name) - 1U);
+                slot->signal_name[sizeof(slot->signal_name) - 1U] = '\0';
+            } else {
+                snprintf(
+                    slot->signal_name, sizeof(slot->signal_name), "SID%u", (unsigned)slot->sid);
+                slot->signal_name[sizeof(slot->signal_name) - 1U] = '\0';
+            }
+            const char* mapped_label =
+                app_dbc_config_lookup_label(app, slot->sid, event->data.dbc_decode.raw);
+            if(mapped_label && mapped_label[0] != '\0') {
+                slot->mapped = true;
+                strncpy(slot->mapped_label, mapped_label, sizeof(slot->mapped_label) - 1U);
+                slot->mapped_label[sizeof(slot->mapped_label) - 1U] = '\0';
+            } else {
+                slot->mapped = false;
+                slot->mapped_label[0] = '\0';
+            }
 
             model->dbc_latest = *slot;
             model->dbc_has_latest = true;
@@ -2197,23 +2623,48 @@ void dashboard_update_dbc_decode(App* app, const CcEvent* event) {
                 model->dbc_selected = 0U;
             }
 
+            dashboard_dbc_sync_registered(model, app);
+            const int8_t signal_slot = dashboard_dbc_find_signal_slot(model, slot->sid);
+            if(signal_slot >= 0) {
+                model->dbc_signals[(uint8_t)signal_slot] = *slot;
+            }
+
             strncpy(model->title, "DBC DECODE", sizeof(model->title) - 1U);
             model->title[sizeof(model->title) - 1U] = '\0';
-            snprintf(
-                model->label, sizeof(model->label), "SID %u", (unsigned)event->data.dbc_decode.sid);
-            snprintf(
-                model->value, sizeof(model->value), "%.2f", (double)event->data.dbc_decode.value);
-            strncpy(model->unit, event->data.dbc_decode.unit, sizeof(model->unit) - 1U);
-            model->unit[sizeof(model->unit) - 1U] = '\0';
-            snprintf(
-                model->note,
-                sizeof(model->note),
-                "%s 0x%lX %s",
-                cc_bus_to_string(event->data.dbc_decode.bus),
-                (unsigned long)event->data.dbc_decode.frame_id,
-                event->data.dbc_decode.in_range ? "ok" : "oor");
+            strncpy(model->label, slot->signal_name, sizeof(model->label) - 1U);
+            model->label[sizeof(model->label) - 1U] = '\0';
+            if(slot->mapped && slot->mapped_label[0] != '\0') {
+                strncpy(model->value, slot->mapped_label, sizeof(model->value) - 1U);
+                model->value[sizeof(model->value) - 1U] = '\0';
+                snprintf(model->unit, sizeof(model->unit), "raw:%lld", (long long)slot->raw);
+            } else {
+                snprintf(
+                    model->value,
+                    sizeof(model->value),
+                    "%.2f",
+                    (double)event->data.dbc_decode.value);
+                strncpy(model->unit, event->data.dbc_decode.unit, sizeof(model->unit) - 1U);
+                model->unit[sizeof(model->unit) - 1U] = '\0';
+            }
+            if(slot->mapped) {
+                snprintf(
+                    model->note,
+                    sizeof(model->note),
+                    "%s 0x%lX raw:%lld",
+                    cc_bus_to_string(event->data.dbc_decode.bus),
+                    (unsigned long)event->data.dbc_decode.frame_id,
+                    (long long)slot->raw);
+            } else {
+                snprintf(
+                    model->note,
+                    sizeof(model->note),
+                    "%s 0x%lX %s",
+                    cc_bus_to_string(event->data.dbc_decode.bus),
+                    (unsigned long)event->data.dbc_decode.frame_id,
+                    event->data.dbc_decode.in_range ? "ok" : "oor");
+            }
         },
-        true);
+        false);
 }
 
 static void dashboard_custom_push_event(AppDashboardModel* model, const char* text) {
@@ -2377,6 +2828,116 @@ void dashboard_update_custom_inject(App* app, const CcEvent* event) {
             model->unit[0] = '\0';
             strncpy(model->note, text, sizeof(model->note) - 1U);
             model->note[sizeof(model->note) - 1U] = '\0';
+        },
+        false);
+}
+
+void dashboard_update_replay(App* app, const CcEvent* event) {
+    if(!event || event->type != CcEventTypeTool || event->data.tool.tool != CcToolReplay) {
+        return;
+    }
+
+    char text[sizeof(event->data.tool.text)] = {0};
+    strncpy(text, event->data.tool.text, sizeof(text) - 1U);
+    dashboard_trim_inplace(text);
+
+    with_view_model(
+        app->dashboard_view,
+        AppDashboardModel * model,
+        {
+            char bus_name[16] = {0};
+            unsigned long frame_id = 0;
+            char ext_std[8] = {0};
+            unsigned max_frames = 0U;
+            unsigned frame_count = 0U;
+            unsigned total_frames = 0U;
+            unsigned count = 0U;
+            unsigned speed = 0U;
+            unsigned progress = 0U;
+            unsigned remaining = 0U;
+            unsigned fr_used = 0U;
+            unsigned fr_max = 0U;
+            char state_str[16] = {0};
+
+            if(sscanf(
+                   text,
+                   "ready bus=%15s id=0x%lx %7s (max %u frames)",
+                   bus_name,
+                   &frame_id,
+                   ext_std,
+                   &max_frames) == 4) {
+                model->replay_state = 0U;
+                strncpy(model->replay_bus, bus_name, sizeof(model->replay_bus) - 1U);
+                model->replay_bus[sizeof(model->replay_bus) - 1U] = '\0';
+                if(ext_std[0] == 'e' || ext_std[0] == 'E') {
+                    snprintf(
+                        model->replay_id,
+                        sizeof(model->replay_id),
+                        "%08lX",
+                        (unsigned long)frame_id);
+                    model->replay_ext = true;
+                } else {
+                    snprintf(
+                        model->replay_id,
+                        sizeof(model->replay_id),
+                        "%03lX",
+                        (unsigned long)(frame_id & 0x7FFU));
+                    model->replay_ext = false;
+                }
+                model->replay_max_frames = (uint16_t)max_frames;
+                model->replay_frames = 0U;
+            } else if(strstr(text, "recording started")) {
+                model->replay_state = 1U;
+                model->replay_frames = 0U;
+                model->replay_record_start_ms = furi_get_tick();
+            } else if(sscanf(text, "recording stopped frames=%u", &frame_count) == 1) {
+                model->replay_state = 0U;
+                model->replay_frames = (uint16_t)frame_count;
+            } else if(sscanf(text, "buffer full (%u frames)", &frame_count) == 1) {
+                model->replay_state = 0U;
+                model->replay_frames = (uint16_t)frame_count;
+            } else if(
+                sscanf(
+                    text,
+                    "replay started frames=%u count=%u speed=%u",
+                    &total_frames,
+                    &count,
+                    &speed) == 3) {
+                model->replay_state = 2U;
+                model->replay_total = (uint16_t)total_frames;
+                model->replay_remaining = (uint32_t)count;
+                model->replay_progress = 0U;
+            } else if(strstr(text, "replay complete")) {
+                model->replay_state = 0U;
+            } else if(sscanf(text, "state=%15s frames=%u/%u", state_str, &fr_used, &fr_max) == 3) {
+                model->replay_frames = (uint16_t)fr_used;
+                model->replay_max_frames = (uint16_t)fr_max;
+                if(dashboard_ieq(state_str, "idle")) {
+                    model->replay_state = 0U;
+                } else if(dashboard_ieq(state_str, "recording")) {
+                    model->replay_state = 1U;
+                } else if(dashboard_ieq(state_str, "replaying")) {
+                    model->replay_state = 2U;
+                }
+            } else if(
+                sscanf(
+                    text,
+                    "progress=%u/%u remaining_loops=%u",
+                    &progress,
+                    &total_frames,
+                    &remaining) == 3) {
+                model->replay_progress = (uint16_t)progress;
+                model->replay_total = (uint16_t)total_frames;
+                model->replay_remaining = (uint32_t)remaining;
+            } else if(strstr(text, "recording cleared")) {
+                model->replay_frames = 0U;
+                model->replay_state = 0U;
+            } else if(strstr(text, "frames=")) {
+                unsigned f = 0U;
+                if(sscanf(strstr(text, "frames="), "frames=%u", &f) == 1) {
+                    model->replay_frames = (uint16_t)f;
+                }
+            }
         },
         true);
 }

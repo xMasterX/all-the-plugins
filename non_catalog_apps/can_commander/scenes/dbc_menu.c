@@ -5,6 +5,7 @@ typedef enum {
     DbcAdd,
     DbcRemove,
     DbcList,
+    DbcSaveConfig,
 } DbcMenuIndex;
 
 static void cancommander_scene_dbc_menu_callback(void* context, uint32_t index) {
@@ -29,6 +30,12 @@ void cancommander_scene_dbc_menu_on_enter(void* context) {
     submenu_add_item(app->submenu, "DBC Add", DbcAdd, cancommander_scene_dbc_menu_callback, app);
     submenu_add_item(app->submenu, "DBC Remove", DbcRemove, cancommander_scene_dbc_menu_callback, app);
     submenu_add_item(app->submenu, "DBC List", DbcList, cancommander_scene_dbc_menu_callback, app);
+    submenu_add_item(
+        app->submenu,
+        "Save DBC Profile",
+        DbcSaveConfig,
+        cancommander_scene_dbc_menu_callback,
+        app);
 
     submenu_set_selected_item(
         app->submenu, scene_manager_get_scene_state(app->scene_manager, cancommander_scene_dbc_menu));
@@ -77,6 +84,10 @@ bool cancommander_scene_dbc_menu_on_event(void* context, SceneManagerEvent event
     case DbcList:
         app_action_dbc_list(app);
         break;
+
+    case DbcSaveConfig:
+        scene_manager_next_scene(app->scene_manager, cancommander_scene_dbc_save_config_menu);
+        return true;
 
     default:
         return false;

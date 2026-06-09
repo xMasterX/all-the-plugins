@@ -12,18 +12,30 @@
 
 #include "libraries/missing_api.h"
 
-#define APP_MONITOR_KEEP_MAX  4096U
-#define APP_MONITOR_KEEP_TAIL 2500U
+#define APP_MONITOR_KEEP_MAX  1500U
+#define APP_MONITOR_KEEP_TAIL 1000U
+#define APP_ARGS_KV_WORK_MAX  (APP_CUSTOM_INJECT_SLOT_ARGS_MAX + 128U)
 
-#define APP_RX_THREAD_STACK    (3U * 1024U)
-#define APP_RX_THREAD_INTERVAL 20U
+#define APP_RX_THREAD_STACK      (3U * 1024U)
+#define APP_RX_THREAD_INTERVAL   5U
+#define APP_RX_EVENT_BUDGET      192U
+#define APP_RX_EVENT_YIELD_EVERY 24U
+#define APP_RX_DASH_EVENT_BUDGET 16U
+#define APP_UI_TICK_INTERVAL_MS  50U
 
-#define APP_CUSTOM_INJECT_CFG_PATH APP_DATA_PATH("custom_inject.cfg")
-#define APP_CUSTOM_INJECT_CFG_TYPE "CANCommanderCustomInject"
-#define APP_CUSTOM_INJECT_CFG_VER  1U
-#define APP_CUSTOM_INJECT_SET_DIR  APP_DATA_PATH("slot_sets")
-#define APP_CUSTOM_INJECT_SET_TYPE "CANCommanderSlotSet"
-#define APP_CUSTOM_INJECT_SET_VER  1U
+#define APP_CUSTOM_INJECT_CFG_PATH        APP_DATA_PATH("custom_inject.cfg")
+#define APP_CUSTOM_INJECT_CFG_TYPE        "CANCommanderCustomInject"
+#define APP_CUSTOM_INJECT_CFG_VER         1U
+#define APP_CUSTOM_INJECT_SET_DIR         APP_SMART_INJECT_PROFILE_DIR
+#define APP_CUSTOM_INJECT_SET_LEGACY_DIR  APP_SMART_INJECT_PROFILE_LEGACY_DIR
+#define APP_CUSTOM_INJECT_SET_TYPE        APP_SMART_INJECT_PROFILE_FILETYPE
+#define APP_CUSTOM_INJECT_SET_LEGACY_TYPE APP_SMART_INJECT_PROFILE_LEGACY_FILETYPE
+#define APP_CUSTOM_INJECT_SET_VER         APP_SMART_INJECT_PROFILE_VER
+#define APP_DBC_CONFIG_DIR                APP_DBC_DECODE_PROFILE_DIR
+#define APP_DBC_CONFIG_LEGACY_DIR         APP_DBC_DECODE_PROFILE_LEGACY_DIR
+#define APP_DBC_CONFIG_TYPE               APP_DBC_DECODE_PROFILE_FILETYPE
+#define APP_DBC_CONFIG_LEGACY_TYPE        APP_DBC_DECODE_PROFILE_LEGACY_FILETYPE
+#define APP_DBC_CONFIG_VER                APP_DBC_DECODE_PROFILE_VER
 
 static void app_free(App* app);
 
@@ -184,6 +196,46 @@ static bool parse_float_key(const char* args, const char* key, float* out) {
     }
 
     *out = parsed;
+    return true;
+}
+
+static bool parse_i64_text(const char* text, int64_t* out) {
+    if(!text || !out || text[0] == '\0') {
+        return false;
+    }
+
+    bool negative = false;
+    const char* p = text;
+    if(*p == '+' || *p == '-') {
+        negative = (*p == '-');
+        p++;
+    }
+    if(*p == '\0') {
+        return false;
+    }
+
+    char* end = NULL;
+    unsigned long long magnitude = strtoull(p, &end, 0);
+    if(end == p || *end != '\0') {
+        return false;
+    }
+
+    if(!negative) {
+        if(magnitude > 0x7FFFFFFFFFFFFFFFULL) {
+            return false;
+        }
+        *out = (int64_t)magnitude;
+        return true;
+    }
+
+    if(magnitude > 0x8000000000000000ULL) {
+        return false;
+    }
+    if(magnitude == 0x8000000000000000ULL) {
+        *out = INT64_MIN;
+    } else {
+        *out = -(int64_t)magnitude;
+    }
     return true;
 }
 
@@ -710,27 +762,80 @@ static int32_t app_rx_worker_thread(void* context) {
                 app->tool_active = false;
                 app_custom_inject_mark_all_unprovisioned(app);
                 app_append_monitor(app, "[uart] disconnected while polling");
-                view_dispatcher_send_custom_event(
-                    app->view_dispatcher, AppCustomEventMonitorUpdated);
+                if(furi_mutex_acquire(app->mutex, FuriWaitForever) == FuriStatusOk) {
+                    app->monitor_update_pending = true;
+                    furi_mutex_release(app->mutex);
+                }
             } else {
                 CcEvent event = {0};
                 bool updated = false;
+                const bool dashboard_mode_active = app_monitor_uses_dashboard(app);
+                uint16_t processed = 0U;
+                uint16_t dashboard_processed = 0U;
 
-                while(cc_client_pop_event(app->client, &event)) {
-                    const bool dashboard_consumed = dashboard_handle_event(app, &event);
-                    const bool append_to_monitor =
-                        !(dashboard_consumed && app_monitor_uses_dashboard(app));
+                while(processed < APP_RX_EVENT_BUDGET &&
+                      cc_client_pop_event(app->client, &event)) {
+                    if(app->fw_version_check_pending && event.type == CcEventTypeStatus &&
+                       event.data.status.len >= 3U && event.data.status.len < 16U) {
+                        const uint8_t major = event.data.status.payload[0];
+                        const uint8_t minor = event.data.status.payload[1];
+                        const uint8_t slen = event.data.status.payload[2];
+                        if(slen < sizeof(app->fw_version_string) &&
+                           (uint16_t)(3U + slen) == event.data.status.len) {
+                            app->fw_version_major = major;
+                            app->fw_version_minor = minor;
+                            memcpy(app->fw_version_string, &event.data.status.payload[3], slen);
+                            app->fw_version_string[slen] = '\0';
+                            app->fw_version_received = true;
+                            app->fw_version_check_pending = false;
+                            processed++;
+                            continue;
+                        }
+                    }
+
+                    bool dashboard_consumed = false;
+                    bool apply_to_dashboard = true;
+                    if(dashboard_mode_active && dashboard_processed >= APP_RX_DASH_EVENT_BUDGET) {
+                        apply_to_dashboard = false;
+                    }
+
+                    if(apply_to_dashboard) {
+                        dashboard_consumed = dashboard_handle_event(app, &event);
+                        if(dashboard_consumed) {
+                            dashboard_processed++;
+                        }
+                    }
+
+                    // When dashboard is active, avoid monitor text churn entirely.
+                    bool append_to_monitor = !dashboard_mode_active;
+                    if(!dashboard_mode_active) {
+                        append_to_monitor = !dashboard_consumed;
+                    }
+
                     if(append_to_monitor) {
                         char line[256] = {0};
                         app_format_event_line(&event, line, sizeof(line));
                         app_append_monitor(app, "%s", line);
                     }
                     updated = true;
+                    processed++;
+
+                    // Cooperative yield under high traffic so UI input stays responsive.
+                    if((processed % APP_RX_EVENT_YIELD_EVERY) == 0U) {
+                        furi_thread_yield();
+                    }
                 }
 
                 if(updated && app->monitor_scene_active) {
-                    view_dispatcher_send_custom_event(
-                        app->view_dispatcher, AppCustomEventMonitorUpdated);
+                    if(furi_mutex_acquire(app->mutex, FuriWaitForever) == FuriStatusOk) {
+                        app->monitor_update_pending = true;
+                        furi_mutex_release(app->mutex);
+                    }
+                }
+
+                // More queued traffic likely remains; yield before next polling cycle.
+                if(processed >= APP_RX_EVENT_BUDGET) {
+                    furi_thread_yield();
                 }
             }
         }
@@ -821,15 +926,20 @@ bool app_args_set_key_value(char* args, size_t args_size, const char* key, const
         return false;
     }
 
-    char scratch[220] = {0};
-    strncpy(scratch, args, sizeof(scratch) - 1U);
+    const size_t key_len = strlen(key);
+    if(key_len == 0U || args_size > APP_ARGS_KV_WORK_MAX) {
+        return false;
+    }
 
-    args[0] = '\0';
+    char scratch[APP_ARGS_KV_WORK_MAX] = {0};
+    char rebuilt[APP_ARGS_KV_WORK_MAX] = {0};
+    strncpy(scratch, args, args_size - 1U);
+
     size_t used = 0;
+    bool ok = false;
 
     char* save_ptr = NULL;
     char* token = local_strtok_r(scratch, " ", &save_ptr);
-    const size_t key_len = strlen(key);
 
     while(token) {
         char* eq = strchr(token, '=');
@@ -839,32 +949,30 @@ bool app_args_set_key_value(char* args, size_t args_size, const char* key, const
             const char* token_value = eq + 1;
             if(strcmp(token_key, key) != 0) {
                 const int wrote = snprintf(
-                    args + used,
+                    rebuilt + used,
                     args_size - used,
                     "%s%s=%s",
                     used ? " " : "",
                     token_key,
                     token_value);
                 if(wrote <= 0) {
-                    return false;
+                    goto done;
                 }
                 const size_t step = (size_t)wrote;
                 if(step >= (args_size - used)) {
-                    args[args_size - 1U] = '\0';
-                    return false;
+                    goto done;
                 }
                 used += step;
             }
         } else {
             const int wrote =
-                snprintf(args + used, args_size - used, "%s%s", used ? " " : "", token);
+                snprintf(rebuilt + used, args_size - used, "%s%s", used ? " " : "", token);
             if(wrote <= 0) {
-                return false;
+                goto done;
             }
             const size_t step = (size_t)wrote;
             if(step >= (args_size - used)) {
-                args[args_size - 1U] = '\0';
-                return false;
+                goto done;
             }
             used += step;
         }
@@ -873,21 +981,96 @@ bool app_args_set_key_value(char* args, size_t args_size, const char* key, const
     }
 
     const int wrote =
-        snprintf(args + used, args_size - used, "%s%s=%s", used ? " " : "", key, value);
+        snprintf(rebuilt + used, args_size - used, "%s%s=%s", used ? " " : "", key, value);
     if(wrote <= 0) {
-        return false;
+        goto done;
     }
     const size_t step = (size_t)wrote;
     if(step >= (args_size - used)) {
-        args[args_size - 1U] = '\0';
-        return false;
+        goto done;
     }
 
-    if(key_len == 0U) {
+    memcpy(args, rebuilt, args_size);
+    args[args_size - 1U] = '\0';
+    ok = true;
+
+done:
+    return ok;
+}
+
+static bool app_firmware_version_ok(const App* app) {
+    if(!app || !app->fw_version_received) {
         return false;
     }
+    if(app->fw_version_major > APP_FW_MIN_MAJOR) {
+        return true;
+    }
+    if(app->fw_version_major == APP_FW_MIN_MAJOR && app->fw_version_minor >= APP_FW_MIN_MINOR) {
+        return true;
+    }
+    return false;
+}
 
-    return true;
+static void app_set_fw_version_warning(App* app) {
+    char fw_text[24] = {0};
+    if(app->fw_version_received) {
+        snprintf(fw_text, sizeof(fw_text), "v%s", app->fw_version_string);
+    } else {
+        snprintf(fw_text, sizeof(fw_text), "unknown");
+    }
+    app_set_status(
+        app,
+        "Firmware out of date!\n"
+        "Firmware is: %s\n"
+        "Firmware needs: %s+\n"
+        "App: %s\n"
+        "Update at:\n%s",
+        fw_text,
+        APP_FW_MIN_STRING,
+        PROGRAM_VERSION,
+        APP_FW_UPDATE_URL);
+}
+
+static void app_check_firmware_version(App* app) {
+    app->fw_version_received = false;
+    app->fw_version_major = 0U;
+    app->fw_version_minor = 0U;
+    app->fw_version_string[0] = '\0';
+    app->fw_version_check_pending = true;
+
+    CcStatusCode info_status = CcStatusUnknown;
+    if(!cc_client_get_info(app->client, &info_status)) {
+        app->fw_version_check_pending = false;
+        app_append_monitor(app, "[uart] get_info transport failed");
+        return;
+    }
+
+    if(info_status != CcStatusOk) {
+        app->fw_version_check_pending = false;
+        app_append_monitor(app, "[uart] get_info => %s", cc_status_to_string(info_status));
+        return;
+    }
+
+    const uint32_t start_tick = furi_get_tick();
+    const uint32_t timeout_ticks = furi_ms_to_ticks(1500U);
+    while((furi_get_tick() - start_tick) < timeout_ticks) {
+        if(app->fw_version_received) {
+            break;
+        }
+        furi_delay_ms(10);
+    }
+    app->fw_version_check_pending = false;
+
+    if(app->fw_version_received) {
+        app_append_monitor(
+            app,
+            "[uart] firmware v%s (%u.%u)",
+            app->fw_version_string,
+            (unsigned)app->fw_version_major,
+            (unsigned)app->fw_version_minor);
+    } else {
+        app_append_monitor(app, "[uart] firmware version response timed out");
+    }
 }
 
 bool app_connect(App* app, bool force_reconnect) {
@@ -899,6 +1082,8 @@ bool app_connect(App* app, bool force_reconnect) {
         cc_client_close(app->client);
         app->connected = false;
         app->tool_active = false;
+        app->fw_version_warn_shown = false;
+        app->fw_version_checked = false;
     }
 
     if(!cc_client_is_open(app->client) && !cc_client_open(app->client)) {
@@ -909,29 +1094,58 @@ bool app_connect(App* app, bool force_reconnect) {
     }
 
     CcStatusCode status = CcStatusUnknown;
-    if(!cc_client_ping(app->client, &status)) {
+    bool ping_ok = false;
+    for(uint8_t attempt = 0U; attempt < 3U; attempt++) {
+        status = CcStatusUnknown;
+        if(cc_client_ping(app->client, &status) && status == CcStatusOk) {
+            ping_ok = true;
+            if(attempt > 0U) {
+                app_append_monitor(app, "[uart] ping ok on attempt %u", (unsigned)(attempt + 1U));
+            }
+            break;
+        }
+        app_append_monitor(
+            app,
+            "[uart] ping attempt %u failed (%s)",
+            (unsigned)(attempt + 1U),
+            cc_status_to_string(status));
+        if(attempt < 2U) {
+            furi_delay_ms(50);
+        }
+    }
+
+    if(!ping_ok) {
         app->connected = false;
         app->tool_active = false;
-        app_append_monitor(app, "[uart] ping transport failed");
         return false;
     }
 
-    app->connected = (status == CcStatusOk);
+    app->connected = true;
     app_append_monitor(app, "[uart] ping => %s", cc_status_to_string(status));
+
     return app->connected;
 }
 
+void app_verify_firmware_version(App* app) {
+    if(!app || !app->connected) {
+        return;
+    }
+    app_check_firmware_version(app);
+    app->fw_version_checked = true;
+    app->fw_version_warn_pending = !app_firmware_version_ok(app);
+    if(app->fw_version_warn_pending) {
+        app_set_fw_version_warning(app);
+    }
+}
+
 bool app_require_connected(App* app) {
-    if(app->connected) {
-        return true;
+    if(!app->connected) {
+        if(!app_connect(app, false)) {
+            app_set_status(app, "Not connected to \nCAN Commander");
+            return false;
+        }
     }
-
-    if(app_connect(app, false)) {
-        return true;
-    }
-
-    app_set_status(app, "Not connected to \nCAN Commander");
-    return false;
+    return true;
 }
 
 void app_begin_edit(App* app, char* destination, size_t destination_size, const char* header_text) {
@@ -983,9 +1197,14 @@ void app_begin_args_editor_apply(
 void app_apply_edit(App* app) {
     if(app->input_editing_arg_value) {
         if(app->input_arg_value_index < app->args_editor_count) {
-            if(app->input_header && strcmp(app->input_header, "slot_name") == 0) {
+            if(app->input_header &&
+               (strcmp(app->input_header, "slot_name") == 0 ||
+                strcmp(app->input_header, "ssid") == 0 || strcmp(app->input_header, "pass") == 0 ||
+                strcmp(app->input_header, "password") == 0)) {
                 for(size_t i = 0; app->input_work[i] != '\0'; i++) {
                     if(app->input_work[i] == ' ') {
+                        app->input_work[i] = '_';
+                    } else if(app->input_work[i] == '=') {
                         app->input_work[i] = '_';
                     }
                 }
@@ -1112,6 +1331,41 @@ void app_action_stats(App* app) {
 
     app_set_status(app, "STATS_GET => %s", cc_status_to_string(status));
     app_append_monitor(app, "[cmd] stats => %s", cc_status_to_string(status));
+}
+
+void app_action_wifi_get_cfg(App* app) {
+    if(!app_require_connected(app)) {
+        return;
+    }
+
+    CcStatusCode status = CcStatusUnknown;
+    if(!cc_client_wifi_get_cfg(app->client, &status)) {
+        app->connected = false;
+        app_set_status(app, "WIFI_GET_CFG transport error");
+        app_append_monitor(app, "[cmd] wifi get cfg transport error");
+        return;
+    }
+
+    app_set_status(app, "WIFI_GET_CFG => %s", cc_status_to_string(status));
+    app_append_monitor(app, "[cmd] wifi get cfg => %s", cc_status_to_string(status));
+}
+
+void app_action_wifi_set_cfg(App* app, const char* args) {
+    if(!app_require_connected(app)) {
+        return;
+    }
+
+    CcStatusCode status = CcStatusUnknown;
+    if(!cc_client_wifi_set_cfg(app->client, args, &status)) {
+        app->connected = false;
+        app_set_status(app, "WIFI_SET_CFG transport error");
+        app_append_monitor(app, "[cmd] wifi set cfg transport error");
+        return;
+    }
+
+    app_set_status(app, "WIFI_SET_CFG => %s", cc_status_to_string(status));
+    app_append_monitor(
+        app, "[cmd] wifi set cfg args='%s' => %s", args, cc_status_to_string(status));
 }
 
 void app_action_start_read_all(App* app) {
@@ -1254,6 +1508,39 @@ void app_action_tool_start(App* app, CcToolId tool_id, const char* args, const c
 
         args = tool_start_args;
         app_append_monitor(app, "[cmd] write canonical args='%s'", app->args_write_tool);
+    }
+
+    if(tool_id == CcToolReplay) {
+        char bus_value[16] = {0};
+        char id_value[12] = {0};
+        char ext_value[4] = {0};
+
+        if(!arg_get_value_last(args, "bus", bus_value, sizeof(bus_value)) ||
+           bus_value[0] == '\0') {
+            strncpy(bus_value, "can0", sizeof(bus_value) - 1U);
+        }
+        if(strcmp(bus_value, "can0") != 0 && strcmp(bus_value, "can1") != 0 &&
+           strcmp(bus_value, "both") != 0) {
+            strncpy(bus_value, "can0", sizeof(bus_value) - 1U);
+        }
+
+        if(!arg_get_value_last(args, "id", id_value, sizeof(id_value)) || id_value[0] == '\0') {
+            strncpy(id_value, "2C1", sizeof(id_value) - 1U);
+        }
+
+        if(!arg_get_value_last(args, "ext", ext_value, sizeof(ext_value)) ||
+           ext_value[0] == '\0') {
+            strncpy(ext_value, "0", sizeof(ext_value) - 1U);
+        }
+
+        snprintf(
+            tool_start_args,
+            sizeof(tool_start_args),
+            "bus=%s id=%s ext=%s",
+            bus_value,
+            id_value,
+            ext_value);
+        args = tool_start_args;
     }
 
     if(tool_id == CcToolObdPid) {
@@ -1638,6 +1925,34 @@ static bool app_custom_inject_normalize_hex_token(
     return true;
 }
 
+static void app_custom_inject_sanitize_name_token(const char* in, char* out, size_t out_size) {
+    if(!out || out_size == 0U) {
+        return;
+    }
+
+    out[0] = '\0';
+    if(!in || in[0] == '\0') {
+        return;
+    }
+
+    size_t w = 0U;
+    for(size_t i = 0U; in[i] != '\0' && w + 1U < out_size && w < 23U; i++) {
+        const unsigned char ch = (unsigned char)in[i];
+        if(ch == ' ' || ch == '\t') {
+            out[w++] = '_';
+            continue;
+        }
+
+        // Keep token parser-safe payload: avoid spaces and '=' separators.
+        if(ch == '=') {
+            continue;
+        }
+
+        out[w++] = (char)ch;
+    }
+    out[w] = '\0';
+}
+
 static const char* app_custom_inject_profile_for_slot(const App* app, uint8_t slot_number) {
     if(!app_custom_inject_slot_is_valid(slot_number)) {
         return NULL;
@@ -1705,6 +2020,19 @@ static bool
     }
 
     size_t used = (size_t)wrote;
+    char slot_name_raw[40] = {0};
+    if(arg_get_value_last(profile, "slot_name", slot_name_raw, sizeof(slot_name_raw))) {
+        char slot_name[32] = {0};
+        app_custom_inject_sanitize_name_token(slot_name_raw, slot_name, sizeof(slot_name));
+        if(slot_name[0] != '\0') {
+            const int name_wrote = snprintf(out + used, out_size - used, " name=%s", slot_name);
+            if(name_wrote <= 0 || (size_t)name_wrote >= (out_size - used)) {
+                app_set_status(app, "Custom Inject add args too long");
+                return false;
+            }
+            used += (size_t)name_wrote;
+        }
+    }
 
     bool mux_enabled = false;
     if(!app_custom_inject_profile_bool(profile, "mux", false, &mux_enabled)) {
@@ -1783,6 +2111,29 @@ static bool
 
     size_t used = (size_t)wrote;
     bool has_any = false;
+
+    char slot_name_raw[40] = {0};
+    if(arg_get_value_last(profile, "slot_name", slot_name_raw, sizeof(slot_name_raw))) {
+        char slot_name[32] = {0};
+        app_custom_inject_sanitize_name_token(slot_name_raw, slot_name, sizeof(slot_name));
+        if(slot_name[0] != '\0') {
+            wrote = snprintf(out + used, out_size - used, " name=%s", slot_name);
+            if(wrote <= 0 || (size_t)wrote >= (out_size - used)) {
+                app_set_status(app, "Custom Inject modify args too long");
+                return false;
+            }
+            used += (size_t)wrote;
+            has_any = true;
+        } else {
+            wrote = snprintf(out + used, out_size - used, " name_clear=1");
+            if(wrote <= 0 || (size_t)wrote >= (out_size - used)) {
+                app_set_status(app, "Custom Inject modify args too long");
+                return false;
+            }
+            used += (size_t)wrote;
+            has_any = true;
+        }
+    }
 
     char mask[24] = {0};
     if(app_custom_inject_normalize_hex_token(profile, "mask", mask, sizeof(mask))) {
@@ -2461,7 +2812,7 @@ static void app_custom_inject_safe_name(const char* src, char* out, size_t out_s
 
     out[0] = '\0';
     if(!src || src[0] == '\0') {
-        app_copy_string(out, out_size, "slot_set");
+        app_copy_string(out, out_size, "profile");
         return;
     }
 
@@ -2482,7 +2833,7 @@ static void app_custom_inject_safe_name(const char* src, char* out, size_t out_s
     }
 
     if(w == 0U) {
-        app_copy_string(out, out_size, "slot_set");
+        app_copy_string(out, out_size, "profile");
         return;
     }
 
@@ -2521,6 +2872,23 @@ static bool app_storage_ensure_dir(Storage* storage, const char* dir_path) {
     return storage_dir_exists(storage, dir_path);
 }
 
+static void app_ensure_startup_dirs(void) {
+    Storage* storage = furi_record_open(RECORD_STORAGE);
+    if(!storage) {
+        return;
+    }
+
+    char data_dir[96] = {0};
+    app_path_parent_dir(APP_CUSTOM_INJECT_CFG_PATH, data_dir, sizeof(data_dir));
+    if(data_dir[0] != '\0') {
+        (void)app_storage_ensure_dir(storage, data_dir);
+    }
+
+    (void)app_storage_ensure_dir(storage, APP_CUSTOM_INJECT_SET_DIR);
+    (void)app_storage_ensure_dir(storage, APP_DBC_CONFIG_DIR);
+    furi_record_close(RECORD_STORAGE);
+}
+
 static void
     app_custom_inject_build_set_path(const char* set_name, char* out_path, size_t out_size) {
     if(!out_path || out_size == 0U) {
@@ -2529,7 +2897,13 @@ static void
 
     char safe[48] = {0};
     app_custom_inject_safe_name(set_name, safe, sizeof(safe));
-    snprintf(out_path, out_size, "%s/%s.cfg", APP_CUSTOM_INJECT_SET_DIR, safe);
+    snprintf(
+        out_path,
+        out_size,
+        "%s/%s%s",
+        APP_CUSTOM_INJECT_SET_DIR,
+        safe,
+        APP_SMART_INJECT_PROFILE_EXT);
     out_path[out_size - 1U] = '\0';
 }
 
@@ -2624,7 +2998,7 @@ bool app_custom_inject_save_slot_set(App* app, const char* set_name) {
     char name_trim[32] = {0};
     app_custom_inject_trim_copy(set_name, name_trim, sizeof(name_trim));
     if(name_trim[0] == '\0') {
-        app_set_status(app, "Slot set name required");
+        app_set_status(app, "Smart Injection profile name required");
         return false;
     }
 
@@ -2635,7 +3009,7 @@ bool app_custom_inject_save_slot_set(App* app, const char* set_name) {
     FlipperFormat* ff = flipper_format_file_alloc(storage);
     if(!ff) {
         furi_record_close(RECORD_STORAGE);
-        app_set_status(app, "Save slot set failed");
+        app_set_status(app, "Save Smart Injection profile failed");
         return false;
     }
 
@@ -2829,9 +3203,9 @@ bool app_custom_inject_save_slot_set(App* app, const char* set_name) {
     if(ok) {
         app_copy_string(
             app->custom_inject_set_name, sizeof(app->custom_inject_set_name), name_trim);
-        app_set_status(app, "Saved slot set: %s", name_trim);
+        app_set_status(app, "Saved Smart Injection profile: %s", name_trim);
     } else {
-        app_set_status(app, "Save slot set failed");
+        app_set_status(app, "Save Smart Injection profile failed");
     }
 
     return ok;
@@ -2852,7 +3226,7 @@ bool app_custom_inject_load_slot_set_file(App* app, const char* file_path) {
         if(file_type) furi_string_free(file_type);
         if(ff) flipper_format_free(ff);
         furi_record_close(RECORD_STORAGE);
-        app_set_status(app, "Load slot set failed");
+        app_set_status(app, "Load Smart Injection profile failed");
         return false;
     }
 
@@ -2867,8 +3241,10 @@ bool app_custom_inject_load_slot_set_file(App* app, const char* file_path) {
         if(!flipper_format_read_header(ff, file_type, &version)) {
             break;
         }
-        if(!furi_string_equal_str(file_type, APP_CUSTOM_INJECT_SET_TYPE) ||
-           version != APP_CUSTOM_INJECT_SET_VER) {
+        const bool filetype_ok =
+            furi_string_equal_str(file_type, APP_CUSTOM_INJECT_SET_TYPE) ||
+            furi_string_equal_str(file_type, APP_CUSTOM_INJECT_SET_LEGACY_TYPE);
+        if(!filetype_ok || version != APP_CUSTOM_INJECT_SET_VER) {
             break;
         }
 
@@ -3045,12 +3421,822 @@ bool app_custom_inject_load_slot_set_file(App* app, const char* file_path) {
         if(loaded_name[0] != '\0') {
             app_copy_string(
                 app->custom_inject_set_name, sizeof(app->custom_inject_set_name), loaded_name);
-            app_set_status(app, "Loaded slot set: %s", loaded_name);
+            app_set_status(app, "Loaded Smart Injection profile: %s", loaded_name);
         } else {
-            app_set_status(app, "Loaded slot set");
+            app_set_status(app, "Loaded Smart Injection profile");
         }
     } else {
-        app_set_status(app, "Load slot set failed");
+        app_set_status(app, "Load Smart Injection profile failed");
+    }
+
+    return ok;
+}
+
+static bool app_dbc_config_ensure_alloc(App* app) {
+    if(!app) {
+        return false;
+    }
+    if(app->dbc_config_signals) {
+        return true;
+    }
+    app->dbc_config_signals = malloc(sizeof(AppDbcSignalCache) * APP_DBC_CFG_MAX_SIGNALS);
+    if(!app->dbc_config_signals) {
+        return false;
+    }
+    memset(app->dbc_config_signals, 0, sizeof(AppDbcSignalCache) * APP_DBC_CFG_MAX_SIGNALS);
+    return true;
+}
+
+static void app_dbc_config_recount(App* app) {
+    if(!app || !app->dbc_config_signals) {
+        if(app) app->dbc_config_signal_count = 0U;
+        return;
+    }
+
+    uint8_t count = 0U;
+    for(uint8_t i = 0U; i < APP_DBC_CFG_MAX_SIGNALS; i++) {
+        if(app->dbc_config_signals[i].used) {
+            count++;
+        }
+    }
+    app->dbc_config_signal_count = count;
+}
+
+static int8_t app_dbc_config_find_slot_by_sid(const App* app, uint16_t sid) {
+    if(!app || !app->dbc_config_signals) {
+        return -1;
+    }
+
+    for(uint8_t i = 0U; i < APP_DBC_CFG_MAX_SIGNALS; i++) {
+        if(app->dbc_config_signals[i].used && app->dbc_config_signals[i].def.sid == sid) {
+            return (int8_t)i;
+        }
+    }
+
+    return -1;
+}
+
+static int8_t app_dbc_config_find_free_slot(const App* app) {
+    if(!app || !app->dbc_config_signals) {
+        return -1;
+    }
+
+    for(uint8_t i = 0U; i < APP_DBC_CFG_MAX_SIGNALS; i++) {
+        if(!app->dbc_config_signals[i].used) {
+            return (int8_t)i;
+        }
+    }
+
+    return -1;
+}
+
+static bool
+    app_dbc_config_upsert_signal(App* app, const CcDbcSignalDef* def, const char* signal_name) {
+    if(!app || !def || !app_dbc_config_ensure_alloc(app)) {
+        return false;
+    }
+
+    int8_t slot = app_dbc_config_find_slot_by_sid(app, def->sid);
+    if(slot < 0) {
+        slot = app_dbc_config_find_free_slot(app);
+    }
+    if(slot < 0) {
+        return false;
+    }
+
+    AppDbcSignalCache* cached = &app->dbc_config_signals[(uint8_t)slot];
+    const uint8_t preserved_map_count = cached->map_count;
+    AppDbcValueMap preserved_maps[APP_DBC_CFG_MAX_MAPS] = {0};
+    char preserved_name[APP_DBC_CFG_SIGNAL_NAME_MAX] = {0};
+    if(cached->used && cached->def.sid == def->sid && preserved_map_count > 0U) {
+        memcpy(preserved_maps, cached->maps, sizeof(preserved_maps));
+    }
+    if(cached->used && cached->def.sid == def->sid && cached->signal_name[0] != '\0') {
+        app_copy_string(preserved_name, sizeof(preserved_name), cached->signal_name);
+    }
+
+    memset(cached, 0, sizeof(AppDbcSignalCache));
+    cached->used = true;
+    cached->def = *def;
+    if(signal_name && signal_name[0] != '\0') {
+        app_copy_string(cached->signal_name, sizeof(cached->signal_name), signal_name);
+    } else if(preserved_name[0] != '\0') {
+        app_copy_string(cached->signal_name, sizeof(cached->signal_name), preserved_name);
+    } else {
+        snprintf(cached->signal_name, sizeof(cached->signal_name), "SID%u", (unsigned)def->sid);
+        cached->signal_name[sizeof(cached->signal_name) - 1U] = '\0';
+    }
+
+    if(preserved_map_count > 0U) {
+        cached->map_count = preserved_map_count;
+        memcpy(cached->maps, preserved_maps, sizeof(preserved_maps));
+    }
+
+    app_dbc_config_recount(app);
+    return true;
+}
+
+static bool app_dbc_config_remove_signal(App* app, uint16_t sid) {
+    if(!app) {
+        return false;
+    }
+
+    const int8_t slot = app_dbc_config_find_slot_by_sid(app, sid);
+    if(slot < 0) {
+        return false;
+    }
+
+    memset(&app->dbc_config_signals[(uint8_t)slot], 0, sizeof(AppDbcSignalCache));
+    app_dbc_config_recount(app);
+    return true;
+}
+
+static const char* app_dbc_bus_to_string(CcBus bus) {
+    switch(bus) {
+    case CcBusCan0:
+        return "can0";
+    case CcBusCan1:
+        return "can1";
+    case CcBusBoth:
+        return "both";
+    default:
+        return "can0";
+    }
+}
+
+static bool app_dbc_parse_bus(const char* text, CcBus* out_bus) {
+    if(!text || !out_bus) {
+        return false;
+    }
+
+    if(strcmp(text, "can0") == 0) {
+        *out_bus = CcBusCan0;
+        return true;
+    }
+
+    if(strcmp(text, "can1") == 0) {
+        *out_bus = CcBusCan1;
+        return true;
+    }
+
+    if(strcmp(text, "both") == 0) {
+        *out_bus = CcBusBoth;
+        return true;
+    }
+
+    return false;
+}
+
+static const char* app_dbc_order_to_string(const CcDbcSignalDef* def) {
+    return def && def->motorola_order ? "motorola" : "intel";
+}
+
+static const char* app_dbc_sign_to_string(const CcDbcSignalDef* def) {
+    return def && def->signed_value ? "s" : "u";
+}
+
+static void app_dbc_compose_path(const char* config_name, char* out_path, size_t out_size) {
+    if(!out_path || out_size == 0U) {
+        return;
+    }
+
+    char safe[48] = {0};
+    app_custom_inject_safe_name(config_name, safe, sizeof(safe));
+    snprintf(out_path, out_size, "%s/%s%s", APP_DBC_CONFIG_DIR, safe, APP_DBC_DECODE_PROFILE_EXT);
+    out_path[out_size - 1U] = '\0';
+}
+
+void app_dbc_config_reset(App* app) {
+    if(!app) {
+        return;
+    }
+
+    if(app->dbc_config_signals) {
+        free(app->dbc_config_signals);
+        app->dbc_config_signals = NULL;
+    }
+    app->dbc_config_signal_count = 0U;
+}
+
+const char* app_dbc_config_lookup_label(const App* app, uint16_t sid, int64_t raw) {
+    if(!app) {
+        return NULL;
+    }
+
+    const int8_t slot = app_dbc_config_find_slot_by_sid(app, sid);
+    if(slot < 0) {
+        return NULL;
+    }
+
+    const AppDbcSignalCache* signal = &app->dbc_config_signals[(uint8_t)slot];
+    for(uint8_t i = 0U; i < APP_DBC_CFG_MAX_MAPS; i++) {
+        const AppDbcValueMap* map = &signal->maps[i];
+        if(map->used && map->label[0] != '\0' && map->raw == raw) {
+            return map->label;
+        }
+    }
+
+    return NULL;
+}
+
+const char* app_dbc_config_lookup_signal_name(const App* app, uint16_t sid) {
+    if(!app) {
+        return NULL;
+    }
+
+    const int8_t slot = app_dbc_config_find_slot_by_sid(app, sid);
+    if(slot < 0) {
+        return NULL;
+    }
+
+    const AppDbcSignalCache* signal = &app->dbc_config_signals[(uint8_t)slot];
+    if(signal->signal_name[0] == '\0') {
+        return NULL;
+    }
+
+    return signal->signal_name;
+}
+
+static bool app_dbc_config_apply_to_firmware(App* app) {
+    if(!app_require_connected(app) || !app->dbc_config_signals) {
+        return false;
+    }
+
+    CcStatusCode status = CcStatusUnknown;
+    if(!cc_client_dbc_clear(app->client, &status)) {
+        app->connected = false;
+        app_set_status(app, "DBC profile apply: clear transport error");
+        app_append_monitor(app, "[dbc profile] clear transport error");
+        return false;
+    }
+
+    app_append_monitor(app, "[dbc profile] clear => %s", cc_status_to_string(status));
+    if(status != CcStatusOk) {
+        app_set_status(app, "DBC profile apply: clear => %s", cc_status_to_string(status));
+        return false;
+    }
+
+    uint8_t applied = 0U;
+    for(uint8_t i = 0U; i < APP_DBC_CFG_MAX_SIGNALS; i++) {
+        const AppDbcSignalCache* signal = &app->dbc_config_signals[i];
+        if(!signal->used) {
+            continue;
+        }
+
+        status = CcStatusUnknown;
+        if(!cc_client_dbc_add_signal(app->client, &signal->def, &status)) {
+            app->connected = false;
+            app_set_status(
+                app, "DBC profile apply: add transport error (sid=%u)", signal->def.sid);
+            app_append_monitor(
+                app, "[dbc profile] add sid=%u transport error", (unsigned)signal->def.sid);
+            return false;
+        }
+
+        app_append_monitor(
+            app,
+            "[dbc profile] add sid=%u => %s",
+            (unsigned)signal->def.sid,
+            cc_status_to_string(status));
+        if(status != CcStatusOk) {
+            app_set_status(
+                app,
+                "DBC profile apply: add sid=%u => %s",
+                (unsigned)signal->def.sid,
+                cc_status_to_string(status));
+            return false;
+        }
+        applied++;
+    }
+
+    app_set_status(app, "DBC profile applied (%u signals)", (unsigned)applied);
+    return true;
+}
+
+bool app_dbc_config_save_file(App* app, const char* config_name) {
+    if(!app || !app->dbc_config_signals) {
+        return false;
+    }
+
+    char name_trim[32] = {0};
+    app_custom_inject_trim_copy(config_name, name_trim, sizeof(name_trim));
+    if(name_trim[0] == '\0') {
+        app_set_status(app, "DBC profile name required");
+        return false;
+    }
+
+    char path[96] = {0};
+    app_dbc_compose_path(name_trim, path, sizeof(path));
+
+    Storage* storage = furi_record_open(RECORD_STORAGE);
+    FlipperFormat* ff = flipper_format_file_alloc(storage);
+    if(!ff) {
+        furi_record_close(RECORD_STORAGE);
+        app_set_status(app, "Save DBC profile failed");
+        return false;
+    }
+
+    bool ok = false;
+    do {
+        char data_dir[96] = {0};
+        app_path_parent_dir(APP_CUSTOM_INJECT_CFG_PATH, data_dir, sizeof(data_dir));
+        if(!app_storage_ensure_dir(storage, data_dir)) {
+            break;
+        }
+
+        if(!app_storage_ensure_dir(storage, APP_DBC_CONFIG_DIR)) {
+            break;
+        }
+
+        if(!flipper_format_file_open_always(ff, path)) {
+            break;
+        }
+        if(!flipper_format_write_header_cstr(ff, APP_DBC_CONFIG_TYPE, APP_DBC_CONFIG_VER)) {
+            break;
+        }
+        if(!flipper_format_write_string_cstr(ff, "name", name_trim)) {
+            break;
+        }
+
+        app_dbc_config_recount(app);
+        uint32_t signal_count = app->dbc_config_signal_count;
+        if(!flipper_format_write_uint32(ff, "signal_count", &signal_count, 1U)) {
+            break;
+        }
+
+        uint8_t out_index = 0U;
+        for(uint8_t i = 0U; i < APP_DBC_CFG_MAX_SIGNALS; i++) {
+            const AppDbcSignalCache* signal = &app->dbc_config_signals[i];
+            if(!signal->used) {
+                continue;
+            }
+            out_index++;
+
+            char key[40] = {0};
+            char value[64] = {0};
+
+            snprintf(key, sizeof(key), "signal%u_sid", (unsigned)out_index);
+            snprintf(value, sizeof(value), "%u", (unsigned)signal->def.sid);
+            if(!flipper_format_write_string_cstr(ff, key, value)) {
+                break;
+            }
+
+            snprintf(key, sizeof(key), "signal%u_name", (unsigned)out_index);
+            if(!flipper_format_write_string_cstr(ff, key, signal->signal_name)) {
+                break;
+            }
+
+            snprintf(key, sizeof(key), "signal%u_bus", (unsigned)out_index);
+            if(!flipper_format_write_string_cstr(ff, key, app_dbc_bus_to_string(signal->def.bus))) {
+                break;
+            }
+
+            snprintf(key, sizeof(key), "signal%u_id", (unsigned)out_index);
+            snprintf(value, sizeof(value), "%lX", (unsigned long)signal->def.id);
+            if(!flipper_format_write_string_cstr(ff, key, value)) {
+                break;
+            }
+
+            snprintf(key, sizeof(key), "signal%u_ext", (unsigned)out_index);
+            snprintf(value, sizeof(value), "%u", signal->def.ext ? 1U : 0U);
+            if(!flipper_format_write_string_cstr(ff, key, value)) {
+                break;
+            }
+
+            snprintf(key, sizeof(key), "signal%u_start", (unsigned)out_index);
+            snprintf(value, sizeof(value), "%u", signal->def.start_bit);
+            if(!flipper_format_write_string_cstr(ff, key, value)) {
+                break;
+            }
+
+            snprintf(key, sizeof(key), "signal%u_len", (unsigned)out_index);
+            snprintf(value, sizeof(value), "%u", signal->def.bit_len);
+            if(!flipper_format_write_string_cstr(ff, key, value)) {
+                break;
+            }
+
+            snprintf(key, sizeof(key), "signal%u_order", (unsigned)out_index);
+            if(!flipper_format_write_string_cstr(ff, key, app_dbc_order_to_string(&signal->def))) {
+                break;
+            }
+
+            snprintf(key, sizeof(key), "signal%u_sign", (unsigned)out_index);
+            if(!flipper_format_write_string_cstr(ff, key, app_dbc_sign_to_string(&signal->def))) {
+                break;
+            }
+
+            snprintf(key, sizeof(key), "signal%u_factor", (unsigned)out_index);
+            snprintf(value, sizeof(value), "%.7g", (double)signal->def.factor);
+            if(!flipper_format_write_string_cstr(ff, key, value)) {
+                break;
+            }
+
+            snprintf(key, sizeof(key), "signal%u_offset", (unsigned)out_index);
+            snprintf(value, sizeof(value), "%.7g", (double)signal->def.offset);
+            if(!flipper_format_write_string_cstr(ff, key, value)) {
+                break;
+            }
+
+            snprintf(key, sizeof(key), "signal%u_min", (unsigned)out_index);
+            snprintf(value, sizeof(value), "%.7g", (double)signal->def.min);
+            if(!flipper_format_write_string_cstr(ff, key, value)) {
+                break;
+            }
+
+            snprintf(key, sizeof(key), "signal%u_max", (unsigned)out_index);
+            snprintf(value, sizeof(value), "%.7g", (double)signal->def.max);
+            if(!flipper_format_write_string_cstr(ff, key, value)) {
+                break;
+            }
+
+            snprintf(key, sizeof(key), "signal%u_unit", (unsigned)out_index);
+            if(!flipper_format_write_string_cstr(ff, key, signal->def.unit)) {
+                break;
+            }
+
+            uint8_t map_written = 0U;
+            for(uint8_t m = 0U; m < APP_DBC_CFG_MAX_MAPS; m++) {
+                if(signal->maps[m].used && signal->maps[m].label[0] != '\0') {
+                    map_written++;
+                }
+            }
+
+            snprintf(key, sizeof(key), "signal%u_map_count", (unsigned)out_index);
+            uint32_t map_count_u32 = map_written;
+            if(!flipper_format_write_uint32(ff, key, &map_count_u32, 1U)) {
+                break;
+            }
+
+            uint8_t map_out_index = 0U;
+            for(uint8_t m = 0U; m < APP_DBC_CFG_MAX_MAPS; m++) {
+                const AppDbcValueMap* map = &signal->maps[m];
+                if(!map->used || map->label[0] == '\0') {
+                    continue;
+                }
+                map_out_index++;
+
+                snprintf(
+                    key,
+                    sizeof(key),
+                    "signal%u_map%u_raw",
+                    (unsigned)out_index,
+                    (unsigned)map_out_index);
+                snprintf(value, sizeof(value), "%lld", (long long)map->raw);
+                if(!flipper_format_write_string_cstr(ff, key, value)) {
+                    break;
+                }
+
+                snprintf(
+                    key,
+                    sizeof(key),
+                    "signal%u_map%u_label",
+                    (unsigned)out_index,
+                    (unsigned)map_out_index);
+                if(!flipper_format_write_string_cstr(ff, key, map->label)) {
+                    break;
+                }
+            }
+        }
+
+        ok = true;
+    } while(false);
+
+    flipper_format_free(ff);
+    furi_record_close(RECORD_STORAGE);
+
+    if(ok) {
+        app_copy_string(app->dbc_config_name, sizeof(app->dbc_config_name), name_trim);
+        app_copy_string(app->dbc_config_save_name, sizeof(app->dbc_config_save_name), name_trim);
+        app_set_status(app, "Saved DBC profile: %s", name_trim);
+    } else {
+        app_set_status(app, "Save DBC profile failed");
+    }
+
+    return ok;
+}
+
+static bool app_ff_read_string_key(FlipperFormat* ff, const char* key, FuriString* out) {
+    if(!ff || !key || !out) {
+        return false;
+    }
+
+    if(!flipper_format_rewind(ff)) {
+        return false;
+    }
+
+    return flipper_format_read_string(ff, key, out);
+}
+
+static bool app_ff_read_u32_key(FlipperFormat* ff, const char* key, uint32_t* out_value) {
+    if(!ff || !key || !out_value) {
+        return false;
+    }
+
+    if(!flipper_format_rewind(ff)) {
+        return false;
+    }
+
+    return flipper_format_read_uint32(ff, key, out_value, 1U);
+}
+
+bool app_dbc_config_load_file(App* app, const char* file_path, bool apply_to_firmware) {
+    if(!app || !file_path || file_path[0] == '\0') {
+        return false;
+    }
+
+    Storage* storage = furi_record_open(RECORD_STORAGE);
+    FlipperFormat* ff = flipper_format_file_alloc(storage);
+    FuriString* file_type = furi_string_alloc();
+    FuriString* value = furi_string_alloc();
+
+    if(!ff || !file_type || !value) {
+        if(value) {
+            furi_string_free(value);
+        }
+        if(file_type) {
+            furi_string_free(file_type);
+        }
+        if(ff) {
+            flipper_format_free(ff);
+        }
+        furi_record_close(RECORD_STORAGE);
+        app_set_status(app, "Load DBC profile failed");
+        return false;
+    }
+
+    bool ok = false;
+    char loaded_name[32] = {0};
+    do {
+        if(!flipper_format_file_open_existing(ff, file_path)) {
+            break;
+        }
+
+        uint32_t version = 0U;
+        if(!flipper_format_read_header(ff, file_type, &version)) {
+            break;
+        }
+        const bool filetype_ok = furi_string_equal_str(file_type, APP_DBC_CONFIG_TYPE) ||
+                                 furi_string_equal_str(file_type, APP_DBC_CONFIG_LEGACY_TYPE);
+        if(!filetype_ok || version != APP_DBC_CONFIG_VER) {
+            break;
+        }
+
+        if(app_ff_read_string_key(ff, "name", value)) {
+            app_copy_string(loaded_name, sizeof(loaded_name), furi_string_get_cstr(value));
+        }
+
+        app_dbc_config_reset(app);
+
+        uint32_t signal_count_u32 = 0U;
+        if(!app_ff_read_u32_key(ff, "signal_count", &signal_count_u32)) {
+            signal_count_u32 = 0U;
+        }
+        if(signal_count_u32 > APP_DBC_CFG_MAX_SIGNALS) {
+            signal_count_u32 = APP_DBC_CFG_MAX_SIGNALS;
+        }
+
+        for(uint8_t i = 1U; i <= (uint8_t)signal_count_u32; i++) {
+            char key[40] = {0};
+            char text[64] = {0};
+            CcDbcSignalDef def = {0};
+            char signal_name[APP_DBC_CFG_SIGNAL_NAME_MAX] = {0};
+
+            snprintf(key, sizeof(key), "signal%u_sid", (unsigned)i);
+            if(!app_ff_read_string_key(ff, key, value)) {
+                continue;
+            }
+            app_copy_string(text, sizeof(text), furi_string_get_cstr(value));
+            char* end = NULL;
+            unsigned long sid_ul = strtoul(text, &end, 10);
+            if(end == text || *end != '\0' || sid_ul > 0xFFFFUL) {
+                continue;
+            }
+            def.sid = (uint16_t)sid_ul;
+
+            snprintf(key, sizeof(key), "signal%u_bus", (unsigned)i);
+            if(!app_ff_read_string_key(ff, key, value)) {
+                continue;
+            }
+            if(!app_dbc_parse_bus(furi_string_get_cstr(value), &def.bus)) {
+                continue;
+            }
+
+            snprintf(key, sizeof(key), "signal%u_id", (unsigned)i);
+            if(!app_ff_read_string_key(ff, key, value)) {
+                continue;
+            }
+            app_copy_string(text, sizeof(text), furi_string_get_cstr(value));
+            end = NULL;
+            unsigned long id_ul = strtoul(text, &end, 16);
+            if(end == text || *end != '\0') {
+                continue;
+            }
+            def.id = (uint32_t)id_ul;
+
+            snprintf(key, sizeof(key), "signal%u_ext", (unsigned)i);
+            if(app_ff_read_string_key(ff, key, value)) {
+                app_copy_string(text, sizeof(text), furi_string_get_cstr(value));
+                def.ext = (strcmp(text, "1") == 0 || strcmp(text, "true") == 0);
+            }
+
+            snprintf(key, sizeof(key), "signal%u_start", (unsigned)i);
+            if(!app_ff_read_string_key(ff, key, value)) {
+                continue;
+            }
+            app_copy_string(text, sizeof(text), furi_string_get_cstr(value));
+            end = NULL;
+            unsigned long start_ul = strtoul(text, &end, 10);
+            if(end == text || *end != '\0' || start_ul > 63UL) {
+                continue;
+            }
+            def.start_bit = (uint8_t)start_ul;
+
+            snprintf(key, sizeof(key), "signal%u_len", (unsigned)i);
+            if(!app_ff_read_string_key(ff, key, value)) {
+                continue;
+            }
+            app_copy_string(text, sizeof(text), furi_string_get_cstr(value));
+            end = NULL;
+            unsigned long len_ul = strtoul(text, &end, 10);
+            if(end == text || *end != '\0' || len_ul == 0UL || len_ul > 64UL) {
+                continue;
+            }
+            def.bit_len = (uint8_t)len_ul;
+
+            snprintf(key, sizeof(key), "signal%u_order", (unsigned)i);
+            if(!app_ff_read_string_key(ff, key, value)) {
+                continue;
+            }
+            const char* order = furi_string_get_cstr(value);
+            if(strcmp(order, "motorola") == 0) {
+                def.motorola_order = true;
+            } else if(strcmp(order, "intel") == 0) {
+                def.motorola_order = false;
+            } else {
+                continue;
+            }
+
+            snprintf(key, sizeof(key), "signal%u_sign", (unsigned)i);
+            if(!app_ff_read_string_key(ff, key, value)) {
+                continue;
+            }
+            const char* sign = furi_string_get_cstr(value);
+            if(strcmp(sign, "s") == 0) {
+                def.signed_value = true;
+            } else if(strcmp(sign, "u") == 0) {
+                def.signed_value = false;
+            } else {
+                continue;
+            }
+
+            snprintf(key, sizeof(key), "signal%u_factor", (unsigned)i);
+            if(!app_ff_read_string_key(ff, key, value)) {
+                continue;
+            }
+            app_copy_string(text, sizeof(text), furi_string_get_cstr(value));
+            def.factor = strtof(text, &end);
+            if(end == text || *end != '\0') {
+                continue;
+            }
+
+            snprintf(key, sizeof(key), "signal%u_offset", (unsigned)i);
+            if(!app_ff_read_string_key(ff, key, value)) {
+                continue;
+            }
+            app_copy_string(text, sizeof(text), furi_string_get_cstr(value));
+            def.offset = strtof(text, &end);
+            if(end == text || *end != '\0') {
+                continue;
+            }
+
+            snprintf(key, sizeof(key), "signal%u_min", (unsigned)i);
+            if(!app_ff_read_string_key(ff, key, value)) {
+                continue;
+            }
+            app_copy_string(text, sizeof(text), furi_string_get_cstr(value));
+            def.min = strtof(text, &end);
+            if(end == text || *end != '\0') {
+                continue;
+            }
+
+            snprintf(key, sizeof(key), "signal%u_max", (unsigned)i);
+            if(!app_ff_read_string_key(ff, key, value)) {
+                continue;
+            }
+            app_copy_string(text, sizeof(text), furi_string_get_cstr(value));
+            def.max = strtof(text, &end);
+            if(end == text || *end != '\0') {
+                continue;
+            }
+
+            snprintf(key, sizeof(key), "signal%u_unit", (unsigned)i);
+            if(app_ff_read_string_key(ff, key, value)) {
+                app_copy_string(def.unit, sizeof(def.unit), furi_string_get_cstr(value));
+            } else {
+                def.unit[0] = '\0';
+            }
+
+            snprintf(key, sizeof(key), "signal%u_name", (unsigned)i);
+            if(app_ff_read_string_key(ff, key, value)) {
+                app_copy_string(signal_name, sizeof(signal_name), furi_string_get_cstr(value));
+            } else {
+                snprintf(signal_name, sizeof(signal_name), "SID%u", (unsigned)def.sid);
+                signal_name[sizeof(signal_name) - 1U] = '\0';
+            }
+
+            if(!app_dbc_config_upsert_signal(app, &def, signal_name)) {
+                continue;
+            }
+
+            const int8_t slot = app_dbc_config_find_slot_by_sid(app, def.sid);
+            if(slot < 0) {
+                continue;
+            }
+            AppDbcSignalCache* signal = &app->dbc_config_signals[(uint8_t)slot];
+
+            snprintf(key, sizeof(key), "signal%u_map_count", (unsigned)i);
+            uint32_t map_count_u32 = 0U;
+            if(!app_ff_read_u32_key(ff, key, &map_count_u32)) {
+                map_count_u32 = 0U;
+            }
+            if(map_count_u32 > APP_DBC_CFG_MAX_MAPS) {
+                map_count_u32 = APP_DBC_CFG_MAX_MAPS;
+            }
+
+            uint8_t map_set = 0U;
+            for(uint8_t map_i = 1U; map_i <= (uint8_t)map_count_u32; map_i++) {
+                char raw_key[40] = {0};
+                char label_key[40] = {0};
+                snprintf(
+                    raw_key, sizeof(raw_key), "signal%u_map%u_raw", (unsigned)i, (unsigned)map_i);
+                snprintf(
+                    label_key,
+                    sizeof(label_key),
+                    "signal%u_map%u_label",
+                    (unsigned)i,
+                    (unsigned)map_i);
+
+                if(!app_ff_read_string_key(ff, raw_key, value)) {
+                    continue;
+                }
+                app_copy_string(text, sizeof(text), furi_string_get_cstr(value));
+                int64_t raw_i64 = 0;
+                if(!parse_i64_text(text, &raw_i64)) {
+                    continue;
+                }
+
+                if(!app_ff_read_string_key(ff, label_key, value)) {
+                    continue;
+                }
+                const char* label = furi_string_get_cstr(value);
+                if(!label || label[0] == '\0') {
+                    continue;
+                }
+
+                if(map_set >= APP_DBC_CFG_MAX_MAPS) {
+                    break;
+                }
+                signal->maps[map_set].used = true;
+                signal->maps[map_set].raw = raw_i64;
+                app_copy_string(
+                    signal->maps[map_set].label, sizeof(signal->maps[map_set].label), label);
+                map_set++;
+            }
+            signal->map_count = map_set;
+        }
+
+        app_dbc_config_recount(app);
+
+        if(loaded_name[0] == '\0') {
+            const char* base = strrchr(file_path, '/');
+            base = base ? (base + 1) : file_path;
+            app_copy_string(loaded_name, sizeof(loaded_name), base);
+            char* ext = strrchr(loaded_name, '.');
+            if(ext) {
+                *ext = '\0';
+            }
+        }
+        if(loaded_name[0] == '\0') {
+            app_copy_string(loaded_name, sizeof(loaded_name), "dbc_profile");
+        }
+        app_copy_string(app->dbc_config_name, sizeof(app->dbc_config_name), loaded_name);
+        app_copy_string(app->dbc_config_save_name, sizeof(app->dbc_config_save_name), loaded_name);
+
+        ok = !apply_to_firmware || app_dbc_config_apply_to_firmware(app);
+    } while(false);
+
+    furi_string_free(value);
+    furi_string_free(file_type);
+    flipper_format_free(ff);
+    furi_record_close(RECORD_STORAGE);
+
+    if(ok) {
+        app_set_status(
+            app,
+            apply_to_firmware ? "Loaded+applied DBC profile: %s" : "Loaded DBC profile: %s",
+            app->dbc_config_name[0] ? app->dbc_config_name : "dbc_profile");
+    } else {
+        app_set_status(app, "Load DBC profile failed");
     }
 
     return ok;
@@ -3184,6 +4370,9 @@ void app_action_dbc_clear(App* app) {
 
     app_set_status(app, "DBC_CLEAR => %s", cc_status_to_string(status));
     app_append_monitor(app, "[cmd] dbc clear => %s", cc_status_to_string(status));
+    if(status == CcStatusOk) {
+        app_dbc_config_reset(app);
+    }
 }
 
 void app_action_dbc_add(App* app, const char* args) {
@@ -3277,6 +4466,15 @@ void app_action_dbc_add(App* app, const char* args) {
         cc_bus_to_string(def.bus),
         (unsigned long)def.id,
         cc_status_to_string(status));
+    if(status == CcStatusOk) {
+        char signal_name[APP_DBC_CFG_SIGNAL_NAME_MAX] = {0};
+        if(!arg_get_value(args, "name", signal_name, sizeof(signal_name)) ||
+           signal_name[0] == '\0') {
+            snprintf(signal_name, sizeof(signal_name), "SID%u", (unsigned)def.sid);
+            signal_name[sizeof(signal_name) - 1U] = '\0';
+        }
+        (void)app_dbc_config_upsert_signal(app, &def, signal_name);
+    }
 }
 
 void app_action_dbc_remove(App* app, const char* args) {
@@ -3302,6 +4500,9 @@ void app_action_dbc_remove(App* app, const char* args) {
         app, "DBC_REMOVE sid=%lu => %s", (unsigned long)sid, cc_status_to_string(status));
     app_append_monitor(
         app, "[cmd] dbc remove sid=%lu => %s", (unsigned long)sid, cc_status_to_string(status));
+    if(status == CcStatusOk) {
+        (void)app_dbc_config_remove_signal(app, (uint16_t)sid);
+    }
 }
 
 void app_action_dbc_list(App* app) {
@@ -3323,7 +4524,7 @@ void app_action_dbc_list(App* app) {
 }
 
 static void app_set_default_args(App* app) {
-    strncpy(app->args_read_all, "bus=both ascii=0", sizeof(app->args_read_all) - 1U);
+    strncpy(app->args_read_all, "bus=can0 ascii=0", sizeof(app->args_read_all) - 1U);
 
     strncpy(
         app->args_filtered,
@@ -3335,14 +4536,14 @@ static void app_set_default_args(App* app) {
         "bus=can0 id=1D5 ext=0 rtr=0 dlc=8 data=102030AABBCCDDEE count=1 interval_ms=250",
         sizeof(app->args_write_tool) - 1U);
 
-    strncpy(app->args_speed, "bus=both", sizeof(app->args_speed) - 1U);
-    strncpy(app->args_valtrack, "bus=both strict=1", sizeof(app->args_valtrack) - 1U);
-    strncpy(app->args_unique_ids, "bus=both", sizeof(app->args_unique_ids) - 1U);
+    strncpy(app->args_speed, "bus=can0", sizeof(app->args_speed) - 1U);
+    strncpy(app->args_valtrack, "bus=can0 strict=1", sizeof(app->args_valtrack) - 1U);
+    strncpy(app->args_unique_ids, "bus=can0", sizeof(app->args_unique_ids) - 1U);
     strncpy(app->args_bittrack, "bus=can0 id=273 ext=0", sizeof(app->args_bittrack) - 1U);
 
     strncpy(
         app->args_reverse_auto,
-        "bus=can0 calibration_ms=10000 monitor_ms=20000 summary=0",
+        "bus=can0 calibration_ms=20000 monitor_ms=200000 summary=0",
         sizeof(app->args_reverse_auto) - 1U);
 
     strncpy(
@@ -3351,8 +4552,9 @@ static void app_set_default_args(App* app) {
         sizeof(app->args_reverse_read) - 1U);
 
     strncpy(app->args_obd_pid, "bus=can0 pid=0C interval_ms=250", sizeof(app->args_obd_pid) - 1U);
-    strncpy(app->args_dbc_decode, "bus=both", sizeof(app->args_dbc_decode) - 1U);
+    strncpy(app->args_dbc_decode, "bus=can0", sizeof(app->args_dbc_decode) - 1U);
     strncpy(app->args_custom_inject_start, "bus=can0", sizeof(app->args_custom_inject_start) - 1U);
+    strncpy(app->args_replay, "bus=can0 id=2C1 ext=0", sizeof(app->args_replay) - 1U);
 
     app_custom_inject_reset_all_slots(app);
     strncpy(
@@ -3367,6 +4569,7 @@ static void app_set_default_args(App* app) {
         app->args_custom_inject_field,
         "slot=1 start=0 len=1 value=0",
         sizeof(app->args_custom_inject_field) - 1U);
+    app->led_brightness = 5U;
     app->custom_inject_active_slot = 0U;
     strncpy(
         app->custom_inject_edit_name,
@@ -3403,7 +4606,7 @@ static void app_set_default_args(App* app) {
         app->custom_inject_edit_mux_value,
         "mux_value=0",
         sizeof(app->custom_inject_edit_mux_value) - 1U);
-    strncpy(app->custom_inject_set_name, "slot_set", sizeof(app->custom_inject_set_name) - 1U);
+    strncpy(app->custom_inject_set_name, "inj_profile", sizeof(app->custom_inject_set_name) - 1U);
 
     strncpy(app->args_tool_config, "show=both", sizeof(app->args_tool_config) - 1U);
 
@@ -3423,10 +4626,17 @@ static void app_set_default_args(App* app) {
 
     strncpy(
         app->args_dbc_add,
-        "bus=can0 id=1D5 ext=0 start=0 len=16 order=intel sign=u factor=0.1 offset=0 min=0 max=6553.5 unit=kph sid=1",
+        "bus=can0 id=1D5 ext=0 start=0 len=16 order=intel sign=u factor=0.1 offset=0 min=0 max=6553.5 unit=kph sid=1 name=Speed",
         sizeof(app->args_dbc_add) - 1U);
 
     strncpy(app->args_dbc_remove, "sid=1", sizeof(app->args_dbc_remove) - 1U);
+    strncpy(
+        app->args_wifi_cfg,
+        "ap=1 ssid=CANCommander pass=cancommander",
+        sizeof(app->args_wifi_cfg) - 1U);
+    app_copy_string(app->dbc_config_name, sizeof(app->dbc_config_name), "dbc_profile");
+    app_copy_string(app->dbc_config_save_name, sizeof(app->dbc_config_save_name), "dbc_profile");
+    app_dbc_config_reset(app);
 }
 
 void app_custom_inject_load(App* app) {
@@ -3601,7 +4811,7 @@ static App* app_alloc(void) {
     view_dispatcher_set_navigation_event_callback(
         app->view_dispatcher, cancommander_scene_back_event_callback);
     view_dispatcher_set_tick_event_callback(
-        app->view_dispatcher, cancommander_scene_tick_callback, 100);
+        app->view_dispatcher, cancommander_scene_tick_callback, APP_UI_TICK_INTERVAL_MS);
 
     app->submenu = submenu_alloc();
     if(!app->submenu) {
@@ -3662,14 +4872,9 @@ static App* app_alloc(void) {
     dashboard_set_mode(app, AppDashboardNone);
 
     app_set_default_args(app);
+    app_ensure_startup_dirs();
     app_custom_inject_load(app);
-    furi_string_set(app->status_text, "Ready");
-
-    if(app_connect(app, false)) {
-        app_set_status(app, "Connected to CAN Commander");
-    } else {
-        app_set_status(app, "Not connected. Use Connect/Reconnect");
-    }
+    app_set_status(app, "Ready. Connect on first action");
 
     app->rx_worker =
         furi_thread_alloc_ex("CANCmdRx", APP_RX_THREAD_STACK, app_rx_worker_thread, app);
@@ -3677,7 +4882,9 @@ static App* app_alloc(void) {
         goto fail;
     }
 
+    furi_thread_set_priority(app->rx_worker, FuriThreadPriorityNormal);
     furi_thread_start(app->rx_worker);
+    app->app_ready = true;
 
     return app;
 
@@ -3691,7 +4898,7 @@ static void app_free(App* app) {
         return;
     }
 
-    if(app->scene_manager && app->view_dispatcher) {
+    if(app->app_ready && app->scene_manager && app->view_dispatcher) {
         app_custom_inject_save(app);
     }
 
@@ -3744,6 +4951,11 @@ static void app_free(App* app) {
         cc_client_free(app->client);
     }
 
+    if(app->dbc_config_signals) {
+        free(app->dbc_config_signals);
+        app->dbc_config_signals = NULL;
+    }
+
     if(app->monitor_text) {
         furi_string_free(app->monitor_text);
     }
@@ -3780,7 +4992,23 @@ int32_t cancommander_main(void* p) {
     Gui* gui = furi_record_open(RECORD_GUI);
     view_dispatcher_attach_to_gui(app->view_dispatcher, gui, ViewDispatcherTypeFullscreen);
 
+    /* Give the ESP32 time to finish booting after OTG power was enabled,
+     * then open a clean UART and run the firmware version check once so
+     * tools don't hit a cold handshake on first use. */
+    furi_delay_ms(400);
+    if(app_connect(app, true)) {
+        app_verify_firmware_version(app);
+    }
+
     scene_manager_next_scene(app->scene_manager, cancommander_scene_main_menu);
+
+    /* If the boot-time version check found an out-of-date firmware, surface
+     * the warning immediately by pushing the status scene on top. Back from
+     * the status scene returns the user to the main menu. */
+    if(app->fw_version_warn_pending) {
+        app->fw_version_warn_shown = true;
+        scene_manager_next_scene(app->scene_manager, cancommander_scene_status);
+    }
     view_dispatcher_run(app->view_dispatcher);
 
     furi_record_close(RECORD_GUI);

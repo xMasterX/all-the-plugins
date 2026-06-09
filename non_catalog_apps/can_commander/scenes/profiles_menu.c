@@ -1,7 +1,8 @@
 #include "../can_commander.h"
 
 typedef enum {
-    ProfilesSmartInjection = 0,
+    ProfilesLoadSmartInjection = 0,
+    ProfilesLoadDbcConfig,
 } ProfilesMenuIndex;
 
 static void cancommander_scene_profiles_menu_callback(void* context, uint32_t index) {
@@ -18,7 +19,13 @@ void cancommander_scene_profiles_menu_on_enter(void* context) {
     submenu_add_item(
         app->submenu,
         "Smart Injection Profiles",
-        ProfilesSmartInjection,
+        ProfilesLoadSmartInjection,
+        cancommander_scene_profiles_menu_callback,
+        app);
+    submenu_add_item(
+        app->submenu,
+        "DBC Decoding Profiles",
+        ProfilesLoadDbcConfig,
         cancommander_scene_profiles_menu_callback,
         app);
 
@@ -39,8 +46,12 @@ bool cancommander_scene_profiles_menu_on_event(void* context, SceneManagerEvent 
     scene_manager_set_scene_state(app->scene_manager, cancommander_scene_profiles_menu, event.event);
 
     switch(event.event) {
-    case ProfilesSmartInjection:
-        scene_manager_next_scene(app->scene_manager, cancommander_scene_profiles_smart_inject_menu);
+    case ProfilesLoadSmartInjection:
+        scene_manager_next_scene(app->scene_manager, cancommander_scene_custom_inject_load_slots_menu);
+        return true;
+
+    case ProfilesLoadDbcConfig:
+        scene_manager_next_scene(app->scene_manager, cancommander_scene_dbc_load_config_menu);
         return true;
 
     default:
@@ -52,4 +63,3 @@ void cancommander_scene_profiles_menu_on_exit(void* context) {
     App* app = context;
     submenu_reset(app->submenu);
 }
-
