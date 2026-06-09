@@ -62,12 +62,14 @@ static const char* const honda_v1_button_names[HONDA_V1_BUTTON_MAX + 1U] = {
     [HondaV1ButtonPanic] = "Panic",
 };
 
+#ifdef ENABLE_EMULATE_FEATURE
 static const uint32_t honda_v1_button_codes[HONDA_V1_BUTTON_MAX + 1U] = {
     [HondaV1ButtonUnlock] = 0x00080808,
     [HondaV1ButtonLock] = 0x00088888,
     [HondaV1ButtonTrunk] = 0x00099190,
     [HondaV1ButtonPanic] = 0x000FA7A0,
 };
+#endif
 
 struct SubGhzProtocolDecoderHondaV1 {
     SubGhzProtocolDecoderBase base;
@@ -107,12 +109,14 @@ static const char* honda_v1_button_name(uint8_t b) {
     return "Unknown";
 }
 
+#ifdef ENABLE_EMULATE_FEATURE
 static uint32_t honda_v1_button_code(uint8_t button) {
     if(!honda_v1_button_valid(button)) {
         return HONDA_V1_BUTTON_FALLBACK_CODE;
     }
     return honda_v1_button_codes[button];
 }
+#endif
 
 static bool honda_v1_duration_is(uint32_t d, uint32_t t) {
     return (d >= t) ? ((d - t) <= HONDA_V1_TE_DELTA) : ((t - d) <= HONDA_V1_TE_DELTA);
@@ -173,6 +177,7 @@ static void honda_v1_decode_fields(SubGhzBlockGeneric* generic) {
     generic->data_count_bit = HONDA_V1_BIT_COUNT;
 }
 
+#ifdef ENABLE_EMULATE_FEATURE
 static uint64_t honda_v1_build_key(uint32_t serial, uint8_t button, uint16_t counter) {
     const uint32_t table = honda_v1_button_code(button);
     const uint32_t low = ((table & HONDA_V1_COUNTER_MASK) << 16U) | counter;
@@ -180,6 +185,7 @@ static uint64_t honda_v1_build_key(uint32_t serial, uint8_t button, uint16_t cou
 
     return ((uint64_t)high << 32U) | low;
 }
+#endif
 
 static void honda_v1_state_reset(SubGhzProtocolDecoderHondaV1* instance) {
     instance->step = HondaV1DecoderStepReset;
@@ -230,13 +236,13 @@ static bool honda_v1_commit(SubGhzProtocolDecoderHondaV1* instance) {
     return true;
 }
 
-static void honda_v1_symbol(SubGhzProtocolDecoderHondaV1* instance, bool level, uint32_t duration) {
+static void
+    honda_v1_symbol(SubGhzProtocolDecoderHondaV1* instance, bool level, uint32_t duration) {
     const bool sh = honda_v1_duration_is(duration, HONDA_V1_TE_SHORT);
     const bool lg = honda_v1_duration_is(duration, HONDA_V1_TE_LONG);
 
     if(!sh && !lg) {
-        if(!level && (duration > HONDA_V1_TE_END) &&
-           (instance->step == HondaV1DecoderStepData)) {
+        if(!level && (duration > HONDA_V1_TE_END) && (instance->step == HondaV1DecoderStepData)) {
             honda_v1_commit(instance);
         }
         honda_v1_state_reset(instance);
@@ -321,17 +327,9 @@ static bool honda_v1_append_frame(
         }
 
         generated_count = pp_emit_merge(
-            generated,
-            generated_count,
-            COUNT_OF(generated),
-            bit != 0U,
-            HONDA_V1_TE_SHORT);
+            generated, generated_count, COUNT_OF(generated), bit != 0U, HONDA_V1_TE_SHORT);
         generated_count = pp_emit_merge(
-            generated,
-            generated_count,
-            COUNT_OF(generated),
-            bit == 0U,
-            HONDA_V1_TE_SHORT);
+            generated, generated_count, COUNT_OF(generated), bit == 0U, HONDA_V1_TE_SHORT);
     }
 
     if(generated_count <= HONDA_V1_FRAME_SYNC_DROP) {
@@ -344,9 +342,7 @@ static bool honda_v1_append_frame(
     }
 
     memcpy(
-        &upload[*index],
-        &generated[HONDA_V1_FRAME_SYNC_DROP],
-        copy_count * sizeof(LevelDuration));
+        &upload[*index], &generated[HONDA_V1_FRAME_SYNC_DROP], copy_count * sizeof(LevelDuration));
     *index += copy_count;
 
     const bool tail_level = !level_duration_get_level(upload[*index - 1U]);
@@ -509,11 +505,12 @@ SubGhzProtocolStatus
     uint8_t key_data[HONDA_V1_KEY_BYTES];
     pp_u64_to_bytes_be(instance->generic.data, key_data);
     flipper_format_rewind(flipper_format);
-    bool key_written = flipper_format_update_hex(flipper_format, FF_KEY, key_data, sizeof(key_data));
+    bool key_written =
+        flipper_format_update_hex(flipper_format, FF_KEY, key_data, sizeof(key_data));
     if(!key_written) {
         flipper_format_rewind(flipper_format);
-        key_written =
-            flipper_format_insert_or_update_hex(flipper_format, FF_KEY, key_data, sizeof(key_data));
+        key_written = flipper_format_insert_or_update_hex(
+            flipper_format, FF_KEY, key_data, sizeof(key_data));
     }
     if(!key_written) {
         return SubGhzProtocolStatusErrorParserKey;
@@ -634,7 +631,9 @@ SubGhzProtocolStatus subghz_protocol_decoder_honda_v1_serialize(
     }
 
     return pp_write_display(
-        flipper_format, instance->generic.protocol_name, honda_v1_button_name(instance->generic.btn));
+        flipper_format,
+        instance->generic.protocol_name,
+        honda_v1_button_name(instance->generic.btn));
 }
 
 SubGhzProtocolStatus
