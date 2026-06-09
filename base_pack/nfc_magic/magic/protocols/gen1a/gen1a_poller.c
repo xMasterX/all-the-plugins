@@ -132,23 +132,20 @@ bool gen1a_poller_detect(Nfc* nfc) {
     return gen1a_poller_detect_ctx.detected;
 }
 
-static void gen1a_poller_wipe_block0(MfClassicBlock* block, uint8_t uid_len) {
-    // Wipe to an all-zero UID matching the tag's UID length, keeping the generated
-    // SAK/ATQA/manufacturer bytes. The 4-byte layout carries a BCC at byte 4 (XOR of
-    // the UID bytes); the 7-byte layout has no BCC byte in block 0.
-    if(uid_len == 7) {
-        memset(block->data, 0x00, 7);
-    } else {
-        memset(block->data, 0x00, 4);
-        block->data[4] = block->data[0] ^ block->data[1] ^ block->data[2] ^ block->data[3];
-    }
-}
-
 static void gen1a_poller_reset(Gen1aPoller* instance) {
     instance->current_block = 0;
+
     NfcDataGeneratorType type = (instance->uid_len == 7) ? NfcDataGeneratorTypeMfClassic1k_7b :
                                                            NfcDataGeneratorTypeMfClassic1k_4b;
     nfc_data_generator_fill_data(type, instance->mfc_device);
+
+    // Wipe to an all-zero UID of the tag's length, keeping the generated SAK/ATQA.
+    // mf_classic_set_uid writes the zeroed UID into block 0 plus the correct BCC for the
+    // 4-byte layout (the 7-byte layout has no block-0 BCC).
+    const uint8_t zero_uid[7] = {0};
+    MfClassicData* mfc_data =
+        (MfClassicData*)nfc_device_get_data(instance->mfc_device, NfcProtocolMfClassic);
+    mf_classic_set_uid(mfc_data, zero_uid, (instance->uid_len == 7) ? 7 : 4);
 }
 
 NfcCommand gen1a_poller_idle_handler(Gen1aPoller* instance) {
@@ -193,22 +190,15 @@ NfcCommand gen1a_poller_wipe_handler(Gen1aPoller* instance) {
         instance->state = Gen1aPollerStateSuccess;
     } else {
         do {
-            const MfClassicBlock* block_to_write = &mfc_data->block[instance->current_block];
-            MfClassicBlock block0;
-
             if(instance->current_block == 0) {
                 error = gen1a_poller_data_access(instance);
                 if(error != Gen1aPollerErrorNone) {
                     instance->state = Gen1aPollerStateFail;
                     break;
                 }
-                // Block 0 carries the UID: write an all-zero UID for this tag's length.
-                block0 = mfc_data->block[0];
-                gen1a_poller_wipe_block0(&block0, instance->uid_len);
-                block_to_write = &block0;
             }
-
-            error = gen1a_poller_write_block(instance, instance->current_block, block_to_write);
+            error = gen1a_poller_write_block(
+                instance, instance->current_block, &mfc_data->block[instance->current_block]);
             if(error != Gen1aPollerErrorNone) {
                 instance->state = Gen1aPollerStateFail;
                 break;

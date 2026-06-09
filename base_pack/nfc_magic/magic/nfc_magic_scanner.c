@@ -10,6 +10,8 @@
 
 #include <furi/furi.h>
 
+#define TAG "NfcMagicScanner"
+
 typedef enum {
     NfcMagicScannerSessionStateIdle,
     NfcMagicScannerSessionStateActive,
@@ -78,6 +80,15 @@ static uint8_t nfc_magic_scanner_read_uid_len(Nfc* nfc) {
     if(nfc_poller_detect(poller)) {
         const Iso14443_3aData* data = nfc_poller_get_data(poller);
         uid_len = data->uid_len;
+        if(uid_len != 4 && uid_len != 7) {
+            // Not a Gen1-relevant length (e.g. 10-byte or garbage): treat as unknown.
+            FURI_LOG_E(TAG, "Unexpected Gen1 UID length %u", (unsigned)uid_len);
+            uid_len = 0;
+        }
+    } else {
+        // Backdoor responded but standard activation failed (card moved?). Length stays
+        // 0 ("unknown") and callers fall back to 4-byte / skip the length check.
+        FURI_LOG_E(TAG, "Gen1 detected but UID-length activation failed");
     }
     nfc_poller_free(poller);
     return uid_len;

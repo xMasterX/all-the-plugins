@@ -18,7 +18,7 @@ typedef enum {
 typedef struct {
     NfcMagicProtocol protocol;
     Gen2Type gen2_type; // Valid when protocol == NfcMagicProtocolGen2
-    uint8_t gen1_uid_len; // UID length (4/7) when protocol == NfcMagicProtocolGen1, else 0
+    uint8_t gen1_uid_len; // Gen1 UID length (4/7) when resolved; 0 if unknown or not Gen1
 } NfcMagicScannerEventData;
 
 typedef struct {
