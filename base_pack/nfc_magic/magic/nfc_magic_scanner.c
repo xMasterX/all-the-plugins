@@ -6,6 +6,7 @@
 #include "protocols/gen2/gen2_poller.h"
 #include "protocols/gen4/gen4_poller.h"
 #include <nfc/nfc_poller.h>
+#include <nfc/protocols/iso14443_3a/iso14443_3a.h>
 
 #include <furi/furi.h>
 
@@ -23,6 +24,7 @@ struct NfcMagicScanner {
     Gen4Password gen4_password;
     Gen4* gen4_data;
     Gen2Type gen2_type;
+    uint8_t gen1_uid_len;
     bool magic_protocol_detected;
 
     NfcMagicScannerCallback callback;
@@ -41,6 +43,7 @@ static void nfc_magic_scanner_reset(NfcMagicScanner* instance) {
     instance->session_state = NfcMagicScannerSessionStateIdle;
     instance->current_protocol = NfcMagicProtocolGen1;
     instance->gen2_type = Gen2TypeUnknown;
+    instance->gen1_uid_len = 0;
 }
 
 NfcMagicScanner* nfc_magic_scanner_alloc(Nfc* nfc) {
@@ -66,6 +69,20 @@ void nfc_magic_scanner_set_gen4_password(NfcMagicScanner* instance, Gen4Password
     instance->gen4_password = password;
 }
 
+// Reads the card's UID length (4 or 7) via a standard ISO14443-3A activation, or 0 if
+// it can't be determined. Gen1's backdoor wakeup is UID-length-agnostic, so this
+// resolves the anticollision cascade to tell 4-byte and 7-byte Gen1 tags apart.
+static uint8_t nfc_magic_scanner_read_uid_len(Nfc* nfc) {
+    uint8_t uid_len = 0;
+    NfcPoller* poller = nfc_poller_alloc(nfc, NfcProtocolIso14443_3a);
+    if(nfc_poller_detect(poller)) {
+        const Iso14443_3aData* data = nfc_poller_get_data(poller);
+        uid_len = data->uid_len;
+    }
+    nfc_poller_free(poller);
+    return uid_len;
+}
+
 static int32_t nfc_magic_scanner_worker(void* context) {
     furi_assert(context);
 
@@ -77,6 +94,7 @@ static int32_t nfc_magic_scanner_worker(void* context) {
             if(instance->current_protocol == NfcMagicProtocolGen1) {
                 instance->magic_protocol_detected = gen1a_poller_detect(instance->nfc);
                 if(instance->magic_protocol_detected) {
+                    instance->gen1_uid_len = nfc_magic_scanner_read_uid_len(instance->nfc);
                     break;
                 }
             } else if(instance->current_protocol == NfcMagicProtocolGen4) {
@@ -112,6 +130,7 @@ static int32_t nfc_magic_scanner_worker(void* context) {
                 .type = NfcMagicScannerEventTypeDetected,
                 .data.protocol = instance->current_protocol,
                 .data.gen2_type = instance->gen2_type,
+                .data.gen1_uid_len = instance->gen1_uid_len,
             };
             instance->callback(event, instance->context);
             break;

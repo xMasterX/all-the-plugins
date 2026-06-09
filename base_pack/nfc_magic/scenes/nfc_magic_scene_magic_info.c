@@ -32,11 +32,19 @@ void nfc_magic_scene_magic_info_on_enter(void* context) {
             widget, 0, 0, AlignLeft, AlignTop, FontPrimary, "Magic card detected!");
         furi_string_printf(
             message, "Magic Type: %s", nfc_magic_protocols_get_name(instance->protocol));
+
+        const char* detail = NULL;
         if(instance->protocol == NfcMagicProtocolGen2) {
-            const char* detail = gen2_type_get_detail(instance->gen2_type);
-            if(detail) {
-                furi_string_cat_printf(message, "\n%s", detail);
+            detail = gen2_type_get_detail(instance->gen2_type);
+        } else if(instance->protocol == NfcMagicProtocolGen1) {
+            if(instance->gen1_uid_len == 4) {
+                detail = "4-byte UID";
+            } else if(instance->gen1_uid_len == 7) {
+                detail = "7-byte UID";
             }
+        }
+        if(detail) {
+            furi_string_cat_printf(message, "\n%s", detail);
         }
     }
     widget_add_text_box_element(
