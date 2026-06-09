@@ -111,6 +111,7 @@ struct NfcMagicApp {
     NfcMagicProtocol protocol;
     Gen2Type gen2_type;
     uint8_t gen1_uid_len;
+    bool source_uid_mismatch;
     NfcMagicScanner* scanner;
     NfcPoller* poller;
     Gen1aPoller* gen1a_poller;
