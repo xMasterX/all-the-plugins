@@ -47,12 +47,17 @@ void canvas_initialize(IEIcon* icon, size_t scale_setting) {
 void canvas_free_canvas() {
     if(canvasModel.double_buffer) {
         free(canvasModel.double_buffer);
+        canvasModel.double_buffer = NULL;
     }
 }
 
 // Sets up the view port size based on the scale setting.
 // Repositions the cursor to the middle of the viewport
 void canvas_set_scale(size_t scale_setting) {
+    if(scale_setting == 0) {
+        FURI_LOG_E(TAG, "Can not set canvas scale to 0");
+        return;
+    }
     // Auto minimum scale is always 2x - so we can actually SEE the pixels
     // also, let's constrain the canvas to the 64x64 area - always
     // but our drawing area needs to be a little less - like 60x60? <-- do we even do this?
@@ -77,8 +82,8 @@ void canvas_set_scale(size_t scale_setting) {
                          canvasModel.vph < canvasModel.icon->height;
 
     // place the cursor in the middle-ish of view port
-    canvasModel.cursor_x = MAX((canvasModel.vpw / 2) - 1, 0u);
-    canvasModel.cursor_y = MAX((canvasModel.vph / 2) - 1, 0u);
+    canvasModel.cursor_x = canvasModel.vpw > 1 ? (canvasModel.vpw / 2) - 1 : 0;
+    canvasModel.cursor_y = canvasModel.vph > 1 ? (canvasModel.vph / 2) - 1 : 0;
 }
 
 void canvas_draw(Canvas* canvas, void* context) {
