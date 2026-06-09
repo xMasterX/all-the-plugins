@@ -2,43 +2,29 @@
 #include <dolphin/dolphin.h>
 #include "../api/metroflip/metroflip_api.h"
 
-extern const Icon I_Cross_10x10;
-extern const Icon I_Cross1_10x10;
-extern const Icon I_Cross2_10x10;
-extern const Icon I_Cross3_10x10;
-
 #define TAG "Metroflip:Scene:UnknownCard"
 
 void metroflip_scene_unknown_on_enter(void* context) {
     Metroflip* app = context;
+    Widget* widget = app->widget;
 
     dolphin_deed(DolphinDeedNfcReadSuccess);
+    furi_string_reset(app->text_box_store);
 
-    FURI_LOG_I(TAG, "ct 2 %s", app->card_type ? app->card_type : "NULL");
+    FuriString* str = furi_string_alloc();
 
-    View* view = metroflip_card_view_alloc(app);
-    metroflip_card_view_set_title(view, "Unsupported");
-    metroflip_card_view_set_icon(view, &I_Cross_10x10);
-    metroflip_card_view_set_icon_animation(view, &I_Cross1_10x10, &I_Cross2_10x10, &I_Cross3_10x10);
+    FURI_LOG_I(TAG, "ct 2 %s", app->card_type);
+    furi_string_printf(str, "\e#%s \n\n", app->card_type);
+    furi_string_cat_printf(
+        str, "This card is currently \nunsupported / fully locked");
 
-    uint8_t p = metroflip_card_view_add_page(view, "");
+    widget_add_text_scroll_element(widget, 0, 0, 128, 64, furi_string_get_cstr(str));
 
-    if(app->card_type && app->card_type[0] != '\0') {
-        metroflip_card_view_add_field(view, p, "Detected", app->card_type, false);
-    }
+    widget_add_button_element(
+        widget, GuiButtonTypeRight, "Exit", metroflip_exit_widget_callback, app);
 
-    if(app->is_desfire) {
-        metroflip_card_view_add_field(view, p, "Protocol", "DESFire", false);
-        metroflip_card_view_add_field(view, p, "Status", "Locked", true);
-    } else {
-        metroflip_card_view_add_field(view, p, "Status", "Not supported", true);
-    }
-
-    uint8_t p2 = metroflip_card_view_add_page(view, "Report This Card");
-    metroflip_card_view_add_field(view, p2, "GitHub", "luu176/Metroflip", false);
-    metroflip_card_view_add_field(view, p2, "Section", "/issues", false);
-
-    metroflip_card_view_show(app);
+    furi_string_free(str);
+    view_dispatcher_switch_to_view(app->view_dispatcher, MetroflipViewWidget);
 }
 
 bool metroflip_scene_unknown_on_event(void* context, SceneManagerEvent event) {
@@ -46,20 +32,8 @@ bool metroflip_scene_unknown_on_event(void* context, SceneManagerEvent event) {
     bool consumed = false;
 
     if(event.type == SceneManagerEventTypeCustom) {
-        if(event.event == MetroflipCustomEventTick) {
-            if(app->card_view && view_get_model(app->card_view)) {
-                with_view_model(
-                    app->card_view,
-                    MetroflipCardViewModel * m,
-                    {
-                        if(m->anim[0]) {
-                            m->anim_frame =
-                                (m->anim_frame + 1) % METROFLIP_CARD_VIEW_ANIM_FRAMES;
-                        }
-                    },
-                    true);
-            }
-            consumed = true;
+        if(event.event == GuiButtonTypeLeft) {
+            consumed = scene_manager_previous_scene(app->scene_manager);
         }
     } else if(event.type == SceneManagerEventTypeBack) {
         scene_manager_search_and_switch_to_previous_scene(app->scene_manager, MetroflipSceneStart);
@@ -69,6 +43,7 @@ bool metroflip_scene_unknown_on_event(void* context, SceneManagerEvent event) {
 }
 
 void metroflip_scene_unknown_on_exit(void* context) {
+    Metroflip* app = context;
+    widget_reset(app->widget);
     UNUSED(context);
-    /* Card view cleanup is handled by parse scene's on_exit */
 }

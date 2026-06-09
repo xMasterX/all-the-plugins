@@ -16,8 +16,6 @@
 #include <datetime.h>
 #include <stdbool.h>
 
-#include "metroflip_card_view.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -144,7 +142,6 @@ extern const Icon I_icon;
 extern const Icon I_DolphinDone_80x58;
 extern const Icon I_WarningDolphinFlip_45x42;
 extern const Icon I_DolphinMafia_119x62;
-
 
 
 extern const Icon I_Suica_AsakusaA;

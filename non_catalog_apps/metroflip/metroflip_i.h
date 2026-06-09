@@ -54,7 +54,7 @@
 
 #define KEY_MASK_BIT_CHECK(key_mask_1, key_mask_2) (((key_mask_1) & (key_mask_2)) == (key_mask_1))
 #define METROFLIP_FILE_EXTENSION                   ".nfc"
-typedef struct Metroflip {
+typedef struct {
     Gui* gui;
     SceneManager* scene_manager;
     ViewDispatcher* view_dispatcher;
@@ -115,15 +115,6 @@ typedef struct Metroflip {
 
     bool data_loaded;
 
-    // Card view (canvas-based multi-page display, managed by plugins)
-    View* card_view;
-
-    // Custom main menu view
-    View* main_menu;
-
-    // Scan animation view
-    View* scan_anim;
-
 } Metroflip;
 
 enum MetroflipCustomEvent {
@@ -143,11 +134,7 @@ enum MetroflipCustomEvent {
 
     MetroflipCustomEventCardLost,
     MetroflipCustomEventCardDetected,
-    MetroflipCustomEventWrongCard,
-    MetroflipCustomEventAtrComplete,
-    MetroflipCustomEventSaveRequest,
-    MetroflipCustomEventDeleteRequest,
-    MetroflipCustomEventTick,
+    MetroflipCustomEventWrongCard
 };
 
 typedef enum {
@@ -168,8 +155,7 @@ typedef enum {
     MetroflipViewTextBox,
     MetroflipViewWidget,
     MetroflipViewUart,
-    MetroflipViewCanvas,   /* Used by plugins (e.g. Suica) for custom views */
-    MetroflipViewCardView, /* Persistent card view - never conflicts with plugin views */
+    MetroflipViewCanvas,
 } MetroflipView;
 
 typedef enum {

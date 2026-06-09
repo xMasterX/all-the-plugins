@@ -17,6 +17,4 @@ typedef struct {
     View* view_history;
     FuriTimer* timer;
     FuriString* suica_file_data;
-    FuriString* parsed_data;
-    bool suica_found;
 } SuicaContext;
