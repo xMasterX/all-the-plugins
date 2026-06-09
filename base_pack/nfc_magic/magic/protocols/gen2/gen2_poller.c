@@ -96,7 +96,7 @@ const char* const gen2_problem_strings[] = {
     "The selected file is incomplete",
 };
 
-Gen2Poller* gen2_poller_alloc(Nfc* nfc) {
+static Gen2Poller* gen2_poller_alloc_internal(Nfc* nfc, bool with_write_ctx) {
     Gen2Poller* instance = malloc(sizeof(Gen2Poller));
     instance->poller = nfc_poller_alloc(nfc, NfcProtocolIso14443_3a);
     instance->data = mf_classic_alloc();
@@ -109,12 +109,24 @@ Gen2Poller* gen2_poller_alloc(Nfc* nfc) {
 
     instance->gen2_event.data = &instance->gen2_event_data;
 
-    instance->mode_ctx.write_ctx.mfc_data_source = malloc(sizeof(MfClassicData));
-    instance->mode_ctx.write_ctx.mfc_data_target = malloc(sizeof(MfClassicData));
+    // The two ~4 KB write/wipe data buffers are only used by the write path. Detection
+    // sessions skip them and leave the pointers NULL (gen2_poller_free's free(NULL) is
+    // a no-op), since gen2_poller_alloc runs up to 5 times per detection.
+    if(with_write_ctx) {
+        instance->mode_ctx.write_ctx.mfc_data_source = malloc(sizeof(MfClassicData));
+        instance->mode_ctx.write_ctx.mfc_data_target = malloc(sizeof(MfClassicData));
+    } else {
+        instance->mode_ctx.write_ctx.mfc_data_source = NULL;
+        instance->mode_ctx.write_ctx.mfc_data_target = NULL;
+    }
 
     instance->mode_ctx.write_ctx.need_halt_before_write = true;
 
     return instance;
+}
+
+Gen2Poller* gen2_poller_alloc(Nfc* nfc) {
+    return gen2_poller_alloc_internal(nfc, true);
 }
 
 void gen2_poller_free(Gen2Poller* instance) {
@@ -303,7 +315,7 @@ static void gen2_poller_run_detect_session(
     Nfc* nfc,
     NfcGenericCallback callback,
     Gen2DetectContext* ctx) {
-    ctx->poller = gen2_poller_alloc(nfc);
+    ctx->poller = gen2_poller_alloc_internal(nfc, false);
     ctx->thread_id = furi_thread_get_current_id();
     nfc_poller_start(ctx->poller->poller, callback, ctx);
     furi_thread_flags_wait(GEN2_POLLER_THREAD_FLAG_DETECTED, FuriFlagWaitAny, FuriWaitForever);
