@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <furi.h>
+#include <furi_ble/profile_interface.h>
 #include <gui/gui.h>
 #include <gui/view_dispatcher.h>
 #include <gui/modules/submenu.h>
@@ -16,6 +17,7 @@
 #include <nfc/protocols/mf_ultralight/mf_ultralight_poller_sync.h>
 #include <furi/core/thread.h>
 #include <furi_hal_random.h>
+#include <bt/bt_service/bt.h>
 
 #define AMI_TOOL_RETAIL_KEY_SIZE (160U)
 #define AMI_TOOL_RETAIL_KEY_FILENAME "key_retail.bin"
@@ -97,6 +99,7 @@ typedef enum {
     AmiToolSceneGenerate,
     AmiToolSceneSaved,
     AmiToolSceneAmiiboLink,
+    AmiToolSceneBluetooth,
     AmiToolSceneCount,
 } AmiToolScene;
 
@@ -128,6 +131,7 @@ typedef enum {
     AmiToolEventMainMenuGenerate,
     AmiToolEventMainMenuSaved,
     AmiToolEventMainMenuAmiiboLink,
+    AmiToolEventMainMenuBluetooth,
     AmiToolEventMainMenuExit,
     AmiToolEventReadSuccess,
     AmiToolEventReadWrongType,
@@ -145,6 +149,9 @@ typedef enum {
     AmiToolEventUsagePrevPage,
     AmiToolEventUsageNextPage,
     AmiToolEventAmiiboLinkWriteComplete,
+    AmiToolEventBluetoothUpdate,
+    AmiToolEventBluetoothGenerate,
+    AmiToolEventBluetoothUidQuery,
 } AmiToolCustomEvent;
 
 typedef enum {
@@ -168,6 +175,17 @@ typedef enum {
     AmiToolRetailKeyStatusInvalidSize,
     AmiToolRetailKeyStatusStorageError,
 } AmiToolRetailKeyStatus;
+
+typedef enum {
+    AmiToolWriteStatusOk,
+    AmiToolWriteStatusInvalidArgs,
+    AmiToolWriteStatusNoTagData,
+    AmiToolWriteStatusNoUid,
+    AmiToolWriteStatusOutOfRange,
+    AmiToolWriteStatusNotNtag215,
+    AmiToolWriteStatusUidMismatch,
+    AmiToolWriteStatusIoError,
+} AmiToolWriteStatus;
 
 struct AmiToolApp {
     Gui* gui;
@@ -255,6 +273,14 @@ struct AmiToolApp {
     uint8_t amiibo_link_access_snapshot[MF_ULTRALIGHT_PAGE_SIZE];
     bool amiibo_link_completion_marker_valid;
     uint8_t amiibo_link_completion_marker[MF_ULTRALIGHT_PAGE_SIZE];
+
+    Bt* bt;
+    FuriHalBleProfileBase* bt_serial_profile;
+    bool bt_connected;
+    FuriMutex* bt_mutex;
+    char bt_display_text[256];
+    bool bt_pending_generate;
+    char bt_pending_generate_id[17];
 };
 
 /* Scene handlers table */
@@ -291,6 +317,11 @@ bool ami_tool_extract_amiibo_id(
     const MfUltralightData* tag_data,
     char* buffer,
     size_t buffer_size);
+const char* ami_tool_write_status_to_string(AmiToolWriteStatus status);
+AmiToolWriteStatus ami_tool_write_custom_sequence(
+    AmiToolApp* app,
+    MfUltralightError* io_error,
+    uint16_t* failed_page);
 
 RfidxStatus amiibo_derive_key(
     const DumpedKeySingle* input_key,
