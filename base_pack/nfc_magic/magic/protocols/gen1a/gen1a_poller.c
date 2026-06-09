@@ -40,6 +40,7 @@ Gen1aPoller* gen1a_poller_alloc(Nfc* nfc) {
 
     Gen1aPoller* instance = malloc(sizeof(Gen1aPoller));
     instance->nfc = nfc;
+    instance->uid_len = 4;
 
     nfc_config(instance->nfc, NfcModePoller, NfcTechIso14443a);
     nfc_set_guard_time_us(instance->nfc, ISO14443_3A_GUARD_TIME_US);
@@ -65,6 +66,12 @@ void gen1a_poller_free(Gen1aPoller* instance) {
     nfc_device_free(instance->mfc_device);
 
     free(instance);
+}
+
+void gen1a_poller_set_uid_len(Gen1aPoller* instance, uint8_t uid_len) {
+    furi_assert(instance);
+    // Only 4- and 7-byte UIDs are valid; anything else (e.g. undetected) falls back to 4.
+    instance->uid_len = (uid_len == 7) ? 7 : 4;
 }
 
 NfcCommand gen1a_poller_detect_callback(NfcEvent event, void* context) {
@@ -125,9 +132,23 @@ bool gen1a_poller_detect(Nfc* nfc) {
     return gen1a_poller_detect_ctx.detected;
 }
 
+static void gen1a_poller_wipe_block0(MfClassicBlock* block, uint8_t uid_len) {
+    // Wipe to an all-zero UID matching the tag's UID length, keeping the generated
+    // SAK/ATQA/manufacturer bytes. The 4-byte layout carries a BCC at byte 4 (XOR of
+    // the UID bytes); the 7-byte layout has no BCC byte in block 0.
+    if(uid_len == 7) {
+        memset(block->data, 0x00, 7);
+    } else {
+        memset(block->data, 0x00, 4);
+        block->data[4] = block->data[0] ^ block->data[1] ^ block->data[2] ^ block->data[3];
+    }
+}
+
 static void gen1a_poller_reset(Gen1aPoller* instance) {
     instance->current_block = 0;
-    nfc_data_generator_fill_data(NfcDataGeneratorTypeMfClassic1k_4b, instance->mfc_device);
+    NfcDataGeneratorType type = (instance->uid_len == 7) ? NfcDataGeneratorTypeMfClassic1k_7b :
+                                                           NfcDataGeneratorTypeMfClassic1k_4b;
+    nfc_data_generator_fill_data(type, instance->mfc_device);
 }
 
 NfcCommand gen1a_poller_idle_handler(Gen1aPoller* instance) {
@@ -172,15 +193,22 @@ NfcCommand gen1a_poller_wipe_handler(Gen1aPoller* instance) {
         instance->state = Gen1aPollerStateSuccess;
     } else {
         do {
+            const MfClassicBlock* block_to_write = &mfc_data->block[instance->current_block];
+            MfClassicBlock block0;
+
             if(instance->current_block == 0) {
                 error = gen1a_poller_data_access(instance);
                 if(error != Gen1aPollerErrorNone) {
                     instance->state = Gen1aPollerStateFail;
                     break;
                 }
+                // Block 0 carries the UID: write an all-zero UID for this tag's length.
+                block0 = mfc_data->block[0];
+                gen1a_poller_wipe_block0(&block0, instance->uid_len);
+                block_to_write = &block0;
             }
-            error = gen1a_poller_write_block(
-                instance, instance->current_block, &mfc_data->block[instance->current_block]);
+
+            error = gen1a_poller_write_block(instance, instance->current_block, block_to_write);
             if(error != Gen1aPollerErrorNone) {
                 instance->state = Gen1aPollerStateFail;
                 break;
