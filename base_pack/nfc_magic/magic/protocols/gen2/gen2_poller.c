@@ -386,17 +386,17 @@ Gen2PollerError gen2_poller_detect_type(Nfc* nfc, Gen2Type* type) {
     return (*type != Gen2TypeUnknown) ? Gen2PollerErrorNone : Gen2PollerErrorNotPresent;
 }
 
-const char* gen2_type_get_name(Gen2Type type) {
+const char* gen2_type_get_detail(Gen2Type type) {
     switch(type) {
     case Gen2TypeCuid:
-        return "Gen2: CUID";
+        return "CUID";
     case Gen2TypeCuidStaticNonce:
-        return "Gen2: CUID. Static nonce";
+        return "CUID. Static nonce";
     case Gen2TypeAts:
-        return "Gen2: CUID. ATS";
+        return "CUID. ATS";
     case Gen2TypeUnknown:
     default:
-        return "Gen2";
+        return NULL;
     }
 }
 

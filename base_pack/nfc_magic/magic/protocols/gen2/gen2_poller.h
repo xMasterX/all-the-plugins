@@ -92,8 +92,9 @@ Gen2PollerError gen2_poller_detect(Nfc* nfc);
 // CUID with static nonce). Returns Gen2PollerErrorNone when any Gen2 type is found.
 Gen2PollerError gen2_poller_detect_type(Nfc* nfc, Gen2Type* type);
 
-// Human-readable label for a Gen2 sub-type (e.g. "Gen2: CUID").
-const char* gen2_type_get_name(Gen2Type type);
+// Gen2 sub-type detail shown under the "Gen 2" type line (e.g. "CUID. Static nonce"),
+// or NULL if none.
+const char* gen2_type_get_detail(Gen2Type type);
 
 Gen2Poller* gen2_poller_alloc(Nfc* nfc);
 
