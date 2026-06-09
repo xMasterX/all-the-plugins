@@ -391,8 +391,9 @@ const char* gen2_type_get_name(Gen2Type type) {
     case Gen2TypeCuid:
         return "Gen2: CUID";
     case Gen2TypeCuidStaticNonce:
-        return "Gen2: CUID Static Nonce (MF-3.2)";
+        return "Gen2: CUID. Static nonce";
     case Gen2TypeAts:
+        return "Gen2: CUID. ATS";
     case Gen2TypeUnknown:
     default:
         return "Gen2";
