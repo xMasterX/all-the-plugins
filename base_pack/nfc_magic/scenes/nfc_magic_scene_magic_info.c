@@ -22,16 +22,18 @@ void nfc_magic_scene_magic_info_on_enter(void* context) {
 
     if(instance->protocol == NfcMagicProtocolClassic) {
         widget_add_string_element(
-            widget, 0, 0, AlignLeft, AlignTop, FontPrimary, "It Might Be a Magic Card");
-        furi_string_printf(message, "You can make sure the card is\nmagic by writing to it\n");
+            widget, 0, 0, AlignLeft, AlignTop, FontPrimary, "Magic Not Confirmed");
+        furi_string_printf(
+            message,
+            "Not a magic tag, or sector 0 key is non-standard. Try writing to confirm.");
     } else {
         widget_add_string_element(
             widget, 0, 0, AlignLeft, AlignTop, FontPrimary, "Magic card detected!");
+        const char* type_name = (instance->protocol == NfcMagicProtocolGen2) ?
+                                    gen2_type_get_name(instance->gen2_type) :
+                                    nfc_magic_protocols_get_name(instance->protocol);
+        furi_string_cat_printf(message, "Magic Type: %s", type_name);
     }
-    const char* type_name = (instance->protocol == NfcMagicProtocolGen2) ?
-                                gen2_type_get_name(instance->gen2_type) :
-                                nfc_magic_protocols_get_name(instance->protocol);
-    furi_string_cat_printf(message, "Magic Type: %s", type_name);
     widget_add_text_box_element(
         widget, 0, 10, 128, 54, AlignLeft, AlignTop, furi_string_get_cstr(message), false);
 
