@@ -112,6 +112,9 @@ struct NfcMagicApp {
     Gen2Type gen2_type;
     uint8_t gen1_uid_len;
     UscuidUlData uscuid_ul_data;
+    uint16_t write_progress_current; // USCUID-UL: pages written so far (live progress)
+    uint16_t write_progress_total; // USCUID-UL: total pages to write
+    uint16_t write_failed_page; // USCUID-UL: page that failed (0xFFFF if not page-specific)
     bool source_uid_mismatch;
     NfcMagicScanner* scanner;
     NfcPoller* poller;

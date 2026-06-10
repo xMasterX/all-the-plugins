@@ -80,6 +80,8 @@ typedef struct {
     bool activated;
     uint8_t sak;
     uint8_t uid_len; // 4 or 7, else 0 ("unknown")
+    uint8_t uid0; // first two UID bytes, for the unpersonalized UL-5 (AA 55) heuristic
+    uint8_t uid1;
 } NfcMagicScannerIdentity;
 
 static NfcMagicScannerIdentity nfc_magic_scanner_read_identity(Nfc* nfc) {
@@ -91,6 +93,10 @@ static NfcMagicScannerIdentity nfc_magic_scanner_read_identity(Nfc* nfc) {
         id.activated = true;
         id.sak = data->sak;
         id.uid_len = (data->uid_len == 4 || data->uid_len == 7) ? data->uid_len : 0;
+        if(data->uid_len >= 2) {
+            id.uid0 = data->uid[0];
+            id.uid1 = data->uid[1];
+        }
     }
     nfc_poller_free(poller);
 
@@ -145,6 +151,14 @@ static bool
         // Ultralight family.
         if(uscuid_ul_poller_detect(instance->nfc, &instance->uscuid_ul_data) ==
            UscuidUlPollerErrorNone) {
+            *protocol = NfcMagicProtocolUscuidUl;
+            return true;
+        }
+        // Unpersonalized UL-5 has a locked config (so the probe above fails) but is
+        // identifiable by its UID prefix AA 55. Report it as a detect-only hint.
+        if(id.uid0 == 0xAA && id.uid1 == 0x55) {
+            memset(&instance->uscuid_ul_data, 0, sizeof(UscuidUlData));
+            instance->uscuid_ul_data.maybe_ul5 = true;
             *protocol = NfcMagicProtocolUscuidUl;
             return true;
         }

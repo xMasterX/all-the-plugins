@@ -1,6 +1,9 @@
 #include "uscuid_ul_poller_i.h"
 
+#include <nfc/nfc_poller.h>
+#include <nfc/protocols/nfc_generic_event.h>
 #include <nfc/protocols/iso14443_3a/iso14443_3a.h>
+#include <nfc/protocols/iso14443_3a/iso14443_3a_poller.h>
 #include <furi/furi.h>
 
 #define TAG "USCUID_UL_POLLER"
@@ -32,8 +35,16 @@ UscuidUlPoller* uscuid_ul_poller_alloc(Nfc* nfc) {
     instance->state = UscuidUlPollerStateIdle;
     instance->session_state = UscuidUlPollerSessionStateIdle;
     instance->wakeup = UscuidUlWakeupNone;
+    instance->iso3_nfc_poller = NULL;
+    instance->iso3_poller = NULL;
 
     return instance;
+}
+
+void uscuid_ul_poller_set_wakeup(UscuidUlPoller* instance, UscuidUlWakeup wakeup) {
+    furi_assert(instance);
+    // Selects the write engine: None -> direct (normal activation + A2), A/B -> backdoor.
+    instance->wakeup = wakeup;
 }
 
 void uscuid_ul_poller_free(UscuidUlPoller* instance) {
@@ -44,7 +55,72 @@ void uscuid_ul_poller_free(UscuidUlPoller* instance) {
     free(instance);
 }
 
-// --- Detection (standalone, own raw session; reuses the poller primitives) ---
+// --- Detection route 1: config exposed as the RATS/ATS response (85-mode, no backdoor) ---
+
+#define USCUID_UL_RATS_CMD (0xE0)
+#define USCUID_UL_RATS_PARAM (0x80) // FSDI=8 (256-byte frame), CID=0
+#define USCUID_UL_RATS_FWT (150000U)
+
+typedef struct {
+    BitBuffer* tx_buffer;
+    BitBuffer* rx_buffer;
+    FuriThreadId thread_id;
+    UscuidUlData* result;
+} UscuidUlAtsDetectContext;
+
+static NfcCommand uscuid_ul_poller_ats_detect_callback(NfcGenericEvent event, void* context) {
+    furi_assert(context);
+    furi_assert(event.event_data);
+    furi_assert(event.instance);
+
+    UscuidUlAtsDetectContext* ctx = context;
+    Iso14443_3aPoller* iso3_poller = event.instance;
+    Iso14443_3aPollerEvent* iso3_event = event.event_data;
+
+    if(iso3_event->type == Iso14443_3aPollerEventTypeReady) {
+        bit_buffer_reset(ctx->tx_buffer);
+        bit_buffer_append_byte(ctx->tx_buffer, USCUID_UL_RATS_CMD);
+        bit_buffer_append_byte(ctx->tx_buffer, USCUID_UL_RATS_PARAM);
+        Iso14443_3aError error = iso14443_3a_poller_send_standard_frame(
+            iso3_poller, ctx->tx_buffer, ctx->rx_buffer, USCUID_UL_RATS_FWT);
+
+        const size_t rx_len = bit_buffer_get_size_bytes(ctx->rx_buffer);
+        if((error == Iso14443_3aErrorNone || error == Iso14443_3aErrorWrongCrc) &&
+           rx_len >= USCUID_UL_CONFIG_SIZE) {
+            const uint8_t* ats = bit_buffer_get_data(ctx->rx_buffer);
+            if(ats[0] == USCUID_UL_CONFIG_MAGIC) {
+                ctx->result->is_uscuid_ul = true;
+                ctx->result->wakeup = UscuidUlWakeupNone;
+                memcpy(ctx->result->config, ats, USCUID_UL_CONFIG_SIZE);
+                uscuid_ul_classify(ats, ctx->result);
+            }
+        }
+    }
+
+    furi_thread_flags_set(ctx->thread_id, USCUID_UL_POLLER_THREAD_FLAG_DONE);
+    return NfcCommandStop;
+}
+
+static void uscuid_ul_poller_detect_via_ats(Nfc* nfc, UscuidUlData* data) {
+    UscuidUlAtsDetectContext ctx = {
+        .tx_buffer = bit_buffer_alloc(USCUID_UL_POLLER_MAX_BUFFER_SIZE),
+        .rx_buffer = bit_buffer_alloc(USCUID_UL_POLLER_MAX_BUFFER_SIZE),
+        .thread_id = furi_thread_get_current_id(),
+        .result = data,
+    };
+
+    NfcPoller* poller = nfc_poller_alloc(nfc, NfcProtocolIso14443_3a);
+    nfc_poller_start(poller, uscuid_ul_poller_ats_detect_callback, &ctx);
+    furi_thread_flags_wait(USCUID_UL_POLLER_THREAD_FLAG_DONE, FuriFlagWaitAny, FuriWaitForever);
+    furi_thread_flags_clear(USCUID_UL_POLLER_THREAD_FLAG_DONE);
+    nfc_poller_stop(poller);
+    nfc_poller_free(poller);
+
+    bit_buffer_free(ctx.tx_buffer);
+    bit_buffer_free(ctx.rx_buffer);
+}
+
+// --- Detection route 2: gen1a-style backdoor wakeup + E050 (7AFF-mode) ---
 
 typedef struct {
     UscuidUlPoller* poller;
@@ -91,25 +167,44 @@ UscuidUlPollerError uscuid_ul_poller_detect(Nfc* nfc, UscuidUlData* data) {
     // TODO(increment 2): set maybe_ul5 from the normal-activation UID prefix AA 55
     // in the family-first scanner (UL-5 config is locked, so it cannot be read here).
 
-    UscuidUlDetectContext ctx = {
-        .poller = uscuid_ul_poller_alloc(nfc),
-        .thread_id = furi_thread_get_current_id(),
-        .result = data,
-    };
+    // Route 1: config exposed as ATS (85-mode). Non-destructive RATS read.
+    uscuid_ul_poller_detect_via_ats(nfc, data);
 
-    nfc_start(nfc, uscuid_ul_poller_detect_callback, &ctx);
-    furi_thread_flags_wait(USCUID_UL_POLLER_THREAD_FLAG_DONE, FuriFlagWaitAny, FuriWaitForever);
-    furi_thread_flags_clear(USCUID_UL_POLLER_THREAD_FLAG_DONE);
-    nfc_stop(nfc);
+    // Route 2: gen1a-style backdoor wakeup + E050 (7AFF-mode).
+    if(!data->is_uscuid_ul) {
+        UscuidUlDetectContext ctx = {
+            .poller = uscuid_ul_poller_alloc(nfc),
+            .thread_id = furi_thread_get_current_id(),
+            .result = data,
+        };
 
-    uscuid_ul_poller_free(ctx.poller);
+        nfc_start(nfc, uscuid_ul_poller_detect_callback, &ctx);
+        furi_thread_flags_wait(
+            USCUID_UL_POLLER_THREAD_FLAG_DONE, FuriFlagWaitAny, FuriWaitForever);
+        furi_thread_flags_clear(USCUID_UL_POLLER_THREAD_FLAG_DONE);
+        nfc_stop(nfc);
+
+        uscuid_ul_poller_free(ctx.poller);
+    }
 
     return data->is_uscuid_ul ? UscuidUlPollerErrorNone : UscuidUlPollerErrorNotPresent;
+}
+
+bool uscuid_ul_data_is_writable(const UscuidUlData* data) {
+    furi_assert(data);
+
+    // A confirmed USCUID-UL of a recognised, supported type (UL-C is display-only), or a
+    // suspected UL-5 (cloned via the inverse UID write order; target type comes from the dump).
+    return data->maybe_ul5 ||
+           (data->is_uscuid_ul && data->type_known && (data->type != MfUltralightTypeMfulC));
 }
 
 const char* uscuid_ul_get_variant_name(const UscuidUlData* data) {
     furi_assert(data);
 
+    if(data->maybe_ul5) {
+        return "UL-5 (probably)";
+    }
     if(!data->is_uscuid_ul || !data->type_known) {
         return "Unknown";
     }
@@ -137,17 +232,17 @@ const char* uscuid_ul_get_variant_name(const UscuidUlData* data) {
 static NfcCommand uscuid_ul_poller_idle_handler(UscuidUlPoller* instance) {
     NfcCommand command = NfcCommandContinue;
 
-    for(size_t i = 0; i < COUNT_OF(uscuid_ul_wakeup_variants); i++) {
-        const UscuidUlWakeup variant = uscuid_ul_wakeup_variants[i];
-        if(uscuid_ul_poller_wakeup(instance, variant) == UscuidUlPollerErrorNone) {
-            instance->wakeup = variant;
-            instance->event.type = UscuidUlPollerEventTypeDetected;
-            command = instance->callback(instance->event, instance->context);
-            instance->state = UscuidUlPollerStateRequestMode;
-            break;
-        }
+    if(uscuid_ul_is_direct(instance)) {
+        // Direct engine: the iso3 poller has already activated the card, nothing to wake.
+        instance->event.type = UscuidUlPollerEventTypeDetected;
+        command = instance->callback(instance->event, instance->context);
+        instance->state = UscuidUlPollerStateRequestMode;
+    } else if(uscuid_ul_poller_wakeup(instance, instance->wakeup) == UscuidUlPollerErrorNone) {
+        instance->event.type = UscuidUlPollerEventTypeDetected;
+        command = instance->callback(instance->event, instance->context);
+        instance->state = UscuidUlPollerStateRequestMode;
     }
-    // If neither wakeup answered, stay idle and retry on the next poll.
+    // If the backdoor wakeup didn't answer, stay idle and retry on the next poll.
 
     return command;
 }
@@ -234,6 +329,7 @@ static NfcCommand uscuid_ul_poller_success_handler(UscuidUlPoller* instance) {
 static NfcCommand uscuid_ul_poller_fail_handler(UscuidUlPoller* instance) {
     instance->event.type = UscuidUlPollerEventTypeFail;
     instance->event_data.fail.pages_written = instance->written;
+    instance->event_data.fail.pages_total = instance->pages_total;
     instance->event_data.fail.failed_page = instance->failed_page;
     NfcCommand command = instance->callback(instance->event, instance->context);
     instance->state = UscuidUlPollerStateIdle;
@@ -265,6 +361,28 @@ static NfcCommand uscuid_ul_poller_run(NfcEvent event, void* context) {
     return command;
 }
 
+// Direct-engine run loop: driven by the iso3 poller, which handles normal activation.
+static NfcCommand uscuid_ul_poller_iso3_run(NfcGenericEvent event, void* context) {
+    furi_assert(context);
+    furi_assert(event.event_data);
+    furi_assert(event.instance);
+
+    UscuidUlPoller* instance = context;
+    instance->iso3_poller = event.instance;
+    Iso14443_3aPollerEvent* iso3_event = event.event_data;
+    NfcCommand command = NfcCommandContinue;
+
+    if(iso3_event->type == Iso14443_3aPollerEventTypeReady) {
+        command = uscuid_ul_poller_state_handlers[instance->state](instance);
+    }
+
+    if(instance->session_state == UscuidUlPollerSessionStateStopRequest) {
+        command = NfcCommandStop;
+    }
+
+    return command;
+}
+
 void uscuid_ul_poller_start(
     UscuidUlPoller* instance,
     UscuidUlPollerCallback callback,
@@ -276,13 +394,26 @@ void uscuid_ul_poller_start(
     instance->context = context;
     instance->state = UscuidUlPollerStateIdle;
     instance->session_state = UscuidUlPollerSessionStateStarted;
-    nfc_start(instance->nfc, uscuid_ul_poller_run, instance);
+
+    if(uscuid_ul_is_direct(instance)) {
+        instance->iso3_nfc_poller = nfc_poller_alloc(instance->nfc, NfcProtocolIso14443_3a);
+        nfc_poller_start(instance->iso3_nfc_poller, uscuid_ul_poller_iso3_run, instance);
+    } else {
+        nfc_start(instance->nfc, uscuid_ul_poller_run, instance);
+    }
 }
 
 void uscuid_ul_poller_stop(UscuidUlPoller* instance) {
     furi_assert(instance);
 
     instance->session_state = UscuidUlPollerSessionStateStopRequest;
-    nfc_stop(instance->nfc);
+    if(instance->iso3_nfc_poller != NULL) {
+        nfc_poller_stop(instance->iso3_nfc_poller);
+        nfc_poller_free(instance->iso3_nfc_poller);
+        instance->iso3_nfc_poller = NULL;
+        instance->iso3_poller = NULL;
+    } else {
+        nfc_stop(instance->nfc);
+    }
     instance->session_state = UscuidUlPollerSessionStateIdle;
 }

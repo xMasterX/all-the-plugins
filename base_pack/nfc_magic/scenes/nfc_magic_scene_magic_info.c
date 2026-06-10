@@ -48,6 +48,14 @@ void nfc_magic_scene_magic_info_on_enter(void* context) {
         if(detail) {
             furi_string_cat_printf(message, "\n%s", detail);
         }
+        // For an unrecognised USCUID-UL preset, show the raw config so it can be reported.
+        if(instance->protocol == NfcMagicProtocolUscuidUl &&
+           instance->uscuid_ul_data.is_uscuid_ul && !instance->uscuid_ul_data.type_known) {
+            furi_string_cat_str(message, "\nCfg:");
+            for(size_t i = 0; i < USCUID_UL_CONFIG_SIZE; i++) {
+                furi_string_cat_printf(message, " %02X", instance->uscuid_ul_data.config[i]);
+            }
+        }
     }
     widget_add_text_box_element(
         widget, 0, 10, 128, 54, AlignLeft, AlignTop, furi_string_get_cstr(message), false);
@@ -75,8 +83,21 @@ void nfc_magic_scene_magic_info_on_enter(void* context) {
 
     widget_add_button_element(
         widget, GuiButtonTypeLeft, "Retry", nfc_magic_scene_magic_info_widget_callback, instance);
-    widget_add_button_element(
-        widget, GuiButtonTypeRight, "More", nfc_magic_scene_magic_info_widget_callback, instance);
+
+    // A detected USCUID-UL with no available action (UL-C "write N/A" / unrecognised
+    // preset) offers no "More" menu, so the info screen just shows the variant.
+    bool show_more = true;
+    if(instance->protocol == NfcMagicProtocolUscuidUl) {
+        show_more = uscuid_ul_data_is_writable(&instance->uscuid_ul_data);
+    }
+    if(show_more) {
+        widget_add_button_element(
+            widget,
+            GuiButtonTypeRight,
+            "More",
+            nfc_magic_scene_magic_info_widget_callback,
+            instance);
+    }
 
     furi_string_free(message);
 

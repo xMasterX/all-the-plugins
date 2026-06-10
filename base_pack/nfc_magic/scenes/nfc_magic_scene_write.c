@@ -109,12 +109,18 @@ NfcCommand
         event.data->data_to_write.data =
             nfc_device_get_data(instance->source_dev, NfcProtocolMfUltralight);
     } else if(event.type == UscuidUlPollerEventTypeWriteProgress) {
-        // TODO(progress UI): surface write_progress.{pages_written,pages_total} as "Writing X/N".
+        instance->write_progress_current = event.data->write_progress.pages_written;
+        instance->write_progress_total = event.data->write_progress.pages_total;
+        view_dispatcher_send_custom_event(
+            instance->view_dispatcher, NfcMagicCustomEventWorkerProgress);
     } else if(event.type == UscuidUlPollerEventTypeSuccess) {
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventWorkerSuccess);
         command = NfcCommandStop;
     } else if(event.type == UscuidUlPollerEventTypeFail) {
+        instance->write_progress_current = event.data->fail.pages_written;
+        instance->write_progress_total = event.data->fail.pages_total;
+        instance->write_failed_page = event.data->fail.failed_page;
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventWorkerFail);
         command = NfcCommandStop;
@@ -143,6 +149,10 @@ static void nfc_magic_scene_write_setup_view(NfcMagicApp* instance) {
 void nfc_magic_scene_write_on_enter(void* context) {
     NfcMagicApp* instance = context;
 
+    instance->write_progress_current = 0;
+    instance->write_progress_total = 0;
+    instance->write_failed_page = 0xFFFF;
+
     scene_manager_set_scene_state(
         instance->scene_manager, NfcMagicSceneWrite, NfcMagicSceneWriteStateCardSearch);
     nfc_magic_scene_write_setup_view(instance);
@@ -163,6 +173,9 @@ void nfc_magic_scene_write_on_enter(void* context) {
             instance->gen2_poller, nfc_magic_scene_write_gen2_poller_callback, instance);
     } else if(instance->protocol == NfcMagicProtocolUscuidUl) {
         instance->uscuid_ul_poller = uscuid_ul_poller_alloc(instance->nfc);
+        // Pick the write transport from detection: direct (CUID/ATS) vs backdoor wakeup.
+        uscuid_ul_poller_set_wakeup(
+            instance->uscuid_ul_poller, instance->uscuid_ul_data.wakeup);
         uscuid_ul_poller_start(
             instance->uscuid_ul_poller,
             nfc_magic_scene_write_uscuid_ul_poller_callback,
@@ -189,6 +202,17 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
             scene_manager_set_scene_state(
                 instance->scene_manager, NfcMagicSceneWrite, NfcMagicSceneWriteStateCardSearch);
             nfc_magic_scene_write_setup_view(instance);
+            consumed = true;
+        } else if(event.event == NfcMagicCustomEventWorkerProgress) {
+            // Live "Writing X/N" while the USCUID-UL poller advances page by page.
+            snprintf(
+                instance->text_store,
+                sizeof(instance->text_store),
+                "Writing\n%u / %u",
+                instance->write_progress_current,
+                instance->write_progress_total);
+            popup_set_header(
+                instance->popup, instance->text_store, 52, 32, AlignLeft, AlignCenter);
             consumed = true;
         } else if(event.event == NfcMagicCustomEventWorkerSuccess) {
             scene_manager_next_scene(instance->scene_manager, NfcMagicSceneSuccess);

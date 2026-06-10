@@ -2,6 +2,8 @@
 
 #include "uscuid_ul_poller.h"
 #include <nfc/nfc.h>
+#include <nfc/nfc_poller.h>
+#include <nfc/protocols/iso14443_3a/iso14443_3a_poller.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -59,7 +61,11 @@ struct UscuidUlPoller {
     UscuidUlPollerState state;
     UscuidUlPollerSessionState session_state;
 
-    UscuidUlWakeup wakeup; // backdoor entry resolved at session start
+    // Write transport: wakeup == None selects the direct (normal-activation + A2) engine
+    // for CUID/ATS-mode tags; A/B selects the backdoor (raw 40/43 wakeup) engine.
+    UscuidUlWakeup wakeup;
+    NfcPoller* iso3_nfc_poller; // owned; allocated only for the direct engine
+    Iso14443_3aPoller* iso3_poller; // borrowed from the iso3 poller event (direct engine)
     const MfUltralightData* data; // source dump, not owned (stable for the session)
     uint16_t pages_total; // pages to write (from the dump)
     uint16_t write_index; // 0-based write position (order: see uscuid_ul_poller_page_for_index)
@@ -75,6 +81,9 @@ struct UscuidUlPoller {
     UscuidUlPollerCallback callback;
     void* context;
 };
+
+// True when the write transport is the direct (no-backdoor) iso3 engine.
+bool uscuid_ul_is_direct(const UscuidUlPoller* instance);
 
 // Low-level primitives (raw nfc_poller_trx + manual CRC, like gen1a_poller).
 UscuidUlPollerError uscuid_ul_poller_wakeup(UscuidUlPoller* instance, UscuidUlWakeup variant);

@@ -5,6 +5,8 @@
 
 #define TAG "USCUID_UL_POLLER"
 
+#define USCUID_UL_READ_RESPONSE_SIZE (MF_ULTRALIGHT_PAGE_SIZE * 4) // READ returns 4 pages
+
 static UscuidUlPollerError uscuid_ul_process_nfc_error(NfcError error) {
     if(error == NfcErrorNone) {
         return UscuidUlPollerErrorNone;
@@ -14,8 +16,58 @@ static UscuidUlPollerError uscuid_ul_process_nfc_error(NfcError error) {
     return UscuidUlPollerErrorNotPresent;
 }
 
+static UscuidUlPollerError uscuid_ul_process_iso3_error(Iso14443_3aError error) {
+    if(error == Iso14443_3aErrorNone) {
+        return UscuidUlPollerErrorNone;
+    } else if(error == Iso14443_3aErrorTimeout) {
+        return UscuidUlPollerErrorTimeout;
+    }
+    return UscuidUlPollerErrorProtocol;
+}
+
 static bool uscuid_ul_rx_is_ack(const BitBuffer* rx) {
     return (bit_buffer_get_size(rx) == 4) && (bit_buffer_get_byte(rx, 0) == USCUID_UL_ACK);
+}
+
+bool uscuid_ul_is_direct(const UscuidUlPoller* instance) {
+    return instance->wakeup == UscuidUlWakeupNone;
+}
+
+// Direct (no-backdoor) transport: normal-activation A2 write via the iso3 poller. Mirrors
+// the firmware mf_ultralight poller — a 4-bit ACK carries no CRC, so the layer reports
+// WrongCrc on success (CRC is auto-appended to TX by send_standard_frame).
+static UscuidUlPollerError
+    uscuid_ul_write_page_iso3(UscuidUlPoller* instance, uint8_t page, const uint8_t* data) {
+    bit_buffer_reset(instance->tx_buffer);
+    bit_buffer_append_byte(instance->tx_buffer, USCUID_UL_CMD_WRITE);
+    bit_buffer_append_byte(instance->tx_buffer, page);
+    bit_buffer_append_bytes(instance->tx_buffer, data, MF_ULTRALIGHT_PAGE_SIZE);
+
+    Iso14443_3aError error = iso14443_3a_poller_send_standard_frame(
+        instance->iso3_poller, instance->tx_buffer, instance->rx_buffer, USCUID_UL_POLLER_MAX_FWT);
+    if(error != Iso14443_3aErrorWrongCrc) {
+        return uscuid_ul_process_iso3_error(error);
+    }
+    return uscuid_ul_rx_is_ack(instance->rx_buffer) ? UscuidUlPollerErrorNone :
+                                                      UscuidUlPollerErrorProtocol;
+}
+
+static UscuidUlPollerError
+    uscuid_ul_read_page_iso3(UscuidUlPoller* instance, uint8_t page, uint8_t* data) {
+    bit_buffer_reset(instance->tx_buffer);
+    bit_buffer_append_byte(instance->tx_buffer, USCUID_UL_CMD_READ);
+    bit_buffer_append_byte(instance->tx_buffer, page);
+
+    Iso14443_3aError error = iso14443_3a_poller_send_standard_frame(
+        instance->iso3_poller, instance->tx_buffer, instance->rx_buffer, USCUID_UL_POLLER_MAX_FWT);
+    if(error != Iso14443_3aErrorNone) {
+        return uscuid_ul_process_iso3_error(error);
+    }
+    if(bit_buffer_get_size_bytes(instance->rx_buffer) < USCUID_UL_READ_RESPONSE_SIZE) {
+        return UscuidUlPollerErrorProtocol;
+    }
+    memcpy(data, bit_buffer_get_data(instance->rx_buffer), USCUID_UL_READ_RESPONSE_SIZE);
+    return UscuidUlPollerErrorNone;
 }
 
 UscuidUlPollerError uscuid_ul_poller_wakeup(UscuidUlPoller* instance, UscuidUlWakeup variant) {
@@ -93,6 +145,10 @@ UscuidUlPollerError
     furi_assert(instance);
     furi_assert(data);
 
+    if(uscuid_ul_is_direct(instance)) {
+        return uscuid_ul_write_page_iso3(instance, page, data);
+    }
+
     UscuidUlPollerError ret = UscuidUlPollerErrorNone;
     do {
         bit_buffer_reset(instance->tx_buffer);
@@ -120,6 +176,10 @@ UscuidUlPollerError
     uscuid_ul_poller_read_page(UscuidUlPoller* instance, uint8_t page, uint8_t* data) {
     furi_assert(instance);
     furi_assert(data);
+
+    if(uscuid_ul_is_direct(instance)) {
+        return uscuid_ul_read_page_iso3(instance, page, data);
+    }
 
     UscuidUlPollerError ret = UscuidUlPollerErrorNone;
     do {

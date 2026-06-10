@@ -1,6 +1,14 @@
 #include "../nfc_magic_app_i.h"
 #include <nfc/protocols/mf_classic/mf_classic.h>
 
+// Source dump types we can write to a USCUID-UL (UL-C is display-only; NTAG I2C / Origin
+// are out of scope).
+static bool uscuid_ul_source_type_supported(MfUltralightType type) {
+    return type == MfUltralightTypeUL11 || type == MfUltralightTypeUL21 ||
+           type == MfUltralightTypeNTAG213 || type == MfUltralightTypeNTAG215 ||
+           type == MfUltralightTypeNTAG216;
+}
+
 static bool nfc_magic_scene_file_select_is_file_suitable(NfcMagicApp* instance) {
     NfcProtocol protocol = nfc_device_get_protocol(instance->source_dev);
     size_t uid_len = 0;
@@ -39,14 +47,20 @@ static bool nfc_magic_scene_file_select_is_file_suitable(NfcMagicApp* instance) 
             suitable = true;
         }
     } else if(instance->protocol == NfcMagicProtocolUscuidUl) {
-        // Safeguard: the source dump's type must match the target's configured type
-        // (e.g. block writing an NTAG215 dump onto a UL21-configured tag). UL-C is
-        // display-only ("write N/A") and is never writable.
-        if(protocol == NfcProtocolMfUltralight && instance->uscuid_ul_data.type_known &&
-           instance->uscuid_ul_data.type != MfUltralightTypeMfulC) {
+        if(protocol == NfcProtocolMfUltralight) {
             const MfUltralightData* mfu_data =
                 nfc_device_get_data(instance->source_dev, NfcProtocolMfUltralight);
-            suitable = (mfu_data != NULL) && (mfu_data->type == instance->uscuid_ul_data.type);
+            if(mfu_data != NULL) {
+                if(instance->uscuid_ul_data.maybe_ul5) {
+                    // UL-5 config is locked, so the target type is unknown; accept any
+                    // supported UL/NTAG dump (the inverse UID write order protects it).
+                    suitable = uscuid_ul_source_type_supported(mfu_data->type);
+                } else if(uscuid_ul_data_is_writable(&instance->uscuid_ul_data)) {
+                    // Safeguard: source dump type must match the target's configured type
+                    // (e.g. block writing an NTAG215 dump onto a UL21-configured tag).
+                    suitable = (mfu_data->type == instance->uscuid_ul_data.type);
+                }
+            }
         }
     }
 
