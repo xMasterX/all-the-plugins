@@ -27,7 +27,13 @@ extern "C" {
 #define USCUID_UL_CMD_READ_CFG_0 (0xE0)
 #define USCUID_UL_CMD_READ_CFG_1 (0x50)
 
-#define USCUID_UL_CONFIG_MAGIC (0x85) // config[0]
+#define USCUID_UL_CONFIG_MAGIC (0x85) // config[0] in factory ("85") mode
+// When the gen1a magic backdoor is enabled, config[0..1] become 7A FF instead of 85 00.
+// Only those two bytes change; preset/version stay at the same offsets, so no re-alignment.
+#define USCUID_UL_CFG_GEN1A_ON_0 (0x7A)
+#define USCUID_UL_CFG_GEN1A_ON_1 (0xFF)
+#define USCUID_UL_CFG_AUTH (4) // 00=PWD, 0A=2TDEA(UL-C); 0xAA marks a UL-Y at preset 5A
+#define USCUID_UL_AUTH_UL_Y (0xAA)
 #define USCUID_UL_CFG_PRESET (7) // C3=UL11 3C=UL21 A5=NTAG213 5A=NTAG215 AA=NTAG216 00=UL-C
 #define USCUID_UL_CFG_VENDOR (9) // version vendor byte: 04=NXP, 34=Mikron (Ultra)
 #define USCUID_UL_VENDOR_MIKRON (0x34)
@@ -97,7 +103,12 @@ UscuidUlPollerError
 // "pages 4..total-1 ascending, then 3,2,1,0" (block 0 dead last).
 uint8_t uscuid_ul_poller_page_for_index(uint16_t index, uint16_t pages_total);
 
-// Fills type/flags from a 16-byte config page (config[0] must be 0x85).
+// True when the 16-byte config page looks like a USCUID-UL config: factory "85" framing,
+// or the "7A FF" gen1a-backdoor-enabled framing (rest of the layout unchanged).
+bool uscuid_ul_config_is_magic(const uint8_t* config);
+
+// Fills type/flags from a 16-byte config page (config[0] is 0x85, or 0x7A 0xFF when the
+// magic backdoor is enabled — either way preset/version sit at the same offsets).
 void uscuid_ul_classify(const uint8_t* config, UscuidUlData* data);
 
 #ifdef __cplusplus

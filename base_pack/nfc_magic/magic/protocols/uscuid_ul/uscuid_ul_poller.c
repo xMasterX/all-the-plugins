@@ -88,7 +88,7 @@ static NfcCommand uscuid_ul_poller_ats_detect_callback(NfcGenericEvent event, vo
         if((error == Iso14443_3aErrorNone || error == Iso14443_3aErrorWrongCrc) &&
            rx_len >= USCUID_UL_CONFIG_SIZE) {
             const uint8_t* ats = bit_buffer_get_data(ctx->rx_buffer);
-            if(ats[0] == USCUID_UL_CONFIG_MAGIC) {
+            if(uscuid_ul_config_is_magic(ats)) {
                 ctx->result->is_uscuid_ul = true;
                 ctx->result->wakeup = UscuidUlWakeupNone;
                 memcpy(ctx->result->config, ats, USCUID_UL_CONFIG_SIZE);
@@ -142,7 +142,7 @@ static NfcCommand uscuid_ul_poller_detect_callback(NfcEvent event, void* context
             if(uscuid_ul_poller_read_config(ctx->poller, config) != UscuidUlPollerErrorNone) {
                 continue;
             }
-            if(config[0] != USCUID_UL_CONFIG_MAGIC) {
+            if(!uscuid_ul_config_is_magic(config)) {
                 continue;
             }
             ctx->result->is_uscuid_ul = true;

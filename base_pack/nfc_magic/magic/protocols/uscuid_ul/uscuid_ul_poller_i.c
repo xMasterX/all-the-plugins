@@ -33,6 +33,12 @@ bool uscuid_ul_is_direct(const UscuidUlPoller* instance) {
     return instance->wakeup == UscuidUlWakeupNone;
 }
 
+bool uscuid_ul_config_is_magic(const uint8_t* config) {
+    // Factory "85" framing, or the 7A FF gen1a-backdoor-enabled framing.
+    return (config[0] == USCUID_UL_CONFIG_MAGIC) ||
+           (config[0] == USCUID_UL_CFG_GEN1A_ON_0 && config[1] == USCUID_UL_CFG_GEN1A_ON_1);
+}
+
 // Direct (no-backdoor) transport: normal-activation A2 write via the iso3 poller. Mirrors
 // the firmware mf_ultralight poller — a 4-bit ACK carries no CRC, so the layer reports
 // WrongCrc on success (CRC is auto-appended to TX by send_standard_frame).
@@ -236,7 +242,14 @@ void uscuid_ul_classify(const uint8_t* config, UscuidUlData* data) {
         data->type = MfUltralightTypeNTAG213;
         break;
     case USCUID_UL_PRESET_NTAG215:
-        data->type = MfUltralightTypeNTAG215;
+        if(config[USCUID_UL_CFG_AUTH] == USCUID_UL_AUTH_UL_Y) {
+            // UL-Y (NTAG215-derived, only 16 readable blocks) — out of scope; detect-only,
+            // so leave it Unknown/non-writable rather than mistyping it as a full NTAG215.
+            data->type_known = false;
+            data->type = MfUltralightTypeOrigin;
+        } else {
+            data->type = MfUltralightTypeNTAG215;
+        }
         break;
     case USCUID_UL_PRESET_NTAG216:
         data->type = MfUltralightTypeNTAG216;
