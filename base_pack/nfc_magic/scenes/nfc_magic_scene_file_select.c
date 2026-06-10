@@ -38,6 +38,14 @@ static bool nfc_magic_scene_file_select_is_file_suitable(NfcMagicApp* instance) 
         if(protocol == NfcProtocolMfClassic) {
             suitable = true;
         }
+    } else if(instance->protocol == NfcMagicProtocolUscuidUl) {
+        // Safeguard: the source dump's type must match the target's configured type
+        // (e.g. block writing an NTAG215 dump onto a UL21-configured tag).
+        if(protocol == NfcProtocolMfUltralight && instance->uscuid_ul_data.type_known) {
+            const MfUltralightData* mfu_data =
+                nfc_device_get_data(instance->source_dev, NfcProtocolMfUltralight);
+            suitable = (mfu_data->type == instance->uscuid_ul_data.type);
+        }
     }
 
     return suitable;

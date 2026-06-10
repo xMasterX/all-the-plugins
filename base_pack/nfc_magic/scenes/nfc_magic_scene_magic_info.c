@@ -42,6 +42,8 @@ void nfc_magic_scene_magic_info_on_enter(void* context) {
             } else if(instance->gen1_uid_len == 7) {
                 detail = "7-byte UID";
             }
+        } else if(instance->protocol == NfcMagicProtocolUscuidUl) {
+            detail = uscuid_ul_get_variant_name(&instance->uscuid_ul_data);
         }
         if(detail) {
             furi_string_cat_printf(message, "\n%s", detail);
@@ -97,6 +99,9 @@ bool nfc_magic_scene_magic_info_on_event(void* context, SceneManagerEvent event)
                 consumed = true;
             } else if(instance->protocol == NfcMagicProtocolGen2) {
                 scene_manager_next_scene(instance->scene_manager, NfcMagicSceneGen2Menu);
+                consumed = true;
+            } else if(instance->protocol == NfcMagicProtocolUscuidUl) {
+                scene_manager_next_scene(instance->scene_manager, NfcMagicSceneUscuidUlMenu);
                 consumed = true;
             } else if(instance->protocol == NfcMagicProtocolClassic) {
                 scene_manager_next_scene(instance->scene_manager, NfcMagicSceneMfClassicMenu);

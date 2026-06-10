@@ -121,6 +121,7 @@ struct NfcMagicApp {
     bool gen2_poller_is_wipe_mode;
 
     Gen4Poller* gen4_poller;
+    UscuidUlPoller* uscuid_ul_poller;
 
     Gen4* gen4_data;
 
