@@ -62,7 +62,7 @@ struct UscuidUlPoller {
     UscuidUlWakeup wakeup; // backdoor entry resolved at session start
     const MfUltralightData* data; // source dump, not owned (stable for the session)
     uint16_t pages_total; // pages to write (from the dump)
-    uint16_t write_index; // position in the 4..N,3,2,1,0 order
+    uint16_t write_index; // 0-based write position (order: see uscuid_ul_poller_page_for_index)
     uint16_t written; // pages successfully written (and verified)
     uint16_t failed_page; // page that failed, for the Fail event
 

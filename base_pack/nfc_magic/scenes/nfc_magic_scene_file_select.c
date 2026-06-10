@@ -40,11 +40,13 @@ static bool nfc_magic_scene_file_select_is_file_suitable(NfcMagicApp* instance) 
         }
     } else if(instance->protocol == NfcMagicProtocolUscuidUl) {
         // Safeguard: the source dump's type must match the target's configured type
-        // (e.g. block writing an NTAG215 dump onto a UL21-configured tag).
-        if(protocol == NfcProtocolMfUltralight && instance->uscuid_ul_data.type_known) {
+        // (e.g. block writing an NTAG215 dump onto a UL21-configured tag). UL-C is
+        // display-only ("write N/A") and is never writable.
+        if(protocol == NfcProtocolMfUltralight && instance->uscuid_ul_data.type_known &&
+           instance->uscuid_ul_data.type != MfUltralightTypeMfulC) {
             const MfUltralightData* mfu_data =
                 nfc_device_get_data(instance->source_dev, NfcProtocolMfUltralight);
-            suitable = (mfu_data->type == instance->uscuid_ul_data.type);
+            suitable = (mfu_data != NULL) && (mfu_data->type == instance->uscuid_ul_data.type);
         }
     }
 

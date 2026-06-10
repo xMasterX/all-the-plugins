@@ -8,6 +8,9 @@
 
 typedef NfcCommand (*UscuidUlPollerStateHandler)(UscuidUlPoller* instance);
 
+// Backdoor wakeups, probed in order; whichever ACKs is recorded.
+static const UscuidUlWakeup uscuid_ul_wakeup_variants[] = {UscuidUlWakeupA, UscuidUlWakeupB};
+
 static void uscuid_ul_poller_config_nfc(Nfc* nfc) {
     nfc_config(nfc, NfcModePoller, NfcTechIso14443a);
     nfc_set_guard_time_us(nfc, ISO14443_3A_GUARD_TIME_US);
@@ -54,9 +57,9 @@ static NfcCommand uscuid_ul_poller_detect_callback(NfcEvent event, void* context
     UscuidUlDetectContext* ctx = context;
 
     if(event.type == NfcEventTypePollerReady) {
-        const UscuidUlWakeup variants[] = {UscuidUlWakeupA, UscuidUlWakeupB};
-        for(size_t i = 0; i < COUNT_OF(variants); i++) {
-            if(uscuid_ul_poller_wakeup(ctx->poller, variants[i]) != UscuidUlPollerErrorNone) {
+        for(size_t i = 0; i < COUNT_OF(uscuid_ul_wakeup_variants); i++) {
+            const UscuidUlWakeup variant = uscuid_ul_wakeup_variants[i];
+            if(uscuid_ul_poller_wakeup(ctx->poller, variant) != UscuidUlPollerErrorNone) {
                 continue;
             }
             uint8_t config[USCUID_UL_CONFIG_SIZE];
@@ -67,7 +70,7 @@ static NfcCommand uscuid_ul_poller_detect_callback(NfcEvent event, void* context
                 continue;
             }
             ctx->result->is_uscuid_ul = true;
-            ctx->result->wakeup = variants[i];
+            ctx->result->wakeup = variant;
             memcpy(ctx->result->config, config, USCUID_UL_CONFIG_SIZE);
             uscuid_ul_classify(config, ctx->result);
             break;
@@ -134,10 +137,10 @@ const char* uscuid_ul_get_variant_name(const UscuidUlData* data) {
 static NfcCommand uscuid_ul_poller_idle_handler(UscuidUlPoller* instance) {
     NfcCommand command = NfcCommandContinue;
 
-    const UscuidUlWakeup variants[] = {UscuidUlWakeupA, UscuidUlWakeupB};
-    for(size_t i = 0; i < COUNT_OF(variants); i++) {
-        if(uscuid_ul_poller_wakeup(instance, variants[i]) == UscuidUlPollerErrorNone) {
-            instance->wakeup = variants[i];
+    for(size_t i = 0; i < COUNT_OF(uscuid_ul_wakeup_variants); i++) {
+        const UscuidUlWakeup variant = uscuid_ul_wakeup_variants[i];
+        if(uscuid_ul_poller_wakeup(instance, variant) == UscuidUlPollerErrorNone) {
+            instance->wakeup = variant;
             instance->event.type = UscuidUlPollerEventTypeDetected;
             command = instance->callback(instance->event, instance->context);
             instance->state = UscuidUlPollerStateRequestMode;
@@ -158,6 +161,8 @@ static NfcCommand uscuid_ul_poller_request_mode_handler(UscuidUlPoller* instance
 }
 
 static NfcCommand uscuid_ul_poller_request_data_handler(UscuidUlPoller* instance) {
+    // Zero the out-parameter so a scene that forgets to set it can't leave a stale value.
+    instance->event_data.data_to_write.data = NULL;
     instance->event.type = UscuidUlPollerEventTypeRequestDataToWrite;
     NfcCommand command = instance->callback(instance->event, instance->context);
 
@@ -166,8 +171,14 @@ static NfcCommand uscuid_ul_poller_request_data_handler(UscuidUlPoller* instance
     instance->written = 0;
     instance->failed_page = 0xFFFF;
     instance->pages_total = (instance->data != NULL) ? instance->data->pages_read : 0;
-    instance->state = (instance->pages_total == 0) ? UscuidUlPollerStateSuccess :
-                                                     UscuidUlPollerStateWrite;
+
+    if(instance->data == NULL || instance->pages_total == 0) {
+        // Nothing to write is a failure, not a no-op "success".
+        FURI_LOG_E(TAG, "No source data to write");
+        instance->state = UscuidUlPollerStateFail;
+    } else {
+        instance->state = UscuidUlPollerStateWrite;
+    }
     return command;
 }
 
@@ -192,7 +203,7 @@ static NfcCommand uscuid_ul_poller_write_handler(UscuidUlPoller* instance) {
         }
 
         // Read-back verify: compare the 4 bytes we just wrote.
-        uint8_t readback[16];
+        uint8_t readback[MF_ULTRALIGHT_PAGE_SIZE * 4];
         if(uscuid_ul_poller_read_page(instance, page, readback) != UscuidUlPollerErrorNone ||
            memcmp(readback, src, MF_ULTRALIGHT_PAGE_SIZE) != 0) {
             FURI_LOG_E(TAG, "Read-back mismatch at page %u", page);

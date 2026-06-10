@@ -16,8 +16,9 @@ typedef enum {
     UscuidUlPollerErrorProtocol,
 } UscuidUlPollerError;
 
-// Which magic wakeup the card accepts. Set by the config "magic wakeup command" byte
-// (0x00 -> A: 40(7),43 ; 0x85 -> B: 20(7),23). None == no backdoor (not reachable this way).
+// Which magic backdoor wakeup the card answered. The poller probes A (40/43) then B
+// (20/23) and records whichever ACKs; it does NOT read a wakeup-selector byte from config
+// (detection happens before config is read). None == no backdoor answered.
 typedef enum {
     UscuidUlWakeupNone,
     UscuidUlWakeupA,
@@ -29,10 +30,10 @@ typedef struct {
     bool is_uscuid_ul; // confirmed: config page read and starts with 0x85
     uint8_t config[USCUID_UL_CONFIG_SIZE];
     UscuidUlWakeup wakeup; // backdoor entry that answered (or None)
-    MfUltralightType type; // emulated type from preset(cfg[7]) + version
+    MfUltralightType type; // emulated type from preset byte cfg[7] (vendor cfg[9] only refines UL21 -> Ultra)
     bool type_known; // preset byte recognised
     bool is_ultra; // UL21 + Mikron vendor (cfg[9]==0x34) -> display "UL21 (Ultra)"
-    bool maybe_ul5; // UID prefix AA 55 (unpersonalized UL-5 heuristic; config is locked)
+    bool maybe_ul5; // RESERVED for increment 2 (unpersonalized UL-5 AA-55 hint); always false for now
 } UscuidUlData;
 
 typedef enum {
@@ -64,7 +65,7 @@ typedef struct {
 
 typedef struct {
     uint16_t pages_written; // pages successfully written before the failure
-    uint16_t failed_page; // page that failed (or 0xFFFF if not page-specific)
+    uint16_t failed_page; // page whose write or read-back failed
 } UscuidUlPollerEventDataFail;
 
 typedef union {

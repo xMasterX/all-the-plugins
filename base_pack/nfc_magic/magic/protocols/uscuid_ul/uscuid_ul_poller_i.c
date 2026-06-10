@@ -134,12 +134,12 @@ UscuidUlPollerError
             ret = uscuid_ul_process_nfc_error(error);
             break;
         }
-        // READ returns 16 bytes (4 pages, +2 CRC).
-        if(bit_buffer_get_size_bytes(instance->rx_buffer) < 16) {
+        // READ returns 4 pages (+CRC).
+        if(bit_buffer_get_size_bytes(instance->rx_buffer) < MF_ULTRALIGHT_PAGE_SIZE * 4) {
             ret = UscuidUlPollerErrorProtocol;
             break;
         }
-        memcpy(data, bit_buffer_get_data(instance->rx_buffer), 16);
+        memcpy(data, bit_buffer_get_data(instance->rx_buffer), MF_ULTRALIGHT_PAGE_SIZE * 4);
     } while(false);
 
     return ret;
