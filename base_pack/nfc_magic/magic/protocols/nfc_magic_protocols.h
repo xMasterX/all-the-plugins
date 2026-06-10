@@ -12,6 +12,7 @@ typedef enum {
     // classify it as Gen4 rather than as Gen2 CUID.
     NfcMagicProtocolGen4,
     NfcMagicProtocolGen2,
+    NfcMagicProtocolUscuidUl, // Ultralight family (USCUID-UL)
     NfcMagicProtocolClassic, // Last to give priority to the others
 
     NfcMagicProtocolNum,
