@@ -43,6 +43,8 @@ UscuidUlPoller* uscuid_ul_poller_alloc(Nfc* nfc) {
 
 void uscuid_ul_poller_set_wakeup(UscuidUlPoller* instance, UscuidUlWakeup wakeup) {
     furi_assert(instance);
+    // Must be configured before start: it selects the engine start() then launches.
+    furi_assert(instance->session_state == UscuidUlPollerSessionStateIdle);
     // Selects the write engine: None -> direct (normal activation + A2), A/B -> backdoor.
     instance->wakeup = wakeup;
 }
@@ -164,8 +166,8 @@ UscuidUlPollerError uscuid_ul_poller_detect(Nfc* nfc, UscuidUlData* data) {
     memset(data, 0, sizeof(UscuidUlData));
     data->wakeup = UscuidUlWakeupNone;
     data->type = MfUltralightTypeOrigin;
-    // TODO(increment 2): set maybe_ul5 from the normal-activation UID prefix AA 55
-    // in the family-first scanner (UL-5 config is locked, so it cannot be read here).
+    // maybe_ul5 is set by the family-first scanner from the activation UID prefix (AA 55):
+    // a UL-5's config is locked, so it cannot be read here.
 
     // Route 1: config exposed as ATS (85-mode). Non-destructive RATS read.
     uscuid_ul_poller_detect_via_ats(nfc, data);
@@ -192,6 +194,8 @@ UscuidUlPollerError uscuid_ul_poller_detect(Nfc* nfc, UscuidUlData* data) {
 
 bool uscuid_ul_data_is_writable(const UscuidUlData* data) {
     furi_assert(data);
+    // Detection states are mutually exclusive (a UL-5 is found only when the USCUID probe failed).
+    furi_assert(!(data->maybe_ul5 && data->is_uscuid_ul));
 
     // A confirmed USCUID-UL of a recognised, supported type (UL-C is display-only), or a
     // suspected UL-5 (cloned via the inverse UID write order; target type comes from the dump).
@@ -201,6 +205,7 @@ bool uscuid_ul_data_is_writable(const UscuidUlData* data) {
 
 const char* uscuid_ul_get_variant_name(const UscuidUlData* data) {
     furi_assert(data);
+    furi_assert(!(data->maybe_ul5 && data->is_uscuid_ul));
 
     if(data->maybe_ul5) {
         return "UL-5 (probably)";
@@ -264,7 +269,7 @@ static NfcCommand uscuid_ul_poller_request_data_handler(UscuidUlPoller* instance
     instance->data = instance->event_data.data_to_write.data;
     instance->write_index = 0;
     instance->written = 0;
-    instance->failed_page = 0xFFFF;
+    instance->failed_page = USCUID_UL_NO_FAILED_PAGE;
     instance->pages_total = (instance->data != NULL) ? instance->data->pages_read : 0;
 
     if(instance->data == NULL || instance->pages_total == 0) {
@@ -290,17 +295,24 @@ static NfcCommand uscuid_ul_poller_write_handler(UscuidUlPoller* instance) {
     const uint8_t* src = instance->data->page[page].data;
 
     do {
-        if(uscuid_ul_poller_write_page(instance, page, src) != UscuidUlPollerErrorNone) {
-            FURI_LOG_E(TAG, "Write failed at page %u", page);
+        UscuidUlPollerError write_error = uscuid_ul_poller_write_page(instance, page, src);
+        if(write_error != UscuidUlPollerErrorNone) {
+            FURI_LOG_E(TAG, "Write failed at page %u (err %d)", page, write_error);
             instance->failed_page = page;
             instance->state = UscuidUlPollerStateFail;
             break;
         }
 
-        // Read-back verify: compare the 4 bytes we just wrote.
-        uint8_t readback[MF_ULTRALIGHT_PAGE_SIZE * 4];
-        if(uscuid_ul_poller_read_page(instance, page, readback) != UscuidUlPollerErrorNone ||
-           memcmp(readback, src, MF_ULTRALIGHT_PAGE_SIZE) != 0) {
+        // Read-back verify: READ returns 4 pages; we compare the 4 bytes we just wrote.
+        uint8_t readback[USCUID_UL_READ_RESPONSE_SIZE];
+        UscuidUlPollerError read_error = uscuid_ul_poller_read_page(instance, page, readback);
+        if(read_error != UscuidUlPollerErrorNone) {
+            FURI_LOG_E(TAG, "Read-back failed at page %u (err %d)", page, read_error);
+            instance->failed_page = page;
+            instance->state = UscuidUlPollerStateFail;
+            break;
+        }
+        if(memcmp(readback, src, MF_ULTRALIGHT_PAGE_SIZE) != 0) {
             FURI_LOG_E(TAG, "Read-back mismatch at page %u", page);
             instance->failed_page = page;
             instance->state = UscuidUlPollerStateFail;

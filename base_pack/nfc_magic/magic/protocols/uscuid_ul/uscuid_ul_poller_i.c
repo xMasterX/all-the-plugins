@@ -5,8 +5,6 @@
 
 #define TAG "USCUID_UL_POLLER"
 
-#define USCUID_UL_READ_RESPONSE_SIZE (MF_ULTRALIGHT_PAGE_SIZE * 4) // READ returns 4 pages
-
 static UscuidUlPollerError uscuid_ul_process_nfc_error(NfcError error) {
     if(error == NfcErrorNone) {
         return UscuidUlPollerErrorNone;
@@ -201,11 +199,11 @@ UscuidUlPollerError
             break;
         }
         // READ returns 4 pages (+CRC).
-        if(bit_buffer_get_size_bytes(instance->rx_buffer) < MF_ULTRALIGHT_PAGE_SIZE * 4) {
+        if(bit_buffer_get_size_bytes(instance->rx_buffer) < USCUID_UL_READ_RESPONSE_SIZE) {
             ret = UscuidUlPollerErrorProtocol;
             break;
         }
-        memcpy(data, bit_buffer_get_data(instance->rx_buffer), MF_ULTRALIGHT_PAGE_SIZE * 4);
+        memcpy(data, bit_buffer_get_data(instance->rx_buffer), USCUID_UL_READ_RESPONSE_SIZE);
     } while(false);
 
     return ret;

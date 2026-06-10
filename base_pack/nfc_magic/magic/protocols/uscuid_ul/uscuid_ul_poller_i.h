@@ -22,6 +22,7 @@ extern "C" {
 // Commands available once in backdoor mode (same opcodes as plain UL).
 #define USCUID_UL_CMD_READ (0x30) // 30 <page>          -> 16 bytes
 #define USCUID_UL_CMD_WRITE (0xA2) // A2 <page> <4 bytes> -> ACK
+#define USCUID_UL_READ_RESPONSE_SIZE (MF_ULTRALIGHT_PAGE_SIZE * 4) // READ returns 4 pages
 // Read configuration. Doc lists E0 50; the identify example shows E1 00 -- which is
 // canonical needs confirming on hardware (TMD-5S). Kept here so it is a one-line change.
 #define USCUID_UL_CMD_READ_CFG_0 (0xE0)

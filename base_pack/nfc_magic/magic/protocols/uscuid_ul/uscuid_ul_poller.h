@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 #define USCUID_UL_CONFIG_SIZE (16)
+#define USCUID_UL_NO_FAILED_PAGE (0xFFFF) // failed_page value when the failure isn't page-specific
 
 typedef enum {
     UscuidUlPollerErrorNone,
@@ -27,7 +28,7 @@ typedef enum {
 
 // Result of non-destructive detection / variation check.
 typedef struct {
-    bool is_uscuid_ul; // confirmed: config page read and starts with 0x85
+    bool is_uscuid_ul; // confirmed: config matched the magic framing (0x85, or 0x7A 0xFF backdoor-on)
     uint8_t config[USCUID_UL_CONFIG_SIZE];
     UscuidUlWakeup wakeup; // backdoor entry that answered (or None)
     MfUltralightType type; // emulated type from preset byte cfg[7] (vendor cfg[9] only refines UL21 -> Ultra)
@@ -66,7 +67,7 @@ typedef struct {
 typedef struct {
     uint16_t pages_written; // pages successfully written before the failure
     uint16_t pages_total; // pages that were to be written
-    uint16_t failed_page; // page whose write or read-back failed (0xFFFF if not page-specific)
+    uint16_t failed_page; // page whose write or read-back failed, or USCUID_UL_NO_FAILED_PAGE
 } UscuidUlPollerEventDataFail;
 
 typedef union {

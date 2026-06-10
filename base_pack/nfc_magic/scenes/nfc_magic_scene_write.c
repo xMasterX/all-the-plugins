@@ -151,7 +151,7 @@ void nfc_magic_scene_write_on_enter(void* context) {
 
     instance->write_progress_current = 0;
     instance->write_progress_total = 0;
-    instance->write_failed_page = 0xFFFF;
+    instance->write_failed_page = USCUID_UL_NO_FAILED_PAGE;
 
     scene_manager_set_scene_state(
         instance->scene_manager, NfcMagicSceneWrite, NfcMagicSceneWriteStateCardSearch);

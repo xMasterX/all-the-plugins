@@ -22,7 +22,7 @@ void nfc_magic_scene_write_fail_on_enter(void* context) {
 
     // For a USCUID-UL write that got partway, report how far it got and where it stopped.
     const char* fail_text = "Something went\nwrong while\nwriting";
-    if(instance->write_failed_page != 0xFFFF) {
+    if(instance->write_failed_page != USCUID_UL_NO_FAILED_PAGE) {
         snprintf(
             instance->text_store,
             sizeof(instance->text_store),
