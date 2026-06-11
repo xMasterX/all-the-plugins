@@ -162,6 +162,13 @@ static bool
             *protocol = NfcMagicProtocolUscuidUl;
             return true;
         }
+        // Activated as an Ultralight but with no magic signature and no UL-5 hint: not a
+        // confirmed magic tag. Classify it as "not detected" (zeroed data => direct engine,
+        // wakeup None) so the user can still attempt a write, mirroring the Classic fallback
+        // below. Returning true here also stops the worker spinning forever on a genuine tag.
+        memset(&instance->uscuid_ul_data, 0, sizeof(UscuidUlData));
+        *protocol = NfcMagicProtocolUscuidUlNotDetected;
+        return true;
     } else if(id.activated) {
         // MIFARE Classic family.
         if(gen1a_poller_detect(instance->nfc)) {

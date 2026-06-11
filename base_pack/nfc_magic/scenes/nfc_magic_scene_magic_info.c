@@ -27,6 +27,13 @@ void nfc_magic_scene_magic_info_on_enter(void* context) {
         furi_string_printf(
             message,
             "Not a magic tag, or\nsector 0 key is non-standard.\nTry writing to confirm.");
+    } else if(instance->protocol == NfcMagicProtocolUscuidUlNotDetected) {
+        widget_add_string_element(
+            widget, 0, 0, AlignLeft, AlignTop, FontPrimary, "Magic Not Detected");
+        // Hand-wrapped: the text box breaks mid-word, so keep each line short.
+        furi_string_printf(
+            message,
+            "Not a magic Ultralight,\nor an unsupported type.\nTry writing to confirm.");
     } else {
         widget_add_string_element(
             widget, 0, 0, AlignLeft, AlignTop, FontPrimary, "Magic card detected!");
@@ -84,8 +91,11 @@ void nfc_magic_scene_magic_info_on_enter(void* context) {
     widget_add_button_element(
         widget, GuiButtonTypeLeft, "Retry", nfc_magic_scene_magic_info_widget_callback, instance);
 
-    // A detected USCUID-UL with no available action (UL-C "write N/A" / unrecognised
-    // preset) offers no "More" menu, so the info screen just shows the variant.
+    // The "More" button leads to the write menu; offer it by default. A CONFIRMED
+    // USCUID-UL with no writable action (UL-C "write N/A" / unrecognised preset) hides it.
+    // NfcMagicProtocolUscuidUlNotDetected (write-anyway) must KEEP it: its data is zeroed,
+    // so uscuid_ul_data_is_writable() would return false and hide the only path to Write —
+    // do NOT fold the not-detected protocol into the check below.
     bool show_more = true;
     if(instance->protocol == NfcMagicProtocolUscuidUl) {
         show_more = uscuid_ul_data_is_writable(&instance->uscuid_ul_data);
@@ -121,7 +131,9 @@ bool nfc_magic_scene_magic_info_on_event(void* context, SceneManagerEvent event)
             } else if(instance->protocol == NfcMagicProtocolGen2) {
                 scene_manager_next_scene(instance->scene_manager, NfcMagicSceneGen2Menu);
                 consumed = true;
-            } else if(instance->protocol == NfcMagicProtocolUscuidUl) {
+            } else if(
+                instance->protocol == NfcMagicProtocolUscuidUl ||
+                instance->protocol == NfcMagicProtocolUscuidUlNotDetected) {
                 scene_manager_next_scene(instance->scene_manager, NfcMagicSceneUscuidUlMenu);
                 consumed = true;
             } else if(instance->protocol == NfcMagicProtocolClassic) {

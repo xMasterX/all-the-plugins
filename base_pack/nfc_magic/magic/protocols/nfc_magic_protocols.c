@@ -8,6 +8,7 @@ static const char* nfc_magic_protocol_names[NfcMagicProtocolNum] = {
     [NfcMagicProtocolClassic] = "MIFARE Classic",
     [NfcMagicProtocolGen4] = "Gen 4 GTU",
     [NfcMagicProtocolUscuidUl] = "USCUID-UL",
+    [NfcMagicProtocolUscuidUlNotDetected] = "Ultralight (?)",
 };
 
 const char* nfc_magic_protocols_get_name(NfcMagicProtocol protocol) {

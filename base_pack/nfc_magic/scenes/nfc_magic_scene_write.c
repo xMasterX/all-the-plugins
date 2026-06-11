@@ -171,9 +171,12 @@ void nfc_magic_scene_write_on_enter(void* context) {
         instance->gen2_poller = gen2_poller_alloc(instance->nfc);
         gen2_poller_start(
             instance->gen2_poller, nfc_magic_scene_write_gen2_poller_callback, instance);
-    } else if(instance->protocol == NfcMagicProtocolUscuidUl) {
+    } else if(
+        instance->protocol == NfcMagicProtocolUscuidUl ||
+        instance->protocol == NfcMagicProtocolUscuidUlNotDetected) {
         instance->uscuid_ul_poller = uscuid_ul_poller_alloc(instance->nfc);
         // Pick the write transport from detection: direct (CUID/ATS) vs backdoor wakeup.
+        // A not-detected tag has zeroed data (wakeup None) -> the direct engine.
         uscuid_ul_poller_set_wakeup(
             instance->uscuid_ul_poller, instance->uscuid_ul_data.wakeup);
         uscuid_ul_poller_start(
@@ -240,7 +243,9 @@ void nfc_magic_scene_write_on_exit(void* context) {
     } else if(instance->protocol == NfcMagicProtocolGen4) {
         gen4_poller_stop(instance->gen4_poller);
         gen4_poller_free(instance->gen4_poller);
-    } else if(instance->protocol == NfcMagicProtocolUscuidUl) {
+    } else if(
+        instance->protocol == NfcMagicProtocolUscuidUl ||
+        instance->protocol == NfcMagicProtocolUscuidUlNotDetected) {
         uscuid_ul_poller_stop(instance->uscuid_ul_poller);
         uscuid_ul_poller_free(instance->uscuid_ul_poller);
     }

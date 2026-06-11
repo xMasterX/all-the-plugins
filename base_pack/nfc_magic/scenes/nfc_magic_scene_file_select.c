@@ -46,14 +46,17 @@ static bool nfc_magic_scene_file_select_is_file_suitable(NfcMagicApp* instance) 
         if(protocol == NfcProtocolMfClassic) {
             suitable = true;
         }
-    } else if(instance->protocol == NfcMagicProtocolUscuidUl) {
+    } else if(
+        instance->protocol == NfcMagicProtocolUscuidUl ||
+        instance->protocol == NfcMagicProtocolUscuidUlNotDetected) {
         if(protocol == NfcProtocolMfUltralight) {
             const MfUltralightData* mfu_data =
                 nfc_device_get_data(instance->source_dev, NfcProtocolMfUltralight);
             if(mfu_data != NULL) {
-                if(instance->uscuid_ul_data.maybe_ul5) {
-                    // UL-5 config is locked, so the target type is unknown; accept any
-                    // supported UL/NTAG dump (the inverse UID write order protects it).
+                if(instance->protocol == NfcMagicProtocolUscuidUlNotDetected ||
+                   instance->uscuid_ul_data.maybe_ul5) {
+                    // Not-detected (write-anyway) or UL-5: the target's type is unknown, so
+                    // accept any supported UL/NTAG dump (the user owns the size/type risk).
                     suitable = uscuid_ul_source_type_supported(mfu_data->type);
                 } else if(uscuid_ul_data_is_writable(&instance->uscuid_ul_data)) {
                     // Safeguard: source dump type must match the target's configured type
