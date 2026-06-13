@@ -55,13 +55,16 @@ void nfc_magic_scene_magic_info_on_enter(void* context) {
         if(detail) {
             furi_string_cat_printf(message, "\n%s", detail);
         }
-        // For an unrecognised USCUID-UL preset, show the raw config so it can be reported.
+        // Detection route on its own line for a confirmed USCUID-UL.
         if(instance->protocol == NfcMagicProtocolUscuidUl &&
-           instance->uscuid_ul_data.is_uscuid_ul && !instance->uscuid_ul_data.type_known) {
-            furi_string_cat_str(message, "\nCfg:");
-            for(size_t i = 0; i < USCUID_UL_CONFIG_SIZE; i++) {
-                furi_string_cat_printf(message, " %02X", instance->uscuid_ul_data.config[i]);
+           instance->uscuid_ul_data.is_uscuid_ul) {
+            const char* detection = "ATS";
+            if(instance->uscuid_ul_data.wakeup == UscuidUlWakeupA) {
+                detection = "Backdoor (0x40)";
+            } else if(instance->uscuid_ul_data.wakeup == UscuidUlWakeupB) {
+                detection = "Backdoor (0x20)";
             }
+            furi_string_cat_printf(message, "\nDetection: %s", detection);
         }
     }
     widget_add_text_box_element(
@@ -91,14 +94,13 @@ void nfc_magic_scene_magic_info_on_enter(void* context) {
     widget_add_button_element(
         widget, GuiButtonTypeLeft, "Retry", nfc_magic_scene_magic_info_widget_callback, instance);
 
-    // The "More" button leads to the write menu; offer it by default. A CONFIRMED
-    // USCUID-UL with no writable action (UL-C "write N/A" / unrecognised preset) hides it.
-    // NfcMagicProtocolUscuidUlNotDetected (write-anyway) must KEEP it: its data is zeroed,
-    // so uscuid_ul_data_is_writable() would return false and hide the only path to Write —
-    // do NOT fold the not-detected protocol into the check below.
+    // "More" -> Write menu (writable), or the raw-config view (confirmed but unrecognised
+    // preset). UL-C and not-confirmed hide it. NotDetected keeps the default (write-anyway).
     bool show_more = true;
     if(instance->protocol == NfcMagicProtocolUscuidUl) {
-        show_more = uscuid_ul_data_is_writable(&instance->uscuid_ul_data);
+        show_more = uscuid_ul_data_is_writable(&instance->uscuid_ul_data) ||
+                    (instance->uscuid_ul_data.is_uscuid_ul &&
+                     !instance->uscuid_ul_data.type_known);
     }
     if(show_more) {
         widget_add_button_element(
@@ -131,9 +133,15 @@ bool nfc_magic_scene_magic_info_on_event(void* context, SceneManagerEvent event)
             } else if(instance->protocol == NfcMagicProtocolGen2) {
                 scene_manager_next_scene(instance->scene_manager, NfcMagicSceneGen2Menu);
                 consumed = true;
-            } else if(
-                instance->protocol == NfcMagicProtocolUscuidUl ||
-                instance->protocol == NfcMagicProtocolUscuidUlNotDetected) {
+            } else if(instance->protocol == NfcMagicProtocolUscuidUl) {
+                if(uscuid_ul_data_is_writable(&instance->uscuid_ul_data)) {
+                    scene_manager_next_scene(instance->scene_manager, NfcMagicSceneUscuidUlMenu);
+                } else {
+                    // Confirmed but unrecognised preset -> show the raw config.
+                    scene_manager_next_scene(instance->scene_manager, NfcMagicSceneUscuidUlCfg);
+                }
+                consumed = true;
+            } else if(instance->protocol == NfcMagicProtocolUscuidUlNotDetected) {
                 scene_manager_next_scene(instance->scene_manager, NfcMagicSceneUscuidUlMenu);
                 consumed = true;
             } else if(instance->protocol == NfcMagicProtocolClassic) {

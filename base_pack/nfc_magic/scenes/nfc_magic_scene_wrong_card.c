@@ -33,6 +33,26 @@ void nfc_magic_scene_wrong_card_on_enter(void* context) {
             widget, 1, 17, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(message));
 
         furi_string_free(message);
+    } else if(
+        instance->protocol == NfcMagicProtocolUscuidUl && instance->uscuid_ul_data.type_known &&
+        nfc_device_get_protocol(instance->source_dev) == NfcProtocolMfUltralight) {
+        // Name the base type that governs matching (a UL21 card takes any UL21 dump, Ultra
+        // or not) so we don't send the user hunting for an over-specific "(Ultra)" dump.
+        const MfUltralightData* mfu_data =
+            nfc_device_get_data(instance->source_dev, NfcProtocolMfUltralight);
+        FuriString* message = furi_string_alloc();
+        furi_string_printf(
+            message,
+            "%s magic cards\ndon't accept\n%s dumps.",
+            uscuid_ul_type_name(instance->uscuid_ul_data.type),
+            uscuid_ul_type_name(mfu_data->type));
+
+        widget_add_string_element(
+            widget, 1, 4, AlignLeft, AlignTop, FontPrimary, "Type Mismatch");
+        widget_add_string_multiline_element(
+            widget, 1, 17, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(message));
+
+        furi_string_free(message);
     } else {
         widget_add_icon_element(widget, 73, 17, &I_DolphinCommon_56x48);
         widget_add_string_element(

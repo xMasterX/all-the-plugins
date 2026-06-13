@@ -115,6 +115,8 @@ struct NfcMagicApp {
     uint16_t write_progress_current; // USCUID-UL: pages written so far (live progress)
     uint16_t write_progress_total; // USCUID-UL: total pages to write
     uint16_t write_failed_page; // USCUID-UL: page that failed (0xFFFF if not page-specific)
+    uint8_t write_failed_count; // USCUID-UL: config/lock pages that didn't take (partial clone)
+    uint8_t write_failed_pages[USCUID_UL_MAX_FAILED_PAGES]; // their page numbers
     bool source_uid_mismatch;
     NfcMagicScanner* scanner;
     NfcPoller* poller;

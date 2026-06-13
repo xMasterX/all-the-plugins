@@ -26,7 +26,8 @@ UscuidUlPoller* uscuid_ul_poller_alloc(Nfc* nfc) {
 
     UscuidUlPoller* instance = malloc(sizeof(UscuidUlPoller));
     instance->nfc = nfc;
-    uscuid_ul_poller_config_nfc(nfc);
+    // Don't nfc_config() here: the direct engine's iso3 poller self-configures, and a second
+    // nfc_config() asserts (config_state==Idle). Raw-path callers configure explicitly.
 
     instance->tx_buffer = bit_buffer_alloc(USCUID_UL_POLLER_MAX_BUFFER_SIZE);
     instance->rx_buffer = bit_buffer_alloc(USCUID_UL_POLLER_MAX_BUFFER_SIZE);
@@ -180,6 +181,8 @@ UscuidUlPollerError uscuid_ul_poller_detect(Nfc* nfc, UscuidUlData* data) {
             .result = data,
         };
 
+        // Raw backdoor session: configure the field (alloc no longer does).
+        uscuid_ul_poller_config_nfc(nfc);
         nfc_start(nfc, uscuid_ul_poller_detect_callback, &ctx);
         furi_thread_flags_wait(
             USCUID_UL_POLLER_THREAD_FLAG_DONE, FuriFlagWaitAny, FuriWaitForever);
@@ -203,6 +206,25 @@ bool uscuid_ul_data_is_writable(const UscuidUlData* data) {
            (data->is_uscuid_ul && data->type_known && (data->type != MfUltralightTypeMfulC));
 }
 
+const char* uscuid_ul_type_name(MfUltralightType type) {
+    switch(type) {
+    case MfUltralightTypeUL11:
+        return "UL11";
+    case MfUltralightTypeUL21:
+        return "UL21";
+    case MfUltralightTypeNTAG213:
+        return "NTAG213";
+    case MfUltralightTypeNTAG215:
+        return "NTAG215";
+    case MfUltralightTypeNTAG216:
+        return "NTAG216";
+    case MfUltralightTypeMfulC:
+        return "UL-C";
+    default:
+        return "Unknown";
+    }
+}
+
 const char* uscuid_ul_get_variant_name(const UscuidUlData* data) {
     furi_assert(data);
     furi_assert(!(data->maybe_ul5 && data->is_uscuid_ul));
@@ -213,23 +235,13 @@ const char* uscuid_ul_get_variant_name(const UscuidUlData* data) {
     if(!data->is_uscuid_ul || !data->type_known) {
         return "Unknown";
     }
-
-    switch(data->type) {
-    case MfUltralightTypeUL11:
-        return "UL11";
-    case MfUltralightTypeUL21:
-        return data->is_ultra ? "UL21 (Ultra)" : "UL21";
-    case MfUltralightTypeNTAG213:
-        return "NTAG213";
-    case MfUltralightTypeNTAG215:
-        return "NTAG215";
-    case MfUltralightTypeNTAG216:
-        return "NTAG216";
-    case MfUltralightTypeMfulC:
-        return "UL-C (write N/A)";
-    default:
-        return "Unknown";
+    if(data->type == MfUltralightTypeUL21 && data->is_ultra) {
+        return "UL21 (Ultra)";
     }
+    if(data->type == MfUltralightTypeMfulC) {
+        return "UL-C (write N/A)";
+    }
+    return uscuid_ul_type_name(data->type);
 }
 
 // --- Write state machine (raw model, like gen1a_poller) ---
@@ -260,9 +272,10 @@ static NfcCommand uscuid_ul_poller_request_mode_handler(UscuidUlPoller* instance
     return command;
 }
 
+// Full clone: write every page the dump read (data + UID + config), no auth. A page the tag
+// NAKs is logged and skipped, never aborts.
 static NfcCommand uscuid_ul_poller_request_data_handler(UscuidUlPoller* instance) {
-    // Zero the out-parameter so a scene that forgets to set it can't leave a stale value.
-    instance->event_data.data_to_write.data = NULL;
+    instance->event_data.data_to_write.data = NULL; // defensive: clear stale out-param
     instance->event.type = UscuidUlPollerEventTypeRequestDataToWrite;
     NfcCommand command = instance->callback(instance->event, instance->context);
 
@@ -270,6 +283,8 @@ static NfcCommand uscuid_ul_poller_request_data_handler(UscuidUlPoller* instance
     instance->write_index = 0;
     instance->written = 0;
     instance->failed_page = USCUID_UL_NO_FAILED_PAGE;
+    instance->failed_count = 0;
+    memset(instance->failed_pages, 0, sizeof(instance->failed_pages));
     instance->pages_total = (instance->data != NULL) ? instance->data->pages_read : 0;
 
     if(instance->data == NULL || instance->pages_total == 0) {
@@ -286,7 +301,15 @@ static NfcCommand uscuid_ul_poller_write_handler(UscuidUlPoller* instance) {
     NfcCommand command = NfcCommandContinue;
 
     if(instance->write_index >= instance->pages_total) {
-        instance->state = UscuidUlPollerStateSuccess;
+        if(instance->failed_count == 0) {
+            instance->state = UscuidUlPollerStateSuccess;
+        } else if(instance->written == 0) {
+            // Nothing landed at all -> a plain failure, not a partial clone.
+            instance->failed_page = USCUID_UL_NO_FAILED_PAGE;
+            instance->state = UscuidUlPollerStateFail;
+        } else {
+            instance->state = UscuidUlPollerStatePartial;
+        }
         return command;
     }
 
@@ -294,45 +317,44 @@ static NfcCommand uscuid_ul_poller_write_handler(UscuidUlPoller* instance) {
         uscuid_ul_poller_page_for_index(instance->write_index, instance->pages_total);
     const uint8_t* src = instance->data->page[page].data;
 
-    do {
-        UscuidUlPollerError write_error = uscuid_ul_poller_write_page(instance, page, src);
-        if(write_error != UscuidUlPollerErrorNone) {
-            FURI_LOG_E(TAG, "Write failed at page %u (err %d)", page, write_error);
-            instance->failed_page = page;
-            instance->state = UscuidUlPollerStateFail;
-            break;
-        }
-
-        // Read-back verify: READ returns 4 pages; we compare the 4 bytes we just wrote.
-        uint8_t readback[USCUID_UL_READ_RESPONSE_SIZE];
-        UscuidUlPollerError read_error = uscuid_ul_poller_read_page(instance, page, readback);
-        if(read_error != UscuidUlPollerErrorNone) {
-            FURI_LOG_E(TAG, "Read-back failed at page %u (err %d)", page, read_error);
-            instance->failed_page = page;
-            instance->state = UscuidUlPollerStateFail;
-            break;
-        }
-        if(memcmp(readback, src, MF_ULTRALIGHT_PAGE_SIZE) != 0) {
-            FURI_LOG_E(TAG, "Read-back mismatch at page %u", page);
-            instance->failed_page = page;
-            instance->state = UscuidUlPollerStateFail;
-            break;
-        }
-
+    // ACK/NAK is the success signal (like the firmware & PM3). No read-back: a plain READ
+    // can't verify special registers (PACK) anyway.
+    UscuidUlPollerError write_error = uscuid_ul_poller_write_page(instance, page, src);
+    if(write_error == UscuidUlPollerErrorNone) {
         instance->written++;
-        instance->write_index++;
+    } else {
+        FURI_LOG_E(TAG, "Write failed at page %u (err %d)", page, write_error);
+        if(instance->failed_count < USCUID_UL_MAX_FAILED_PAGES) {
+            instance->failed_pages[instance->failed_count] = page;
+        }
+        instance->failed_count++;
+    }
+    instance->write_index++;
 
-        instance->event.type = UscuidUlPollerEventTypeWriteProgress;
-        instance->event_data.write_progress.pages_written = instance->written;
-        instance->event_data.write_progress.pages_total = instance->pages_total;
-        command = instance->callback(instance->event, instance->context);
-    } while(false);
+    instance->event.type = UscuidUlPollerEventTypeWriteProgress;
+    instance->event_data.write_progress.pages_written = instance->written;
+    instance->event_data.write_progress.pages_total = instance->pages_total;
+    command = instance->callback(instance->event, instance->context);
 
     return command;
 }
 
 static NfcCommand uscuid_ul_poller_success_handler(UscuidUlPoller* instance) {
     instance->event.type = UscuidUlPollerEventTypeSuccess;
+    NfcCommand command = instance->callback(instance->event, instance->context);
+    instance->state = UscuidUlPollerStateIdle;
+    return command;
+}
+
+static NfcCommand uscuid_ul_poller_partial_handler(UscuidUlPoller* instance) {
+    instance->event.type = UscuidUlPollerEventTypePartial;
+    instance->event_data.partial.pages_written = instance->written;
+    instance->event_data.partial.pages_total = instance->pages_total;
+    instance->event_data.partial.failed_count = instance->failed_count;
+    memcpy(
+        instance->event_data.partial.failed_pages,
+        instance->failed_pages,
+        sizeof(instance->failed_pages));
     NfcCommand command = instance->callback(instance->event, instance->context);
     instance->state = UscuidUlPollerStateIdle;
     return command;
@@ -354,6 +376,7 @@ static const UscuidUlPollerStateHandler uscuid_ul_poller_state_handlers[UscuidUl
     [UscuidUlPollerStateRequestDataToWrite] = uscuid_ul_poller_request_data_handler,
     [UscuidUlPollerStateWrite] = uscuid_ul_poller_write_handler,
     [UscuidUlPollerStateSuccess] = uscuid_ul_poller_success_handler,
+    [UscuidUlPollerStatePartial] = uscuid_ul_poller_partial_handler,
     [UscuidUlPollerStateFail] = uscuid_ul_poller_fail_handler,
 };
 
@@ -408,9 +431,12 @@ void uscuid_ul_poller_start(
     instance->session_state = UscuidUlPollerSessionStateStarted;
 
     if(uscuid_ul_is_direct(instance)) {
+        // Direct engine: the iso3 NfcPoller configures the field itself (do not pre-config).
         instance->iso3_nfc_poller = nfc_poller_alloc(instance->nfc, NfcProtocolIso14443_3a);
         nfc_poller_start(instance->iso3_nfc_poller, uscuid_ul_poller_iso3_run, instance);
     } else {
+        // Raw backdoor engine: configure the field ourselves before nfc_start.
+        uscuid_ul_poller_config_nfc(instance->nfc);
         nfc_start(instance->nfc, uscuid_ul_poller_run, instance);
     }
 }

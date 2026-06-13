@@ -52,6 +52,7 @@ typedef enum {
     UscuidUlPollerStateRequestDataToWrite,
     UscuidUlPollerStateWrite,
     UscuidUlPollerStateSuccess,
+    UscuidUlPollerStatePartial, // finished, but some soft (config/lock) pages didn't take
     UscuidUlPollerStateFail,
 
     UscuidUlPollerStateNum,
@@ -77,7 +78,11 @@ struct UscuidUlPoller {
     uint16_t pages_total; // pages to write (from the dump)
     uint16_t write_index; // 0-based write position (order: see uscuid_ul_poller_page_for_index)
     uint16_t written; // pages successfully written (and verified)
-    uint16_t failed_page; // page that failed, for the Fail event
+    uint16_t failed_page; // set only when nothing at all could be written (Fail event)
+    // Best-effort clone bookkeeping: pages are written in order; a page the tag NAKs is logged
+    // and recorded here, never aborts (reported as a Partial result).
+    uint8_t failed_count;
+    uint8_t failed_pages[USCUID_UL_MAX_FAILED_PAGES];
 
     BitBuffer* tx_buffer;
     BitBuffer* rx_buffer;

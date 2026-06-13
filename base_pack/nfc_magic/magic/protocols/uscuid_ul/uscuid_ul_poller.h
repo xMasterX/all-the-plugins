@@ -9,6 +9,9 @@ extern "C" {
 
 #define USCUID_UL_CONFIG_SIZE (16)
 #define USCUID_UL_NO_FAILED_PAGE (0xFFFF) // failed_page value when the failure isn't page-specific
+// Max page numbers reported in a Partial result. Only the soft (config/lock) tier can fail
+// without aborting, and that tier is tiny (PWD/PACK/CFG0/CFG1 + dynamic lock), so 8 is ample.
+#define USCUID_UL_MAX_FAILED_PAGES (8)
 
 typedef enum {
     UscuidUlPollerErrorNone,
@@ -48,6 +51,7 @@ typedef enum {
     UscuidUlPollerEventTypeRequestDataToWrite,
     UscuidUlPollerEventTypeWriteProgress,
     UscuidUlPollerEventTypeSuccess,
+    UscuidUlPollerEventTypePartial, // data+UID cloned, but some config/lock pages didn't take
     UscuidUlPollerEventTypeFail,
 } UscuidUlPollerEventType;
 
@@ -70,11 +74,21 @@ typedef struct {
     uint16_t failed_page; // page whose write or read-back failed, or USCUID_UL_NO_FAILED_PAGE
 } UscuidUlPollerEventDataFail;
 
+// Soft-failure result: the data + UID cloned fine, but one or more config/lock pages
+// (e.g. PACK on some clones) did not verify. The clone is usable; these pages were skipped.
+typedef struct {
+    uint16_t pages_written; // pages successfully written + verified
+    uint16_t pages_total; // pages that were to be written
+    uint8_t failed_count; // number of config/lock pages that didn't take
+    uint8_t failed_pages[USCUID_UL_MAX_FAILED_PAGES]; // their page numbers (truncated to max)
+} UscuidUlPollerEventDataPartial;
+
 typedef union {
     UscuidUlPollerEventDataRequestMode poller_mode;
     UscuidUlPollerEventDataRequestDataToWrite data_to_write;
     UscuidUlPollerEventDataWriteProgress write_progress;
     UscuidUlPollerEventDataFail fail;
+    UscuidUlPollerEventDataPartial partial;
 } UscuidUlPollerEventData;
 
 typedef struct {
@@ -93,6 +107,9 @@ UscuidUlPollerError uscuid_ul_poller_detect(Nfc* nfc, UscuidUlData* data);
 // UI label for the variant: "UL11", "UL21", "UL21 (Ultra)", "NTAG213/215/216",
 // "UL-C (write N/A)", or "Unknown". Returns a static string.
 const char* uscuid_ul_get_variant_name(const UscuidUlData* data);
+
+// Compact name for a plain Ultralight type: "UL11"/"UL21"/"NTAG213/5/6"/"UL-C"/"Unknown".
+const char* uscuid_ul_type_name(MfUltralightType type);
 
 // True when this detected tag can be written: a confirmed USCUID-UL with a recognised,
 // supported type. UL-C is display-only ("write N/A"); an unrecognised preset is not writable.

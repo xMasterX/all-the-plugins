@@ -117,6 +117,17 @@ NfcCommand
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventWorkerSuccess);
         command = NfcCommandStop;
+    } else if(event.type == UscuidUlPollerEventTypePartial) {
+        instance->write_progress_current = event.data->partial.pages_written;
+        instance->write_progress_total = event.data->partial.pages_total;
+        instance->write_failed_count = event.data->partial.failed_count;
+        memcpy(
+            instance->write_failed_pages,
+            event.data->partial.failed_pages,
+            sizeof(instance->write_failed_pages));
+        view_dispatcher_send_custom_event(
+            instance->view_dispatcher, NfcMagicCustomEventWorkerPartial);
+        command = NfcCommandStop;
     } else if(event.type == UscuidUlPollerEventTypeFail) {
         instance->write_progress_current = event.data->fail.pages_written;
         instance->write_progress_total = event.data->fail.pages_total;
@@ -152,6 +163,7 @@ void nfc_magic_scene_write_on_enter(void* context) {
     instance->write_progress_current = 0;
     instance->write_progress_total = 0;
     instance->write_failed_page = USCUID_UL_NO_FAILED_PAGE;
+    instance->write_failed_count = 0;
 
     scene_manager_set_scene_state(
         instance->scene_manager, NfcMagicSceneWrite, NfcMagicSceneWriteStateCardSearch);
@@ -219,6 +231,9 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
             consumed = true;
         } else if(event.event == NfcMagicCustomEventWorkerSuccess) {
             scene_manager_next_scene(instance->scene_manager, NfcMagicSceneSuccess);
+            consumed = true;
+        } else if(event.event == NfcMagicCustomEventWorkerPartial) {
+            scene_manager_next_scene(instance->scene_manager, NfcMagicSceneUscuidUlPartial);
             consumed = true;
         } else if(event.event == NfcMagicCustomEventWorkerFail) {
             scene_manager_next_scene(instance->scene_manager, NfcMagicSceneWriteFail);
