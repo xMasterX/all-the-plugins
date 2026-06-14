@@ -4,3 +4,6 @@
 [submodule "base_pack/multi_fuzzer"]
 	path = base_pack/multi_fuzzer
 	url = https://github.com/DarkFlippers/Multi_Fuzzer.git
+[submodule "base_pack/flipper-dallas-tester"]
+	path = base_pack/flipper-dallas-tester
+	url = https://github.com/mishamyte/flipper-dallas-tester.git
