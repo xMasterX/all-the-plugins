@@ -10,11 +10,34 @@ void nfc_magic_scene_wrong_card_widget_callback(
     }
 }
 
+// "Ultralight"/"Classic" family of a magic-card protocol; NULL for Gen4 (universal).
+static const char* nfc_magic_wrong_card_target_family(NfcMagicProtocol protocol) {
+    if(protocol == NfcMagicProtocolUscuidUl || protocol == NfcMagicProtocolUscuidUlNotDetected) {
+        return "Ultralight";
+    }
+    if(protocol == NfcMagicProtocolGen1 || protocol == NfcMagicProtocolGen2 ||
+       protocol == NfcMagicProtocolClassic) {
+        return "Classic";
+    }
+    return NULL;
+}
+
+// "Ultralight"/"Classic" family of a source dump; NULL for other protocols.
+static const char* nfc_magic_wrong_card_dump_family(NfcProtocol protocol) {
+    if(protocol == NfcProtocolMfUltralight) return "Ultralight";
+    if(protocol == NfcProtocolMfClassic) return "Classic";
+    return NULL;
+}
+
 void nfc_magic_scene_wrong_card_on_enter(void* context) {
     NfcMagicApp* instance = context;
     Widget* widget = instance->widget;
 
     notification_message(instance->notifications, &sequence_error);
+
+    const char* card_family = nfc_magic_wrong_card_target_family(instance->protocol);
+    const char* dump_family =
+        nfc_magic_wrong_card_dump_family(nfc_device_get_protocol(instance->source_dev));
 
     if(instance->source_uid_mismatch) {
         size_t source_uid_len = 0;
@@ -47,8 +70,18 @@ void nfc_magic_scene_wrong_card_on_enter(void* context) {
             uscuid_ul_type_name(instance->uscuid_ul_data.type),
             uscuid_ul_type_name(mfu_data->type));
 
-        widget_add_string_element(
-            widget, 1, 4, AlignLeft, AlignTop, FontPrimary, "Type Mismatch");
+        widget_add_string_element(widget, 1, 4, AlignLeft, AlignTop, FontPrimary, "Type Mismatch");
+        widget_add_string_multiline_element(
+            widget, 1, 17, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(message));
+
+        furi_string_free(message);
+    } else if(card_family && dump_family && strcmp(card_family, dump_family) != 0) {
+        // Cross-family: e.g. a Mifare Classic dump onto an Ultralight magic card.
+        FuriString* message = furi_string_alloc();
+        furi_string_printf(
+            message, "%s magic cards\ndon't accept\n%s dumps.", card_family, dump_family);
+
+        widget_add_string_element(widget, 1, 4, AlignLeft, AlignTop, FontPrimary, "Type Mismatch");
         widget_add_string_multiline_element(
             widget, 1, 17, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(message));
 
