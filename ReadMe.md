@@ -71,6 +71,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | **RFID Fuzzer** | ![RFID Badge] | [by @gid9798](https://github.com/DarkFlippers/Multi_Fuzzer) | original by Ganapati & xMasterX | [![UFW Badge]](https://lab.flipper.net/apps/fuzzer_rfid) |
 | **iButton Fuzzer** | ![iButton Badge] | [by @gid9798](https://github.com/DarkFlippers/Multi_Fuzzer) | original by xMasterX | [![UFW Badge]](https://lab.flipper.net/apps/fuzzer_ibtn) |
 | **iButton Converter** | ![iButton Badge] | [by @Leptopt1los](https://github.com/Leptopt1los/ibutton_converter) | | [![UFW Badge]](https://lab.flipper.net/apps/ibutton_converter) |
+| **Dallas Tester** | ![iButton Badge] | [by @mishamyte](https://github.com/mishamyte/flipper-dallas-tester) | Read-only tPDL & family-code bench meter for iButton / Dallas keys & blanks (DS1990A, RW1990, TM1990 …) | ![None Badge] |
 | IR Scope | ![IR Badge] | [by kallanreed](https://github.com/DarkFlippers/unleashed-firmware/pull/407) |  | [![UFW Badge]](https://lab.flipper.net/apps/ir_scope) |
 | MultiConverter plugin | ![Tools Badge] | [by theisolinearchip](https://github.com/theisolinearchip/flipperzero_stuff) |  | [![UFW Badge]](https://lab.flipper.net/apps/multi_converter) |
 | Barcode Generator | ![Tools Badge] | [by Kingal1337](https://github.com/Kingal1337/flipper-barcode-generator) |  | [![UFW Badge]](https://lab.flipper.net/apps/barcode_app) |
