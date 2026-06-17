@@ -12,6 +12,13 @@
 #include <gui/modules/submenu.h>
 #include <gui/modules/widget.h>
 #include <gui/modules/text_input.h>
+#include <gui/modules/variable_item_list.h>
+
+#include <lib/toolbox/level_duration.h>
+#include <lib/flipper_format/flipper_format.h>
+#include <lib/subghz/environment.h>
+#include <lib/subghz/transmitter.h>
+#include <lib/subghz/subghz_protocol_registry.h>
 
 #include "subghz_raw_edit_icons.h"
 
@@ -21,21 +28,19 @@
 
 #define SUBGHZ_DIR "/ext/subghz"
 #define MAX_SAMPLES 24000
+#define SYNTH_YIELD_CAP 4096
 #define DUR_CLAMP 32000
 #define LOAD_HEAP_RESERVE 12288
 
-#define KEELOQ_TE_US 400
-#define KEELOQ_GUARD_US 1500
-#define KEELOQ_PREAMBLE_PULSES 12
-#define KEELOQ_HEADER_GAP_TE 10
-#define KEELOQ_MAX_KEY_BYTES 16
+#define GAP_KEEP_MAX_US 1500
 
 #define MERGE_GAP_US 15000
 #define MERGE_MAX_FILES 16
 #define MERGE_PATH_LEN 128
 
-#define APP_VERSION "1.4"
+#define APP_VERSION "1.5"
 #define APP_REPO "github.com/Lechnio/SubGHz-RAW-Edit"
+#define APP_NAME "Sub-GHz RAW Edit"
 
 #define SCREEN_W_PX 128
 #define SCREEN_H_PX 64
@@ -68,6 +73,7 @@ typedef struct
     char preset[48];
     bool truncated;
     bool out_of_memory;
+    bool synthesized;
 } SubData;
 
 typedef enum
@@ -231,6 +237,12 @@ static void recompute_activity(App *a)
         if (s1 < a->view_start || s0 > a->view_end)
             continue;
 
+        /* The first sample has no transition before it; when it is a leading gap
+         * (a synthesized frame's leading guard) counting it as an edge paints a
+         * lone 1px bar before the silence. Skip it so the gap reads as blank. */
+        if (i == 0 && a->sd.data[i] < 0)
+            continue;
+
         int x = (int)(((int64_t)(s0 - a->view_start) * SCREEN_W_PX) / span);
 
         if (x < 0)
@@ -282,6 +294,18 @@ static void recompute_overview(App *a)
 static void auto_detect(App *a)
 {
     int32_t total = a->sd.total_us;
+
+    if (a->sd.synthesized)
+    {
+        a->marker_a = 0;
+        a->marker_b = total;
+        a->view_start = 0;
+        a->view_end = total > 0 ? total : 1;
+        clamp_view(a);
+
+        return;
+    }
+
     if (total < 1 || a->sd.count < 2)
     {
         a->view_start = 0;
@@ -361,11 +385,11 @@ static void auto_detect(App *a)
      * finalize a frame. Without it the selection ends on the last bit and the
      * saved capture won't decode (it had to be widened by hand). Any positive
      * extension is enough: write_selection emits the whole gap sample once the
-     * marker lands inside it. Limit it to KEELOQ_GUARD_US so the marker/view
+     * marker lands inside it. Limit it to GAP_KEEP_MAX_US so the marker/view
      * stay tidy and never reach into the next frame. */
     int32_t gap_keep = best_gap;
-    if (gap_keep > KEELOQ_GUARD_US)
-        gap_keep = KEELOQ_GUARD_US;
+    if (gap_keep > GAP_KEEP_MAX_US)
+        gap_keep = GAP_KEEP_MAX_US;
 
     int32_t pad = (best_b - best_a) / 6 + 500;
     a->marker_a = best_a;
@@ -446,33 +470,6 @@ typedef enum
     SubFormatKeeloq,
 } SubFormat;
 
-static bool is_hex_digit(char c)
-{
-    return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
-}
-
-static size_t parse_hex_bytes(const char *s, uint8_t *out, size_t max_bytes)
-{
-    size_t n = 0;
-    while (*s && n < max_bytes)
-    {
-        while (*s == ' ' || *s == '\t')
-            s++;
-
-        if (!s[0] || !s[1])
-            break;
-
-        if (!is_hex_digit(s[0]) || !is_hex_digit(s[1]))
-            break;
-
-        char hex[3] = {s[0], s[1], '\0'};
-        out[n++] = (uint8_t)strtoul(hex, NULL, 16);
-        s += 2;
-    }
-
-    return n;
-}
-
 static void *safe_malloc(size_t size)
 {
     if (size == 0 || memmgr_get_free_heap() < size + LOAD_HEAP_RESERVE)
@@ -489,86 +486,240 @@ static void *safe_realloc(void *ptr, size_t size)
     return realloc(ptr, size);
 }
 
-static bool synthesize_keeloq(SubData *sd, const uint8_t *key, size_t key_len, uint16_t bit_count)
+/* Decoded protocols are synthesized by the firmware's own SubGhz encoder: the
+ * key file is deserialized into a transmitter and we collect the level/duration
+ * upload it would send on air. Every protocol the firmware supports works with
+ * no per-protocol code here. Rolling codes (KeeLoq, Nice Flor-S, ...) increment
+ * and re-encrypt their counter inside the encoder, so the synthesized frame is
+ * the NEXT counter value, not a byte-for-byte replay; the manufacturer keystores
+ * (system + user) are loaded so that encryption works. */
+
+static SubGhzEnvironment *subghz_env_setup(void)
 {
-    if (key_len == 0 || bit_count == 0 || bit_count > key_len * 8)
+    SubGhzEnvironment *env = subghz_environment_alloc();
+    if (!env)
+        return NULL;
+
+    subghz_environment_set_protocol_registry(env, (void *)&subghz_protocol_registry);
+
+    subghz_environment_set_came_atomo_rainbow_table_file_name(
+        env, "/ext/subghz/assets/came_atomo");
+    subghz_environment_set_alutech_at_4n_rainbow_table_file_name(
+        env, "/ext/subghz/assets/alutech_at_4n");
+    subghz_environment_set_nice_flor_s_rainbow_table_file_name(
+        env, "/ext/subghz/assets/nice_flor_s");
+
+    return env;
+}
+
+static bool synth_grow(SubData *sd, size_t need)
+{
+    if (sd->cap >= need)
+        return true;
+
+    size_t ncap = sd->cap ? sd->cap : 256;
+    while (ncap < need)
+        ncap *= 2;
+
+    if (ncap > MAX_SAMPLES)
+        ncap = MAX_SAMPLES;
+
+    if (ncap < need)
         return false;
 
-    size_t needed = (KEELOQ_PREAMBLE_PULSES * 2) + ((size_t)bit_count * 2) + 2;
-    if (needed > MAX_SAMPLES)
-        return false;
-
-    if (sd->cap < needed)
+    int16_t *grown = safe_realloc(sd->data, ncap * sizeof(int16_t));
+    if (!grown)
     {
-        int16_t *grown = safe_realloc(sd->data, needed * sizeof(int16_t));
-        if (!grown)
-        {
-            sd->out_of_memory = true;
-            return false;
-        }
-
-        sd->data = grown;
-        sd->cap = needed;
+        sd->out_of_memory = true;
+        return false;
     }
 
-    sd->count = 0;
-    sd->truncated = false;
-
-    for (int i = 0; i < KEELOQ_PREAMBLE_PULSES; i++)
-    {
-        if (!append_sample(sd, KEELOQ_TE_US))
-            return false;
-
-        if (!append_sample(sd, -KEELOQ_TE_US))
-            return false;
-    }
-
-    sd->data[sd->count - 1] = -(int16_t)(KEELOQ_HEADER_GAP_TE * KEELOQ_TE_US);
-
-    /* Data bits, MSB-first across the byte stream (byte 0 = MSB of the Key).
-     *
-     * PWM polarity (verified by diffing a Flipper-native Elmes RAW against this
-     * output): Flipper reads a SHORT high pulse as bit "1" and a LONG high pulse
-     * as bit "0". Emitting the reverse made every synthesized frame decode to
-     * the bit-complement of the key, so Flipper saw a valid 64-bit KeeLoq frame
-     * but no manufacturer ever matched ("Unknown").
-     *   bit "1" = Te ON, 2*Te OFF   (short high)
-     *   bit "0" = 2*Te ON, Te OFF   (long high) */
-    for (uint16_t b = 0; b < bit_count; b++)
-    {
-        size_t byte_idx = b / 8;
-        size_t bit_in_byte = 7 - (b % 8);
-        bool is_one = (key[byte_idx] >> bit_in_byte) & 1;
-        if (is_one)
-        {
-            if (!append_sample(sd, KEELOQ_TE_US))
-                return false;
-
-            if (!append_sample(sd, -2 * KEELOQ_TE_US))
-                return false;
-        }
-        else
-        {
-            if (!append_sample(sd, 2 * KEELOQ_TE_US))
-                return false;
-
-            if (!append_sample(sd, -KEELOQ_TE_US))
-                return false;
-        }
-    }
-
-    /* End-of-frame guard. Flipper's KeeLoq decoder only declares success when
-     * it sees a timing mismatch *after* accumulating 64 bits. A trailing short
-     * ON followed by a long OFF (the classic 39*Te HCS300 guard) lands the
-     * decoder in CheckDuration, fails to match either bit pattern, and
-     * triggers the count-check that emits the "found" callback. */
-    if (!append_sample(sd, KEELOQ_TE_US))
-        return false;
-
-    if (!append_sample(sd, -(int32_t)KEELOQ_GUARD_US))
-        return false;
-
+    sd->data = grown;
+    sd->cap = ncap;
     return true;
+}
+
+static bool synthesize_via_transmitter(
+    Storage *storage, const char *path, const char *protocol, SubData *sd)
+{
+    if (!protocol[0])
+        return false;
+
+    SubGhzEnvironment *env = subghz_env_setup();
+    if (!env)
+        return false;
+
+    if (strstr(protocol, "KeeLoq"))
+    {
+        subghz_environment_load_keystore(env, "/ext/subghz/assets/keeloq_mfcodes");
+        subghz_environment_load_keystore(env, "/ext/subghz/assets/keeloq_mfcodes_user");
+    }
+
+    FlipperFormat *fff = flipper_format_file_alloc(storage);
+    SubGhzTransmitter *tx = NULL;
+    bool ok = false;
+
+    do
+    {
+        if (!flipper_format_file_open_existing(fff, path))
+            break;
+
+        tx = subghz_transmitter_alloc_init(env, protocol);
+        if (!tx)
+            break;
+
+        if (subghz_transmitter_deserialize(tx, fff) != SubGhzProtocolStatusOk)
+            break;
+
+        sd->count = 0;
+        for (;;)
+        {
+            LevelDuration ld = subghz_transmitter_yield(tx);
+            if (level_duration_is_reset(ld))
+                break;
+
+            int32_t dur = (int32_t)level_duration_get_duration(ld);
+            int32_t v = level_duration_get_level(ld) ? dur : -dur;
+
+            if (!synth_grow(sd, sd->count + 1))
+            {
+                sd->truncated = true;
+                break;
+            }
+
+            append_sample(sd, v);
+
+            if (sd->count >= SYNTH_YIELD_CAP)
+                break;
+        }
+
+        /* The encoder repeats the same upload `repeat` times. Find the true
+         * period P (smallest P for which the whole buffer is P-periodic - this
+         * rejects the short sub-period of a repetitive preamble like KeeLoq's,
+         * unlike a header-only match) and keep ONE period plus the next frame's
+         * header as its trailing sync. Without this, N duplicates bloat the
+         * buffer and OOM on large frames (e.g. Nice Flor-S). */
+        size_t n = sd->count;
+        for (size_t p = 4; p * 2 <= n; p++)
+        {
+            bool periodic = true;
+            for (size_t i = p; i < n; i++)
+            {
+                if (sd->data[i] != sd->data[i - p])
+                {
+                    periodic = false;
+                    break;
+                }
+            }
+
+            if (periodic)
+            {
+                /* Keep one period. Append the next frame's first sample as a
+                 * trailing delimiter only when it is a gap (gap-first protocols
+                 * like Dooya/CAME, whose period otherwise ends on a pulse and
+                 * leaves the last bit unframed). Pulse-first protocols (KeeLoq)
+                 * already end the period on their inter-frame guard gap, so
+                 * appending data[p] there would dangle a stray pulse. */
+                sd->count = (sd->data[p] < 0) ? p + 1 : p;
+                break;
+            }
+        }
+
+        ok = sd->count > 0;
+    } while (0);
+
+    if (tx)
+        subghz_transmitter_free(tx);
+
+    flipper_format_file_close(fff);
+    flipper_format_free(fff);
+    subghz_environment_free(env);
+    return ok;
+}
+
+/* Snap each pulse to the nearest multiple of a base unit Te, removing timing
+ * jitter and cumulative drift. Te is found by an iterative least-squares fit
+ * |dur| ~ m*Te; gaps and noise (outside the data window) are left alone. */
+static bool g_normalize_jitter = false;
+
+#define JITTER_DATA_MIN_US 60
+#define JITTER_DATA_MAX_US 3000
+#define JITTER_FIT_ITERS 8
+
+static void normalize_jitter(SubData *sd)
+{
+    if (!sd || !sd->data || sd->count < 8)
+        return;
+
+    int64_t sum_all = 0;
+    size_t n_all = 0;
+    for (size_t i = 0; i < sd->count; i++)
+    {
+        int32_t a = iabs32(sd->data[i]);
+        if (a >= JITTER_DATA_MIN_US && a <= JITTER_DATA_MAX_US)
+        {
+            sum_all += a;
+            n_all++;
+        }
+    }
+    if (n_all == 0)
+        return;
+
+    int32_t mean_all = (int32_t)(sum_all / (int64_t)n_all);
+    int64_t sum_short = 0;
+    size_t n_short = 0;
+    for (size_t i = 0; i < sd->count; i++)
+    {
+        int32_t a = iabs32(sd->data[i]);
+        if (a >= JITTER_DATA_MIN_US && a <= mean_all)
+        {
+            sum_short += a;
+            n_short++;
+        }
+    }
+
+    float te = (n_short > 0) ? (float)sum_short / (float)n_short : (float)mean_all;
+    if (te < 1.0f)
+        return;
+
+    for (int it = 0; it < JITTER_FIT_ITERS; it++)
+    {
+        float num = 0.0f, den = 0.0f;
+        for (size_t i = 0; i < sd->count; i++)
+        {
+            int32_t a = iabs32(sd->data[i]);
+            if (a < JITTER_DATA_MIN_US || a > JITTER_DATA_MAX_US)
+                continue;
+
+            int m = (int)((float)a / te + 0.5f);
+            if (m < 1)
+                m = 1;
+
+            num += (float)m * (float)a;
+            den += (float)m * (float)m;
+        }
+        if (den <= 0.0f)
+            return;
+
+        te = num / den;
+    }
+
+    for (size_t i = 0; i < sd->count; i++)
+    {
+        int32_t a = iabs32(sd->data[i]);
+        if (a < JITTER_DATA_MIN_US || a > JITTER_DATA_MAX_US)
+            continue;
+
+        int m = (int)((float)a / te + 0.5f);
+        if (m < 1)
+            m = 1;
+
+        int32_t mag = (int32_t)((float)m * te + 0.5f);
+        if (mag > DUR_CLAMP)
+            mag = DUR_CLAMP;
+
+        sd->data[i] = (int16_t)(sd->data[i] < 0 ? -mag : mag);
+    }
 }
 
 static bool load_sub(Storage *storage, const char *path, SubData *sd)
@@ -590,8 +741,7 @@ static bool load_sub(Storage *storage, const char *path, SubData *sd)
      * ~4.4-5.4 bytes per sample (number text + sign + space), so fsize/4 is a
      * tight upper bound: well under the old fsize/2 (~2x) over-allocation, yet
      * still above the real count so normal captures aren't truncated. Decoded
-     * files (KeeLoq etc.) are tiny; synthesize_keeloq grows the buffer if it
-     * needs more. */
+     * files are tiny; synthesize_via_transmitter grows the buffer as it yields. */
     size_t est = (size_t)(fsize / 4) + 64;
     if (est > MAX_SAMPLES)
         est = MAX_SAMPLES;
@@ -608,9 +758,6 @@ static bool load_sub(Storage *storage, const char *path, SubData *sd)
     sd->cap = est;
 
     char protocol[32] = {0};
-    uint16_t bit_count = 0;
-    uint8_t key_bytes[KEELOQ_MAX_KEY_BYTES];
-    size_t key_len = 0;
 
     LineReader lr = {.file = f, .len = 0, .pos = 0, .eof = false};
     FuriString *line = furi_string_alloc();
@@ -665,31 +812,14 @@ static bool load_sub(Storage *storage, const char *path, SubData *sd)
             strncpy(protocol, p, sizeof(protocol) - 1);
             protocol[sizeof(protocol) - 1] = '\0';
         }
-        else if (strncmp(s, "Bit:", 4) == 0)
-        {
-            bit_count = (uint16_t)strtoul(s + 4, NULL, 10);
-        }
-        else if (strncmp(s, "Key:", 4) == 0)
-        {
-            const char *p = s + 4;
-            while (*p == ' ')
-                p++;
-
-            key_len = parse_hex_bytes(p, key_bytes, KEELOQ_MAX_KEY_BYTES);
-        }
     }
 
     furi_string_free(line);
     storage_file_close(f);
     storage_file_free(f);
 
-    if (sd->count == 0 && key_len > 0 && bit_count > 0)
-    {
-        if (strcmp(protocol, "KeeLoq") == 0)
-        {
-            synthesize_keeloq(sd, key_bytes, key_len, bit_count);
-        }
-    }
+    if (sd->count == 0 && protocol[0] && strcmp(protocol, "RAW") != 0)
+        sd->synthesized = synthesize_via_transmitter(storage, path, protocol, sd);
 
     if (sd->data && sd->count > 0 && sd->count < sd->cap)
     {
@@ -700,6 +830,9 @@ static bool load_sub(Storage *storage, const char *path, SubData *sd)
             sd->cap = sd->count;
         }
     }
+
+    if (g_normalize_jitter)
+        normalize_jitter(sd);
 
     int64_t run = 0;
     for (size_t i = 0; i < sd->count; i++)
@@ -765,9 +898,6 @@ static size_t count_sub_samples(
     FuriString *line = furi_string_alloc();
     size_t raw_count = 0;
     char protocol[32] = {0};
-    uint16_t bit_count = 0;
-    uint8_t key_bytes[KEELOQ_MAX_KEY_BYTES];
-    size_t key_len = 0;
 
     while (lr_read_line(&lr, line))
     {
@@ -814,18 +944,6 @@ static size_t count_sub_samples(
             strncpy(protocol, q, sizeof(protocol) - 1);
             protocol[sizeof(protocol) - 1] = '\0';
         }
-        else if (strncmp(s, "Bit:", 4) == 0)
-        {
-            bit_count = (uint16_t)strtoul(s + 4, NULL, 10);
-        }
-        else if (strncmp(s, "Key:", 4) == 0)
-        {
-            const char *q = s + 4;
-            while (*q == ' ')
-                q++;
-
-            key_len = parse_hex_bytes(q, key_bytes, KEELOQ_MAX_KEY_BYTES);
-        }
     }
 
     furi_string_free(line);
@@ -838,14 +956,24 @@ static size_t count_sub_samples(
         return raw_count;
     }
 
-    /* Decoded KeeLoq: predict the synthesized frame length. Must stay in sync
-     * with synthesize_keeloq (preamble pairs + data-bit pairs + 2-sample guard)
-     * and its validity guard (bit_count <= key_len * 8). */
-    if (strcmp(protocol, "KeeLoq") == 0 && key_len > 0 && bit_count > 0 &&
-        bit_count <= key_len * 8)
+    /* Decoded protocol: the frame length isn't predictable from the file alone,
+     * so synthesize it once via the firmware encoder and count the samples. */
+    if (protocol[0] && strcmp(protocol, "RAW") != 0)
     {
-        *is_raw = false;
-        return (size_t)KEELOQ_PREAMBLE_PULSES * 2 + (size_t)bit_count * 2 + 2;
+        SubData tmp;
+        memset(&tmp, 0, sizeof(tmp));
+        size_t n = 0;
+        if (synthesize_via_transmitter(storage, path, protocol, &tmp))
+            n = tmp.count;
+
+        if (tmp.data)
+            free(tmp.data);
+
+        if (n > 0)
+        {
+            *is_raw = false;
+            return n;
+        }
     }
 
     return 0;
@@ -974,11 +1102,17 @@ static bool write_selection(Storage *st, App *a, const char *savename)
         return false;
     }
 
-    while (i0 < i1 && a->sd.data[i0] < 0)
-        i0++;
+    /* A synthesized frame is exact - keep its leading guard (a low gap) and
+     * trailing guard verbatim. The trims below would strip the leading silence
+     * (making preamble-less protocols like Princeton undecodable) so skip them. */
+    if (!a->sd.synthesized)
+    {
+        while (i0 < i1 && a->sd.data[i0] < 0)
+            i0++;
 
-    while (i1 > i0 && a->sd.data[i1] > 0)
-        i1--;
+        while (i1 > i0 && a->sd.data[i1] > 0)
+            i1--;
+    }
 
     if (i0 >= i1)
     {
@@ -1371,7 +1505,7 @@ static void draw_cb(Canvas *c, void *ctx)
     canvas_draw_str(c, 0, LINE2_BASE, l2);
 
     snprintf(l1, sizeof(l1), "View: %s", zb);
-    snprintf(l2, sizeof(l2), "Selected: %s", sl);
+    snprintf(l2, sizeof(l2), "Marked: %s", sl);
     canvas_draw_str_aligned(c, SCREEN_W_PX - 1, 56, AlignRight, AlignBottom, l1);
     canvas_draw_str_aligned(c, SCREEN_W_PX - 1, 56 + FONT_SIZE_PX + 1, AlignRight, AlignBottom, l2);
 
@@ -1836,7 +1970,7 @@ static void run_editor(Storage *storage, DialogsApp *dialogs)
         }
         else
         {
-            dialog_message_set_header(m, "Sub-GHz RAW Edit", 64, 4, AlignCenter, AlignTop);
+            dialog_message_set_header(m, APP_NAME, 64, 4, AlignCenter, AlignTop);
             dialog_message_set_text(
                 m, "Unsupported protocol or file is empty", 64, 32, AlignCenter, AlignCenter);
         }
@@ -1963,7 +2097,7 @@ static void run_merge(Storage *storage, DialogsApp *dialogs)
             DialogMessage *m = dialog_message_alloc();
             dialog_message_set_header(m, "Unsupported file", 64, 2, AlignCenter, AlignTop);
             dialog_message_set_text(
-                m, "Need a RAW or decoded\nKeeLoq .sub.", 64, 34, AlignCenter, AlignCenter);
+                m, "Unsupported protocol or file is empty", 64, 34, AlignCenter, AlignCenter);
             dialog_message_set_buttons(m, NULL, NULL, "OK");
             dialog_message_show(dialogs, m);
             dialog_message_free(m);
@@ -2064,6 +2198,9 @@ static void run_merge(Storage *storage, DialogsApp *dialogs)
     for (int i = 0; i < n; i++)
         fill_sub_into(storage, paths[i], &app->sd, is_raw_arr[i], i > 0);
 
+    if (g_normalize_jitter)
+        normalize_jitter(&app->sd);
+
     gui_remove_view_port(gui, load_vp);
     free(paths);
 
@@ -2100,12 +2237,14 @@ typedef enum
 {
     MenuViewSubmenu,
     MenuViewAbout,
+    MenuViewConfig,
 } MenuViewId;
 
 typedef enum
 {
     MenuItemSelectFile,
     MenuItemMergeFiles,
+    MenuItemConfig,
     MenuItemAbout,
 } MenuItemId;
 
@@ -2121,6 +2260,7 @@ typedef struct
     ViewDispatcher *view_dispatcher;
     Submenu *submenu;
     Widget *widget;
+    VariableItemList *config_list;
     Storage *storage;
     DialogsApp *dialogs;
     MenuAction action;
@@ -2139,6 +2279,10 @@ static void menu_submenu_cb(void *context, uint32_t index)
         menu->action = MenuActionMerge;
         view_dispatcher_stop(menu->view_dispatcher);
     }
+    else if (index == MenuItemConfig)
+    {
+        view_dispatcher_switch_to_view(menu->view_dispatcher, MenuViewConfig);
+    }
     else if (index == MenuItemAbout)
     {
         view_dispatcher_switch_to_view(menu->view_dispatcher, MenuViewAbout);
@@ -2151,6 +2295,27 @@ static uint32_t about_back_cb(void *context)
     return MenuViewSubmenu;
 }
 
+static uint32_t config_back_cb(void *context)
+{
+    UNUSED(context);
+    return MenuViewSubmenu;
+}
+
+static void config_norm_changed_cb(VariableItem *item)
+{
+    uint8_t idx = variable_item_get_current_value_index(item);
+    g_normalize_jitter = (idx != 0);
+    variable_item_set_current_value_text(item, idx ? "ON" : "OFF");
+}
+
+static void menu_build_config(Menu *menu)
+{
+    VariableItem *it = variable_item_list_add(
+        menu->config_list, "Normalize jitter", 2, config_norm_changed_cb, menu);
+    variable_item_set_current_value_index(it, g_normalize_jitter ? 1 : 0);
+    variable_item_set_current_value_text(it, g_normalize_jitter ? "ON" : "OFF");
+}
+
 static uint32_t submenu_back_cb(void *context)
 {
     UNUSED(context);
@@ -2159,29 +2324,36 @@ static uint32_t submenu_back_cb(void *context)
 
 static void menu_build_about(Menu *menu)
 {
-    widget_add_text_scroll_element(
+    int title_h = FONT_SIZE_PX * 2;
+    widget_add_text_box_element(
         menu->widget,
         0,
         0,
         SCREEN_W_PX,
-        64,
-        "\e#Sub-GHz RAW Edit\e#\n"
-        "Version " APP_VERSION "\n"
+        title_h,
+        AlignCenter,
+        AlignBottom,
+        "\e#\e!     Sub-GHz RAW Edit     \e!\n",
+        false);
+
+    int scroll_element_offset = title_h + GAP_PX;
+    widget_add_text_scroll_element(
+        menu->widget,
+        0,
+        scroll_element_offset,
+        SCREEN_W_PX,
+        SCREEN_H_PX - scroll_element_offset,
+        "\e#Version " APP_VERSION "\n"
+        "Enjoyed? Leave a star:\n"
+        "" APP_REPO "\n"
         "\n"
-        "Trim a RAW .sub to one\n"
-        "clean frame (auto-find,\n"
-        "A/B, cut, save).\n"
+        "A tiny on-device waveform\n"
+        "editor for Flipper Zero that\n"
+        "trims RAW .sub captures\n"
+        "down to just the part\n"
+        "you care about.\n"
         "\n"
-        "Merge: join several\n"
-        ".sub into one.\n"
-        "\n"
-        "Opens a decoded KeeLoq\n"
-        ".sub as RAW too.\n"
-        "\n"
-        "RX/analysis only - never\n"
-        "transmits.\n"
-        "\n"
-        "by Lechnio\n" APP_REPO "\n");
+        "Full documentation available on the GitHub.");
 }
 
 int32_t subghz_raw_edit_app(void *p)
@@ -2201,21 +2373,28 @@ int32_t subghz_raw_edit_app(void *p)
     menu->view_dispatcher = view_dispatcher_alloc();
     menu->submenu = submenu_alloc();
     menu->widget = widget_alloc();
+    menu->config_list = variable_item_list_alloc();
 
-    submenu_set_header(menu->submenu, "Sub-GHz RAW Edit");
+    submenu_set_header(menu->submenu, APP_NAME);
     submenu_add_item(menu->submenu, "Select .sub file", MenuItemSelectFile, menu_submenu_cb, menu);
     submenu_add_item(menu->submenu, "Merge .sub files", MenuItemMergeFiles, menu_submenu_cb, menu);
+    submenu_add_item(menu->submenu, "Config", MenuItemConfig, menu_submenu_cb, menu);
     submenu_add_item(menu->submenu, "About", MenuItemAbout, menu_submenu_cb, menu);
 
     menu_build_about(menu);
+    menu_build_config(menu);
 
     view_set_previous_callback(submenu_get_view(menu->submenu), submenu_back_cb);
     view_set_previous_callback(widget_get_view(menu->widget), about_back_cb);
+    view_set_previous_callback(
+        variable_item_list_get_view(menu->config_list), config_back_cb);
 
     view_dispatcher_attach_to_gui(menu->view_dispatcher, gui, ViewDispatcherTypeFullscreen);
     view_dispatcher_add_view(
         menu->view_dispatcher, MenuViewSubmenu, submenu_get_view(menu->submenu));
     view_dispatcher_add_view(menu->view_dispatcher, MenuViewAbout, widget_get_view(menu->widget));
+    view_dispatcher_add_view(
+        menu->view_dispatcher, MenuViewConfig, variable_item_list_get_view(menu->config_list));
 
     bool running = true;
     while (running)
@@ -2240,8 +2419,10 @@ int32_t subghz_raw_edit_app(void *p)
 
     view_dispatcher_remove_view(menu->view_dispatcher, MenuViewSubmenu);
     view_dispatcher_remove_view(menu->view_dispatcher, MenuViewAbout);
+    view_dispatcher_remove_view(menu->view_dispatcher, MenuViewConfig);
     submenu_free(menu->submenu);
     widget_free(menu->widget);
+    variable_item_list_free(menu->config_list);
     view_dispatcher_free(menu->view_dispatcher);
 
     furi_record_close(RECORD_GUI);

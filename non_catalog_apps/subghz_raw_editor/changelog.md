@@ -1,3 +1,10 @@
+## v1.5
+
+- Added merge feature for .sub files
+- Added jitter normalizer option
+- Added support for loading as RAW any other protocol supported by the firmware.
+This was achieved by using the device's internal decoder.
+
 ## v1.4
 
 - Added cut feature
@@ -10,7 +17,7 @@
 
 ## v1.3
 
-- Apply proper icons for listed .sub files.
+- Apply proper icons for listed .sub files
 
 ## v1.2
 
