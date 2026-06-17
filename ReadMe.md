@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `17 Jun 23:01 GMT +3`
+### Apps checked & updated at `18 Jun 00:13 GMT +3`
 
 
 # Default pack
