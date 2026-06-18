@@ -2,6 +2,7 @@
 
 enum SubmenuIndex {
     SubmenuIndexWrite,
+    SubmenuIndexAuthPassword,
     // Wipe / Dump to be added later (for certain cases)
 };
 
@@ -22,6 +23,16 @@ void nfc_magic_scene_uscuid_ul_menu_on_enter(void* context) {
         nfc_magic_scene_uscuid_ul_menu_submenu_callback,
         instance);
 
+    // PWD-AUTH only works on the direct/ATS transport (wakeup None); not the backdoor path.
+    if(instance->uscuid_ul_data.wakeup == UscuidUlWakeupNone) {
+        submenu_add_item(
+            submenu,
+            instance->uscuid_ul_password_set ? "Auth with Password (set)" : "Auth with Password",
+            SubmenuIndexAuthPassword,
+            nfc_magic_scene_uscuid_ul_menu_submenu_callback,
+            instance);
+    }
+
     submenu_set_selected_item(
         submenu,
         scene_manager_get_scene_state(instance->scene_manager, NfcMagicSceneUscuidUlMenu));
@@ -35,6 +46,9 @@ bool nfc_magic_scene_uscuid_ul_menu_on_event(void* context, SceneManagerEvent ev
     if(event.type == SceneManagerEventTypeCustom) {
         if(event.event == SubmenuIndexWrite) {
             scene_manager_next_scene(instance->scene_manager, NfcMagicSceneFileSelect);
+            consumed = true;
+        } else if(event.event == SubmenuIndexAuthPassword) {
+            scene_manager_next_scene(instance->scene_manager, NfcMagicSceneUscuidUlPwdInput);
             consumed = true;
         }
         scene_manager_set_scene_state(

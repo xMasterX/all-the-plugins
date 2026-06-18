@@ -7,11 +7,12 @@
 extern "C" {
 #endif
 
-#define USCUID_UL_CONFIG_SIZE (16)
-#define USCUID_UL_NO_FAILED_PAGE (0xFFFF) // failed_page value when the failure isn't page-specific
-// Max page numbers reported in a Partial result. Only the soft (config/lock) tier can fail
-// without aborting, and that tier is tiny (PWD/PACK/CFG0/CFG1 + dynamic lock), so 8 is ample.
-#define USCUID_UL_MAX_FAILED_PAGES (8)
+#define USCUID_UL_CONFIG_SIZE        (16)
+#define USCUID_UL_NO_FAILED_PAGE     (0xFFFF) // failed_page value when the failure isn't page-specific
+// Failed pages are tracked as a bitmap (1 bit/page) so a Partial result can list every page
+// that didn't take, in ascending order. Sized for the largest supported type (NTAG216, 231 pg).
+#define USCUID_UL_MAX_PAGES          (231)
+#define USCUID_UL_FAILED_BITMAP_SIZE ((USCUID_UL_MAX_PAGES + 7) / 8)
 
 typedef enum {
     UscuidUlPollerErrorNone,
@@ -34,7 +35,8 @@ typedef struct {
     bool is_uscuid_ul; // confirmed: config matched the magic framing (0x85, or 0x7A 0xFF backdoor-on)
     uint8_t config[USCUID_UL_CONFIG_SIZE];
     UscuidUlWakeup wakeup; // backdoor entry that answered (or None)
-    MfUltralightType type; // emulated type from preset byte cfg[7] (vendor cfg[9] only refines UL21 -> Ultra)
+    MfUltralightType
+        type; // emulated type from preset byte cfg[7] (vendor cfg[9] only refines UL21 -> Ultra)
     bool type_known; // preset byte recognised
     bool is_ultra; // UL21 + Mikron vendor (cfg[9]==0x34) -> display "UL21 (Ultra)"
     bool maybe_ul5; // unpersonalized UL-5 hint (UID prefix AA 55); detect-only, never writable
@@ -53,7 +55,10 @@ typedef enum {
     UscuidUlPollerEventTypeSuccess,
     UscuidUlPollerEventTypePartial, // data+UID cloned, but some config/lock pages didn't take
     UscuidUlPollerEventTypeFail,
+    UscuidUlPollerEventTypeAuthFailed, // PWD-AUTH was rejected; nothing was written
 } UscuidUlPollerEventType;
+
+#define USCUID_UL_PWD_SIZE (4) // MFUL/NTAG password length
 
 typedef struct {
     UscuidUlPollerMode mode;
@@ -71,16 +76,16 @@ typedef struct {
 typedef struct {
     uint16_t pages_written; // pages successfully written before the failure
     uint16_t pages_total; // pages that were to be written
-    uint16_t failed_page; // page whose write or read-back failed, or USCUID_UL_NO_FAILED_PAGE
+    uint16_t failed_page; // page the tag NAKed, or USCUID_UL_NO_FAILED_PAGE
 } UscuidUlPollerEventDataFail;
 
 // Soft-failure result: the data + UID cloned fine, but one or more config/lock pages
-// (e.g. PACK on some clones) did not verify. The clone is usable; these pages were skipped.
+// (e.g. PACK on some clones) did not take. The clone is usable; these pages were skipped.
 typedef struct {
-    uint16_t pages_written; // pages successfully written + verified
+    uint16_t pages_written; // pages successfully written
     uint16_t pages_total; // pages that were to be written
-    uint8_t failed_count; // number of config/lock pages that didn't take
-    uint8_t failed_pages[USCUID_UL_MAX_FAILED_PAGES]; // their page numbers (truncated to max)
+    uint16_t failed_count; // number of pages that didn't take
+    uint8_t failed_bitmap[USCUID_UL_FAILED_BITMAP_SIZE]; // bit N set = page N failed
 } UscuidUlPollerEventDataPartial;
 
 typedef union {
@@ -121,6 +126,11 @@ void uscuid_ul_poller_free(UscuidUlPoller* instance);
 // Selects the write transport before start: pass the wakeup recorded during detection.
 // None -> direct (normal activation + A2, for CUID/ATS tags); A/B -> backdoor (40/43-20/23).
 void uscuid_ul_poller_set_wakeup(UscuidUlPoller* instance, UscuidUlWakeup wakeup);
+
+// Enables PWD-AUTH before writes (direct engine only): the 4-byte password is sent (0x1B)
+// after activation, so protected pages on a genuine/ATS tag become writable. A rejected
+// password aborts with AuthFailed without retrying (retries can brick the tag via AUTHLIM).
+void uscuid_ul_poller_set_password(UscuidUlPoller* instance, const uint8_t* password);
 void uscuid_ul_poller_start(
     UscuidUlPoller* instance,
     UscuidUlPollerCallback callback,

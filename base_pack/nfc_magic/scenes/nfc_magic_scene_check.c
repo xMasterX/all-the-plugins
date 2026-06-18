@@ -21,6 +21,9 @@ void nfc_magic_check_worker_callback(NfcMagicScannerEvent event, void* context) 
 void nfc_magic_scene_check_on_enter(void* context) {
     NfcMagicApp* instance = context;
 
+    // Fresh scan: drop any password armed for a previously scanned tag.
+    instance->uscuid_ul_password_set = false;
+
     popup_set_icon(instance->popup, 0, 8, &I_NFC_manual_60x50);
     popup_set_text(instance->popup, "Apply card to\nthe back", 128, 32, AlignRight, AlignCenter);
 

@@ -12,5 +12,6 @@ typedef enum {
     NfcMagicCustomEventWorkerFail,
     NfcMagicCustomEventWorkerPartial,
     NfcMagicCustomEventWorkerProgress,
+    NfcMagicCustomEventWorkerAuthFail,
 
 } NfcMagicCustomEvent;

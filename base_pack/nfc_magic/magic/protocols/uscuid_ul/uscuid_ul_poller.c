@@ -6,7 +6,7 @@
 #include <nfc/protocols/iso14443_3a/iso14443_3a_poller.h>
 #include <furi/furi.h>
 
-#define TAG "USCUID_UL_POLLER"
+#define TAG                               "USCUID_UL_POLLER"
 #define USCUID_UL_POLLER_THREAD_FLAG_DONE (1U << 0)
 
 typedef NfcCommand (*UscuidUlPollerStateHandler)(UscuidUlPoller* instance);
@@ -38,6 +38,9 @@ UscuidUlPoller* uscuid_ul_poller_alloc(Nfc* nfc) {
     instance->wakeup = UscuidUlWakeupNone;
     instance->iso3_nfc_poller = NULL;
     instance->iso3_poller = NULL;
+    instance->password_set = false;
+    instance->authed = false;
+    instance->auth_ever_ok = false;
 
     return instance;
 }
@@ -50,6 +53,14 @@ void uscuid_ul_poller_set_wakeup(UscuidUlPoller* instance, UscuidUlWakeup wakeup
     instance->wakeup = wakeup;
 }
 
+void uscuid_ul_poller_set_password(UscuidUlPoller* instance, const uint8_t* password) {
+    furi_assert(instance);
+    furi_assert(password);
+    furi_assert(instance->session_state == UscuidUlPollerSessionStateIdle);
+    memcpy(instance->password, password, USCUID_UL_PWD_SIZE);
+    instance->password_set = true;
+}
+
 void uscuid_ul_poller_free(UscuidUlPoller* instance) {
     furi_assert(instance);
 
@@ -60,9 +71,9 @@ void uscuid_ul_poller_free(UscuidUlPoller* instance) {
 
 // --- Detection route 1: config exposed as the RATS/ATS response (85-mode, no backdoor) ---
 
-#define USCUID_UL_RATS_CMD (0xE0)
+#define USCUID_UL_RATS_CMD   (0xE0)
 #define USCUID_UL_RATS_PARAM (0x80) // FSDI=8 (256-byte frame), CID=0
-#define USCUID_UL_RATS_FWT (150000U)
+#define USCUID_UL_RATS_FWT   (150000U)
 
 typedef struct {
     BitBuffer* tx_buffer;
@@ -284,8 +295,13 @@ static NfcCommand uscuid_ul_poller_request_data_handler(UscuidUlPoller* instance
     instance->written = 0;
     instance->failed_page = USCUID_UL_NO_FAILED_PAGE;
     instance->failed_count = 0;
-    memset(instance->failed_pages, 0, sizeof(instance->failed_pages));
-    instance->pages_total = (instance->data != NULL) ? instance->data->pages_read : 0;
+    memset(instance->failed_bitmap, 0, sizeof(instance->failed_bitmap));
+    instance->authed = false;
+    instance->auth_ever_ok = false;
+    // Clamp to the bitmap's capacity: a malformed dump can declare more pages than its type
+    // holds, which would push page numbers past failed_bitmap and corrupt the heap.
+    uint16_t pages = (instance->data != NULL) ? instance->data->pages_read : 0;
+    instance->pages_total = (pages > USCUID_UL_MAX_PAGES) ? USCUID_UL_MAX_PAGES : pages;
 
     if(instance->data == NULL || instance->pages_total == 0) {
         // Nothing to write is a failure, not a no-op "success".
@@ -298,8 +314,6 @@ static NfcCommand uscuid_ul_poller_request_data_handler(UscuidUlPoller* instance
 }
 
 static NfcCommand uscuid_ul_poller_write_handler(UscuidUlPoller* instance) {
-    NfcCommand command = NfcCommandContinue;
-
     if(instance->write_index >= instance->pages_total) {
         if(instance->failed_count == 0) {
             instance->state = UscuidUlPollerStateSuccess;
@@ -310,7 +324,31 @@ static NfcCommand uscuid_ul_poller_write_handler(UscuidUlPoller* instance) {
         } else {
             instance->state = UscuidUlPollerStatePartial;
         }
-        return command;
+        return NfcCommandContinue;
+    }
+
+    // PWD-AUTH before touching any page (direct engine only). authed is cleared on each
+    // (re-)activation, so this also re-auths after a reset triggered by a locked-page NAK.
+    if(instance->password_set && uscuid_ul_is_direct(instance) && !instance->authed) {
+        UscuidUlPollerError auth_error = uscuid_ul_poller_auth_pwd(instance);
+        if(auth_error == UscuidUlPollerErrorNone) {
+            instance->authed = true;
+            instance->auth_ever_ok = true;
+        } else if(!instance->auth_ever_ok) {
+            // Initial auth failed (wrong password, or the card left the field). Abort without
+            // retrying: looping auth attempts would burn the tag's AUTHLIM and can brick it.
+            // Nothing was written, so it's clean.
+            FURI_LOG_E(TAG, "PWD-AUTH failed (err %d)", auth_error);
+            instance->state = UscuidUlPollerStateAuthFailed;
+            return NfcCommandContinue;
+        } else {
+            // A re-auth with the already-accepted password failed (transient RF glitch).
+            // Don't loop; finalize with whatever already landed.
+            FURI_LOG_E(TAG, "Re-auth failed (err %d, written %u)", auth_error, instance->written);
+            instance->state = (instance->written > 0) ? UscuidUlPollerStatePartial :
+                                                        UscuidUlPollerStateFail;
+            return NfcCommandContinue;
+        }
     }
 
     const uint8_t page =
@@ -320,23 +358,28 @@ static NfcCommand uscuid_ul_poller_write_handler(UscuidUlPoller* instance) {
     // ACK/NAK is the success signal (like the firmware & PM3). No read-back: a plain READ
     // can't verify special registers (PACK) anyway.
     UscuidUlPollerError write_error = uscuid_ul_poller_write_page(instance, page, src);
-    if(write_error == UscuidUlPollerErrorNone) {
-        instance->written++;
-    } else {
-        FURI_LOG_E(TAG, "Write failed at page %u (err %d)", page, write_error);
-        if(instance->failed_count < USCUID_UL_MAX_FAILED_PAGES) {
-            instance->failed_pages[instance->failed_count] = page;
-        }
-        instance->failed_count++;
-    }
     instance->write_index++;
 
+    if(write_error != UscuidUlPollerErrorNone) {
+        FURI_LOG_E(TAG, "Write failed at page %u (err %d)", page, write_error);
+        instance->failed_bitmap[page >> 3] |= (uint8_t)(1u << (page & 7u));
+        instance->failed_count++;
+        // A genuine tag can go mute after NAKing a locked page. On the direct engine,
+        // re-activate (NfcCommandReset re-runs WUPA/anticoll/select, reviving a HALTed card)
+        // so the remaining writable pages still land -> Partial instead of a total Fail. The
+        // backdoor engine must stay woken (a reset drops backdoor mode), so it just continues.
+        if(uscuid_ul_is_direct(instance)) {
+            instance->authed = false; // re-select drops auth; re-auth on the next pass
+            return NfcCommandReset;
+        }
+        return NfcCommandContinue;
+    }
+
+    instance->written++;
     instance->event.type = UscuidUlPollerEventTypeWriteProgress;
     instance->event_data.write_progress.pages_written = instance->written;
     instance->event_data.write_progress.pages_total = instance->pages_total;
-    command = instance->callback(instance->event, instance->context);
-
-    return command;
+    return instance->callback(instance->event, instance->context);
 }
 
 static NfcCommand uscuid_ul_poller_success_handler(UscuidUlPoller* instance) {
@@ -352,9 +395,16 @@ static NfcCommand uscuid_ul_poller_partial_handler(UscuidUlPoller* instance) {
     instance->event_data.partial.pages_total = instance->pages_total;
     instance->event_data.partial.failed_count = instance->failed_count;
     memcpy(
-        instance->event_data.partial.failed_pages,
-        instance->failed_pages,
-        sizeof(instance->failed_pages));
+        instance->event_data.partial.failed_bitmap,
+        instance->failed_bitmap,
+        sizeof(instance->failed_bitmap));
+    NfcCommand command = instance->callback(instance->event, instance->context);
+    instance->state = UscuidUlPollerStateIdle;
+    return command;
+}
+
+static NfcCommand uscuid_ul_poller_auth_failed_handler(UscuidUlPoller* instance) {
+    instance->event.type = UscuidUlPollerEventTypeAuthFailed;
     NfcCommand command = instance->callback(instance->event, instance->context);
     instance->state = UscuidUlPollerStateIdle;
     return command;
@@ -378,6 +428,7 @@ static const UscuidUlPollerStateHandler uscuid_ul_poller_state_handlers[UscuidUl
     [UscuidUlPollerStateSuccess] = uscuid_ul_poller_success_handler,
     [UscuidUlPollerStatePartial] = uscuid_ul_poller_partial_handler,
     [UscuidUlPollerStateFail] = uscuid_ul_poller_fail_handler,
+    [UscuidUlPollerStateAuthFailed] = uscuid_ul_poller_auth_failed_handler,
 };
 
 static NfcCommand uscuid_ul_poller_run(NfcEvent event, void* context) {

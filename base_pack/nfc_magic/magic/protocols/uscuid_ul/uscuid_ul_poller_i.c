@@ -74,6 +74,27 @@ static UscuidUlPollerError
     return UscuidUlPollerErrorNone;
 }
 
+UscuidUlPollerError uscuid_ul_poller_auth_pwd(UscuidUlPoller* instance) {
+    furi_assert(instance);
+    // Only the direct engine has an iso3 poller; auth is never used on the backdoor path.
+    furi_check(uscuid_ul_is_direct(instance));
+
+    bit_buffer_reset(instance->tx_buffer);
+    bit_buffer_append_byte(instance->tx_buffer, USCUID_UL_CMD_PWD_AUTH);
+    bit_buffer_append_bytes(instance->tx_buffer, instance->password, USCUID_UL_PWD_SIZE);
+
+    Iso14443_3aError error = iso14443_3a_poller_send_standard_frame(
+        instance->iso3_poller, instance->tx_buffer, instance->rx_buffer, USCUID_UL_POLLER_MAX_FWT);
+    if(error != Iso14443_3aErrorNone) {
+        // A rejected password NAKs (4-bit, reported as WrongCrc) or goes mute (timeout).
+        return uscuid_ul_process_iso3_error(error);
+    }
+    // Accepted only when the tag returns a full 2-byte PACK (with valid CRC).
+    return (bit_buffer_get_size_bytes(instance->rx_buffer) == USCUID_UL_PACK_SIZE) ?
+               UscuidUlPollerErrorNone :
+               UscuidUlPollerErrorProtocol;
+}
+
 UscuidUlPollerError uscuid_ul_poller_wakeup(UscuidUlPoller* instance, UscuidUlWakeup variant) {
     furi_assert(instance);
     furi_check(variant != UscuidUlWakeupNone);

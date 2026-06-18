@@ -122,9 +122,9 @@ NfcCommand
         instance->write_progress_total = event.data->partial.pages_total;
         instance->write_failed_count = event.data->partial.failed_count;
         memcpy(
-            instance->write_failed_pages,
-            event.data->partial.failed_pages,
-            sizeof(instance->write_failed_pages));
+            instance->write_failed_bitmap,
+            event.data->partial.failed_bitmap,
+            sizeof(instance->write_failed_bitmap));
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventWorkerPartial);
         command = NfcCommandStop;
@@ -134,6 +134,10 @@ NfcCommand
         instance->write_failed_page = event.data->fail.failed_page;
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventWorkerFail);
+        command = NfcCommandStop;
+    } else if(event.type == UscuidUlPollerEventTypeAuthFailed) {
+        view_dispatcher_send_custom_event(
+            instance->view_dispatcher, NfcMagicCustomEventWorkerAuthFail);
         command = NfcCommandStop;
     }
 
@@ -189,12 +193,14 @@ void nfc_magic_scene_write_on_enter(void* context) {
         instance->uscuid_ul_poller = uscuid_ul_poller_alloc(instance->nfc);
         // Pick the write transport from detection: direct (CUID/ATS) vs backdoor wakeup.
         // A not-detected tag has zeroed data (wakeup None) -> the direct engine.
-        uscuid_ul_poller_set_wakeup(
-            instance->uscuid_ul_poller, instance->uscuid_ul_data.wakeup);
+        uscuid_ul_poller_set_wakeup(instance->uscuid_ul_poller, instance->uscuid_ul_data.wakeup);
+        if(instance->uscuid_ul_password_set) {
+            // Authenticate before writes so protected pages on a genuine/ATS tag are writable.
+            uscuid_ul_poller_set_password(
+                instance->uscuid_ul_poller, instance->uscuid_ul_password);
+        }
         uscuid_ul_poller_start(
-            instance->uscuid_ul_poller,
-            nfc_magic_scene_write_uscuid_ul_poller_callback,
-            instance);
+            instance->uscuid_ul_poller, nfc_magic_scene_write_uscuid_ul_poller_callback, instance);
     } else {
         instance->gen4_poller = gen4_poller_alloc(instance->nfc);
         gen4_poller_set_password(instance->gen4_poller, instance->gen4_password);
@@ -234,6 +240,9 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
             consumed = true;
         } else if(event.event == NfcMagicCustomEventWorkerPartial) {
             scene_manager_next_scene(instance->scene_manager, NfcMagicSceneUscuidUlPartial);
+            consumed = true;
+        } else if(event.event == NfcMagicCustomEventWorkerAuthFail) {
+            scene_manager_next_scene(instance->scene_manager, NfcMagicSceneUscuidUlAuthFail);
             consumed = true;
         } else if(event.event == NfcMagicCustomEventWorkerFail) {
             scene_manager_next_scene(instance->scene_manager, NfcMagicSceneWriteFail);

@@ -10,38 +10,40 @@ extern "C" {
 #endif
 
 #define USCUID_UL_POLLER_MAX_BUFFER_SIZE (64U)
-#define USCUID_UL_POLLER_MAX_FWT (60000U)
+#define USCUID_UL_POLLER_MAX_FWT         (60000U)
 
 // Magic wakeup, raw frames like a real Gen1A chip (see gen1a_poller).
 #define USCUID_UL_WUPA_A (0x40) // 7-bit
 #define USCUID_UL_DATA_A (0x43)
 #define USCUID_UL_WUPA_B (0x20) // 7-bit
 #define USCUID_UL_DATA_B (0x23)
-#define USCUID_UL_ACK (0x0A) // 4-bit
+#define USCUID_UL_ACK    (0x0A) // 4-bit
 
 // Commands available once in backdoor mode (same opcodes as plain UL).
-#define USCUID_UL_CMD_READ (0x30) // 30 <page>          -> 16 bytes
-#define USCUID_UL_CMD_WRITE (0xA2) // A2 <page> <4 bytes> -> ACK
+#define USCUID_UL_CMD_READ           (0x30) // 30 <page>          -> 16 bytes
+#define USCUID_UL_CMD_WRITE          (0xA2) // A2 <page> <4 bytes> -> ACK
+#define USCUID_UL_CMD_PWD_AUTH       (0x1B) // 1B <pwd 4 bytes>    -> 2-byte PACK
+#define USCUID_UL_PACK_SIZE          (2) // PWD-AUTH success response (PACK) length
 #define USCUID_UL_READ_RESPONSE_SIZE (MF_ULTRALIGHT_PAGE_SIZE * 4) // READ returns 4 pages
 // Read configuration. Doc lists E0 50; the identify example shows E1 00 -- which is
 // canonical needs confirming on hardware (TMD-5S). Kept here so it is a one-line change.
-#define USCUID_UL_CMD_READ_CFG_0 (0xE0)
-#define USCUID_UL_CMD_READ_CFG_1 (0x50)
+#define USCUID_UL_CMD_READ_CFG_0     (0xE0)
+#define USCUID_UL_CMD_READ_CFG_1     (0x50)
 
-#define USCUID_UL_CONFIG_MAGIC (0x85) // config[0] in factory ("85") mode
+#define USCUID_UL_CONFIG_MAGIC   (0x85) // config[0] in factory ("85") mode
 // When the gen1a magic backdoor is enabled, config[0..1] become 7A FF instead of 85 00.
 // Only those two bytes change; preset/version stay at the same offsets, so no re-alignment.
 #define USCUID_UL_CFG_GEN1A_ON_0 (0x7A)
 #define USCUID_UL_CFG_GEN1A_ON_1 (0xFF)
-#define USCUID_UL_CFG_AUTH (4) // 00=PWD, 0A=2TDEA(UL-C); 0xAA marks a UL-Y at preset 5A
-#define USCUID_UL_AUTH_UL_Y (0xAA)
-#define USCUID_UL_CFG_PRESET (7) // C3=UL11 3C=UL21 A5=NTAG213 5A=NTAG215 AA=NTAG216 00=UL-C
-#define USCUID_UL_CFG_VENDOR (9) // version vendor byte: 04=NXP, 34=Mikron (Ultra)
-#define USCUID_UL_VENDOR_MIKRON (0x34)
+#define USCUID_UL_CFG_AUTH       (4) // 00=PWD, 0A=2TDEA(UL-C); 0xAA marks a UL-Y at preset 5A
+#define USCUID_UL_AUTH_UL_Y      (0xAA)
+#define USCUID_UL_CFG_PRESET     (7) // C3=UL11 3C=UL21 A5=NTAG213 5A=NTAG215 AA=NTAG216 00=UL-C
+#define USCUID_UL_CFG_VENDOR     (9) // version vendor byte: 04=NXP, 34=Mikron (Ultra)
+#define USCUID_UL_VENDOR_MIKRON  (0x34)
 
-#define USCUID_UL_PRESET_UL11 (0xC3)
-#define USCUID_UL_PRESET_UL21 (0x3C)
-#define USCUID_UL_PRESET_ULC (0x00)
+#define USCUID_UL_PRESET_UL11    (0xC3)
+#define USCUID_UL_PRESET_UL21    (0x3C)
+#define USCUID_UL_PRESET_ULC     (0x00)
 #define USCUID_UL_PRESET_NTAG213 (0xA5)
 #define USCUID_UL_PRESET_NTAG215 (0x5A)
 #define USCUID_UL_PRESET_NTAG216 (0xAA)
@@ -54,6 +56,7 @@ typedef enum {
     UscuidUlPollerStateSuccess,
     UscuidUlPollerStatePartial, // finished, but some soft (config/lock) pages didn't take
     UscuidUlPollerStateFail,
+    UscuidUlPollerStateAuthFailed, // PWD-AUTH rejected before any write
 
     UscuidUlPollerStateNum,
 } UscuidUlPollerState;
@@ -77,12 +80,20 @@ struct UscuidUlPoller {
     const MfUltralightData* data; // source dump, not owned (stable for the session)
     uint16_t pages_total; // pages to write (from the dump)
     uint16_t write_index; // 0-based write position (order: see uscuid_ul_poller_page_for_index)
-    uint16_t written; // pages successfully written (and verified)
+    uint16_t written; // pages the tag ACKed (ACK/NAK only, no read-back)
     uint16_t failed_page; // set only when nothing at all could be written (Fail event)
     // Best-effort clone bookkeeping: pages are written in order; a page the tag NAKs is logged
-    // and recorded here, never aborts (reported as a Partial result).
-    uint8_t failed_count;
-    uint8_t failed_pages[USCUID_UL_MAX_FAILED_PAGES];
+    // and its bit set here, never aborts (reported as a Partial result).
+    uint16_t failed_count;
+    uint8_t failed_bitmap[USCUID_UL_FAILED_BITMAP_SIZE];
+
+    // Optional PWD-AUTH (direct engine only). authed clears on each (re-)activation so we
+    // re-auth after a reset; auth_ever_ok gates the no-retry rule (a wrong initial password
+    // must abort, not loop, to avoid bricking the tag via AUTHLIM).
+    bool password_set;
+    uint8_t password[USCUID_UL_PWD_SIZE];
+    bool authed;
+    bool auth_ever_ok;
 
     BitBuffer* tx_buffer;
     BitBuffer* rx_buffer;
@@ -104,6 +115,8 @@ UscuidUlPollerError
     uscuid_ul_poller_write_page(UscuidUlPoller* instance, uint8_t page, const uint8_t* data);
 UscuidUlPollerError
     uscuid_ul_poller_read_page(UscuidUlPoller* instance, uint8_t page, uint8_t* data);
+// PWD-AUTH on the direct (iso3) engine: 1B <pwd> -> 2-byte PACK. None = accepted.
+UscuidUlPollerError uscuid_ul_poller_auth_pwd(UscuidUlPoller* instance);
 
 // Maps the 0-based write position to the actual page, encoding the order
 // "pages 4..total-1 ascending, then 3,2,1,0" (block 0 dead last).
