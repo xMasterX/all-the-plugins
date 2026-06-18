@@ -15,7 +15,14 @@ void nfc_magic_scene_write_confirm_on_enter(void* context) {
     NfcMagicApp* instance = context;
     Widget* widget = instance->widget;
 
-    widget_add_string_element(widget, 3, 0, AlignLeft, AlignTop, FontPrimary, "Risky operation");
+    widget_add_string_element(
+        widget,
+        3,
+        0,
+        AlignLeft,
+        AlignTop,
+        FontPrimary,
+        instance->uscuid_ul_is_wipe_mode ? "Wipe card?" : "Risky operation");
     widget_add_text_box_element(
         widget,
         0,
@@ -24,7 +31,9 @@ void nfc_magic_scene_write_confirm_on_enter(void* context) {
         54,
         AlignLeft,
         AlignTop,
-        "Writing to this card will change manufacturer block. On some cards it may not be rewritten",
+        instance->uscuid_ul_is_wipe_mode ?
+            "Blank factory dump: config &\npassword cleared, UID zeroed.\nLocked pages stay." :
+            "Writing to this card will change manufacturer block. On some cards it may not be rewritten",
         false);
     widget_add_button_element(
         widget,

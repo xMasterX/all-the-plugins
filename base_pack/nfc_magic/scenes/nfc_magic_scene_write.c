@@ -104,7 +104,8 @@ NfcCommand
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventCardDetected);
     } else if(event.type == UscuidUlPollerEventTypeRequestMode) {
-        event.data->poller_mode.mode = UscuidUlPollerModeWrite;
+        event.data->poller_mode.mode = instance->uscuid_ul_is_wipe_mode ? UscuidUlPollerModeWipe :
+                                                                          UscuidUlPollerModeWrite;
     } else if(event.type == UscuidUlPollerEventTypeRequestDataToWrite) {
         event.data->data_to_write.data =
             nfc_device_get_data(instance->source_dev, NfcProtocolMfUltralight);
@@ -154,7 +155,13 @@ static void nfc_magic_scene_write_setup_view(NfcMagicApp* instance) {
             instance->popup, "Apply the\nsame card\nto the back", 128, 32, AlignRight, AlignCenter);
     } else {
         popup_set_icon(popup, 12, 23, &I_Loading_24);
-        popup_set_header(popup, "Writing\nDon't move...", 52, 32, AlignLeft, AlignCenter);
+        popup_set_header(
+            popup,
+            instance->uscuid_ul_is_wipe_mode ? "Wiping\nDon't move..." : "Writing\nDon't move...",
+            52,
+            32,
+            AlignLeft,
+            AlignCenter);
     }
 
     view_dispatcher_switch_to_view(instance->view_dispatcher, NfcMagicAppViewPopup);
@@ -227,7 +234,8 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
             snprintf(
                 instance->text_store,
                 sizeof(instance->text_store),
-                "Writing\n%u / %u",
+                "%s\n%u / %u",
+                instance->uscuid_ul_is_wipe_mode ? "Wiping" : "Writing",
                 instance->write_progress_current,
                 instance->write_progress_total);
             popup_set_header(

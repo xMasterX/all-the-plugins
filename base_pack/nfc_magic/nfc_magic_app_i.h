@@ -118,6 +118,7 @@ struct NfcMagicApp {
     uint8_t write_failed_bitmap[USCUID_UL_FAILED_BITMAP_SIZE]; // bit N set = page N failed
     uint8_t uscuid_ul_password[USCUID_UL_PWD_SIZE]; // PWD-AUTH password (direct/ATS tags)
     bool uscuid_ul_password_set; // auth before writes is armed
+    bool uscuid_ul_is_wipe_mode; // Wipe = write a synthesized factory-default dump
     bool source_uid_mismatch;
     NfcMagicScanner* scanner;
     NfcPoller* poller;

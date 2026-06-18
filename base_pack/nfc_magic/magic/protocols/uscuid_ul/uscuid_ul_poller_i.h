@@ -75,6 +75,7 @@ struct UscuidUlPoller {
     // Write transport: wakeup == None selects the direct (normal-activation + A2) engine
     // for CUID/ATS-mode tags; A/B selects the backdoor (raw 40/43 wakeup) engine.
     UscuidUlWakeup wakeup;
+    UscuidUlPollerMode mode; // page-order strategy (Write = clone, block 0 last; Wipe = ascending)
     NfcPoller* iso3_nfc_poller; // owned; allocated only for the direct engine
     Iso14443_3aPoller* iso3_poller; // borrowed from the iso3 poller event (direct engine)
     const MfUltralightData* data; // source dump, not owned (stable for the session)
@@ -117,9 +118,10 @@ UscuidUlPollerError
 // PWD-AUTH on the direct (iso3) engine: 1B <pwd> -> 2-byte PACK. None = accepted.
 UscuidUlPollerError uscuid_ul_poller_auth_pwd(UscuidUlPoller* instance);
 
-// Maps the 0-based write position to the actual page, encoding the order
-// "pages 4..total-1 ascending, then 3,2,1,0" (block 0 dead last).
-uint8_t uscuid_ul_poller_page_for_index(uint16_t index, uint16_t pages_total);
+// Maps the 0-based write position to the actual page for the given order strategy:
+// Write = "pages 4..total-1 ascending, then 3,2,1,0" (block 0 last); Wipe = plain ascending 0..N.
+uint8_t
+    uscuid_ul_poller_page_for_index(UscuidUlPollerMode mode, uint16_t index, uint16_t pages_total);
 
 // True when the 16-byte config page looks like a USCUID-UL config: factory "85" framing,
 // or the "7A FF" gen1a-backdoor-enabled framing (rest of the layout unchanged).

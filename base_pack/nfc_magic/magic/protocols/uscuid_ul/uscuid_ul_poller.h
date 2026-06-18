@@ -41,9 +41,10 @@ typedef struct {
     bool maybe_ul5; // unpersonalized UL-5 hint (UID prefix AA 55); detect-only, never writable
 } UscuidUlData;
 
+// Page-write order strategy (shares the whole write engine; only the order differs).
 typedef enum {
-    UscuidUlPollerModeWrite,
-    // Wipe / Dump to be added later (for certain cases)
+    UscuidUlPollerModeWrite, // clone a dump: data pages 4..N first, block 0 (UID) last
+    UscuidUlPollerModeWipe, // factory reset: ascending 0..N (clears static locks before locked pages)
 } UscuidUlPollerMode;
 
 typedef enum {

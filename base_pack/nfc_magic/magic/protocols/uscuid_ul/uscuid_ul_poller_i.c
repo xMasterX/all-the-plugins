@@ -230,8 +230,15 @@ UscuidUlPollerError
     return ret;
 }
 
-uint8_t uscuid_ul_poller_page_for_index(uint16_t index, uint16_t pages_total) {
-    // Low pages 0..3 (or fewer for a tiny dump) are written last, descending.
+uint8_t
+    uscuid_ul_poller_page_for_index(UscuidUlPollerMode mode, uint16_t index, uint16_t pages_total) {
+    if(mode == UscuidUlPollerModeWipe) {
+        // Wipe writes ascending 0..N-1 so the UID (pages 0-1) and the static lock bytes (page 2)
+        // are cleared before the data pages they lock; a clone keeps block 0 last (below) instead.
+        return (uint8_t)index;
+    }
+
+    // Clone: low pages 0..3 (or fewer for a tiny dump) are written last, descending.
     const uint16_t low_count = (pages_total < 4) ? pages_total : 4;
     const uint16_t ascending_count = pages_total - low_count; // pages 4..total-1
 

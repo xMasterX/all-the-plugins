@@ -36,6 +36,7 @@ UscuidUlPoller* uscuid_ul_poller_alloc(Nfc* nfc) {
     instance->state = UscuidUlPollerStateIdle;
     instance->session_state = UscuidUlPollerSessionStateIdle;
     instance->wakeup = UscuidUlWakeupNone;
+    instance->mode = UscuidUlPollerModeWrite;
     instance->iso3_nfc_poller = NULL;
     instance->iso3_poller = NULL;
     instance->password_set = false;
@@ -278,7 +279,7 @@ static NfcCommand uscuid_ul_poller_idle_handler(UscuidUlPoller* instance) {
 static NfcCommand uscuid_ul_poller_request_mode_handler(UscuidUlPoller* instance) {
     instance->event.type = UscuidUlPollerEventTypeRequestMode;
     NfcCommand command = instance->callback(instance->event, instance->context);
-    // Only Write is supported for now.
+    instance->mode = instance->event_data.poller_mode.mode; // selects the page-order strategy
     instance->state = UscuidUlPollerStateRequestDataToWrite;
     return command;
 }
@@ -349,8 +350,8 @@ static NfcCommand uscuid_ul_poller_write_handler(UscuidUlPoller* instance) {
         }
     }
 
-    const uint8_t page =
-        uscuid_ul_poller_page_for_index(instance->write_index, instance->pages_total);
+    const uint8_t page = uscuid_ul_poller_page_for_index(
+        instance->mode, instance->write_index, instance->pages_total);
     const uint8_t* src = instance->data->page[page].data;
 
     // ACK/NAK is the success signal (like the firmware & PM3). No read-back: a plain READ
