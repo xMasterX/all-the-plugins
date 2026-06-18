@@ -293,7 +293,6 @@ static NfcCommand uscuid_ul_poller_request_data_handler(UscuidUlPoller* instance
     instance->data = instance->event_data.data_to_write.data;
     instance->write_index = 0;
     instance->written = 0;
-    instance->failed_page = USCUID_UL_NO_FAILED_PAGE;
     instance->failed_count = 0;
     memset(instance->failed_bitmap, 0, sizeof(instance->failed_bitmap));
     instance->authed = false;
@@ -319,7 +318,6 @@ static NfcCommand uscuid_ul_poller_write_handler(UscuidUlPoller* instance) {
             instance->state = UscuidUlPollerStateSuccess;
         } else if(instance->written == 0) {
             // Nothing landed at all -> a plain failure, not a partial clone.
-            instance->failed_page = USCUID_UL_NO_FAILED_PAGE;
             instance->state = UscuidUlPollerStateFail;
         } else {
             instance->state = UscuidUlPollerStatePartial;
@@ -414,7 +412,6 @@ static NfcCommand uscuid_ul_poller_fail_handler(UscuidUlPoller* instance) {
     instance->event.type = UscuidUlPollerEventTypeFail;
     instance->event_data.fail.pages_written = instance->written;
     instance->event_data.fail.pages_total = instance->pages_total;
-    instance->event_data.fail.failed_page = instance->failed_page;
     NfcCommand command = instance->callback(instance->event, instance->context);
     instance->state = UscuidUlPollerStateIdle;
     return command;

@@ -8,7 +8,6 @@ extern "C" {
 #endif
 
 #define USCUID_UL_CONFIG_SIZE        (16)
-#define USCUID_UL_NO_FAILED_PAGE     (0xFFFF) // failed_page value when the failure isn't page-specific
 // Failed pages are tracked as a bitmap (1 bit/page) so a Partial result can list every page
 // that didn't take, in ascending order. Sized for the largest supported type (NTAG216, 231 pg).
 #define USCUID_UL_MAX_PAGES          (231)
@@ -76,7 +75,6 @@ typedef struct {
 typedef struct {
     uint16_t pages_written; // pages successfully written before the failure
     uint16_t pages_total; // pages that were to be written
-    uint16_t failed_page; // page the tag NAKed, or USCUID_UL_NO_FAILED_PAGE
 } UscuidUlPollerEventDataFail;
 
 // Soft-failure result: the data + UID cloned fine, but one or more config/lock pages

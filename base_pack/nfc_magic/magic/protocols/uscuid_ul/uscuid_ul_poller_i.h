@@ -81,7 +81,6 @@ struct UscuidUlPoller {
     uint16_t pages_total; // pages to write (from the dump)
     uint16_t write_index; // 0-based write position (order: see uscuid_ul_poller_page_for_index)
     uint16_t written; // pages the tag ACKed (ACK/NAK only, no read-back)
-    uint16_t failed_page; // set only when nothing at all could be written (Fail event)
     // Best-effort clone bookkeeping: pages are written in order; a page the tag NAKs is logged
     // and its bit set here, never aborts (reported as a Partial result).
     uint16_t failed_count;

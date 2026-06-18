@@ -114,7 +114,6 @@ struct NfcMagicApp {
     UscuidUlData uscuid_ul_data;
     uint16_t write_progress_current; // USCUID-UL: pages written so far (live progress)
     uint16_t write_progress_total; // USCUID-UL: total pages to write
-    uint16_t write_failed_page; // USCUID-UL: page that failed (0xFFFF if not page-specific)
     uint16_t write_failed_count; // USCUID-UL: pages that didn't take (partial clone)
     uint8_t write_failed_bitmap[USCUID_UL_FAILED_BITMAP_SIZE]; // bit N set = page N failed
     uint8_t uscuid_ul_password[USCUID_UL_PWD_SIZE]; // PWD-AUTH password (direct/ATS tags)

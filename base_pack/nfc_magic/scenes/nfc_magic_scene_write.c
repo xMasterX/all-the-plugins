@@ -131,7 +131,6 @@ NfcCommand
     } else if(event.type == UscuidUlPollerEventTypeFail) {
         instance->write_progress_current = event.data->fail.pages_written;
         instance->write_progress_total = event.data->fail.pages_total;
-        instance->write_failed_page = event.data->fail.failed_page;
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventWorkerFail);
         command = NfcCommandStop;
@@ -166,7 +165,6 @@ void nfc_magic_scene_write_on_enter(void* context) {
 
     instance->write_progress_current = 0;
     instance->write_progress_total = 0;
-    instance->write_failed_page = USCUID_UL_NO_FAILED_PAGE;
     instance->write_failed_count = 0;
 
     scene_manager_set_scene_state(
