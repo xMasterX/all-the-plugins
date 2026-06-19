@@ -203,6 +203,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Flashlight | ![GPIO Badge] | [by xMasterX](https://github.com/xMasterX/flipper-flashlight) |  | [![UFW Badge]](https://lab.flipper.net/apps/flashlight) |
 | Pwnagotchi->Flipper interface | ![GPIO Badge] | [by Matt-London](https://github.com/Matt-London/pwnagotchi-flipper) |  | ![None Badge] |
 | Geiger Counter | ![GPIO Badge] | [by nmrr](https://github.com/nmrr/flipperzero-geigercounter) | works with external module! | [![UFW Badge]](https://lab.flipper.net/apps/flipper_geiger) |
+| MQ-3 Alcometer | ![GPIO Badge] | [by serjantlk](https://github.com/serjantlk/MQ-3-Alcometer) | Breathalyzer, works with external MQ-3 alcohol sensor module | ![None Badge] |
 | Oscilloscope | ![GPIO Badge] | [by anfractuosity](https://github.com/anfractuosity/flipperscope) | Fixed furi_bus issues **by @xMasterX** | [![Author Badge]](https://lab.flipper.net/apps/flipperscope) |
 | Control 7-segment display with Flipper Zero | ![GPIO Badge] | [by jamisonderek](https://github.com/jamisonderek/flipper-zero-tutorials/tree/main/gpio) |  | [![UFW Badge]](https://lab.flipper.net/apps/gpio_7segment_output) |
 | GPIO Controller | ![GPIO Badge] | [by Lokno](https://github.com/Lokno/gpio_controller) | `A visual tool to control the general purpose pins of the Flipper Zero` | [![UFW Badge]](https://lab.flipper.net/apps/gpio_controller) |
