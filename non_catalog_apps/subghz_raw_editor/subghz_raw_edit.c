@@ -38,7 +38,7 @@
 #define MERGE_MAX_FILES 16
 #define MERGE_PATH_LEN 128
 
-#define APP_VERSION "1.5"
+#define APP_VERSION "1.6"
 #define APP_REPO "github.com/Lechnio/SubGHz-RAW-Edit"
 #define APP_NAME "Sub-GHz RAW Edit"
 

@@ -1,3 +1,14 @@
+## v1.6
+
+- Fixed MPU fault stack overflow error on some flipper firmwares.
+The bottle neck is internal deserializer called when loading recognized signals.
+The change bumps the application stack from 2KB to 3KB as it seems sufficient value.
+
+Note:
+If you ever encounter this issue in the future please let me know on GitHub.
+I don't want to raise this value too high if it's not needed because raising
+the stack reduces the already very limited heap resources.
+
 ## v1.5
 
 - Added merge feature for .sub files
