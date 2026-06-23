@@ -56,6 +56,16 @@ NfcCommand nfc_magic_scene_write_gen2_poller_callback(Gen2PollerEvent event, voi
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventWorkerSuccess);
         command = NfcCommandStop;
+    } else if(event.type == Gen2PollerEventTypePartial) {
+        instance->gen2_partial_blocks_total = event.data->partial.blocks_total;
+        instance->gen2_partial_failed_count = event.data->partial.failed_count;
+        memcpy(
+            instance->gen2_partial_failed_bitmap,
+            event.data->partial.failed_bitmap,
+            sizeof(instance->gen2_partial_failed_bitmap));
+        view_dispatcher_send_custom_event(
+            instance->view_dispatcher, NfcMagicCustomEventWorkerPartial);
+        command = NfcCommandStop;
     } else if(event.type == Gen2PollerEventTypeFail) {
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventWorkerFail);
@@ -245,7 +255,13 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
             scene_manager_next_scene(instance->scene_manager, NfcMagicSceneSuccess);
             consumed = true;
         } else if(event.event == NfcMagicCustomEventWorkerPartial) {
-            scene_manager_next_scene(instance->scene_manager, NfcMagicSceneUscuidUlPartial);
+            // Gen2/Classic clone uses the shared per-block partial screen; USCUID-UL has its own.
+            if(instance->protocol == NfcMagicProtocolGen2 ||
+               instance->protocol == NfcMagicProtocolClassic) {
+                scene_manager_next_scene(instance->scene_manager, NfcMagicSceneGen2WipePartial);
+            } else {
+                scene_manager_next_scene(instance->scene_manager, NfcMagicSceneUscuidUlPartial);
+            }
             consumed = true;
         } else if(event.event == NfcMagicCustomEventWorkerAuthFail) {
             scene_manager_next_scene(instance->scene_manager, NfcMagicSceneUscuidUlAuthFail);

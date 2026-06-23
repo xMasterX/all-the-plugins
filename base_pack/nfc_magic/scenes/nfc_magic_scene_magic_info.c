@@ -32,8 +32,7 @@ void nfc_magic_scene_magic_info_on_enter(void* context) {
             widget, 0, 0, AlignLeft, AlignTop, FontPrimary, "Magic Not Detected");
         // Hand-wrapped: the text box breaks mid-word, so keep each line short.
         furi_string_printf(
-            message,
-            "Not a magic Ultralight,\nor an unsupported type.\nTry writing to confirm.");
+            message, "Not a magic Ultralight,\nor an unsupported type.\nTry writing to confirm.");
     } else {
         widget_add_string_element(
             widget, 0, 0, AlignLeft, AlignTop, FontPrimary, "Magic card detected!");
@@ -98,9 +97,9 @@ void nfc_magic_scene_magic_info_on_enter(void* context) {
     // preset). UL-C and not-confirmed hide it. NotDetected keeps the default (write-anyway).
     bool show_more = true;
     if(instance->protocol == NfcMagicProtocolUscuidUl) {
-        show_more = uscuid_ul_data_is_writable(&instance->uscuid_ul_data) ||
-                    (instance->uscuid_ul_data.is_uscuid_ul &&
-                     !instance->uscuid_ul_data.type_known);
+        show_more =
+            uscuid_ul_data_is_writable(&instance->uscuid_ul_data) ||
+            (instance->uscuid_ul_data.is_uscuid_ul && !instance->uscuid_ul_data.type_known);
     }
     if(show_more) {
         widget_add_button_element(

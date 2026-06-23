@@ -136,8 +136,7 @@ static bool nfc_magic_scanner_detect_not_magic(Nfc* nfc) {
 // One detection pass. SAK from the standard activation picks the family before any
 // backdoor frame, which prunes wrong-family probes and stops a 7AFF USCUID-UL (which
 // answers the same 40/43 wakeup as a Gen1A) from being misdetected as Gen1.
-static bool
-    nfc_magic_scanner_detect_pass(NfcMagicScanner* instance, NfcMagicProtocol* protocol) {
+static bool nfc_magic_scanner_detect_pass(NfcMagicScanner* instance, NfcMagicProtocol* protocol) {
     const NfcMagicScannerIdentity id = nfc_magic_scanner_read_identity(instance->nfc);
 
     // Gen4 (UMC) is family-agnostic and definitive; probe it first so a wiped UMC isn't
@@ -176,8 +175,7 @@ static bool
             *protocol = NfcMagicProtocolGen1;
             return true;
         }
-        if(gen2_poller_detect_type(instance->nfc, &instance->gen2_type) ==
-           Gen2PollerErrorNone) {
+        if(gen2_poller_detect_type(instance->nfc, &instance->gen2_type) == Gen2PollerErrorNone) {
             *protocol = NfcMagicProtocolGen2;
             return true;
         }

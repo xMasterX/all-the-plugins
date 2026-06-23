@@ -24,6 +24,10 @@ void nfc_magic_scene_check_on_enter(void* context) {
     // Fresh scan: drop any password / wipe mode armed for a previously scanned tag.
     instance->uscuid_ul_password_set = false;
     instance->uscuid_ul_is_wipe_mode = false;
+    // The MFC dict attack caches the keys it finds in target_dev (its on_exit always stores
+    // them). Clear it so this scan re-reads the card in front of us instead of replaying the
+    // previous tag's keys -- stale keys would auth nothing yet still report a clean wipe.
+    nfc_device_clear(instance->target_dev);
 
     popup_set_icon(instance->popup, 0, 8, &I_NFC_manual_60x50);
     popup_set_text(instance->popup, "Apply card to\nthe back", 128, 32, AlignRight, AlignCenter);

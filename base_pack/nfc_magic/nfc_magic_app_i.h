@@ -92,6 +92,12 @@ typedef struct {
     Gen2PollerWriteProblems problems;
 } NfcMagicAppWriteProblemsContext;
 
+// Reason passed to the WipeFail scene via its scene state so it can explain the failure.
+typedef enum {
+    NfcMagicWipeFailReasonGeneric, // an error occurred mid-wipe
+    NfcMagicWipeFailReasonNoKeys, // no sector keys found, so the wipe never started
+} NfcMagicWipeFailReason;
+
 struct NfcMagicApp {
     ViewDispatcher* view_dispatcher;
     Gui* gui;
@@ -126,6 +132,9 @@ struct NfcMagicApp {
 
     Gen2Poller* gen2_poller;
     bool gen2_poller_is_wipe_mode;
+    uint16_t gen2_partial_blocks_total; // Gen2 wipe/clone partial: blocks on the card/dump
+    uint16_t gen2_partial_failed_count; // blocks that couldn't be written (no key / read-only)
+    uint8_t gen2_partial_failed_bitmap[GEN2_POLLER_BLOCK_BITMAP_SIZE]; // bit N = block N not written
 
     Gen4Poller* gen4_poller;
     UscuidUlPoller* uscuid_ul_poller;

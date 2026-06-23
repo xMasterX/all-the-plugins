@@ -15,6 +15,8 @@ ADD_SCENE(nfc_magic, gen4_set_direct_write_block_0_mode, Gen4SetDirectWriteBlock
 ADD_SCENE(nfc_magic, gen4_fail, Gen4Fail)
 ADD_SCENE(nfc_magic, wipe, Wipe)
 ADD_SCENE(nfc_magic, wipe_fail, WipeFail)
+ADD_SCENE(nfc_magic, gen2_wipe_partial, Gen2WipePartial)
+ADD_SCENE(nfc_magic, gen2_wipe_partial_details, Gen2WipePartialDetails)
 ADD_SCENE(nfc_magic, success, Success)
 ADD_SCENE(nfc_magic, file_select, FileSelect)
 ADD_SCENE(nfc_magic, write_confirm, WriteConfirm)

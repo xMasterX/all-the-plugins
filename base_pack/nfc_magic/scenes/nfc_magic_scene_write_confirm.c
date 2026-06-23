@@ -32,7 +32,7 @@ void nfc_magic_scene_write_confirm_on_enter(void* context) {
         AlignLeft,
         AlignTop,
         instance->uscuid_ul_is_wipe_mode ?
-            "Blank factory dump: config &\npassword cleared, UID zeroed.\nLocked pages stay." :
+            "Blank factory dump: config &\npassword cleared, UID zeroed." :
             "Writing to this card will change manufacturer block. On some cards it may not be rewritten",
         false);
     widget_add_button_element(
