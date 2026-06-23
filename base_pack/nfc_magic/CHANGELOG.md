@@ -49,3 +49,97 @@ Major release. Adds magic **Ultralight / NTAG (USCUID-UL)** support, and reworks
 - **KeysDict** memory leak when backing out of a write-check.
 - The wipe-failure screen could show **"No keys found"** for an unrelated failure (uninitialised
   scene state).
+
+## 1.12
+
+### Added
+
+- **Gen2 CUID / ATS + static-nonce detection** — classify magic MIFARE Classic sub-types (direct
+  CUID, ATS-fingerprinted, and CUID with a static nonce).
+- **Gen1 4- and 7-byte UID** handling, including writing a 7-byte MIFARE Classic dump to a Gen1 tag.
+- **Length-aware wipe & write guards** — validate block counts before writing.
+
+### Changed
+
+- Updated for new firmware API / SDK.
+
+### Fixed
+
+- Gen4 max block number for the NTAG protocol.
+
+## 1.11
+
+### Changed
+
+- Description / metadata update.
+
+### Fixed
+
+- Gen4 poller fix.
+
+## 1.10
+
+- Upstream sync and maintenance.
+
+## 1.9
+
+### Changed
+
+- Gen4 sync.
+
+### Fixed
+
+- Minor UI fix.
+
+## 1.8
+
+### Added
+
+- **Gen4 (UMC / GTU) magic-card support.**
+
+## 1.7
+
+### Changed
+
+- Reverted not-release-ready Gen2 changes (Gen4 still pending).
+
+### Fixed
+
+- UI and newline fixes.
+
+## 1.6
+
+### Changed
+
+- Incremental updates; Gen2 preparation added, then reverted as not release-ready.
+
+## 1.5
+
+### Changed
+
+- Reworked Back-button event handling; GUI cleanup.
+
+### Fixed
+
+- Incorrect total-block usage (#102); ufbt build compatibility.
+
+## 1.4
+
+- Maintenance / upstream sync.
+
+## 1.3
+
+### Fixed
+
+- New-API compatibility fixes.
+
+## 1.1
+
+- Early release updates; new-API compatibility pass.
+
+## 1.0
+
+### Added
+
+- Initial release in the plugin pack: write & wipe magic cards (**Gen1a**, **Gen2**) with
+  block-0 / UID editing.
