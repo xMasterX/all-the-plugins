@@ -56,24 +56,6 @@ static UscuidUlPollerError
                                                       UscuidUlPollerErrorProtocol;
 }
 
-static UscuidUlPollerError
-    uscuid_ul_read_page_iso3(UscuidUlPoller* instance, uint8_t page, uint8_t* data) {
-    bit_buffer_reset(instance->tx_buffer);
-    bit_buffer_append_byte(instance->tx_buffer, USCUID_UL_CMD_READ);
-    bit_buffer_append_byte(instance->tx_buffer, page);
-
-    Iso14443_3aError error = iso14443_3a_poller_send_standard_frame(
-        instance->iso3_poller, instance->tx_buffer, instance->rx_buffer, USCUID_UL_POLLER_MAX_FWT);
-    if(error != Iso14443_3aErrorNone) {
-        return uscuid_ul_process_iso3_error(error);
-    }
-    if(bit_buffer_get_size_bytes(instance->rx_buffer) < USCUID_UL_READ_RESPONSE_SIZE) {
-        return UscuidUlPollerErrorProtocol;
-    }
-    memcpy(data, bit_buffer_get_data(instance->rx_buffer), USCUID_UL_READ_RESPONSE_SIZE);
-    return UscuidUlPollerErrorNone;
-}
-
 UscuidUlPollerError uscuid_ul_poller_auth_pwd(UscuidUlPoller* instance) {
     furi_assert(instance);
     // Only the direct engine has an iso3 poller; auth is never used on the backdoor path.
@@ -192,39 +174,6 @@ UscuidUlPollerError
             ret = UscuidUlPollerErrorProtocol;
             break;
         }
-    } while(false);
-
-    return ret;
-}
-
-UscuidUlPollerError
-    uscuid_ul_poller_read_page(UscuidUlPoller* instance, uint8_t page, uint8_t* data) {
-    furi_assert(instance);
-    furi_assert(data);
-
-    if(uscuid_ul_is_direct(instance)) {
-        return uscuid_ul_read_page_iso3(instance, page, data);
-    }
-
-    UscuidUlPollerError ret = UscuidUlPollerErrorNone;
-    do {
-        bit_buffer_reset(instance->tx_buffer);
-        bit_buffer_append_byte(instance->tx_buffer, USCUID_UL_CMD_READ);
-        bit_buffer_append_byte(instance->tx_buffer, page);
-        iso14443_crc_append(Iso14443CrcTypeA, instance->tx_buffer);
-
-        NfcError error = nfc_poller_trx(
-            instance->nfc, instance->tx_buffer, instance->rx_buffer, USCUID_UL_POLLER_MAX_FWT);
-        if(error != NfcErrorNone) {
-            ret = uscuid_ul_process_nfc_error(error);
-            break;
-        }
-        // READ returns 4 pages (+CRC).
-        if(bit_buffer_get_size_bytes(instance->rx_buffer) < USCUID_UL_READ_RESPONSE_SIZE) {
-            ret = UscuidUlPollerErrorProtocol;
-            break;
-        }
-        memcpy(data, bit_buffer_get_data(instance->rx_buffer), USCUID_UL_READ_RESPONSE_SIZE);
     } while(false);
 
     return ret;

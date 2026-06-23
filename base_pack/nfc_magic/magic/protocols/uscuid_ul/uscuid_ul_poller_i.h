@@ -20,15 +20,13 @@ extern "C" {
 #define USCUID_UL_ACK    (0x0A) // 4-bit
 
 // Commands available once in backdoor mode (same opcodes as plain UL).
-#define USCUID_UL_CMD_READ           (0x30) // 30 <page>          -> 16 bytes
-#define USCUID_UL_CMD_WRITE          (0xA2) // A2 <page> <4 bytes> -> ACK
-#define USCUID_UL_CMD_PWD_AUTH       (0x1B) // 1B <pwd 4 bytes>    -> 2-byte PACK
-#define USCUID_UL_PACK_SIZE          (2) // PWD-AUTH success response (PACK) length
-#define USCUID_UL_READ_RESPONSE_SIZE (MF_ULTRALIGHT_PAGE_SIZE * 4) // READ returns 4 pages
+#define USCUID_UL_CMD_WRITE      (0xA2) // A2 <page> <4 bytes> -> ACK
+#define USCUID_UL_CMD_PWD_AUTH   (0x1B) // 1B <pwd 4 bytes>    -> 2-byte PACK
+#define USCUID_UL_PACK_SIZE      (2) // PWD-AUTH success response (PACK) length
 // Read configuration. Doc lists E0 50; the identify example shows E1 00 -- which is
 // canonical needs confirming on hardware (TMD-5S). Kept here so it is a one-line change.
-#define USCUID_UL_CMD_READ_CFG_0     (0xE0)
-#define USCUID_UL_CMD_READ_CFG_1     (0x50)
+#define USCUID_UL_CMD_READ_CFG_0 (0xE0)
+#define USCUID_UL_CMD_READ_CFG_1 (0x50)
 
 #define USCUID_UL_CONFIG_MAGIC   (0x85) // config[0] in factory ("85") mode
 // When the gen1a magic backdoor is enabled, config[0..1] become 7A FF instead of 85 00.
@@ -113,8 +111,6 @@ UscuidUlPollerError uscuid_ul_poller_wakeup(UscuidUlPoller* instance, UscuidUlWa
 UscuidUlPollerError uscuid_ul_poller_read_config(UscuidUlPoller* instance, uint8_t* config);
 UscuidUlPollerError
     uscuid_ul_poller_write_page(UscuidUlPoller* instance, uint8_t page, const uint8_t* data);
-UscuidUlPollerError
-    uscuid_ul_poller_read_page(UscuidUlPoller* instance, uint8_t page, uint8_t* data);
 // PWD-AUTH on the direct (iso3) engine: 1B <pwd> -> 2-byte PACK. None = accepted.
 UscuidUlPollerError uscuid_ul_poller_auth_pwd(UscuidUlPoller* instance);
 

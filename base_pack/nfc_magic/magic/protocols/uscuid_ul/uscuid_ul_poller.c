@@ -261,17 +261,17 @@ const char* uscuid_ul_get_variant_name(const UscuidUlData* data) {
 static NfcCommand uscuid_ul_poller_idle_handler(UscuidUlPoller* instance) {
     NfcCommand command = NfcCommandContinue;
 
-    if(uscuid_ul_is_direct(instance)) {
-        // Direct engine: the iso3 poller has already activated the card, nothing to wake.
-        instance->event.type = UscuidUlPollerEventTypeDetected;
-        command = instance->callback(instance->event, instance->context);
-        instance->state = UscuidUlPollerStateRequestMode;
-    } else if(uscuid_ul_poller_wakeup(instance, instance->wakeup) == UscuidUlPollerErrorNone) {
+    // Direct engine: the iso3 poller already activated the card, nothing to wake -> ready now.
+    // Backdoor engine: ready only once the magic wakeup ACKs (short-circuit keeps the direct engine
+    // from sending a wakeup). If it didn't answer, stay idle and retry on the next poll.
+    const bool ready =
+        uscuid_ul_is_direct(instance) ||
+        (uscuid_ul_poller_wakeup(instance, instance->wakeup) == UscuidUlPollerErrorNone);
+    if(ready) {
         instance->event.type = UscuidUlPollerEventTypeDetected;
         command = instance->callback(instance->event, instance->context);
         instance->state = UscuidUlPollerStateRequestMode;
     }
-    // If the backdoor wakeup didn't answer, stay idle and retry on the next poll.
 
     return command;
 }
@@ -284,8 +284,8 @@ static NfcCommand uscuid_ul_poller_request_mode_handler(UscuidUlPoller* instance
     return command;
 }
 
-// Full clone: write every page the dump read (data + UID + config), no auth. A page the tag
-// NAKs is logged and skipped, never aborts.
+// Full clone: write every page the dump read (data + UID + config). PWD-AUTH runs first only when a
+// password was armed (direct engine); a page the tag NAKs is logged and skipped, never aborts.
 static NfcCommand uscuid_ul_poller_request_data_handler(UscuidUlPoller* instance) {
     instance->event_data.data_to_write.data = NULL; // defensive: clear stale out-param
     instance->event.type = UscuidUlPollerEventTypeRequestDataToWrite;
@@ -341,9 +341,18 @@ static NfcCommand uscuid_ul_poller_write_handler(UscuidUlPoller* instance) {
             instance->state = UscuidUlPollerStateAuthFailed;
             return NfcCommandContinue;
         } else {
-            // A re-auth with the already-accepted password failed (transient RF glitch).
-            // Don't loop; finalize with whatever already landed.
+            // A re-auth with the already-accepted password failed (transient RF glitch). Don't
+            // loop; finalize with whatever already landed. Count the not-yet-attempted pages as
+            // failed too, so the Partial report's written + failed_count == pages_total.
             FURI_LOG_E(TAG, "Re-auth failed (err %d, written %u)", auth_error, instance->written);
+            for(uint16_t i = instance->write_index; i < instance->pages_total; i++) {
+                uint8_t p =
+                    uscuid_ul_poller_page_for_index(instance->mode, i, instance->pages_total);
+                if(!(instance->failed_bitmap[p >> 3] & (uint8_t)(1u << (p & 7u)))) {
+                    instance->failed_bitmap[p >> 3] |= (uint8_t)(1u << (p & 7u));
+                    instance->failed_count++;
+                }
+            }
             instance->state = (instance->written > 0) ? UscuidUlPollerStatePartial :
                                                         UscuidUlPollerStateFail;
             return NfcCommandContinue;

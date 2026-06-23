@@ -17,7 +17,9 @@ typedef enum {
     // USCUID-UL, not an AA-55 UL-5). Offers a non-confirmed "write anyway" path via the
     // direct engine, mirroring how NfcMagicProtocolClassic encodes an unconfirmed Classic.
     NfcMagicProtocolUscuidUlNotDetected,
-    NfcMagicProtocolClassic, // Last to give priority to the others
+    NfcMagicProtocolClassic, // generic ISO-A MIFARE Classic (unconfirmed-magic "try writing"
+        // fallback); detection priority is set explicitly in
+        // nfc_magic_scanner_detect_pass, not by enum order
 
     NfcMagicProtocolNum,
     NfcMagicProtocolInvalid,

@@ -34,8 +34,8 @@ typedef struct {
     bool is_uscuid_ul; // confirmed: config matched the magic framing (0x85, or 0x7A 0xFF backdoor-on)
     uint8_t config[USCUID_UL_CONFIG_SIZE];
     UscuidUlWakeup wakeup; // backdoor entry that answered (or None)
-    MfUltralightType
-        type; // emulated type from preset byte cfg[7] (vendor cfg[9] only refines UL21 -> Ultra)
+    MfUltralightType type; // preset byte cfg[7] (cfg[9] refines UL21 -> Ultra). Valid ONLY when
+        // type_known; left at Origin otherwise -- gate reads of type/is_ultra on type_known.
     bool type_known; // preset byte recognised
     bool is_ultra; // UL21 + Mikron vendor (cfg[9]==0x34) -> display "UL21 (Ultra)"
     bool maybe_ul5; // unpersonalized UL-5 hint (UID prefix AA 55); detect-only, never writable
@@ -53,7 +53,7 @@ typedef enum {
     UscuidUlPollerEventTypeRequestDataToWrite,
     UscuidUlPollerEventTypeWriteProgress,
     UscuidUlPollerEventTypeSuccess,
-    UscuidUlPollerEventTypePartial, // data+UID cloned, but some config/lock pages didn't take
+    UscuidUlPollerEventTypePartial, // some pages wrote, >=1 did not (failed_bitmap; may incl. UID)
     UscuidUlPollerEventTypeFail,
     UscuidUlPollerEventTypeAuthFailed, // PWD-AUTH was rejected; nothing was written
 } UscuidUlPollerEventType;
@@ -78,8 +78,10 @@ typedef struct {
     uint16_t pages_total; // pages that were to be written
 } UscuidUlPollerEventDataFail;
 
-// Soft-failure result: the data + UID cloned fine, but one or more config/lock pages
-// (e.g. PACK on some clones) did not take. The clone is usable; these pages were skipped.
+// Soft-failure result: some pages were written and one or more were not. failed_bitmap lists the
+// pages that did not take -- usually config/lock pages (e.g. PACK), but since clone mode writes the
+// UID page LAST it can also be the UID if the tag NAKs it. The clone may be usable but isn't
+// guaranteed complete.
 typedef struct {
     uint16_t pages_written; // pages successfully written
     uint16_t pages_total; // pages that were to be written

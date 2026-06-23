@@ -14,7 +14,8 @@ void nfc_magic_scene_uscuid_ul_partial_on_enter(void* context) {
     NfcMagicApp* instance = context;
     Widget* widget = instance->widget;
 
-    // Partial = data + UID wrote, some pages couldn't -> still a (qualified) success.
+    // Partial = some pages wrote, at least one didn't (the failed list may include the UID, since
+    // it's written last) -> still a qualified success.
     notification_message(instance->notifications, &sequence_success);
 
     widget_add_string_element(widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Partial Write");
