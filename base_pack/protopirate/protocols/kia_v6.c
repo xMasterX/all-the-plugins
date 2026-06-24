@@ -136,8 +136,7 @@ const SubGhzProtocol kia_protocol_v6 = {
     .name = KIA_PROTOCOL_V6_NAME,
     .type = SubGhzProtocolTypeDynamic,
     .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_FM |
-            SubGhzProtocolFlag_Decodable |
-            SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Load,
+            SubGhzProtocolFlag_Decodable | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Load,
     .decoder = &kia_protocol_v6_decoder,
     .encoder = &kia_protocol_v6_encoder,
 };
@@ -965,7 +964,6 @@ SubGhzProtocolStatus
     uint32_t cnt = UINT32_MAX;
     pp_encoder_read_fields(flipper_format, &serial, &btn, &cnt, NULL);
     if(btn == UINT32_MAX || cnt == UINT32_MAX) {
-
         return SubGhzProtocolStatusError;
     }
     instance->generic.serial = serial;

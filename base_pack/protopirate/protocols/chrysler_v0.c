@@ -197,8 +197,7 @@ static void chrysler_v0_decode_packet(SubGhzProtocolDecoderChrysler_V0* instance
         memcpy(instance->plain_a, decoded, sizeof(instance->plain_a));
         instance->plain_a_present = 1U;
 
-        instance->generic.cnt = ((uint32_t)decoded[0] << 24U) |
-                                ((uint32_t)decoded[1] << 16U) |
+        instance->generic.cnt = ((uint32_t)decoded[0] << 24U) | ((uint32_t)decoded[1] << 16U) |
                                 ((uint32_t)decoded[2] << 8U) | (uint32_t)decoded[3];
     }
 
@@ -317,9 +316,8 @@ const SubGhzProtocolEncoder subghz_protocol_chrysler_v0_encoder = {
 const SubGhzProtocol chrysler_protocol_v0 = {
     .name = CHRYSLER_PROTOCOL_V0_NAME,
     .type = SubGhzProtocolTypeDynamic,
-    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 |
-            SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable | SubGhzProtocolFlag_Save |
-            SubGhzProtocolFlag_Load
+    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM |
+            SubGhzProtocolFlag_Decodable | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Load
 #ifdef ENABLE_EMULATE_FEATURE
             | SubGhzProtocolFlag_Send
 #endif

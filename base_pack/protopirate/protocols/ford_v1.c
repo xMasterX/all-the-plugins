@@ -105,8 +105,7 @@ const SubGhzProtocol ford_protocol_v1 = {
     .name = FORD_PROTOCOL_V1_NAME,
     .type = SubGhzProtocolTypeDynamic,
     .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_FM |
-            SubGhzProtocolFlag_Decodable |
-            SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save
+            SubGhzProtocolFlag_Decodable | SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save
 #ifdef ENABLE_EMULATE_FEATURE
             | SubGhzProtocolFlag_Send
 #endif
@@ -351,10 +350,7 @@ static bool ford_v1_process_data(SubGhzProtocolDecoderFordV1* instance) {
 
     if(strict_ok) {
         ford_v1_fields_from_plain(
-            decoded,
-            &instance->generic.serial,
-            &instance->generic.btn,
-            &instance->generic.cnt);
+            decoded, &instance->generic.serial, &instance->generic.btn, &instance->generic.cnt);
         instance->encryption_supported = 1;
     } else {
         instance->generic.serial = ((uint32_t)raw[3] << 24) | ((uint32_t)raw[4] << 16) |
