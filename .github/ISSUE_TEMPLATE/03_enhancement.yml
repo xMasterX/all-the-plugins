@@ -1,0 +1,26 @@
+name: Enhancement
+description: Suggest an improvement to an existing app.
+labels: ["type/enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Suggest an improvement to an app that's already in the pack.
+  - type: input
+    id: app
+    attributes:
+      label: App
+      description: Which app should be improved?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Describe the enhancement.
+      description: What should it do differently?
+    validations:
+      required: true
+  - type: textarea
+    id: anything-else
+    attributes:
+      label: Anything else?

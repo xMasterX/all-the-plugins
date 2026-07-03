@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Firmware bug (not an app)
+    url: https://github.com/DarkFlippers/unleashed-firmware/issues/new/choose
+    about: For bugs in the Unleashed firmware itself, please open an issue in the firmware repo.
