@@ -1,0 +1,42 @@
+name: Bug report
+description: Report a bug in one of the apps in this pack.
+labels: ["type/bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report! This tracker is for the **apps** in this pack.
+        For bugs in the Unleashed firmware itself, please use the firmware repo instead.
+  - type: input
+    id: app
+    attributes:
+      label: App
+      description: Which app is affected? (name as it appears in the app menu)
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug.
+      description: A clear and concise description of what goes wrong.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: How can this be reproduced?
+      placeholder: |
+        1. Open the app...
+        2. Press '...'
+        3. See the issue
+  - type: input
+    id: version
+    attributes:
+      label: Firmware version
+      description: Which Unleashed firmware version are you running?
+  - type: textarea
+    id: anything-else
+    attributes:
+      label: Anything else?
+      description: Logs, photos, or anything else that helps.

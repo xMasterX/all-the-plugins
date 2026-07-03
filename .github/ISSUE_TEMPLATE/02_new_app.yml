@@ -1,0 +1,30 @@
+name: Add new app
+description: Request adding a new app to the pack.
+labels: ["type/new-app"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this to request a new app be added to the pack.
+  - type: input
+    id: app
+    attributes:
+      label: App name
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Source / repository link
+      description: Link to the app's source code.
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What does it do?
+      description: Short description of the app and its category (Sub-GHz, NFC, Games, ...).
+  - type: textarea
+    id: anything-else
+    attributes:
+      label: Anything else?
