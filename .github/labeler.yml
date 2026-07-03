@@ -1,0 +1,20 @@
+# Auto-applies pack/* labels to PRs based on which pack the changed app lives in.
+# Used by .github/workflows/labeler.yml (actions/labeler@v5).
+# Category (NFC / Games / …) is applied by a separate step in that workflow,
+# reading fap_category from the changed app's application.fam.
+# sync-labels is off, so these only ADD labels — manual labels are never stripped.
+
+"pack/base":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "base_pack/**"
+
+"pack/catalog":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "apps_source_code/**"
+
+"pack/non-catalog":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "non_catalog_apps/**"

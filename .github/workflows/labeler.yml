@@ -1,0 +1,75 @@
+name: "PR Labeler"
+
+# Auto-labels PRs two ways:
+#   pack/*      — which pack the changed app lives in (path-based, see .github/labeler.yml)
+#   category/*  — the app's fap_category, read from the changed application.fam
+#
+# pull_request_target is used so PRs from forks can be labeled (a fork's default
+# token is read-only). This workflow never checks out or executes PR code — the
+# category step only fetches application.fam via the API and regexes one field.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/labeler@v5
+        with:
+          # Only add labels; never strip labels applied by hand.
+          sync-labels: false
+
+  category:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label by fap_category
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          # Collect the app folders (pack/appname) this PR touches.
+          declare -A apps=()
+          while IFS= read -r f; do
+            case "$f" in
+              base_pack/*/*|apps_source_code/*/*|non_catalog_apps/*/*)
+                apps["$(printf '%s' "$f" | cut -d/ -f1-2)"]=1 ;;
+            esac
+          done < <(gh pr diff "$PR" --repo "$REPO" --name-only)
+
+          if [ ${#apps[@]} -eq 0 ]; then
+            echo "No app folders changed; nothing to categorize."
+            exit 0
+          fi
+
+          # Resolve each app's fap_category -> category/<slug>.
+          declare -A labels=()
+          for app in "${!apps[@]}"; do
+            fam=$(gh api "repos/$REPO/contents/$app/application.fam?ref=$HEAD_SHA" \
+                    --jq '.content' 2>/dev/null | base64 -d 2>/dev/null || true)
+            cat=$(printf '%s' "$fam" | sed -nE 's/.*fap_category="?([^",]+)"?.*/\1/p' | head -1)
+            if [ -z "$cat" ]; then
+              echo "::warning::no fap_category found for $app"
+              continue
+            fi
+            slug=$(printf '%s' "$cat" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+            labels["category/$slug"]=1
+            echo "$app -> category/$slug"
+          done
+
+          if [ ${#labels[@]} -eq 0 ]; then
+            echo "No categories resolved."
+            exit 0
+          fi
+
+          args=()
+          for l in "${!labels[@]}"; do args+=(-f "labels[]=$l"); done
+          gh api "repos/$REPO/issues/$PR/labels" -X POST "${args[@]}"
