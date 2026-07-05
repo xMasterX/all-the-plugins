@@ -13,13 +13,32 @@
 
 bool beginning = true;
 
+// SELECT APPLICATION by partial AID (Calypso RID) - used when CLA 0x94 is rejected
+static const uint8_t calypso_aid_select[] = {
+    0x00, 0xA4, 0x04, 0x00, 0x05, // CLA=00 INS=A4 P1=04(by name) P2=00 Lc=05
+    0xA0, 0x00, 0x00, 0x04, 0x04  // Calypso RID
+};
+
+// SELECT APPLICATION by full Navigo AID - for new Navigo variants that reject partial AID
+static const uint8_t calypso_navigo_aid_select[] = {
+    0x00, 0xA4, 0x04, 0x00, 0x0A, // CLA=00 INS=A4 P1=04(by name) P2=00 Lc=0A
+    0xA0, 0x00, 0x00, 0x04, 0x04, // Calypso RID
+    0x01, 0x25, 0x09, 0x01, 0x01  // Navigo PIX
+};
+
 char* build_hex_string(BitBuffer* rx_buffer) {
     static char output[29 * 3 + 1]; // 3 chars per byte + null terminator
     uint8_t byte;
     char* p = output;
 
+    // Only read bytes that actually exist in the response, but always emit
+    // exactly 29 byte-pairs (zero-padded) so the save-file record width
+    // stays fixed (read_calypso_data expects 29 bytes per record).
+    size_t available = bit_buffer_get_size_bytes(rx_buffer);
+    if(available > 29) available = 29;
+
     for(size_t i = 0; i < 29; i++) {
-        byte = bit_buffer_get_byte(rx_buffer, i);
+        byte = (i < available) ? bit_buffer_get_byte(rx_buffer, i) : 0x00;
         snprintf(p, 4, "%02X ", byte); // 2 chars + null terminator
         p += 3;
     }
@@ -55,7 +74,14 @@ FlipperFormat* load_file(Metroflip* app) {
 }
 
 void close_file(FlipperFormat* ff) {
+    // Balance load_file(): it furi_record_open(RECORD_STORAGE)s and
+    // flipper_format_file_alloc()s on every call. Without freeing the format
+    // and closing the record here, file-replay (which calls load_file once per
+    // record read) leaks a FlipperFormat per record and imbalances the storage
+    // record refcount.
     flipper_format_file_close(ff);
+    flipper_format_free(ff);
+    furi_record_close(RECORD_STORAGE);
 }
 
 int select_new_app(
@@ -71,6 +97,7 @@ int select_new_app(
         select_app[6] = new_app;
 
         bit_buffer_reset(tx_buffer);
+        bit_buffer_reset(rx_buffer);
         bit_buffer_append_bytes(tx_buffer, select_app, sizeof(select_app));
         FURI_LOG_D(
             TAG,
@@ -108,6 +135,7 @@ int read_new_file(
         FURI_LOG_I(TAG, "No data loaded");
         read_file[2] = new_file;
         bit_buffer_reset(tx_buffer);
+        bit_buffer_reset(rx_buffer);
         bit_buffer_append_bytes(tx_buffer, read_file, sizeof(read_file));
         FURI_LOG_D(
             TAG,
@@ -126,7 +154,15 @@ int read_new_file(
                 app->view_dispatcher, MetroflipCustomEventPollerFail);
             return error;
         }
-        prepare_file_data(app, app_id, FID, rx_buffer);
+        // Only persist the record once the status word is known-good. Failed
+        // reads (e.g. a 2-byte 6A83 response) must not be hex-dumped into the
+        // save file as record data. The caller's check_response() still runs
+        // afterwards and handles the failure path (stage + event) as before.
+        size_t length = bit_buffer_get_size_bytes(rx_buffer);
+        if(length >= 2 && bit_buffer_get_byte(rx_buffer, length - 2) == apdu_success[0] &&
+           bit_buffer_get_byte(rx_buffer, length - 1) == apdu_success[1]) {
+            prepare_file_data(app, app_id, FID, rx_buffer);
+        }
         return 0;
     } else {
         FlipperFormat* ff = load_file(app);
@@ -153,6 +189,13 @@ int check_response(
     size_t* response_length) {
     *response_length = bit_buffer_get_size_bytes(rx_buffer);
     if(!app->data_loaded) { // automatic success
+        if(*response_length < 2) {
+            FURI_LOG_E(TAG, "Response too short: %zu byte(s)", *response_length);
+            *stage = MetroflipPollerEventTypeFail;
+            view_dispatcher_send_custom_event(
+                app->view_dispatcher, MetroflipCustomEventPollerFail);
+            return 1;
+        }
         if(bit_buffer_get_byte(rx_buffer, *response_length - 2) != apdu_success[0] ||
            bit_buffer_get_byte(rx_buffer, *response_length - 1) != apdu_success[1]) {
             int error_code_1 = bit_buffer_get_byte(rx_buffer, *response_length - 2);
@@ -173,355 +216,251 @@ int check_response(
     return 0;
 }
 
-void update_page_info(void* context, FuriString* parsed_data) {
-    Metroflip* app = context;
-    CalypsoContext* ctx = app->calypso_context;
-    FURI_LOG_I(TAG, "page id: %d", ctx->page_id);
-    if(ctx->card->card_type != CALYPSO_CARD_NAVIGO && ctx->card->card_type != CALYPSO_CARD_OPUS &&
-       ctx->card->card_type != CALYPSO_CARD_RAVKAV) {
-        furi_string_cat_printf(
-            parsed_data,
-            "\e#%s %u:\n",
-            get_network_string(ctx->card->card_type),
-            ctx->card->card_number);
-        return;
-    }
-    if(ctx->page_id == 0) {
-        switch(ctx->card->card_type) {
-        case CALYPSO_CARD_NAVIGO: {
-            furi_string_cat_printf(parsed_data, "\e#Navigo %u:\n", ctx->card->card_number);
-            furi_string_cat_printf(parsed_data, "\e#Environment:\n");
-            show_navigo_environment_info(
-                &ctx->card->navigo->environment, &ctx->card->navigo->holder, parsed_data);
-            break;
+/* ── Card view helpers ── */
+
+/* Add every "Label: value" line of parsed text as a card-view field; lines
+ * without a separator become plain text fields. Leading spaces are trimmed
+ * and Balance lines are bolded. */
+static void calypso_add_text_as_fields(View* view, uint8_t page, FuriString* text) {
+    const char* s = furi_string_get_cstr(text);
+    while(*s) {
+        const char* nl = strchr(s, '\n');
+        size_t len = nl ? (size_t)(nl - s) : strlen(s);
+        while(len > 0 && *s == ' ') {
+            s++;
+            len--;
         }
-        case CALYPSO_CARD_OPUS: {
-            furi_string_cat_printf(parsed_data, "\e#Opus %u:\n", ctx->card->card_number);
-            furi_string_cat_printf(parsed_data, "\e#Environment:\n");
-            show_opus_environment_info(
-                &ctx->card->opus->environment, &ctx->card->opus->holder, parsed_data);
-            break;
-        }
-        case CALYPSO_CARD_RAVKAV: {
-            if(ctx->card->card_number == 0) {
-                furi_string_cat_printf(parsed_data, "\e#Anonymous Rav-Kav:\n");
+        if(len > 0) {
+            char line[64];
+            if(len > sizeof(line) - 1) len = sizeof(line) - 1;
+            memcpy(line, s, len);
+            line[len] = '\0';
+            char* sep = strstr(line, ": ");
+            if(sep) {
+                *sep = '\0';
+                bool highlight = (strcmp(line, "Balance") == 0);
+                metroflip_card_view_add_field(view, page, line, sep + 2, highlight);
             } else {
-                furi_string_cat_printf(parsed_data, "\e#RavKav %u:\n", ctx->card->card_number);
-            }
-            furi_string_cat_printf(parsed_data, "\e#Environment:\n");
-            show_ravkav_environment_info(&ctx->card->ravkav->environment, parsed_data);
-            break;
-        }
-        default: {
-            furi_string_cat_printf(parsed_data, "\e#Unknown %u:\n", ctx->card->card_number);
-            furi_string_cat_printf(
-                parsed_data, "Country: %s\n", get_country_string(ctx->card->country_num));
-            if(guess_card_type(ctx->card->country_num, ctx->card->network_num) !=
-               CALYPSO_CARD_UNKNOWN) {
-                furi_string_cat_printf(
-                    parsed_data,
-                    "Network: %s\n",
-                    get_network_string(
-                        guess_card_type(ctx->card->country_num, ctx->card->network_num)));
-            } else {
-                furi_string_cat_printf(parsed_data, "Network: %d\n", ctx->card->network_num);
-            }
-            break;
-        }
-        }
-    } else if(ctx->page_id == 1 || ctx->page_id == 2 || ctx->page_id == 3 || ctx->page_id == 4) {
-        furi_string_cat_printf(parsed_data, "\e#Contract %d:\n", ctx->page_id);
-        switch(ctx->card->card_type) {
-        case CALYPSO_CARD_NAVIGO: {
-            show_navigo_contract_info(
-                &ctx->card->navigo->contracts[ctx->page_id - 1], parsed_data);
-            break;
-        }
-        case CALYPSO_CARD_OPUS: {
-            show_opus_contract_info(&ctx->card->opus->contracts[ctx->page_id - 1], parsed_data);
-            break;
-        }
-        case CALYPSO_CARD_RAVKAV: {
-            show_ravkav_contract_info(
-                &ctx->card->ravkav->contracts[ctx->page_id - 1], parsed_data);
-            break;
-        }
-        default: {
-            break;
-        }
-        }
-    } else if(ctx->page_id >= 5) {
-        if(ctx->page_id - 5 < ctx->card->events_count) {
-            furi_string_cat_printf(parsed_data, "\e#Event %d:\n", ctx->page_id - 4);
-            switch(ctx->card->card_type) {
-            case CALYPSO_CARD_NAVIGO: {
-                show_navigo_event_info(
-                    &ctx->card->navigo->events[ctx->page_id - 5],
-                    ctx->card->navigo->contracts,
-                    parsed_data);
-                break;
-            }
-            case CALYPSO_CARD_OPUS: {
-                show_opus_event_info(
-                    &ctx->card->opus->events[ctx->page_id - 5],
-                    ctx->card->opus->contracts,
-                    parsed_data);
-                break;
-            }
-            case CALYPSO_CARD_RAVKAV: {
-                show_ravkav_event_info(&ctx->card->ravkav->events[ctx->page_id - 5], parsed_data);
-                break;
-            }
-            default: {
-                break;
-            }
-            }
-        } else {
-            furi_string_cat_printf(
-                parsed_data, "\e#Special Event %d:\n", ctx->page_id - ctx->card->events_count - 4);
-            switch(ctx->card->card_type) {
-            case CALYPSO_CARD_NAVIGO: {
-                show_navigo_special_event_info(
-                    &ctx->card->navigo->special_events[ctx->page_id - ctx->card->events_count - 5],
-                    parsed_data);
-                break;
-            }
-            case CALYPSO_CARD_OPUS: {
-                break;
-            }
-            default: {
-                break;
-            }
+                metroflip_card_view_add_field(view, page, "", line, false);
             }
         }
+        if(!nl) break;
+        s = nl + 1;
     }
 }
 
-void update_widget_elements(void* context) {
-    Metroflip* app = context;
+/* Build and show the card view from the parsed card data in
+ * app->calypso_context. Must run on the main thread (called from on_enter
+ * in file-replay mode or from the PollerSuccess handler in live mode). */
+static void calypso_display_card_view(Metroflip* app) {
     CalypsoContext* ctx = app->calypso_context;
-    Widget* widget = app->widget;
-    if(ctx->card->card_type != CALYPSO_CARD_NAVIGO && ctx->card->card_type != CALYPSO_CARD_OPUS &&
-       ctx->card->card_type != CALYPSO_CARD_RAVKAV) {
-        widget_add_button_element(
-            widget, GuiButtonTypeRight, "Exit", metroflip_next_button_widget_callback, context);
-        return;
+    if(!ctx || !ctx->card) return;
+    CalypsoCardData* card = ctx->card;
+
+    View* view = metroflip_card_view_alloc(app);
+    char val[METROFLIP_CARD_VIEW_VALUE_LEN];
+    char header[METROFLIP_CARD_VIEW_HEADER_LEN];
+
+    switch(card->card_type) {
+    case CALYPSO_CARD_NAVIGO: {
+        if(!card->navigo) break;
+        metroflip_card_view_set_title(view, "Navigo");
+
+        /* Page: Environment */
+        uint8_t p = metroflip_card_view_add_page(view, "Environment");
+        if(card->card_number != 0) {
+            snprintf(val, sizeof(val), "%u", card->card_number);
+            metroflip_card_view_add_field(view, p, "Number", val, false);
+        } else {
+            /* Paper / anonymous ticket - no ICC serial */
+            metroflip_card_view_add_field(view, p, "", "Anonymous ticket", false);
+        }
+        FuriString* str = furi_string_alloc();
+        show_navigo_environment_info(&card->navigo->environment, &card->navigo->holder, str);
+        calypso_add_text_as_fields(view, p, str);
+        furi_string_free(str);
+
+        /* Pages: one per present contract (absent slots are skipped) */
+        for(int i = 0; i < 4; i++) {
+            if(!card->navigo->contracts[i].present) continue;
+            snprintf(header, sizeof(header), "Contract %d", i + 1);
+            p = metroflip_card_view_add_page(view, header);
+            str = furi_string_alloc();
+            /* show_navigo_contract_info renders the remaining-tickets
+             * counter info (Remaining Tickets / Last load) when present */
+            show_navigo_contract_info(&card->navigo->contracts[i], str);
+            calypso_add_text_as_fields(view, p, str);
+            furi_string_free(str);
+        }
+
+        /* Pages: one per parsed event */
+        int events = card->events_count;
+        if(events > 3) events = 3;
+        for(int i = 0; i < events; i++) {
+            snprintf(header, sizeof(header), "Event %d", i + 1);
+            p = metroflip_card_view_add_page(view, header);
+            str = furi_string_alloc();
+            show_navigo_event_info(&card->navigo->events[i], card->navigo->contracts, str);
+            calypso_add_text_as_fields(view, p, str);
+            furi_string_free(str);
+        }
+
+        /* Pages: one per special event */
+        int special = card->special_events_count;
+        if(special > 3) special = 3;
+        for(int i = 0; i < special; i++) {
+            snprintf(header, sizeof(header), "Special Ev. %d", i + 1);
+            p = metroflip_card_view_add_page(view, header);
+            str = furi_string_alloc();
+            show_navigo_special_event_info(&card->navigo->special_events[i], str);
+            calypso_add_text_as_fields(view, p, str);
+            furi_string_free(str);
+        }
+        break;
+    }
+    case CALYPSO_CARD_OPUS: {
+        if(!card->opus) break;
+        metroflip_card_view_set_title(view, "Opus");
+
+        /* Page: Environment */
+        uint8_t p = metroflip_card_view_add_page(view, "Environment");
+        if(card->card_number != 0) {
+            snprintf(val, sizeof(val), "%u", card->card_number);
+            metroflip_card_view_add_field(view, p, "Number", val, false);
+        }
+        FuriString* str = furi_string_alloc();
+        show_opus_environment_info(&card->opus->environment, &card->opus->holder, str);
+        calypso_add_text_as_fields(view, p, str);
+        furi_string_free(str);
+
+        /* Pages: one per present contract */
+        for(int i = 0; i < 4; i++) {
+            if(!card->opus->contracts[i].present) continue;
+            snprintf(header, sizeof(header), "Contract %d", i + 1);
+            p = metroflip_card_view_add_page(view, header);
+            str = furi_string_alloc();
+            show_opus_contract_info(&card->opus->contracts[i], str);
+            calypso_add_text_as_fields(view, p, str);
+            furi_string_free(str);
+        }
+
+        /* Pages: one per parsed event */
+        int events = card->events_count;
+        if(events > 3) events = 3;
+        for(int i = 0; i < events; i++) {
+            snprintf(header, sizeof(header), "Event %d", i + 1);
+            p = metroflip_card_view_add_page(view, header);
+            str = furi_string_alloc();
+            show_opus_event_info(&card->opus->events[i], card->opus->contracts, str);
+            calypso_add_text_as_fields(view, p, str);
+            furi_string_free(str);
+        }
+        break;
+    }
+    case CALYPSO_CARD_RAVKAV: {
+        if(!card->ravkav) break;
+        metroflip_card_view_set_title(view, "RavKav");
+
+        /* Page: Environment (incl. stored-value balance) */
+        uint8_t p = metroflip_card_view_add_page(view, "Environment");
+        if(card->card_number == 0) {
+            metroflip_card_view_add_field(view, p, "", "Anonymous Rav-Kav", false);
+        } else {
+            snprintf(val, sizeof(val), "%u", card->card_number);
+            metroflip_card_view_add_field(view, p, "Number", val, false);
+        }
+        if(card->ravkav->contracts[0].present && card->ravkav->contracts[0].balance != 0.0f) {
+            uint32_t agorot = (uint32_t)(card->ravkav->contracts[0].balance * 100.0f + 0.5f);
+            snprintf(
+                val,
+                sizeof(val),
+                "%lu.%02lu ILS",
+                (unsigned long)(agorot / 100),
+                (unsigned long)(agorot % 100));
+            metroflip_card_view_add_field(view, p, "Balance", val, true);
+        }
+        FuriString* str = furi_string_alloc();
+        show_ravkav_environment_info(&card->ravkav->environment, str);
+        calypso_add_text_as_fields(view, p, str);
+        furi_string_free(str);
+
+        /* Pages: one per present contract (only slot 1 is ever read) */
+        for(int i = 0; i < 4; i++) {
+            if(!card->ravkav->contracts[i].present) continue;
+            snprintf(header, sizeof(header), "Contract %d", i + 1);
+            p = metroflip_card_view_add_page(view, header);
+            str = furi_string_alloc();
+            show_ravkav_contract_info(&card->ravkav->contracts[i], str);
+            calypso_add_text_as_fields(view, p, str);
+            furi_string_free(str);
+        }
+
+        /* Pages: events (the parse keeps the historical fixed count of 3) */
+        int events = card->events_count;
+        if(events > 3) events = 3;
+        for(int i = 0; i < events; i++) {
+            snprintf(header, sizeof(header), "Event %d", i + 1);
+            p = metroflip_card_view_add_page(view, header);
+            str = furi_string_alloc();
+            show_ravkav_event_info(&card->ravkav->events[i], str);
+            calypso_add_text_as_fields(view, p, str);
+            furi_string_free(str);
+        }
+        break;
+    }
+    default: {
+        /* Mobib / Viva / KorriGo / other or unknown Calypso networks:
+         * single page mirroring the old one-page view. */
+        const char* network = get_network_string(card->card_type);
+        metroflip_card_view_set_title(view, network);
+
+        uint8_t p = metroflip_card_view_add_page(view, "Card Info");
+        snprintf(val, sizeof(val), "%u", card->card_number);
+        metroflip_card_view_add_field(view, p, "Number", val, false);
+        metroflip_card_view_add_field(
+            view, p, "Country", get_country_string(card->country_num), false);
+        if(card->card_type != CALYPSO_CARD_UNKNOWN) {
+            metroflip_card_view_add_field(view, p, "Network", network, false);
+        } else {
+            snprintf(val, sizeof(val), "%d", card->network_num);
+            metroflip_card_view_add_field(view, p, "Network", val, false);
+        }
+        break;
+    }
+    }
+
+    /* Buttons: OK saves a live read, deletes a loaded file */
+    if(app->data_loaded) {
+        metroflip_card_view_set_delete(view, true);
     } else {
-        if(!app->data_loaded) {
-            widget_add_button_element(
-                widget, GuiButtonTypeCenter, "Save", calypso_save_button_widget_callback, app);
-        } else {
-            widget_add_button_element(
-                widget, GuiButtonTypeCenter, "Delete", metroflip_delete_widget_callback, app);
-        }
+        metroflip_card_view_set_save(view, true);
     }
-    if(ctx->page_id < 10) {
-        widget_add_button_element(
-            widget, GuiButtonTypeRight, "Next", metroflip_next_button_widget_callback, context);
-    } else {
-        widget_add_button_element(
-            widget, GuiButtonTypeRight, "Exit", metroflip_next_button_widget_callback, context);
-    }
-    if(ctx->page_id > 0) {
-        widget_add_button_element(
-            widget, GuiButtonTypeLeft, "Back", metroflip_back_button_widget_callback, context);
-    }
+
+    metroflip_card_view_show(app);
 }
 
-void metroflip_back_button_widget_callback(GuiButtonType result, InputType type, void* context) {
-    Metroflip* app = context;
-    CalypsoContext* ctx = app->calypso_context;
-    UNUSED(result);
-
-    Widget* widget = app->widget;
-
-    if(type == InputTypePress) {
-        widget_reset(widget);
-
-        FURI_LOG_I(TAG, "Page ID: %d -> %d", ctx->page_id, ctx->page_id - 1);
-
-        if(ctx->page_id > 0) {
-            if(ctx->page_id == 10 && ctx->card->special_events_count < 2) {
-                ctx->page_id -= 1;
-            }
-            if(ctx->page_id == 9 && ctx->card->special_events_count < 1) {
-                ctx->page_id -= 1;
-            }
-            if(ctx->page_id == 8 && ctx->card->events_count < 3) {
-                ctx->page_id -= 1;
-            }
-            if(ctx->page_id == 7 && ctx->card->events_count < 2) {
-                ctx->page_id -= 1;
-            }
-            if(ctx->page_id == 6 && ctx->card->events_count < 1) {
-                ctx->page_id -= 1;
-            }
-            if(ctx->page_id == 5 && ctx->card->contracts_count < 4) {
-                ctx->page_id -= 1;
-            }
-            if(ctx->page_id == 4 && ctx->card->contracts_count < 3) {
-                ctx->page_id -= 1;
-            }
-            if(ctx->page_id == 3 && ctx->card->contracts_count < 2) {
-                ctx->page_id -= 1;
-            }
-            ctx->page_id -= 1;
-        }
-
-        FuriString* parsed_data = furi_string_alloc();
-
-        // Ensure no nested mutexes
-        furi_mutex_acquire(ctx->mutex, FuriWaitForever);
-        update_page_info(app, parsed_data);
-        furi_mutex_release(ctx->mutex);
-
-        widget_add_text_scroll_element(widget, 0, 0, 128, 64, furi_string_get_cstr(parsed_data));
-        // widget_add_icon_element(widget, 0, 0, &I_RFIDDolphinReceive_97x61);
-
-        // Ensure no nested mutexes
-        furi_mutex_acquire(ctx->mutex, FuriWaitForever);
-        update_widget_elements(app);
-        furi_mutex_release(ctx->mutex);
-
-        furi_string_free(parsed_data);
-    }
-}
-
-void calypso_save_button_widget_callback(GuiButtonType result, InputType type, void* context) {
-    Metroflip* app = context;
-    UNUSED(result);
-
-    Widget* widget = app->widget;
-
-    if(type == InputTypePress) {
-        widget_reset(widget);
-
-        scene_manager_next_scene(app->scene_manager, MetroflipSceneSave);
-    }
-}
-
-void metroflip_next_button_widget_callback(GuiButtonType result, InputType type, void* context) {
-    Metroflip* app = context;
-    CalypsoContext* ctx = app->calypso_context;
-    UNUSED(result);
-
-    Widget* widget = app->widget;
-
-    if(type == InputTypePress) {
-        widget_reset(widget);
-
-        FURI_LOG_I(
-            TAG,
-            "Page ID: %d -> %d",
-            ctx->page_id,
-            ctx->page_id +
-                1); // TODO: make this actually show which page is going to be next, not just +1
-
-        if(ctx->card->card_type != CALYPSO_CARD_NAVIGO &&
-           ctx->card->card_type != CALYPSO_CARD_OPUS &&
-           ctx->card->card_type != CALYPSO_CARD_RAVKAV) {
-            ctx->page_id = 0;
-            furi_string_reset(app->calypso_file_data);
-            scene_manager_search_and_switch_to_previous_scene(
-                app->scene_manager, MetroflipSceneStart);
-            return;
-        }
-        if(ctx->page_id < 10) {
-            FURI_LOG_I(TAG, "event count: %d", ctx->card->events_count);
-            if(ctx->page_id == 1 && ctx->card->contracts_count < 2) {
-                ctx->page_id += 1;
-            }
-            if(ctx->page_id == 2 && ctx->card->contracts_count < 3) {
-                ctx->page_id += 1;
-            }
-            if(ctx->page_id == 3 && ctx->card->contracts_count < 4) {
-                ctx->page_id += 1;
-            }
-            if(ctx->page_id == 4 && ctx->card->events_count < 1) {
-                ctx->page_id += 1;
-            }
-            if(ctx->page_id == 5 && ctx->card->events_count < 2) {
-                ctx->page_id += 1;
-            }
-            if(ctx->page_id == 6 && ctx->card->events_count < 3) {
-                ctx->page_id += 1;
-            }
-            if(ctx->page_id == 7 && ctx->card->special_events_count < 1) {
-                ctx->page_id += 1;
-            }
-            if(ctx->page_id == 8 && ctx->card->special_events_count < 2) {
-                ctx->page_id += 1;
-            }
-            if(ctx->page_id == 9 && ctx->card->special_events_count < 3) {
-                ctx->page_id = 0;
-                furi_string_reset(app->calypso_file_data);
-                scene_manager_search_and_switch_to_previous_scene(
-                    app->scene_manager, MetroflipSceneStart);
-                return;
-            }
-            ctx->page_id += 1;
-        } else {
-            ctx->page_id = 0;
-            furi_string_reset(app->calypso_file_data);
-            scene_manager_search_and_switch_to_previous_scene(
-                app->scene_manager, MetroflipSceneStart);
-            return;
-        }
-
-        FuriString* parsed_data = furi_string_alloc();
-
-        // Ensure no nested mutexes
-        furi_mutex_acquire(ctx->mutex, FuriWaitForever);
-        update_page_info(app, parsed_data);
-        furi_mutex_release(ctx->mutex);
-
-        widget_add_text_scroll_element(widget, 0, 0, 128, 64, furi_string_get_cstr(parsed_data));
-
-        // Ensure no nested mutexes
-        furi_mutex_acquire(ctx->mutex, FuriWaitForever);
-        update_widget_elements(app);
-        furi_mutex_release(ctx->mutex);
-
-        furi_string_free(parsed_data);
-    }
-}
-
-void delay(int milliseconds) {
-    furi_thread_flags_wait(0, FuriFlagWaitAny, milliseconds);
-}
-
-static NfcCommand calypso_poller_callback(NfcGenericEvent event, void* context) {
-    furi_assert(event.protocol == NfcProtocolIso14443_4b);
-    NfcCommand next_command = NfcCommandContinue;
+/* Run the full Calypso read/parse flow. In live mode (iso14443_4b_poller
+ * != NULL) APDUs are exchanged with the card; in file-replay mode
+ * (app->data_loaded, poller == NULL) every send is skipped and records are
+ * read back from the saved file instead. On success the parsed card is
+ * stored in app->calypso_context. Runs on the poller thread in live mode,
+ * so it must never touch the UI. */
+static bool calypso_read_card(Metroflip* app, Iso14443_4bPoller* iso14443_4b_poller) {
     MetroflipPollerEventType stage = MetroflipPollerEventTypeStart;
-
-    Metroflip* app = context;
-    FuriString* parsed_data = furi_string_alloc();
-    Widget* widget = app->widget;
-    furi_string_reset(app->text_box_store);
-
-    const Iso14443_4bPollerEvent* iso14443_4b_event = event.event_data;
-
-    Iso14443_4bPoller* iso14443_4b_poller = event.instance;
 
     BitBuffer* tx_buffer = bit_buffer_alloc(Metroflip_POLLER_MAX_BUFFER_SIZE);
     BitBuffer* rx_buffer = bit_buffer_alloc(Metroflip_POLLER_MAX_BUFFER_SIZE);
 
-    if(iso14443_4b_event->type == Iso14443_4bPollerEventTypeReady || app->data_loaded) {
-        if(stage == MetroflipPollerEventTypeStart) {
-            // Start Flipper vibration
-            NotificationApp* notification = furi_record_open(RECORD_NOTIFICATION);
-            notification_message(notification, &sequence_set_vibro_on);
-            delay(50);
-            notification_message(notification, &sequence_reset_vibro);
-            nfc_device_set_data(
-                app->nfc_device, NfcProtocolIso14443_4b, nfc_poller_get_data(app->poller));
+    if(!app->data_loaded) {
+        nfc_device_set_data(
+            app->nfc_device, NfcProtocolIso14443_4b, nfc_poller_get_data(app->poller));
+    }
 
-            Iso14443_4bError error;
-            size_t response_length = 0;
-            CalypsoCardData* card = NULL;
+    Iso14443_4bError error;
+    size_t response_length = 0;
+    CalypsoCardData* card = NULL;
 
-            do {
+    do {
                 // Initialize the card data
                 card = malloc(sizeof(CalypsoCardData));
                 if(!card) {
@@ -530,63 +469,165 @@ static NfcCommand calypso_poller_callback(NfcGenericEvent event, void* context) 
                         app->view_dispatcher, MetroflipCustomEventPollerFail);
                     break;
                 }
-                // Initialize pointers to NULL for safe cleanup
+                // Zero everything so the section counters (contracts/events/
+                // special_events) start at 0 - the display loops read them, and
+                // a card that never increments one would otherwise render garbage
+                // pages. Also NULLs the sub-allocs for safe cleanup.
+                memset(card, 0, sizeof(CalypsoCardData));
                 card->navigo = NULL;
                 card->opus = NULL;
                 card->ravkav = NULL;
 
-                // Select app ICC
+                // Try selecting Calypso application by AID first (must be first command
+                // sent to card - a prior failed command can corrupt card session state)
+                if(!app->data_loaded) {
+                    bool aid_selected = false;
+
+                    // 1. Try partial AID (RID only) - works for most Calypso cards
+                    bit_buffer_reset(tx_buffer);
+                    bit_buffer_reset(rx_buffer);
+                    bit_buffer_append_bytes(
+                        tx_buffer, calypso_aid_select, sizeof(calypso_aid_select));
+                    error = iso14443_4b_poller_send_block(
+                        iso14443_4b_poller, tx_buffer, rx_buffer);
+                    if(error == Iso14443_4bErrorNone) {
+                        response_length = bit_buffer_get_size_bytes(rx_buffer);
+                        if(response_length >= 2 &&
+                           bit_buffer_get_byte(rx_buffer, response_length - 2) ==
+                               apdu_success[0] &&
+                           bit_buffer_get_byte(rx_buffer, response_length - 1) ==
+                               apdu_success[1]) {
+                            FURI_LOG_I(TAG, "Calypso AID selected, using ISO 7816 mode");
+                            aid_selected = true;
+                        }
+                    }
+
+                    // 2. If RID select failed, try full Navigo AID for new card variants
+                    if(!aid_selected) {
+                        FURI_LOG_I(
+                            TAG, "RID select failed, trying full Navigo AID");
+                        bit_buffer_reset(tx_buffer);
+                        bit_buffer_reset(rx_buffer);
+                        bit_buffer_append_bytes(
+                            tx_buffer,
+                            calypso_navigo_aid_select,
+                            sizeof(calypso_navigo_aid_select));
+                        error = iso14443_4b_poller_send_block(
+                            iso14443_4b_poller, tx_buffer, rx_buffer);
+                        if(error == Iso14443_4bErrorNone) {
+                            response_length = bit_buffer_get_size_bytes(rx_buffer);
+                            if(response_length >= 2 &&
+                               bit_buffer_get_byte(rx_buffer, response_length - 2) ==
+                                   apdu_success[0] &&
+                               bit_buffer_get_byte(rx_buffer, response_length - 1) ==
+                                   apdu_success[1]) {
+                                FURI_LOG_I(
+                                    TAG,
+                                    "Full Navigo AID selected, using ISO 7816 mode");
+                                aid_selected = true;
+                            }
+                        }
+                    }
+
+                    if(aid_selected) {
+                        select_app[0] = 0x00;
+                        select_app[2] = 0x09; // P1: select from current DF
+                        read_file[0] = 0x00;
+                    }
+                }
+
+                int start = 0, end = 0;
+
+                /* Read the ICC file (0x0002) for the card serial number. Paper
+                 * and anonymous Navigo tickets have no ICC file (SELECT returns
+                 * 6A82 "file not found"); that is NOT fatal - we leave the
+                 * serial unknown (0) and continue to the ticketing/environment
+                 * files that hold the real card data. The status word is
+                 * checked inline instead of via check_response() so a missing
+                 * ICC file does not post a spurious "wrong card" failure event.
+                 */
+                card->card_number = 0;
                 error = select_new_app(
                     0x00, 0x02, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
                 if(error != 0) {
-                    break;
+                    break; // transport-level failure (e.g. card removed)
                 }
 
-                // Check the response after selecting app
-                if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
-                    break;
+                bool icc_present = app->data_loaded; // file replay: assume present
+                if(!app->data_loaded) {
+                    response_length = bit_buffer_get_size_bytes(rx_buffer);
+                    icc_present =
+                        (response_length >= 2 &&
+                         bit_buffer_get_byte(rx_buffer, response_length - 2) == apdu_success[0] &&
+                         bit_buffer_get_byte(rx_buffer, response_length - 1) == apdu_success[1]);
                 }
 
-                // Now send the read command for ICC
-                error = read_new_file(
-                    "0002", "01", 0x01, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+                if(icc_present) {
+                    // Send the read command for ICC
+                    error = read_new_file(
+                        "0002", "01", 0x01, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+                    if(error != 0) {
+                        // Live: transport failure -> give up. File replay: the
+                        // 0002 record is simply absent -> skip, serial stays 0.
+                        if(!app->data_loaded) {
+                            view_dispatcher_send_custom_event(
+                                app->view_dispatcher, MetroflipCustomEventPollerFail);
+                            break;
+                        }
+                    } else {
+                        response_length = bit_buffer_get_size_bytes(rx_buffer);
+                        bool icc_read_ok =
+                            app->data_loaded ||
+                            (response_length >= 2 &&
+                             bit_buffer_get_byte(rx_buffer, response_length - 2) ==
+                                 apdu_success[0] &&
+                             bit_buffer_get_byte(rx_buffer, response_length - 1) ==
+                                 apdu_success[1]);
+                        if(icc_read_ok) {
+                            char icc_bit_representation[29 * 8 + 1];
+                            icc_bit_representation[0] = '\0';
+                            size_t icc_copy_length = response_length > 29 ? 29 : response_length;
+                            for(size_t i = 0; i < icc_copy_length; i++) {
+                                char bits[9];
+                                uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
+                                byte_to_binary(byte, bits);
+                                strlcat(
+                                    icc_bit_representation, bits, sizeof(icc_bit_representation));
+                            }
+                            icc_bit_representation[icc_copy_length * 8] = '\0';
 
-                if(error != 0) {
-                    view_dispatcher_send_custom_event(
-                        app->view_dispatcher, MetroflipCustomEventPollerFail);
-                    break;
+                            start = 128;
+                            end = 159;
+                            card->card_number =
+                                bit_slice_to_dec(icc_bit_representation, start, end);
+                        }
+                    }
+                } else {
+                    FURI_LOG_I(TAG, "No ICC file (paper/anonymous ticket) - serial unknown");
                 }
 
-                // Check the response after reading the file
-                if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
-                    break;
-                }
-
-                char icc_bit_representation[response_length * 8 + 1];
-                icc_bit_representation[0] = '\0';
-                for(size_t i = 0; i < response_length; i++) {
-                    char bits[9];
-                    uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
-                    byte_to_binary(byte, bits);
-                    strlcat(icc_bit_representation, bits, sizeof(icc_bit_representation));
-                }
-                icc_bit_representation[response_length * 8] = '\0';
-
-                int start = 128, end = 159;
-                card->card_number = bit_slice_to_dec(icc_bit_representation, start, end);
-
-                // Select app for ticketing
+                // Select the ticketing DF (0x2000). Cards selected via the full
+                // Navigo AID are already positioned inside this DF, so a relative
+                // SELECT for it returns 6A82 ("file not found") - that is NOT
+                // fatal: we just proceed to the environment file (a child EF that
+                // selects fine from the current DF). The SW is checked inline so a
+                // missing child does not post a spurious "wrong card" event.
                 error = select_new_app(
                     0x20, 0x00, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
                 if(error != 0) {
                     FURI_LOG_E(TAG, "Failed to select app for ticketing");
-                    break;
+                    break; // transport-level failure (e.g. card removed)
                 }
-
-                // Check the response after selecting app
-                if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
-                    FURI_LOG_E(TAG, "Failed to check response after selecting app for ticketing");
-                    break;
+                if(!app->data_loaded) {
+                    response_length = bit_buffer_get_size_bytes(rx_buffer);
+                    bool ticketing_ok =
+                        (response_length >= 2 &&
+                         bit_buffer_get_byte(rx_buffer, response_length - 2) == apdu_success[0] &&
+                         bit_buffer_get_byte(rx_buffer, response_length - 1) == apdu_success[1]);
+                    if(!ticketing_ok) {
+                        FURI_LOG_I(
+                            TAG, "Ticketing DF not a child (already inside it) - continuing");
+                    }
                 }
 
                 // Select app for environment
@@ -615,9 +656,10 @@ static NfcCommand calypso_poller_callback(NfcGenericEvent event, void* context) 
                 if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
                     break;
                 }
-                char environment_bit_representation[response_length * 8 + 1];
+                char environment_bit_representation[29 * 8 + 1];
                 environment_bit_representation[0] = '\0';
-                for(size_t i = 0; i < response_length; i++) {
+                size_t env_copy_length = response_length > 29 ? 29 : response_length;
+                for(size_t i = 0; i < env_copy_length; i++) {
                     char bits[9];
                     uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
                     byte_to_binary(byte, bits);
@@ -650,6 +692,9 @@ static NfcCommand calypso_poller_callback(NfcGenericEvent event, void* context) 
                             app->view_dispatcher, MetroflipCustomEventPollerFail);
                         break;
                     }
+                    /* Zero unread contract/event slots so the display (which
+                     * iterates by .present / *_count) never reads heap garbage. */
+                    memset(card->navigo, 0, sizeof(NavigoCardData));
 
                     card->navigo->environment.country_num = card->country_num;
                     card->navigo->environment.network_num = card->network_num;
@@ -747,15 +792,16 @@ static NfcCommand calypso_poller_callback(NfcGenericEvent event, void* context) 
                             break;
                         }
 
-                        char bit_representation[response_length * 8 + 1];
+                        char bit_representation[29 * 8 + 1];
                         bit_representation[0] = '\0';
-                        for(size_t i = 0; i < response_length; i++) {
+                        size_t contract_copy_length = response_length > 29 ? 29 : response_length;
+                        for(size_t i = 0; i < contract_copy_length; i++) {
                             char bits[9];
                             uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
                             byte_to_binary(byte, bits);
                             strlcat(bit_representation, bits, sizeof(bit_representation));
                         }
-                        bit_representation[response_length * 8] = '\0';
+                        bit_representation[contract_copy_length * 8] = '\0';
 
                         if(bit_slice_to_dec(
                                bit_representation,
@@ -1014,9 +1060,10 @@ static NfcCommand calypso_poller_callback(NfcGenericEvent event, void* context) 
                         break;
                     }
 
-                    char counter_bit_representation[response_length * 8 + 1];
+                    char counter_bit_representation[29 * 8 + 1];
                     counter_bit_representation[0] = '\0';
-                    for(size_t i = 0; i < response_length; i++) {
+                    size_t counter_copy_length = response_length > 29 ? 29 : response_length;
+                    for(size_t i = 0; i < counter_copy_length; i++) {
                         char bits[9];
                         uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
                         byte_to_binary(byte, bits);
@@ -1083,9 +1130,10 @@ static NfcCommand calypso_poller_callback(NfcGenericEvent event, void* context) 
                             break;
                         }
 
-                        char event_bit_representation[response_length * 8 + 1];
+                        char event_bit_representation[29 * 8 + 1];
                         event_bit_representation[0] = '\0';
-                        for(size_t i = 0; i < response_length; i++) {
+                        size_t event_copy_length = response_length > 29 ? 29 : response_length;
+                        for(size_t i = 0; i < event_copy_length; i++) {
                             char bits[9];
                             uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
                             byte_to_binary(byte, bits);
@@ -1286,9 +1334,11 @@ static NfcCommand calypso_poller_callback(NfcGenericEvent event, void* context) 
                             break;
                         }
 
-                        char event_bit_representation[response_length * 8 + 1];
+                        char event_bit_representation[29 * 8 + 1];
                         event_bit_representation[0] = '\0';
-                        for(size_t i = 0; i < response_length; i++) {
+                        size_t special_event_copy_length =
+                            response_length > 29 ? 29 : response_length;
+                        for(size_t i = 0; i < special_event_copy_length; i++) {
                             char bits[9];
                             uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
                             byte_to_binary(byte, bits);
@@ -1441,6 +1491,9 @@ static NfcCommand calypso_poller_callback(NfcGenericEvent event, void* context) 
                             app->view_dispatcher, MetroflipCustomEventPollerFail);
                         break;
                     }
+                    /* Zero unread contract/event slots so the display (which
+                     * iterates by .present / *_count) never reads heap garbage. */
+                    memset(card->opus, 0, sizeof(OpusCardData));
 
                     card->opus->environment.country_num = card->country_num;
                     card->opus->environment.network_num = card->network_num;
@@ -1567,15 +1620,17 @@ static NfcCommand calypso_poller_callback(NfcGenericEvent event, void* context) 
                             break;
                         }
 
-                        char bit_representation[response_length * 8 + 1];
+                        char bit_representation[29 * 8 + 1];
                         bit_representation[0] = '\0';
-                        for(size_t i = 0; i < response_length; i++) {
+                        size_t opus_contract_copy_length =
+                            response_length > 29 ? 29 : response_length;
+                        for(size_t i = 0; i < opus_contract_copy_length; i++) {
                             char bits[9];
                             uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
                             byte_to_binary(byte, bits);
                             strlcat(bit_representation, bits, sizeof(bit_representation));
                         }
-                        bit_representation[response_length * 8] = '\0';
+                        bit_representation[opus_contract_copy_length * 8] = '\0';
 
                         if(bit_slice_to_dec(
                                bit_representation,
@@ -1769,9 +1824,10 @@ static NfcCommand calypso_poller_callback(NfcGenericEvent event, void* context) 
                             break;
                         }
 
-                        char event_bit_representation[response_length * 8 + 1];
+                        char event_bit_representation[29 * 8 + 1];
                         event_bit_representation[0] = '\0';
-                        for(size_t i = 0; i < response_length; i++) {
+                        size_t opus_event_copy_length = response_length > 29 ? 29 : response_length;
+                        for(size_t i = 0; i < opus_event_copy_length; i++) {
                             char bits[9];
                             uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
                             byte_to_binary(byte, bits);
@@ -1953,6 +2009,13 @@ static NfcCommand calypso_poller_callback(NfcGenericEvent event, void* context) 
                                 app->view_dispatcher, MetroflipCustomEventPollerFail);
                             break;
                         }
+                        /* Zero it: only the contracts/events actually read get
+                         * populated, and the display iterates contracts[0..3]
+                         * by their .present flag and events[0..count]. Without
+                         * this, unread slots hold heap garbage (non-zero after a
+                         * save->load cycle), and get_ravkav_issuer() then indexes
+                         * its list with a garbage provider -> MPU fault. */
+                        memset(card->ravkav, 0, sizeof(RavKavCardData));
 
                         // Prepare calypso structure
 
@@ -2044,17 +2107,18 @@ static NfcCommand calypso_poller_callback(NfcGenericEvent event, void* context) 
                                 break;
                             }
 
-                            char bit_representation[response_length * 8 + 1];
+                            char bit_representation[29 * 8 + 1];
                             bit_representation[0] = '\0';
-                            for(size_t i = 0; i < response_length; i++) {
+                            size_t ravkav_contract_copy_length =
+                                response_length > 29 ? 29 : response_length;
+                            for(size_t i = 0; i < ravkav_contract_copy_length; i++) {
                                 char bits[9];
                                 uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
                                 byte_to_binary(byte, bits);
                                 strlcat(bit_representation, bits, sizeof(bit_representation));
                             }
-                            bit_representation[response_length * 8] = '\0';
+                            bit_representation[ravkav_contract_copy_length * 8] = '\0';
                             card->ravkav->contracts[i - 1].present = 1;
-                            card->events_count = 3;
                             card->contracts_count++;
 
                             // ContractVersion
@@ -2295,15 +2359,16 @@ static NfcCommand calypso_poller_callback(NfcGenericEvent event, void* context) 
                             break;
                         }
 
-                        char env_bit_representation[response_length * 8 + 1];
+                        char env_bit_representation[29 * 8 + 1];
                         env_bit_representation[0] = '\0';
-                        for(size_t i = 0; i < response_length; i++) {
+                        size_t ravkav_env_copy_length = response_length > 29 ? 29 : response_length;
+                        for(size_t i = 0; i < ravkav_env_copy_length; i++) {
                             char bits[9];
                             uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
                             byte_to_binary(byte, bits);
                             strlcat(env_bit_representation, bits, sizeof(env_bit_representation));
                         }
-                        env_bit_representation[response_length * 8] = '\0';
+                        env_bit_representation[ravkav_env_copy_length * 8] = '\0';
 
                         // EnvApplicationVersionNumber
                         char* env_key = "EnvApplicationVersionNumber";
@@ -2426,9 +2491,11 @@ static NfcCommand calypso_poller_callback(NfcGenericEvent event, void* context) 
                                 break;
                             }
 
-                            char event_bit_representation[response_length * 8 + 1];
+                            char event_bit_representation[29 * 8 + 1];
                             event_bit_representation[0] = '\0';
-                            for(size_t i = 0; i < response_length; i++) {
+                            size_t ravkav_event_copy_length =
+                                response_length > 29 ? 29 : response_length;
+                            for(size_t i = 0; i < ravkav_event_copy_length; i++) {
                                 char bits[9];
                                 uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
                                 byte_to_binary(byte, bits);
@@ -2626,6 +2693,11 @@ static NfcCommand calypso_poller_callback(NfcGenericEvent event, void* context) 
                                     "locatrion bitmap: %d",
                                     bit_slice_to_dec(event_bit_representation, start, end));
                             }
+
+                            /* This event slot (events[i-1]) is now populated -
+                             * record the real count so the display doesn't show
+                             * empty/garbage event pages. */
+                            card->events_count = i;
                         }
 
                         // Free the calypso structure
@@ -2638,68 +2710,84 @@ static NfcCommand calypso_poller_callback(NfcGenericEvent event, void* context) 
                     break;
                 }
 
-                widget_add_text_scroll_element(
-                    widget, 0, 0, 128, 64, furi_string_get_cstr(parsed_data));
-
                 CalypsoContext* context = malloc(sizeof(CalypsoContext));
+                if(!context) {
+                    stage = MetroflipPollerEventTypeFail;
+                    view_dispatcher_send_custom_event(
+                        app->view_dispatcher, MetroflipCustomEventPollerFail);
+                    break;
+                }
                 context->card = card;
                 context->page_id = 0;
-                context->mutex = furi_mutex_alloc(FuriMutexTypeNormal);
+                context->mutex = NULL;
                 app->calypso_context = context;
 
-                // Ensure no nested mutexes
-                furi_mutex_acquire(context->mutex, FuriWaitForever);
-                update_page_info(app, parsed_data);
-                furi_mutex_release(context->mutex);
-
-                widget_add_text_scroll_element(
-                    widget, 0, 0, 128, 64, furi_string_get_cstr(parsed_data));
-
-                // Ensure no nested mutexes
-                furi_mutex_acquire(context->mutex, FuriWaitForever);
-                update_widget_elements(app);
-                furi_mutex_release(context->mutex);
-
-                furi_string_free(parsed_data);
-                view_dispatcher_switch_to_view(app->view_dispatcher, MetroflipViewWidget);
-                metroflip_app_blink_stop(app);
                 stage = MetroflipPollerEventTypeSuccess;
-                next_command = NfcCommandStop;
-            } while(false);
+    } while(false);
 
-            if(stage != MetroflipPollerEventTypeSuccess) {
-                // Clean up card data on failure if it was allocated but not assigned to context
-                if(card && !app->calypso_context) {
-                    free(card->navigo);
-                    free(card->opus);
-                    free(card->ravkav);
-                    free(card);
-                }
-                next_command = NfcCommandStop;
-            }
+    if(stage != MetroflipPollerEventTypeSuccess) {
+        // Clean up card data on failure if it was allocated but not assigned to context
+        if(card && !app->calypso_context) {
+            free(card->navigo);
+            free(card->opus);
+            free(card->ravkav);
+            free(card);
         }
     }
+
     bit_buffer_free(tx_buffer);
     bit_buffer_free(rx_buffer);
 
-    return next_command;
+    return stage == MetroflipPollerEventTypeSuccess;
+}
+
+static NfcCommand calypso_poller_callback(NfcGenericEvent event, void* context) {
+    furi_assert(event.protocol == NfcProtocolIso14443_4b);
+    Metroflip* app = context;
+    const Iso14443_4bPollerEvent* iso14443_4b_event = event.event_data;
+
+    if(iso14443_4b_event->type == Iso14443_4bPollerEventTypeReady) {
+        /* Parse on the poller thread, then hand off to the main thread:
+         * the UI must never be built from here. */
+        if(calypso_read_card(app, event.instance)) {
+            view_dispatcher_send_custom_event(
+                app->view_dispatcher, MetroflipCustomEventPollerSuccess);
+        }
+        /* Failure paths already sent their event (PollerFail/FileNotFound). */
+        return NfcCommandStop;
+    }
+
+    return NfcCommandContinue;
 }
 
 static void calypso_on_enter(Metroflip* app) {
     dolphin_deed(DolphinDeedNfcRead);
+    beginning = true;
+    select_app[0] = 0x94;
+    select_app[2] = 0x00;
+    read_file[0] = 0x94;
 
-    // Setup view
-    Popup* popup = app->popup;
-    popup_set_header(popup, "Parsing...", 68, 30, AlignLeft, AlignTop);
-    popup_set_icon(popup, 0, 3, &I_RFIDDolphinReceive_97x61);
-
-    // Start worker
-    app->poller = nfc_poller_alloc(app->nfc, NfcProtocolIso14443_4b);
-    nfc_poller_start(app->poller, calypso_poller_callback, app);
-    if(!app->data_loaded) {
-        popup_reset(app->popup);
+    if(app->data_loaded) {
+        /* File replay: parse synchronously from the saved file - no poller. */
+        if(calypso_read_card(app, NULL)) {
+            calypso_display_card_view(app);
+        } else {
+            FURI_LOG_E(TAG, "Failed to parse saved file: %s", app->delete_file_path);
+            Widget* widget = app->widget;
+            widget_add_text_scroll_element(
+                widget, 0, 0, 128, 64, "\e#Error\nFailed to parse\nsaved file.");
+            widget_add_button_element(
+                widget, GuiButtonTypeRight, "Exit", metroflip_exit_widget_callback, app);
+            view_dispatcher_switch_to_view(app->view_dispatcher, MetroflipViewWidget);
+        }
+    } else {
+        Popup* popup = app->popup;
         popup_set_header(popup, "Apply\n card to\nthe back", 68, 30, AlignLeft, AlignTop);
+        popup_set_icon(popup, 0, 3, &I_RFIDDolphinReceive_97x61);
         view_dispatcher_switch_to_view(app->view_dispatcher, MetroflipViewPopup);
+
+        app->poller = nfc_poller_alloc(app->nfc, NfcProtocolIso14443_4b);
+        nfc_poller_start(app->poller, calypso_poller_callback, app);
         metroflip_app_blink_start(app);
     }
 }
@@ -2708,9 +2796,25 @@ static bool calypso_on_event(Metroflip* app, SceneManagerEvent event) {
     bool consumed = false;
 
     if(event.type == SceneManagerEventTypeCustom) {
-        if(event.event == MetroflipPollerEventTypeCardDetect) {
+        if(event.event == MetroflipCustomEventPollerSuccess) {
+            /* Live read finished on the poller thread (NfcCommandStop was
+             * returned) - tear the poller down and build the card view from
+             * the main thread. */
+            if(app->poller && !app->data_loaded) {
+                nfc_poller_stop(app->poller);
+                nfc_poller_free(app->poller);
+                app->poller = NULL;
+            }
+            metroflip_app_blink_stop(app);
+            calypso_display_card_view(app);
+            consumed = true;
+        } else if(event.event == MetroflipCustomEventCardDetected) {
             Popup* popup = app->popup;
-            popup_set_header(popup, "Scanning..", 68, 30, AlignLeft, AlignTop);
+            popup_set_header(popup, "Card found!\nDon't move...", 68, 30, AlignLeft, AlignTop);
+            consumed = true;
+        } else if(event.event == MetroflipCustomEventCardLost) {
+            Popup* popup = app->popup;
+            popup_set_header(popup, "Card lost!\nTry again", 68, 30, AlignLeft, AlignTop);
             consumed = true;
         } else if(event.event == MetroflipCustomEventPollerFileNotFound) {
             Popup* popup = app->popup;
@@ -2735,15 +2839,15 @@ static bool calypso_on_event(Metroflip* app, SceneManagerEvent event) {
 }
 
 static void calypso_on_exit(Metroflip* app) {
-    if(app->poller) {
+    widget_reset(app->widget);
+    popup_reset(app->popup);
+    metroflip_app_blink_stop(app);
+
+    if(app->poller && !app->data_loaded) {
         nfc_poller_stop(app->poller);
         nfc_poller_free(app->poller);
+        app->poller = NULL;
     }
-    metroflip_app_blink_stop(app);
-    widget_reset(app->widget);
-
-    // Clear view
-    popup_reset(app->popup);
 
     if(app->calypso_context) {
         CalypsoContext* ctx = app->calypso_context;
@@ -2753,7 +2857,6 @@ static void calypso_on_exit(Metroflip* app) {
             free(ctx->card->ravkav);
             free(ctx->card);
         }
-        furi_mutex_free(ctx->mutex);
         free(ctx);
         app->calypso_context = NULL;
     }
