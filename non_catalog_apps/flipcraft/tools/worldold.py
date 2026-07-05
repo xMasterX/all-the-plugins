@@ -44,7 +44,7 @@ OLD_WORLD_8 = (
     ((A, A, A, A, A, A, A, A), (A, A, A, A, A, A, A, A), (A, A, L, A, A, A, N, N), (A, A, A, A, A, G, N, N), (A, A, A, A, G, S, N, I), (A, A, G, G, S, S, I, I), (G, G, S, S, S, S, S, S), (S, S, S, S, S, S, S, S)),
     ((A, V, V, V, A, A, A, A), (V, V, V, V, V, A, A, A), (V, V, L, V, V, A, A, A), (V, V, V, V, V, A, N, N), (A, V, V, V, A, G, N, N), (A, A, A, A, G, G, S, N), (A, A, G, G, G, S, S, N), (G, G, G, S, S, S, S, S)),
     ((A, V, V, V, A, A, A, A), (V, V, V, V, V, A, A, A), (V, V, L, V, V, A, A, A), (V, V, V, V, V, A, A, A), (V, V, V, V, A, A, A, N), (A, A, A, A, A, A, G, N), (A, A, A, A, A, G, G, N), (A, A, A, G, G, G, G, G)),
-    ((A, A, A, A, A, A, A, A), (A, A, V, A, A, A, A, A), (A, V, V, A, A, A, A, A), (A, V, V, V, A, A, A, A), (A, A, V, V, A, A, A, A), (A, A, A, A, A, A, A, A), (A, A, A, A, A, A, A, A), (A, A, A, A, A, A, A, A)),
+    ((A, A, A, A, A, A, A, A), (A, A, V, A, A, A, A, A), (A, V, L, A, A, A, A, A), (A, V, V, V, A, A, A, A), (A, A, V, V, A, A, A, A), (A, A, A, A, A, A, A, A), (A, A, A, A, A, A, A, A), (A, A, A, A, A, A, A, A)),
     ((A, A, A, A, A, A, A, A), (A, A, V, A, A, A, A, A), (A, V, V, V, A, A, A, A), (A, A, V, A, A, A, A, A), (A, A, A, A, A, A, A, A), (A, A, A, A, A, A, A, A), (A, A, A, A, A, A, A, A), (A, A, A, A, A, A, A, A)),
 )
 
