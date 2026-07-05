@@ -302,6 +302,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | NFC MFP Reader | ![NFC Badge] | [by Defensor7](https://github.com/Defensor7/flipperzero-mfp-reader) |  | [![Author Badge]](https://lab.flipper.net/apps/mfp_reader) |
 | Philips Sonicare brush head NFC reader | ![NFC Badge] | [by Markus Birth](https://git.mbirth.uk/flipper_zero/sonicare) |  | [![Author Badge]](https://lab.flipper.net/apps/uk_mbirth_sonicare) |
 | NFC Stock Manager | ![NFC Badge] | [by Endika](https://github.com/Endika/flipper-nfc-stock) |  | [![Author Badge]](https://lab.flipper.net/apps/nfc_stock_manager) |
+| Xiaomi Filter Reset | ![NFC Badge] | [by khmm12](https://github.com/khmm12/flipper-xiaomi-filter-reset) |  | [![Author Badge]](https://lab.flipper.net/apps/xiaomi_filter_reset) |
 | RFID Beacon | ![RFID Badge] | [by nmrr](https://github.com/nmrr/flipperzero-rfidbeacon)  | `A letter/number Morse beacon on 125 kHz` | ![None Badge] |
 | EM4100 universal keys generator (for RFID Fuzzer) | ![RFID Badge] | [by Milk-Cool](https://github.com/Milk-Cool/fz-em4100-generator) |  | [![Author Badge]](https://lab.flipper.net/apps/key_generator) |
 | (Q)M100 UHF RFID | ![RFID Badge] | [by frux-c](https://github.com/frux-c/uhf_rfid) | WIP -> (+Added icon by @xMasterX) | [![UFW Badge]](https://lab.flipper.net/apps/uhf_rfid) |
