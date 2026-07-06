@@ -7,15 +7,16 @@
 #define SUBGHZ_LAST_SETTING_FILE_VERSION 3
 #define SUBGHZ_LAST_SETTINGS_PATH        APP_DATA_PATH("subghz_wardriving_last.settings")
 
-#define SUBGHZ_LAST_SETTING_FIELD_FREQUENCY                         "Frequency"
-#define SUBGHZ_LAST_SETTING_FIELD_PRESET                            "Preset" // AKA Modulation
-#define SUBGHZ_LAST_SETTING_FIELD_PROTOCOL_FILE_NAMES               "ProtocolNames"
-#define SUBGHZ_LAST_SETTING_FIELD_HOPPING_ENABLE                    "Hopping"
-#define SUBGHZ_LAST_SETTING_FIELD_IGNORE_FILTER                     "IgnoreFilter"
-#define SUBGHZ_LAST_SETTING_FIELD_FILTER                            "Filter"
-#define SUBGHZ_LAST_SETTING_FIELD_RSSI_THRESHOLD                    "RSSI"
-#define SUBGHZ_LAST_SETTING_FIELD_DELETE_OLD                        "DelOldSignals"
+#define SUBGHZ_LAST_SETTING_FIELD_FREQUENCY           "Frequency"
+#define SUBGHZ_LAST_SETTING_FIELD_PRESET              "Preset" // AKA Modulation
+#define SUBGHZ_LAST_SETTING_FIELD_PROTOCOL_FILE_NAMES "ProtocolNames"
+#define SUBGHZ_LAST_SETTING_FIELD_HOPPING_ENABLE      "Hopping"
+#define SUBGHZ_LAST_SETTING_FIELD_IGNORE_FILTER       "IgnoreFilter"
+#define SUBGHZ_LAST_SETTING_FIELD_FILTER              "Filter"
+#define SUBGHZ_LAST_SETTING_FIELD_RSSI_THRESHOLD      "RSSI"
+#define SUBGHZ_LAST_SETTING_FIELD_DELETE_OLD          "DelOldSignals"
 
+#define SUBGHZ_LAST_SETTING_FIELD_GPS_PROTOCOL      "GpsProtocol"
 #define SUBGHZ_LAST_SETTING_FIELD_GPS_BAUDRATE      "GpsBaudrate"
 #define SUBGHZ_LAST_SETTING_FIELD_REMOVE_DUPLICATES "RemoveDuplicates"
 #define SUBGHZ_LAST_SETTING_FIELD_REPEATER          "Repeater"
@@ -45,6 +46,8 @@ void subghz_wardriving_last_settings_load(SubGhzLastSettings* instance, size_t p
     instance->filter = SubGhzProtocolFlag_Decodable;
     instance->rssi = SUBGHZ_RAW_THRESHOLD_MIN;
     instance->hopping_threshold = -90.0f;
+    instance->gps_protocol = SubGhzGpsProtocolRpc;
+    instance->gps_baudrate = 0;
 
     Storage* storage = furi_record_open(RECORD_STORAGE);
     FlipperFormat* fff_data_file = flipper_format_file_alloc(storage);
@@ -110,6 +113,13 @@ void subghz_wardriving_last_settings_load(SubGhzLastSettings* instance, size_t p
                    fff_data_file,
                    SUBGHZ_LAST_SETTING_FIELD_GPS_BAUDRATE,
                    &instance->gps_baudrate,
+                   1)) {
+                flipper_format_rewind(fff_data_file);
+            }
+            if(!flipper_format_read_uint32(
+                   fff_data_file,
+                   SUBGHZ_LAST_SETTING_FIELD_GPS_PROTOCOL,
+                   &instance->gps_protocol,
                    1)) {
                 flipper_format_rewind(fff_data_file);
             }
@@ -228,6 +238,10 @@ bool subghz_wardriving_last_settings_save(SubGhzLastSettings* instance) {
 
         if(!flipper_format_write_uint32(
                file, SUBGHZ_LAST_SETTING_FIELD_GPS_BAUDRATE, &instance->gps_baudrate, 1)) {
+            break;
+        }
+        if(!flipper_format_write_uint32(
+               file, SUBGHZ_LAST_SETTING_FIELD_GPS_PROTOCOL, &instance->gps_protocol, 1)) {
             break;
         }
         if(!flipper_format_write_bool(

@@ -35,7 +35,7 @@ void subghz_scene_show_gps_draw_satellites(void* context) {
             subghz->gps->fix_second = 0;
         }
 
-        subghz->gps->cat_realtime(subghz->gps, text_str, latitude, longitude);
+        subghz_gps_cat_realtime(subghz->gps, text_str, latitude, longitude);
     }
 
     widget_add_text_scroll_element(subghz->widget, 0, 0, 128, 64, furi_string_get_cstr(text_str));

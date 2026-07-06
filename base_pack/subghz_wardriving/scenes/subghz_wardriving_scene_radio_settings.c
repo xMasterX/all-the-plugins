@@ -20,15 +20,31 @@ const char* const on_off_text[ON_OFF_COUNT] = {
     "ON",
 };
 
-#define GPS_COUNT 7
-const char* const gps_text[GPS_COUNT] = {
+// index == SubGhzGpsProtocol
+#define GPS_PROTOCOL_COUNT 4
+const char* const gps_protocol_text[GPS_PROTOCOL_COUNT] = {
     "OFF",
+    "RPC",
+    "NMEA",
+    "Ubox",
+};
+
+#define GPS_BAUDRATE_COUNT 6
+const char* const gps_baudrate_text[GPS_BAUDRATE_COUNT] = {
     "4800",
     "9600",
     "19200",
     "38400",
     "57600",
     "115200",
+};
+const uint32_t gps_baudrate_value[GPS_BAUDRATE_COUNT] = {
+    4800,
+    9600,
+    19200,
+    38400,
+    57600,
+    115200,
 };
 
 #define DEBUG_COUNTER_COUNT 17
@@ -120,44 +136,23 @@ static void subghz_scene_receiver_config_set_debug_counter(VariableItem* item) {
     furi_hal_subghz_set_rolling_counter_mult(debug_counter_val[index]);
 }
 
-static void subghz_scene_receiver_config_set_gps(VariableItem* item) {
+// Config only saves; the source is applied once at app start (no plugin reloads).
+static void subghz_scene_receiver_config_set_gps_protocol(VariableItem* item) {
     SubGhz* subghz = variable_item_get_context(item);
     uint8_t index = variable_item_get_current_value_index(item);
 
-    variable_item_set_current_value_text(item, gps_text[index]);
-
-    switch(index) {
-    case 0:
-        subghz->last_settings->gps_baudrate = 0;
-        break;
-    case 1:
-        subghz->last_settings->gps_baudrate = 4800;
-        break;
-    case 2:
-        subghz->last_settings->gps_baudrate = 9600;
-        break;
-    case 3:
-        subghz->last_settings->gps_baudrate = 19200;
-        break;
-    case 4:
-        subghz->last_settings->gps_baudrate = 38400;
-        break;
-    case 5:
-        subghz->last_settings->gps_baudrate = 57600;
-        break;
-    case 6:
-        subghz->last_settings->gps_baudrate = 115200;
-        break;
-    }
+    variable_item_set_current_value_text(item, gps_protocol_text[index]);
+    subghz->last_settings->gps_protocol = index;
     subghz_wardriving_last_settings_save(subghz->last_settings);
+}
 
-    if(subghz->gps) {
-        subghz_gps_plugin_deinit(subghz->gps);
-        subghz->gps = NULL;
-    }
-    if(subghz->last_settings->gps_baudrate != 0) {
-        subghz->gps = subghz_gps_plugin_init(subghz->last_settings->gps_baudrate);
-    }
+static void subghz_scene_receiver_config_set_gps_baudrate(VariableItem* item) {
+    SubGhz* subghz = variable_item_get_context(item);
+    uint8_t index = variable_item_get_current_value_index(item);
+
+    variable_item_set_current_value_text(item, gps_baudrate_text[index]);
+    subghz->last_settings->gps_baudrate = gps_baudrate_value[index];
+    subghz_wardriving_last_settings_save(subghz->last_settings);
 }
 
 static void subghz_scene_receiver_config_set_protocol_file_names(VariableItem* item) {
@@ -209,16 +204,25 @@ void subghz_scene_radio_settings_on_enter(void* context) {
 
     item = variable_item_list_add(
         variable_item_list,
+        "GPS",
+        GPS_PROTOCOL_COUNT,
+        subghz_scene_receiver_config_set_gps_protocol,
+        subghz);
+    value_index = subghz->last_settings->gps_protocol;
+    if(value_index >= GPS_PROTOCOL_COUNT) value_index = 0;
+    variable_item_set_current_value_index(item, value_index);
+    variable_item_set_current_value_text(item, gps_protocol_text[value_index]);
+
+    item = variable_item_list_add(
+        variable_item_list,
         "GPS Baudrate",
-        GPS_COUNT,
-        subghz_scene_receiver_config_set_gps,
+        GPS_BAUDRATE_COUNT,
+        subghz_scene_receiver_config_set_gps_baudrate,
         subghz);
     value_index = value_index_uint32(
-        subghz->last_settings->gps_baudrate,
-        (const uint32_t[]){0, 4800, 9600, 19200, 38400, 57600, 115200},
-        GPS_COUNT);
+        subghz->last_settings->gps_baudrate, gps_baudrate_value, GPS_BAUDRATE_COUNT);
     variable_item_set_current_value_index(item, value_index);
-    variable_item_set_current_value_text(item, gps_text[value_index]);
+    variable_item_set_current_value_text(item, gps_baudrate_text[value_index]);
 
     item = variable_item_list_add(
         variable_item_list,

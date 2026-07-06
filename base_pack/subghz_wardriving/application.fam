@@ -8,7 +8,7 @@ App(
     fap_libs=["assets", "hwdrivers"],
     fap_icon="icon.png",
     fap_icon_assets="ex_icons",
-    sources=["*.c", "!helpers/subghz_wardriving_gps.c", "!helpers/minmea.c"],
+    sources=["*.c", "!helpers/subghz_wardriving_gps.c", "!helpers/minmea.c", "!helpers/ubox.c"],
     fap_category="Sub-GHz",
 )
 
@@ -18,6 +18,6 @@ App(
     apptype=FlipperAppType.PLUGIN,
     entry_point="subghz_gps_plugin_ep",
     requires=["subghz_wardriving"],
-    sources=["helpers/subghz_wardriving_gps.c", "helpers/minmea.c"],
+    sources=["helpers/subghz_wardriving_gps.c", "helpers/minmea.c", "helpers/ubox.c"],
     fal_embedded=True,
 )
