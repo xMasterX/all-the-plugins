@@ -172,8 +172,19 @@ SubGhz* subghz_alloc() {
     //Init Error_str
     subghz->error_str = furi_string_alloc();
 
-    if(subghz->last_settings->gps_baudrate != 0) {
-        subghz->gps = subghz_gps_plugin_init(subghz->last_settings->gps_baudrate);
+    subghz->gps = NULL;
+    switch(subghz->last_settings->gps_protocol) {
+    case SubGhzGpsProtocolNmea:
+    case SubGhzGpsProtocolUbox: {
+        uint32_t baud = subghz->last_settings->gps_baudrate ? subghz->last_settings->gps_baudrate :
+                                                              9600;
+        subghz->gps = subghz_gps_plugin_init(subghz->last_settings->gps_protocol, baud);
+    } break;
+    case SubGhzGpsProtocolRpc:
+        subghz->gps = subghz_gps_rpc_start();
+        break;
+    default:
+        break;
     }
 
     return subghz;
@@ -249,7 +260,11 @@ void subghz_free(SubGhz* subghz) {
 
     // GPS
     if(subghz->gps) {
-        subghz_gps_plugin_deinit(subghz->gps);
+        if(subghz->gps->plugin_app) {
+            subghz_gps_plugin_deinit(subghz->gps);
+        } else {
+            subghz_gps_rpc_stop(subghz->gps);
+        }
     }
 
     subghz_wardriving_last_settings_free(subghz->last_settings);
