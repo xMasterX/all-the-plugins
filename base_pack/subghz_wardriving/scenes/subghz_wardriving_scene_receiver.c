@@ -268,6 +268,11 @@ void subghz_scene_receiver_on_enter(void* context) {
     FuriString* item_time = furi_string_alloc();
 
     if(subghz_rx_key_state_get(subghz) == SubGhzRxKeyStateIDLE) {
+        subghz->gps = subghz_gps_apply(
+            subghz->gps,
+            subghz->last_settings->gps_protocol,
+            subghz->last_settings->gps_baudrate);
+
         subghz_wardriving_txrx_set_preset_internal(
             subghz->txrx,
             subghz->last_settings->frequency,

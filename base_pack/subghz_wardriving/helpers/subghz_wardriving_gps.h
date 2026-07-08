@@ -24,6 +24,7 @@ struct SubGhzGPS {
     uint8_t rx_buf[RX_BUF_SIZE];
     FuriHalSerialHandle* serial_handle;
     SubGhzGpsProtocol protocol;
+    uint32_t baudrate;
     UboxRx ubox;
     FuriTimer* timer;
 
@@ -71,3 +72,23 @@ SubGhzGPS* subghz_gps_rpc_start(void);
  * Stop the inline RPC GPS source.
 */
 void subghz_gps_rpc_stop(SubGhzGPS* subghz_gps);
+
+/**
+ * Stop and free whatever GPS source is active (UART plugin or inline RPC).
+ * NULL-safe.
+*/
+void subghz_gps_stop(SubGhzGPS* subghz_gps);
+
+/**
+ * Reconcile the active GPS source with the current settings.
+ *
+ * Loads, reloads (on protocol or baudrate change) or unloads the source so it
+ * matches @p protocol / @p baudrate. A no-op when the running source already
+ * matches, so it is cheap to call before every Read. Call as:
+ *     subghz->gps = subghz_gps_apply(subghz->gps, protocol, baudrate);
+ *
+ * @param current  currently active source, or NULL if none
+ * @return the source that now matches the settings, or NULL if protocol is off
+ *         (or a UART plugin failed to load)
+*/
+SubGhzGPS* subghz_gps_apply(SubGhzGPS* current, SubGhzGpsProtocol protocol, uint32_t baudrate);
