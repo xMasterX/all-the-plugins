@@ -136,7 +136,6 @@ static void subghz_scene_receiver_config_set_debug_counter(VariableItem* item) {
     furi_hal_subghz_set_rolling_counter_mult(debug_counter_val[index]);
 }
 
-// Config only saves; the source is applied once at app start (no plugin reloads).
 static void subghz_scene_receiver_config_set_gps_protocol(VariableItem* item) {
     SubGhz* subghz = variable_item_get_context(item);
     uint8_t index = variable_item_get_current_value_index(item);

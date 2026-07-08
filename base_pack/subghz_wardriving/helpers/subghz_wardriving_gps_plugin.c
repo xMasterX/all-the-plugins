@@ -122,6 +122,7 @@ SubGhzGPS* subghz_gps_plugin_init(SubGhzGpsProtocol protocol, uint32_t baudrate)
 
         SubGhzGPS* subghz_gps = malloc(sizeof(SubGhzGPS));
         subghz_gps->plugin_app = plugin_app;
+        subghz_gps->baudrate = baudrate;
         subghz_gps_init(subghz_gps, protocol, baudrate);
         return subghz_gps;
 
@@ -142,4 +143,40 @@ void subghz_gps_plugin_deinit(SubGhzGPS* subghz_gps) {
 
     //expansion_enable(furi_record_open(RECORD_EXPANSION));
     //furi_record_close(RECORD_EXPANSION);
+}
+
+void subghz_gps_stop(SubGhzGPS* subghz_gps) {
+    if(!subghz_gps) return;
+    if(subghz_gps->plugin_app) {
+        subghz_gps_plugin_deinit(subghz_gps);
+    } else {
+        subghz_gps_rpc_stop(subghz_gps);
+    }
+}
+
+SubGhzGPS* subghz_gps_apply(SubGhzGPS* current, SubGhzGpsProtocol protocol, uint32_t baudrate) {
+    // The UART plugin defaults an unset baud so the running source and the
+    // requested one are compared on the same resolved value.
+    uint32_t resolved_baud = baudrate ? baudrate : 9600;
+
+    if(current) {
+        bool matches = current->protocol == protocol;
+        if(matches &&
+           (protocol == SubGhzGpsProtocolNmea || protocol == SubGhzGpsProtocolUbox)) {
+            matches = current->baudrate == resolved_baud;
+        }
+        if(matches) return current;
+
+        subghz_gps_stop(current);
+    }
+
+    switch(protocol) {
+    case SubGhzGpsProtocolNmea:
+    case SubGhzGpsProtocolUbox:
+        return subghz_gps_plugin_init(protocol, resolved_baud);
+    case SubGhzGpsProtocolRpc:
+        return subghz_gps_rpc_start();
+    default:
+        return NULL;
+    }
 }
