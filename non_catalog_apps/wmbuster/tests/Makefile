@@ -20,6 +20,17 @@ IZAR_SRC = test_izar.c \
 test_izar: $(IZAR_SRC)
 	$(CC) $(CFLAGS) $(IZAR_SRC) -o $@
 
+APATOR_HCA_SRC = test_apator_hca.c \
+           ../drivers/europe/apator/apator.c \
+           ../drivers/engine/driver.c \
+           ../protocol/wmbus_link.c \
+           ../protocol/wmbus_manuf.c \
+           ../protocol/wmbus_medium.c \
+           ../protocol/wmbus_app_layer.c
+
+test_apator_hca: $(APATOR_HCA_SRC)
+	$(CC) $(CFLAGS) $(APATOR_HCA_SRC) -o $@
+
 PORTS_SRC = test_ports.c \
             ../drivers/europe/bmeters/hydrodigit.c \
             ../drivers/europe/engelmann/hydroclima.c \
@@ -36,12 +47,13 @@ PORTS_SRC = test_ports.c \
 test_ports: $(PORTS_SRC)
 	$(CC) $(CFLAGS) $(PORTS_SRC) -o $@
 
-check: test_link test_izar test_ports
+check: test_link test_izar test_apator_hca test_ports
 	./test_link
 	./test_izar
+	./test_apator_hca
 	./test_ports
 
 clean:
-	rm -f test_link test_izar test_ports
+	rm -f test_link test_izar test_apator_hca test_ports
 
 .PHONY: check clean
