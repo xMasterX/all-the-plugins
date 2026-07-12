@@ -81,6 +81,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | DTMF Dolphin | ![Tools Badge] | [by litui](https://github.com/litui/dtmf_dolphin) |  | [![UFW Badge]](https://lab.flipper.net/apps/dtmf_dolphin) |
 | **Quac! Remote** | ![Tools Badge] | [by rdefeo](https://github.com/rdefeo/quac) | Various fixes by @Willy-JL, Last SubGHz and Link file Fixes by @xMasterX, and first subghz fixes by Dmitry | [![Author Badge]](https://lab.flipper.net/apps/quac) |
 | **FlipNote (Text Editor)** | ![Tools Badge] | [by morty517](https://github.com/morty517/flipnote) | + added custom keyboard with extra symbols | [![Author Badge]](https://lab.flipper.net/apps/flipnote) |
+| **PocketLab** | ![Tools Badge] | [by PerfectoWeb](https://github.com/PerfectoWeb/flipper-pocketlab) | Learn how to use flipper - on flipper! | [![Author Badge]](https://lab.flipper.net/apps/pocketlab) |
 | ESP8266 Deauther plugin | ![GPIO Badge] | [by SequoiaSan](https://github.com/SequoiaSan/FlipperZero-Wifi-ESP8266-Deauther-Module) |  | ![None Badge] |
 | WiFi Scanner plugin | ![GPIO Badge] | [by SequoiaSan](https://github.com/SequoiaSan/FlipperZero-WiFi-Scanner_Module) |  | ![None Badge] |
 | GPIO: Sentry Safe plugin | ![GPIO Badge] | [by H4ckd4ddy](https://github.com/H4ckd4ddy/flipperzero-sentry-safe-plugin) |  | [![UFW Badge]](https://lab.flipper.net/apps/gpio_sentry_safe) |
