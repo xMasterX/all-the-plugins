@@ -24,8 +24,9 @@ time.
 
 ## ✨ Features
 
-- 🎓 **30 labs** across 11 tracks: IR, Sub-GHz, RFID, NFC, iButton, Bad USB,
-  GPIO, Bluetooth, security, system and more
+- 🎓 **36 labs** across 11 tracks: IR, Sub-GHz, RFID, NFC, iButton, Bad USB,
+  GPIO, Bluetooth, security, system and more – including **advanced deep-dives**
+  (MIFARE key recovery / MFKey32, T5577 cloning, IR protocols, and more)
 - 🎲 **Randomized quizzes** – a pool of distractors, shuffled every attempt, so
   you learn the answer, not its position
 - 🧠 **Quiz mode** – a random exam drawn from the labs you've completed, scored
