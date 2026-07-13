@@ -5,7 +5,6 @@
 #include <string.h>
 
 #include "../helpers/pocketlab_sound.h"
-#include "../pocketlab_version.h"
 
 #define ABOUT_PERIOD_MS  40
 #define ABOUT_MATRIX_END 38 // ~1.5 s of matrix rain before the terminal boots
