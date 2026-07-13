@@ -6,6 +6,7 @@
 
 **Gamified, on-device learning for [Flipper Zero](https://github.com/flipperdevices).**
 
+[![Flipper Apps Catalog](https://img.shields.io/badge/Flipper%20Apps%20Catalog-PocketLab-FF8200)](https://lab.flipper.net/apps/pocketlab)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/PerfectoWeb/flipper-pocketlab?color=FF8200&label=release)](https://github.com/PerfectoWeb/flipper-pocketlab/releases/latest)
 [![Flipper](https://img.shields.io/badge/Flipper-Official%20FW-FF8200)](https://flipperzero.one/)
@@ -34,7 +35,8 @@ time.
 - 🏆 **Progression** – XP, levels, a daily streak and unlockable badges, all
   saved on the SD card
 - 🖼️ **Per-topic glyphs** next to each lesson title, so the subject reads at a glance
-- 🔊 **Sound & LED** – audio feedback with the RGB LED blinking to the reward tune
+- 🔊 **Sound, LED & Vibro** – audio, RGB-LED and vibration feedback, each with its
+  own on/off toggle in Settings
 - 🖥️ **Custom animated UI** – tile menu, a badge gallery, stat cards and a
   matrix-rain About screen
 - 📦 **No extra hardware** – pure software, runs on a stock Flipper Zero
@@ -54,14 +56,20 @@ time.
 
 ## 📥 Installation
 
-### A. Quick install (recommended)
+### A. Flipper Apps Catalog (easiest)
+
+Open **[PocketLab on the Flipper Apps Catalog »](https://lab.flipper.net/apps/pocketlab)**
+and hit **Install** from the Flipper mobile app or qFlipper, or find it right on
+the device under **Apps → Tools**.
+
+### B. Manual install
 
 1. Download **`pocketlab.fap`** from the
    [latest release »](https://github.com/PerfectoWeb/flipper-pocketlab/releases/latest/download/pocketlab.fap)
 2. Copy it to your Flipper's SD card into `apps/Tools/`
 3. On the device open **Apps → Tools → PocketLab** 🎉
 
-### B. Build from source (ufbt)
+### C. Build from source (ufbt)
 
 <details>
 <summary>Show build instructions</summary>
