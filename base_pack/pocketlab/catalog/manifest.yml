@@ -12,7 +12,7 @@ sourcecode:
   type: git
   location:
     origin: https://github.com/PerfectoWeb/flipper-pocketlab.git
-    commit_sha: d7d14c7ca0f3a553dd269bb0012b9b5bb3baeae7
+    commit_sha: 3ac57f49ce9a49790326bc48ce3d87d6fbe1270b
     subdir: .
 
 author: "PerfectoWeb"
