@@ -5,7 +5,7 @@
 
 #include "multi_converter_definitions.h"
 
-#define MULTI_CONVERTER_AVAILABLE_UNITS 14
+#define MULTI_CONVERTER_AVAILABLE_UNITS 31
 
 #define multi_converter_get_unit(unit_type) multi_converter_available_units[unit_type]
 #define multi_converter_get_unit_type_offset(unit_type, offset)                                   \
@@ -28,6 +28,14 @@ uint8_t multi_converter_unit_distance_allowed(MultiConverterUnitType);
 // DEG / RAD
 void multi_converter_unit_angle_convert(MultiConverterState* const multi_converter_state);
 uint8_t multi_converter_unit_angle_allowed(MultiConverterUnitType unit_type);
+
+// TONNES / KG / G / MG / POUNDS / OUNCES
+void multi_converter_unit_weight_convert(MultiConverterState* const multi_converter_state);
+uint8_t multi_converter_unit_weight_allowed(MultiConverterUnitType unit_type);
+
+// BIT / BYTE / KB / MB / GB (decimal) + KiB / MiB / GiB (binary)
+void multi_converter_unit_data_convert(MultiConverterState* const multi_converter_state);
+uint8_t multi_converter_unit_data_allowed(MultiConverterUnitType unit_type);
 
 //
 // each unit is made of comma? + negative? + keyboard_length + mini_name + name + convert function + allowed function
@@ -149,6 +157,144 @@ static const MultiConverterUnit multi_converter_unit_rad = {
     multi_converter_unit_angle_convert,
     multi_converter_unit_angle_allowed};
 
+static const MultiConverterUnit multi_converter_unit_t = {
+    1,
+    0,
+    10,
+    "T\0",
+    "Tonnes\0",
+    multi_converter_unit_weight_convert,
+    multi_converter_unit_weight_allowed};
+static const MultiConverterUnit multi_converter_unit_kg = {
+    1,
+    0,
+    10,
+    "KG\0",
+    "Kilograms\0",
+    multi_converter_unit_weight_convert,
+    multi_converter_unit_weight_allowed};
+static const MultiConverterUnit multi_converter_unit_g = {
+    1,
+    0,
+    10,
+    "G\0",
+    "Grams\0",
+    multi_converter_unit_weight_convert,
+    multi_converter_unit_weight_allowed};
+static const MultiConverterUnit multi_converter_unit_mg = {
+    1,
+    0,
+    10,
+    "MG\0",
+    "Milligrams\0",
+    multi_converter_unit_weight_convert,
+    multi_converter_unit_weight_allowed};
+static const MultiConverterUnit multi_converter_unit_lb = {
+    1,
+    0,
+    10,
+    "LB\0",
+    "Pounds\0",
+    multi_converter_unit_weight_convert,
+    multi_converter_unit_weight_allowed};
+static const MultiConverterUnit multi_converter_unit_oz = {
+    1,
+    0,
+    10,
+    "OZ\0",
+    "Ounces\0",
+    multi_converter_unit_weight_convert,
+    multi_converter_unit_weight_allowed};
+
+static const MultiConverterUnit multi_converter_unit_bit = {
+    1,
+    0,
+    10,
+    "b\0",
+    "Bit\0",
+    multi_converter_unit_data_convert,
+    multi_converter_unit_data_allowed};
+static const MultiConverterUnit multi_converter_unit_byte = {
+    1,
+    0,
+    10,
+    "B\0",
+    "Byte\0",
+    multi_converter_unit_data_convert,
+    multi_converter_unit_data_allowed};
+static const MultiConverterUnit multi_converter_unit_kbit = {
+    1,
+    0,
+    10,
+    "kb\0",
+    "Kilobit\0",
+    multi_converter_unit_data_convert,
+    multi_converter_unit_data_allowed};
+static const MultiConverterUnit multi_converter_unit_kbyte = {
+    1,
+    0,
+    10,
+    "kB\0",
+    "Kilobyte\0",
+    multi_converter_unit_data_convert,
+    multi_converter_unit_data_allowed};
+static const MultiConverterUnit multi_converter_unit_mbit = {
+    1,
+    0,
+    10,
+    "Mb\0",
+    "Megabit\0",
+    multi_converter_unit_data_convert,
+    multi_converter_unit_data_allowed};
+static const MultiConverterUnit multi_converter_unit_mbyte = {
+    1,
+    0,
+    10,
+    "MB\0",
+    "Megabyte\0",
+    multi_converter_unit_data_convert,
+    multi_converter_unit_data_allowed};
+static const MultiConverterUnit multi_converter_unit_gbit = {
+    1,
+    0,
+    10,
+    "Gb\0",
+    "Gigabit\0",
+    multi_converter_unit_data_convert,
+    multi_converter_unit_data_allowed};
+static const MultiConverterUnit multi_converter_unit_gbyte = {
+    1,
+    0,
+    10,
+    "GB\0",
+    "Gigabyte\0",
+    multi_converter_unit_data_convert,
+    multi_converter_unit_data_allowed};
+static const MultiConverterUnit multi_converter_unit_kibyte = {
+    1,
+    0,
+    10,
+    "KiB\0",
+    "Kibibyte\0",
+    multi_converter_unit_data_convert,
+    multi_converter_unit_data_allowed};
+static const MultiConverterUnit multi_converter_unit_mibyte = {
+    1,
+    0,
+    10,
+    "MiB\0",
+    "Mebibyte\0",
+    multi_converter_unit_data_convert,
+    multi_converter_unit_data_allowed};
+static const MultiConverterUnit multi_converter_unit_gibyte = {
+    1,
+    0,
+    10,
+    "GiB\0",
+    "Gibibyte\0",
+    multi_converter_unit_data_convert,
+    multi_converter_unit_data_allowed};
+
 // index order set by the MultiConverterUnitType enum element (multi_converter_definitions.h)
 static const MultiConverterUnit multi_converter_available_units[MULTI_CONVERTER_AVAILABLE_UNITS] = {
     [UnitTypeDec] = multi_converter_unit_dec,
@@ -168,4 +314,23 @@ static const MultiConverterUnit multi_converter_available_units[MULTI_CONVERTER_
 
     [UnitTypeDegree] = multi_converter_unit_deg,
     [UnitTypeRadian] = multi_converter_unit_rad,
+
+    [UnitTypeTonnes] = multi_converter_unit_t,
+    [UnitTypeKilograms] = multi_converter_unit_kg,
+    [UnitTypeGrams] = multi_converter_unit_g,
+    [UnitTypeMilligrams] = multi_converter_unit_mg,
+    [UnitTypePounds] = multi_converter_unit_lb,
+    [UnitTypeOunces] = multi_converter_unit_oz,
+
+    [UnitTypeBit] = multi_converter_unit_bit,
+    [UnitTypeByte] = multi_converter_unit_byte,
+    [UnitTypeKilobit] = multi_converter_unit_kbit,
+    [UnitTypeKilobyte] = multi_converter_unit_kbyte,
+    [UnitTypeMegabit] = multi_converter_unit_mbit,
+    [UnitTypeMegabyte] = multi_converter_unit_mbyte,
+    [UnitTypeGigabit] = multi_converter_unit_gbit,
+    [UnitTypeGigabyte] = multi_converter_unit_gbyte,
+    [UnitTypeKibibyte] = multi_converter_unit_kibyte,
+    [UnitTypeMebibyte] = multi_converter_unit_mibyte,
+    [UnitTypeGibibyte] = multi_converter_unit_gibyte,
 };

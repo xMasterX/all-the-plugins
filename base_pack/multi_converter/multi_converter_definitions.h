@@ -41,6 +41,25 @@ typedef enum {
 
     UnitTypeDegree,
     UnitTypeRadian,
+
+    UnitTypeTonnes,
+    UnitTypeKilograms,
+    UnitTypeGrams,
+    UnitTypeMilligrams,
+    UnitTypePounds,
+    UnitTypeOunces,
+
+    UnitTypeBit,
+    UnitTypeByte,
+    UnitTypeKilobit,
+    UnitTypeKilobyte,
+    UnitTypeMegabit,
+    UnitTypeMegabyte,
+    UnitTypeGigabit,
+    UnitTypeGigabyte,
+    UnitTypeKibibyte,
+    UnitTypeMebibyte,
+    UnitTypeGibibyte,
 } MultiConverterUnitType;
 
 typedef struct {

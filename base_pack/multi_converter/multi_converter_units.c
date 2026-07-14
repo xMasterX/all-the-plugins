@@ -259,3 +259,118 @@ void multi_converter_unit_angle_convert(MultiConverterState* const multi_convert
 uint8_t multi_converter_unit_angle_allowed(MultiConverterUnitType unit_type) {
     return (unit_type == UnitTypeDegree || unit_type == UnitTypeRadian);
 }
+
+//
+// TONNES / KG / G / MG / POUNDS / OUNCES
+//
+
+// grams contained in one unit of the given weight type (used as a common base)
+static double multi_converter_unit_weight_grams_per(MultiConverterUnitType unit_type) {
+    switch(unit_type) {
+    case UnitTypeTonnes:
+        return (double)1000000;
+    case UnitTypeKilograms:
+        return (double)1000;
+    case UnitTypeGrams:
+        return (double)1;
+    case UnitTypeMilligrams:
+        return (double)0.001;
+    case UnitTypePounds:
+        return (double)453.59237;
+    case UnitTypeOunces:
+        return (double)28.349523125;
+    default:
+        return (double)1;
+    }
+}
+
+void multi_converter_unit_weight_convert(MultiConverterState* const multi_converter_state) {
+    double a = strtof(multi_converter_state->buffer_orig, NULL);
+    uint8_t overflow = 0;
+
+    // convert origin -> grams -> destination
+    double grams =
+        a * multi_converter_unit_weight_grams_per(multi_converter_state->unit_type_orig);
+    a = grams / multi_converter_unit_weight_grams_per(multi_converter_state->unit_type_dest);
+
+    if(overflow) {
+        multi_converter_unit_set_overflow(multi_converter_state->buffer_dest);
+    } else {
+        int ret = snprintf(
+            multi_converter_state->buffer_dest, MULTI_CONVERTER_NUMBER_DIGITS + 1, "%lf", a);
+
+        if(ret < 0) multi_converter_unit_set_overflow(multi_converter_state->buffer_dest);
+    }
+}
+
+uint8_t multi_converter_unit_weight_allowed(MultiConverterUnitType unit_type) {
+    return (
+        unit_type == UnitTypeTonnes || unit_type == UnitTypeKilograms ||
+        unit_type == UnitTypeGrams || unit_type == UnitTypeMilligrams ||
+        unit_type == UnitTypePounds || unit_type == UnitTypeOunces);
+}
+
+//
+// DATA: BIT / BYTE + decimal (kb/kB/Mb/MB/Gb/GB) + binary (KiB/MiB/GiB)
+//
+// Decimal prefixes step by 1000, binary prefixes by 1024, and 1 byte = 8 bits.
+//
+
+// bits contained in one unit of the given data type (used as a common base)
+static double multi_converter_unit_data_bits_per(MultiConverterUnitType unit_type) {
+    switch(unit_type) {
+    case UnitTypeBit:
+        return (double)1;
+    case UnitTypeByte:
+        return (double)8;
+    case UnitTypeKilobit:
+        return (double)1000;
+    case UnitTypeKilobyte:
+        return (double)8000;
+    case UnitTypeMegabit:
+        return (double)1000000;
+    case UnitTypeMegabyte:
+        return (double)8000000;
+    case UnitTypeGigabit:
+        return (double)1000000000;
+    case UnitTypeGigabyte:
+        return (double)8000000000;
+    case UnitTypeKibibyte:
+        return (double)8192; // 1024 bytes
+    case UnitTypeMebibyte:
+        return (double)8388608; // 1024^2 bytes
+    case UnitTypeGibibyte:
+        return (double)8589934592; // 1024^3 bytes
+    default:
+        return (double)1;
+    }
+}
+
+void multi_converter_unit_data_convert(MultiConverterState* const multi_converter_state) {
+    // strtod (not strtof) so large integer byte/bit counts parse exactly
+    double a = strtod(multi_converter_state->buffer_orig, NULL);
+    uint8_t overflow = 0;
+
+    // convert origin -> bits -> destination
+    double bits =
+        a * multi_converter_unit_data_bits_per(multi_converter_state->unit_type_orig);
+    a = bits / multi_converter_unit_data_bits_per(multi_converter_state->unit_type_dest);
+
+    if(overflow) {
+        multi_converter_unit_set_overflow(multi_converter_state->buffer_dest);
+    } else {
+        int ret = snprintf(
+            multi_converter_state->buffer_dest, MULTI_CONVERTER_NUMBER_DIGITS + 1, "%lf", a);
+
+        if(ret < 0) multi_converter_unit_set_overflow(multi_converter_state->buffer_dest);
+    }
+}
+
+uint8_t multi_converter_unit_data_allowed(MultiConverterUnitType unit_type) {
+    return (
+        unit_type == UnitTypeBit || unit_type == UnitTypeByte || unit_type == UnitTypeKilobit ||
+        unit_type == UnitTypeKilobyte || unit_type == UnitTypeMegabit ||
+        unit_type == UnitTypeMegabyte || unit_type == UnitTypeGigabit ||
+        unit_type == UnitTypeGigabyte || unit_type == UnitTypeKibibyte ||
+        unit_type == UnitTypeMebibyte || unit_type == UnitTypeGibibyte);
+}
