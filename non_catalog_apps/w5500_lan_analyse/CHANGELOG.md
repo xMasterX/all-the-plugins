@@ -1,3 +1,22 @@
+# 2.10.0
+
+## Fixed
+- Out of memory crash when launching the app or opening tools — each tool category (Port Info, Scan, Diagnostics, Utilities, Security, PXE, File Manager) now loads only while it is in use, so the app needs far less free memory at any one time
+- File Manager no longer crashes when you leave it while no W5500 module is connected
+- Tools no longer show "Getting IP via DHCP" when Static IP is enabled in Settings — they now show "Applying static IP". The static address was already being applied correctly; only the on screen message was misleading
+- Static IP, Subnet Mask and Gateway values in Settings now refresh immediately after you edit them, instead of only updating the next time you open Settings
+- Auto Test no longer reports a false "Internet: FAIL" when the connection works — it now checks reachability against public DNS resolvers (8.8.8.8, then 1.1.1.1) that reliably answer ping, instead of a website that may ignore it
+- Auto Test labels the address line "Stat" instead of "DHCP" when Static IP is enabled
+
+## Changed
+- Internal restructure into on demand modules to keep memory use low. All tools work exactly as before — the app just loads each one when you open it and frees it when you leave. No change to features or on screen layout
+
+# 2.9.0
+
+## Added
+- **Manual network settings** — new Static IP option in Settings lets you enter IP address, subnet mask and gateway by hand for use when no DHCP server is available (issue #230)
+- **Full symbol keyboard** for Traceroute and Nslookup — the on-screen keyboard now has a second page with punctuation, so you can type the dot in IP addresses and hostnames (issue #229)
+
 # 2.8.0
 
 ## Added

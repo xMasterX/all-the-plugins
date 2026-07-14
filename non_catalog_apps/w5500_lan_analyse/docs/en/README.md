@@ -51,7 +51,7 @@ Turn your **Flipper Zero + W5500** Ethernet module into a professional-grade por
 | TFTP Client | Utilities | Download config files from network equipment |
 | IPMI Query | Utilities | BMC chassis status, device ID, firmware version |
 | History | -- | Timestamped auto-saved results, browsable and deletable |
-| Settings | -- | Auto-save, sound/vibro, custom DNS, ping config, target persistence, MAC Changer, About |
+| Settings | -- | Auto-save, sound/vibro, custom DNS, static IP (manual network), ping config, target persistence, MAC Changer, About |
 
 ## Documentation
 

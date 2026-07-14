@@ -8,10 +8,19 @@ App(
     fap_icon="assets/icon.png",
     fap_icon_assets="assets",
     fap_author="Dok2d",
-    fap_version="2.8.0",
+    fap_version="2.10.0",
     fap_description="Portable LAN tester & security analyzer: ARP, ping, DHCP, LLDP/CDP, port scan, SNMP, NTP sync, IPMI, TFTP, PXE boot/download, 802.1X, VLAN, rogue DHCP/RA detection via W5500",
     fap_weburl="https://github.com/dok2d/fz-W5500-lan-analyse",
-    sources=["*.c*", "!docs"],
+    sources=[
+        "*.c*",
+        "!docs",
+        "!plugins",
+        "!protocols/stp_vlan.c",
+        "!protocols/dhcp_discover.c",
+        "!protocols/file_manager.c",
+        "!protocols/pxe_server.c",
+        "!protocols/http_download.c",
+    ],
     requires=[
         "gui",
     ],
@@ -30,4 +39,91 @@ App(
             ],
         ),
     ],
+)
+
+# ==================== Category plugins (embedded .fal, loaded on demand) ====================
+
+App(
+    appid="lan_tester_portinfo",
+    apptype=FlipperAppType.PLUGIN,
+    entry_point="lan_tester_portinfo_plugin_ep",
+    requires=["lan_tester"],
+    sources=[
+        "plugins/lan_tester_portinfo.c",
+        "protocols/lldp.c",
+        "protocols/cdp.c",
+        "protocols/stp_vlan.c",
+        "protocols/dhcp_discover.c",
+    ],
+    fal_embedded=True,
+)
+
+App(
+    appid="lan_tester_scan",
+    apptype=FlipperAppType.PLUGIN,
+    entry_point="lan_tester_scan_plugin_ep",
+    requires=["lan_tester"],
+    sources=["plugins/lan_tester_scan.c"],
+    fal_embedded=True,
+)
+
+App(
+    appid="lan_tester_diag",
+    apptype=FlipperAppType.PLUGIN,
+    entry_point="lan_tester_diag_plugin_ep",
+    requires=["lan_tester"],
+    sources=["plugins/lan_tester_diag.c"],
+    fal_embedded=True,
+)
+
+App(
+    appid="lan_tester_util",
+    apptype=FlipperAppType.PLUGIN,
+    entry_point="lan_tester_util_plugin_ep",
+    requires=["lan_tester"],
+    sources=["plugins/lan_tester_util.c"],
+    fal_embedded=True,
+)
+
+App(
+    appid="lan_tester_util2",
+    apptype=FlipperAppType.PLUGIN,
+    entry_point="lan_tester_util2_plugin_ep",
+    requires=["lan_tester"],
+    sources=["plugins/lan_tester_util2.c"],
+    fal_embedded=True,
+)
+
+App(
+    appid="lan_tester_filemgr",
+    apptype=FlipperAppType.PLUGIN,
+    entry_point="lan_tester_filemgr_plugin_ep",
+    requires=["lan_tester"],
+    sources=[
+        "plugins/lan_tester_filemgr.c",
+        "protocols/file_manager.c",
+    ],
+    fal_embedded=True,
+)
+
+App(
+    appid="lan_tester_pxe",
+    apptype=FlipperAppType.PLUGIN,
+    entry_point="lan_tester_pxe_plugin_ep",
+    requires=["lan_tester"],
+    sources=[
+        "plugins/lan_tester_pxe.c",
+        "protocols/pxe_server.c",
+        "protocols/http_download.c",
+    ],
+    fal_embedded=True,
+)
+
+App(
+    appid="lan_tester_security",
+    apptype=FlipperAppType.PLUGIN,
+    entry_point="lan_tester_security_plugin_ep",
+    requires=["lan_tester"],
+    sources=["plugins/lan_tester_security.c"],
+    fal_embedded=True,
 )
