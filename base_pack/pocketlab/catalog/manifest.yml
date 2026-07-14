@@ -12,14 +12,18 @@ sourcecode:
   type: git
   location:
     origin: https://github.com/PerfectoWeb/flipper-pocketlab.git
-    commit_sha: fa2b9de5a56ff0fb1ed43fb2e3f8be4cde91210f
+    commit_sha: d7d14c7ca0f3a553dd269bb0012b9b5bb3baeae7
     subdir: .
+
+author: "PerfectoWeb"
 
 short_description: Learn your Flipper with short, gamified hands-on labs.
 
-description: '@README.md'
+# README has images, which the catalog markdown filter rejects, so the listing
+# uses these image-free docs instead.
+description: '@docs/catalog-description.md'
 
-changelog: '@CHANGELOG.md'
+changelog: '@docs/catalog-changelog.md'
 
 screenshots:
   - screenshots/menu.png
@@ -30,3 +34,4 @@ screenshots:
   - screenshots/achievements.png
   - screenshots/about.png
   - screenshots/reward.png
+  - screenshots/settings.png

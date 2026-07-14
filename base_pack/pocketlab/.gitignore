@@ -18,3 +18,6 @@
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Internal dev handoff (not part of the app)
+/docs/SESSION-BRIEF.md
