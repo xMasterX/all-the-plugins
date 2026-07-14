@@ -1,6 +1,6 @@
 App(
     appid="lan_tester",
-    name="LAN Tester",
+    name="[W5500] LAN Tester",
     apptype=FlipperAppType.EXTERNAL,
     entry_point="lan_tester_app",
     stack_size=4 * 1024,
