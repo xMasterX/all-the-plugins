@@ -6,16 +6,18 @@
 
 #define MORSE_CODE_VERSION 0
 
-//A-Z0-1
-const char morse_array[36][6] = {".-",    "-...",  "-.-.",  "-..",   ".",     "..-.",
+//A-Z0-9 plus symbols
+const char morse_array[37][6] = {".-",    "-...",  "-.-.",  "-..",   ".",     "..-.",
                                  "--.",   "....",  "..",    ".---",  "-.-",   ".-..",
                                  "--",    "-.",    "---",   ".--.",  "--.-",  ".-.",
                                  "...",   "-",     "..-",   "...-",  ".--",   "-..-",
                                  "-.--",  "--..",  ".----", "..---", "...--", "....-",
-                                 ".....", "-....", "--...", "---..", "----.", "-----"};
-const char symbol_array[36] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L',
+                                 ".....", "-....", "--...", "---..", "----.", "-----",
+                                 "-...-"};
+const char symbol_array[37] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L',
                                'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
-                               'Y', 'Z', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
+                               'Y', 'Z', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
+                               '='};
 
 struct MorseCodeWorker {
     FuriThread* thread;
@@ -43,7 +45,7 @@ void morse_code_worker_fill_buffer(MorseCodeWorker* instance, uint32_t duration)
 
 void morse_code_worker_fill_letter(MorseCodeWorker* instance) {
     if(furi_string_size(instance->words) > 63) furi_string_reset(instance->words);
-    for(size_t i = 0; i < sizeof(morse_array); i++) {
+    for(size_t i = 0; i < sizeof(morse_array) / sizeof(morse_array[0]); i++) {
         if(furi_string_cmp_str(instance->buffer, morse_array[i]) == 0) {
             furi_string_push_back(instance->words, symbol_array[i]);
             break;
