@@ -15,6 +15,7 @@
 #include "../protocols/arp_scan.h"
 #include "../protocols/icmp.h"
 #include "../protocols/dns_lookup.h"
+#include "../protocols/port_scan.h"
 #include "../api/lan_tester_ioshim.h"
 #include <furi.h>
 #include <furi_hal.h>
@@ -191,30 +192,62 @@ static void lan_tester_do_autotest(LanTesterApp* app) {
                 lan_tester_update_view(app->text_box_autotest, app->autotest_text);
             }
 
-            /* Step 5: Internet reachability (Socket 2 — only if GW ping OK).
-             * Ping a well-known public DNS resolver that reliably answers ICMP
-             * echo. We deliberately do NOT ping the step-4 DNS-resolved host:
-             * many web hosts (e.g. google.com) drop ICMP, which produced a false
-             * "Internet: FAIL" even with a working connection. Try 8.8.8.8, then
-             * 1.1.1.1 in case one is filtered on the local network. */
+            /* Step 5: Internet reachability, against the target from Settings
+             * (AT Internet IP). We deliberately do NOT ping the step-4
+             * DNS-resolved host: many web hosts drop ICMP, which produced a
+             * false "Internet: FAIL" on a working connection.
+             *
+             * Both checks always run and both are reported, since they answer
+             * different questions: ICMP gives a true round-trip, while the TCP
+             * handshake (on the AT TCP port setting) still succeeds on networks
+             * whose firewall drops ICMP. Any TCP answer proves the path is up:
+             * Open means the port accepted us, Closed means the host replied
+             * RST. Only a timeout (Filtered) is no answer. Internet is only
+             * FAIL when neither replies. */
             if(gw_ok && w5500_hal_get_link_status() && app->autotest_running) {
-                static const uint8_t inet_targets[2][4] = {{8, 8, 8, 8}, {1, 1, 1, 1}};
+                /* ICMP */
                 PingResult ir = {0};
-                bool inet_ok = false;
-                for(uint8_t t = 0; t < 2 && !inet_ok && app->autotest_running; t++) {
-                    inet_ok = icmp_ping(
-                        W5500_PING_SOCKET,
-                        inet_targets[t],
-                        2,
-                        app->ping_timeout_ms,
-                        &ir,
-                        &app->worker_running);
-                }
-                if(inet_ok) {
-                    furi_string_cat_printf(body, "Internet: %lums\n", (unsigned long)ir.rtt_ms);
+                bool icmp_ok = icmp_ping(
+                    W5500_PING_SOCKET,
+                    app->autotest_inet_ip,
+                    2,
+                    app->ping_timeout_ms,
+                    &ir,
+                    &app->worker_running);
+                if(icmp_ok) {
+                    furi_string_cat_printf(body, "Inet ICMP: %lums\n", (unsigned long)ir.rtt_ms);
                 } else {
-                    furi_string_cat_str(body, "Internet: FAIL\n");
+                    furi_string_cat_str(body, "Inet ICMP: no reply\n");
                 }
+                furi_string_set(app->autotest_text, "[Auto Test]\n");
+                furi_string_cat(app->autotest_text, body);
+                lan_tester_update_view(app->text_box_autotest, app->autotest_text);
+
+                /* TCP — run it even when ICMP answered, so both are reported */
+                bool tcp_ok = false;
+                if(app->autotest_running) {
+                    uint32_t t0 = furi_get_tick();
+                    PortState ps = port_scan_tcp(
+                        W5500_SCAN_SOCKET_BASE,
+                        app->autotest_inet_ip,
+                        app->autotest_tcp_port,
+                        app->ping_timeout_ms);
+                    uint32_t rtt = furi_get_tick() - t0;
+                    tcp_ok = (ps != PortStateFiltered);
+                    if(tcp_ok) {
+                        furi_string_cat_printf(
+                            body,
+                            "Inet TCP:%d %lums\n",
+                            app->autotest_tcp_port,
+                            (unsigned long)rtt);
+                    } else {
+                        furi_string_cat_printf(
+                            body, "Inet TCP:%d no reply\n", app->autotest_tcp_port);
+                    }
+                }
+
+                if(!icmp_ok && !tcp_ok) furi_string_cat_str(body, "Internet: FAIL\n");
+
                 furi_string_set(app->autotest_text, "[Auto Test]\n");
                 furi_string_cat(app->autotest_text, body);
                 lan_tester_update_view(app->text_box_autotest, app->autotest_text);

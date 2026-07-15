@@ -50,8 +50,6 @@ static constexpr auto lan_tester_api_table = sort(create_array_t<sym_entry>(
     API_METHOD(lt_getSn_TxMAX, uint16_t, (uint8_t)),
     API_METHOD(wizchip_getnetinfo, void, (wiz_NetInfo*)),
     API_METHOD(wizchip_setnetinfo, void, (wiz_NetInfo*)),
-    // host-resident protocols (use ioLibrary directly)
-    API_METHOD(snmp_client_get, bool, (const uint8_t*, const char*, bool, SnmpGetResult*)),
     // Scan category
     API_METHOD(w5500_hal_macraw_send, uint16_t, (const uint8_t*, uint16_t)),
     API_METHOD(lan_tester_check_dhcp, bool, (LanTesterApp*)),
@@ -77,16 +75,6 @@ static constexpr auto lan_tester_api_table = sort(create_array_t<sym_entry>(
     API_METHOD(port_scan_tcp, int, (uint8_t, const uint8_t*, uint16_t, uint32_t)),
     API_VARIABLE(PORT_PRESET_TOP20, uint16_t[]),
     API_VARIABLE(PORT_PRESET_TOP100, uint16_t[]),
-    API_METHOD(mdns_send_query, bool, (uint8_t)),
-    API_METHOD(
-        mdns_parse_response,
-        bool,
-        (const uint8_t*, uint16_t, const uint8_t*, DiscoveryDevice*)),
-    API_METHOD(ssdp_send_msearch, bool, (uint8_t)),
-    API_METHOD(
-        ssdp_parse_response,
-        bool,
-        (const uint8_t*, uint16_t, const uint8_t*, DiscoveryDevice*)),
     // Diagnostics category
     API_METHOD(lan_tester_get_dns_server, void, (LanTesterApp*, uint8_t*)),
     API_METHOD(dns_lookup, bool, (uint8_t, const uint8_t*, const char*, DnsLookupResult*)),
@@ -98,32 +86,7 @@ static constexpr auto lan_tester_api_table = sort(create_array_t<sym_entry>(
     API_METHOD(lldp_parse, bool, (const uint8_t*, uint16_t, LldpNeighbor*)),
     API_METHOD(cdp_parse, bool, (const uint8_t*, uint16_t, CdpNeighbor*)),
     API_METHOD(cdp_check_frame, uint16_t, (const uint8_t*, uint16_t)),
-    API_METHOD(ipmi_query, bool, (const uint8_t*, IpmiResult*)),
-    API_METHOD(netbios_node_status, bool, (const uint8_t*, NetbiosQueryResult*)),
-    API_METHOD(ntp_diag_query, bool, (const uint8_t*, NtpDiagResult*)),
-    API_METHOD(
-        tftp_client_get,
-        bool,
-        (const uint8_t*, const char*, const char*, TftpClientResult*, volatile bool*)),
-    API_METHOD(wol_send, bool, (uint8_t, const uint8_t*)),
     API_METHOD(
         w5500_hal_set_net_info,
         void,
-        (const uint8_t*, const uint8_t*, const uint8_t*, const uint8_t*)),
-    // Security category
-    API_METHOD(
-        dns_poison_check,
-        bool,
-        (const char*, const uint8_t*, const uint8_t*, DnsPoisonResult*)),
-    API_METHOD(arp_watch_init, void, (ArpWatchState*)),
-    API_METHOD(arp_watch_process_frame, bool, (ArpWatchState*, const uint8_t*, uint16_t)),
-    API_METHOD(rogue_dhcp_detect, bool, (const uint8_t*, RogueDhcpState*, uint32_t)),
-    API_METHOD(rogue_ra_init, void, (RogueRaState*)),
-    API_METHOD(rogue_ra_process_frame, bool, (RogueRaState*, const uint8_t*, uint16_t)),
-    API_METHOD(dhcp_fp_init, void, (DhcpFpState*)),
-    API_METHOD(dhcp_fp_process_frame, bool, (DhcpFpState*, const uint8_t*, uint16_t)),
-    API_METHOD(eapol_probe_test, bool, (const uint8_t*, EapolProbeResult*)),
-    API_METHOD(
-        vlan_hop_test,
-        bool,
-        (const uint8_t*, const uint8_t*, const uint8_t*, uint16_t, VlanHopResult*))));
+        (const uint8_t*, const uint8_t*, const uint8_t*, const uint8_t*))));

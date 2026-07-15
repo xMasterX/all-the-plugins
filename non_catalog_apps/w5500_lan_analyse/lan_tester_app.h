@@ -67,6 +67,7 @@ typedef enum {
     LanTesterMenuItemPortScanFull,
     LanTesterMenuItemMacChanger,
     LanTesterMenuItemTraceroute,
+    LanTesterMenuItemTcpPing,
     LanTesterMenuItemPortScanCustom,
     LanTesterMenuItemPingSweep,
     LanTesterMenuItemDiscovery,
@@ -203,6 +204,12 @@ struct LanTesterApp {
     char port_scan_start_input[6]; /* text buffer "xxxxx" */
     char port_scan_end_input[6];
 
+    /* TCP Ping state (Diagnostics) — connect test for ICMP-filtered networks */
+    char tcp_ping_ip_input[16]; /* text input buffer */
+    char tcp_ping_port_input[6]; /* text buffer "xxxxx" */
+    uint8_t tcp_ping_target[4]; /* parsed target IP */
+    uint16_t tcp_ping_port; /* target port (default 443) */
+
     /* MAC changer state */
     uint8_t mac_changer_input[6]; /* byte input buffer for custom MAC */
 
@@ -263,6 +270,10 @@ struct LanTesterApp {
 
     /* Auto Test settings */
     char autotest_dns_host[64];
+    char autotest_inet_ip_input[16]; /* text input buffer for the Internet target */
+    uint8_t autotest_inet_ip[4]; /* Internet reachability target (default 1.1.1.1) */
+    char autotest_tcp_port_input[6]; /* text buffer "xxxxx" */
+    uint16_t autotest_tcp_port; /* TCP fallback port for the Internet step (default 443) */
     uint8_t autotest_lldp_wait_s;
     bool autotest_arp_enabled;
 

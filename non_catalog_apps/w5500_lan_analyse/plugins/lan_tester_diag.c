@@ -1,5 +1,5 @@
 /*
- * Diagnostics category plugin (Ping, DNS Lookup, Traceroute).
+ * Diagnostics category plugin (Ping, DNS Lookup, Traceroute, TCP Ping).
  * Continuous Ping stays in the host for now (it drives a custom view).
  * The protocols use the ioLibrary and stay in the host, reached via the table.
  */
@@ -11,6 +11,7 @@
 #include "../protocols/icmp.h"
 #include "../protocols/dns_lookup.h"
 #include "../protocols/traceroute.h"
+#include "../protocols/port_scan.h"
 #include "../api/lan_tester_ioshim.h"
 #include <furi.h>
 #include <furi_hal.h>
@@ -22,6 +23,7 @@
 static void lan_tester_do_ping(LanTesterApp* app);
 static void lan_tester_do_dns_lookup(LanTesterApp* app);
 static void lan_tester_do_traceroute(LanTesterApp* app);
+static void lan_tester_do_tcp_ping(LanTesterApp* app);
 
 static void diag_run(LanTesterApp* app, uint32_t op) {
     switch(op) {
@@ -34,9 +36,82 @@ static void diag_run(LanTesterApp* app, uint32_t op) {
     case LanTesterMenuItemTraceroute:
         lan_tester_do_traceroute(app);
         break;
+    case LanTesterMenuItemTcpPing:
+        lan_tester_do_tcp_ping(app);
+        break;
     default:
         break;
     }
+}
+
+/*
+ * TCP Ping — connect test for networks that filter ICMP.
+ *
+ * A TCP handshake proves reachability where ping cannot: an accepted connection
+ * (open) and a refusal (RST -> closed) both mean the host answered us. Only a
+ * timeout means the host is unreachable or the port is silently dropped.
+ * Repeats ping_count times and reports each attempt's round-trip.
+ */
+static void lan_tester_do_tcp_ping(LanTesterApp* app) {
+    FuriString* out = app->tool_text;
+    furi_string_reset(out);
+
+    furi_string_printf(out, "%s\n", lan_tester_net_acquire_msg(app));
+    lan_tester_update_view(app->text_box_tool, out);
+
+    /* check_dhcp (not ensure_dhcp) so a missing module / link reports why */
+    if(!lan_tester_check_dhcp(app)) return;
+
+    furi_string_printf(
+        out,
+        "[TCP Ping] %d.%d.%d.%d:%d\n",
+        app->tcp_ping_target[0],
+        app->tcp_ping_target[1],
+        app->tcp_ping_target[2],
+        app->tcp_ping_target[3],
+        app->tcp_ping_port);
+    lan_tester_update_view(app->text_box_tool, out);
+
+    uint16_t replies = 0;
+    uint32_t rtt_sum = 0;
+    uint32_t rtt_min = UINT32_MAX;
+    uint32_t rtt_max = 0;
+
+    for(uint16_t i = 1; i <= app->ping_count && app->worker_running; i++) {
+        uint32_t t0 = furi_get_tick();
+        PortState ps = port_scan_tcp(
+            W5500_SCAN_SOCKET_BASE, app->tcp_ping_target, app->tcp_ping_port, app->ping_timeout_ms);
+        uint32_t rtt = furi_get_tick() - t0;
+
+        if(ps == PortStateFiltered) {
+            furi_string_cat_printf(out, "%d: timeout\n", i);
+        } else {
+            replies++;
+            rtt_sum += rtt;
+            if(rtt < rtt_min) rtt_min = rtt;
+            if(rtt > rtt_max) rtt_max = rtt;
+            furi_string_cat_printf(
+                out, "%d: %lums %s\n", i, (unsigned long)rtt, ps == PortStateOpen ? "open" : "RST");
+        }
+        lan_tester_update_view(app->text_box_tool, out);
+
+        if(i < app->ping_count && app->worker_running) furi_delay_ms(app->ping_interval_ms);
+    }
+
+    if(replies) {
+        furi_string_cat_printf(
+            out,
+            "%d/%d ok  %lu/%lu/%lums\n",
+            replies,
+            app->ping_count,
+            (unsigned long)rtt_min,
+            (unsigned long)(rtt_sum / replies),
+            (unsigned long)rtt_max);
+    } else {
+        furi_string_cat_str(out, "No response.\nHost down or filtered.\n");
+    }
+
+    lan_tester_save_and_notify(app, "tcp_ping.txt", out);
 }
 
 static const LanTesterCategoryPlugin diag_plugin = {

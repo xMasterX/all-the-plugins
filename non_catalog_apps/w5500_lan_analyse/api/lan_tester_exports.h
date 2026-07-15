@@ -72,19 +72,6 @@ bool icmp_ping(
 int port_scan_tcp(uint8_t socket_num, const uint8_t* target_ip, uint16_t port, uint32_t timeout_ms);
 extern const uint16_t PORT_PRESET_TOP20[];
 extern const uint16_t PORT_PRESET_TOP100[];
-typedef struct DiscoveryDevice DiscoveryDevice;
-bool mdns_send_query(uint8_t socket_num);
-bool mdns_parse_response(
-    const uint8_t* buf,
-    uint16_t len,
-    const uint8_t* from_ip,
-    DiscoveryDevice* device);
-bool ssdp_send_msearch(uint8_t socket_num);
-bool ssdp_parse_response(
-    const uint8_t* buf,
-    uint16_t len,
-    const uint8_t* from_ip,
-    DiscoveryDevice* device);
 
 /* utils (utils/packet_utils.c, utils/oui_lookup.c) */
 uint16_t pkt_get_ethertype(const uint8_t* frame);
@@ -100,15 +87,6 @@ uint32_t pkt_read_u32_be(const uint8_t* buf);
 void pkt_write_u16_be(uint8_t* buf, uint16_t val);
 void pkt_write_u32_be(uint8_t* buf, uint32_t val);
 const char* oui_lookup(const uint8_t* mac);
-
-/* protocols that use ioLibrary directly stay in the host and are exposed here.
-   SnmpGetResult is opaque for the table (real def in protocols/snmp_client.h). */
-typedef struct SnmpGetResult SnmpGetResult;
-bool snmp_client_get(
-    const uint8_t* target_ip,
-    const char* community,
-    bool use_v2c,
-    SnmpGetResult* result);
 
 /* Diagnostics category */
 void lan_tester_get_dns_server(LanTesterApp* app, uint8_t* out_ip);
@@ -130,56 +108,14 @@ bool traceroute_send_hop(
 /* Utilities category (result/state types opaque for the table) */
 typedef struct LldpNeighbor LldpNeighbor;
 typedef struct CdpNeighbor CdpNeighbor;
-typedef struct IpmiResult IpmiResult;
-typedef struct NetbiosQueryResult NetbiosQueryResult;
-typedef struct NtpDiagResult NtpDiagResult;
-typedef struct TftpClientResult TftpClientResult;
 bool lldp_parse(const uint8_t* payload, uint16_t payload_len, LldpNeighbor* neighbor);
 bool cdp_parse(const uint8_t* payload, uint16_t payload_len, CdpNeighbor* neighbor);
 uint16_t cdp_check_frame(const uint8_t* frame, uint16_t frame_len);
-bool ipmi_query(const uint8_t* target_ip, IpmiResult* result);
-bool netbios_node_status(const uint8_t* target_ip, NetbiosQueryResult* result);
-bool ntp_diag_query(const uint8_t* server_ip, NtpDiagResult* result);
-bool tftp_client_get(
-    const uint8_t* server_ip,
-    const char* filename,
-    const char* save_path,
-    TftpClientResult* result,
-    volatile bool* running);
-bool wol_send(uint8_t socket_num, const uint8_t* target_mac);
 void w5500_hal_set_net_info(
     const uint8_t* ip,
     const uint8_t* subnet,
     const uint8_t* gateway,
     const uint8_t* dns);
-
-/* Security category (result/state types opaque for the table) */
-typedef struct DnsPoisonResult DnsPoisonResult;
-typedef struct ArpWatchState ArpWatchState;
-typedef struct RogueDhcpState RogueDhcpState;
-typedef struct RogueRaState RogueRaState;
-typedef struct DhcpFpState DhcpFpState;
-typedef struct EapolProbeResult EapolProbeResult;
-typedef struct VlanHopResult VlanHopResult;
-bool dns_poison_check(
-    const char* hostname,
-    const uint8_t* local_dns,
-    const uint8_t* public_dns,
-    DnsPoisonResult* result);
-void arp_watch_init(ArpWatchState* state);
-bool arp_watch_process_frame(ArpWatchState* state, const uint8_t* frame, uint16_t len);
-bool rogue_dhcp_detect(const uint8_t* our_mac, RogueDhcpState* state, uint32_t listen_ms);
-void rogue_ra_init(RogueRaState* state);
-bool rogue_ra_process_frame(RogueRaState* state, const uint8_t* frame, uint16_t len);
-void dhcp_fp_init(DhcpFpState* state);
-bool dhcp_fp_process_frame(DhcpFpState* state, const uint8_t* frame, uint16_t len);
-bool eapol_probe_test(const uint8_t* our_mac, EapolProbeResult* result);
-bool vlan_hop_test(
-    const uint8_t* our_mac,
-    const uint8_t* our_ip,
-    const uint8_t* target_ip,
-    uint16_t vlan_id,
-    VlanHopResult* result);
 
 #ifdef __cplusplus
 }

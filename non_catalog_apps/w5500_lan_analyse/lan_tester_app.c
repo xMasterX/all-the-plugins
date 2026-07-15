@@ -319,6 +319,12 @@ static void lan_tester_settings_load(LanTesterApp* app) {
     app->ping_timeout_ms = 3000;
     app->ping_interval_ms = 1000;
     strncpy(app->autotest_dns_host, "google.com", sizeof(app->autotest_dns_host));
+    strncpy(app->autotest_inet_ip_input, "1.1.1.1", sizeof(app->autotest_inet_ip_input));
+    strncpy(app->autotest_tcp_port_input, "443", sizeof(app->autotest_tcp_port_input));
+    app->autotest_tcp_port = 443;
+    app->tcp_ping_ip_input[0] = '\0';
+    strncpy(app->tcp_ping_port_input, "443", sizeof(app->tcp_ping_port_input));
+    app->tcp_ping_port = 443;
     app->autotest_lldp_wait_s = 30;
     app->autotest_arp_enabled = true;
 
@@ -393,6 +399,20 @@ static void lan_tester_settings_load(LanTesterApp* app) {
         }
         settings_parse_str(
             buf, "autotest_dns=", app->autotest_dns_host, sizeof(app->autotest_dns_host));
+        settings_parse_str(
+            buf,
+            "autotest_inet=",
+            app->autotest_inet_ip_input,
+            sizeof(app->autotest_inet_ip_input));
+        settings_parse_str(
+            buf,
+            "autotest_tcp_port=",
+            app->autotest_tcp_port_input,
+            sizeof(app->autotest_tcp_port_input));
+        settings_parse_str(
+            buf, "tcp_ping_ip=", app->tcp_ping_ip_input, sizeof(app->tcp_ping_ip_input));
+        settings_parse_str(
+            buf, "tcp_ping_port=", app->tcp_ping_port_input, sizeof(app->tcp_ping_port_input));
         char* at_lldp = strstr(buf, "autotest_lldp_wait=");
         if(at_lldp) {
             int val = atoi(at_lldp + 19);
@@ -484,6 +504,20 @@ static void lan_tester_settings_load(LanTesterApp* app) {
     lan_tester_parse_ip(app->manual_ip_input, app->manual_ip);
     lan_tester_parse_ip(app->manual_mask_input, app->manual_mask);
     lan_tester_parse_ip(app->manual_gw_input, app->manual_gw);
+
+    /* Auto Test Internet reachability target + TCP fallback port */
+    lan_tester_parse_ip(app->autotest_inet_ip_input, app->autotest_inet_ip);
+    {
+        int p = atoi(app->autotest_tcp_port_input);
+        app->autotest_tcp_port = (p >= 1 && p <= 65535) ? (uint16_t)p : 443;
+    }
+
+    /* TCP Ping tool target */
+    lan_tester_parse_ip(app->tcp_ping_ip_input, app->tcp_ping_target);
+    {
+        int p = atoi(app->tcp_ping_port_input);
+        app->tcp_ping_port = (p >= 1 && p <= 65535) ? (uint16_t)p : 443;
+    }
     if(app->net_manual_enabled) lan_tester_seed_manual_cache(app);
 }
 
@@ -505,7 +539,9 @@ static void lan_tester_settings_save(LanTesterApp* app) {
             "autosave=%d\nsound=%d\ndns_custom=%d\ndns_ip=%s\n"
             "net_manual=%d\nmanual_ip=%s\nmanual_mask=%s\nmanual_gw=%s\n"
             "ping_count=%d\nping_timeout=%d\nping_interval=%d\n"
-            "autotest_dns=%s\nautotest_lldp_wait=%d\nautotest_arp=%d\n"
+            "autotest_dns=%s\nautotest_inet=%s\nautotest_tcp_port=%s\n"
+            "tcp_ping_ip=%s\ntcp_ping_port=%s\n"
+            "autotest_lldp_wait=%d\nautotest_arp=%d\n"
             "mac=%02X:%02X:%02X:%02X:%02X:%02X\n"
             "ping_ip=%s\ncont_ping_ip=%s\ndns_host=%s\n"
             "traceroute_host=%s\nport_scan_ip=%s\nping_sweep=%s\n"
@@ -525,6 +561,10 @@ static void lan_tester_settings_save(LanTesterApp* app) {
             app->ping_timeout_ms,
             app->ping_interval_ms,
             app->autotest_dns_host,
+            app->autotest_inet_ip_input,
+            app->autotest_tcp_port_input,
+            app->tcp_ping_ip_input,
+            app->tcp_ping_port_input,
             app->autotest_lldp_wait_s,
             app->autotest_arp_enabled ? 1 : 0,
             app->mac_addr[0],
@@ -1367,10 +1407,13 @@ static void dns_custom_ip_input_callback(void* context) {
     view_dispatcher_switch_to_view(app->view_dispatcher, LanTesterViewSettings);
 }
 
-/* Refresh the Static IP / mask / gateway rows in the settings list so edits show
- * immediately — the list stores its own copy of each value string, so it must be
- * re-set after the input buffers change. Defined after the settings-item enum. */
+/* Refresh the Static IP / mask / gateway and Auto Test Internet rows in the
+ * settings list so edits show immediately — the list stores its own copy of each
+ * value string, so it must be re-set after the input buffers change. Defined
+ * after the settings-item enum. */
 static void lan_tester_settings_refresh_manual(LanTesterApp* app);
+static void lan_tester_settings_refresh_inet(LanTesterApp* app);
+static void lan_tester_settings_refresh_tcp_port(LanTesterApp* app);
 
 /* Shared callback for all three manual network fields (IP / mask / gateway).
  * The ip_keyboard has already written the edited value into its text buffer;
@@ -1385,6 +1428,30 @@ static void manual_net_ip_input_callback(void* context) {
     if(app->net_manual_enabled) lan_tester_seed_manual_cache(app);
     lan_tester_settings_save(app);
     lan_tester_settings_refresh_manual(app);
+    view_dispatcher_switch_to_view(app->view_dispatcher, LanTesterViewSettings);
+}
+
+/* Auto Test Internet target (the host the Internet step checks). */
+static void autotest_inet_ip_input_callback(void* context) {
+    LanTesterApp* app = context;
+    furi_assert(app);
+    lan_tester_parse_ip(app->autotest_inet_ip_input, app->autotest_inet_ip);
+    lan_tester_settings_save(app);
+    lan_tester_settings_refresh_inet(app);
+    view_dispatcher_switch_to_view(app->view_dispatcher, LanTesterViewSettings);
+}
+
+/* Auto Test TCP fallback port (used when the Internet target ignores ping). */
+static void autotest_tcp_port_input_callback(void* context) {
+    LanTesterApp* app = context;
+    furi_assert(app);
+    int p = atoi(app->autotest_tcp_port_input);
+    if(p < 1 || p > 65535) p = 443;
+    app->autotest_tcp_port = (uint16_t)p;
+    /* Normalise the buffer so the row shows what was actually applied */
+    snprintf(app->autotest_tcp_port_input, sizeof(app->autotest_tcp_port_input), "%d", p);
+    lan_tester_settings_save(app);
+    lan_tester_settings_refresh_tcp_port(app);
     view_dispatcher_switch_to_view(app->view_dispatcher, LanTesterViewSettings);
 }
 
@@ -1413,9 +1480,11 @@ typedef enum {
     LanTesterSettingsItemClearHistory = 11,
     LanTesterSettingsItemMacChanger = 12,
     LanTesterSettingsItemAutoTestDnsHost = 13,
-    LanTesterSettingsItemAutoTestLldpWait = 14,
-    LanTesterSettingsItemAutoTestArpScan = 15,
-    LanTesterSettingsItemAbout = 16,
+    LanTesterSettingsItemAutoTestInetIp = 14,
+    LanTesterSettingsItemAutoTestTcpPort = 15,
+    LanTesterSettingsItemAutoTestLldpWait = 16,
+    LanTesterSettingsItemAutoTestArpScan = 17,
+    LanTesterSettingsItemAbout = 18,
     LanTesterSettingsItemCount,
 } LanTesterSettingsItem;
 
@@ -1429,6 +1498,18 @@ static void lan_tester_settings_refresh_manual(LanTesterApp* app) {
     variable_item_set_current_value_text(
         variable_item_list_get(app->settings_list, LanTesterSettingsItemManualGw),
         app->manual_gw_input);
+}
+
+static void lan_tester_settings_refresh_inet(LanTesterApp* app) {
+    variable_item_set_current_value_text(
+        variable_item_list_get(app->settings_list, LanTesterSettingsItemAutoTestInetIp),
+        app->autotest_inet_ip_input);
+}
+
+static void lan_tester_settings_refresh_tcp_port(LanTesterApp* app) {
+    variable_item_set_current_value_text(
+        variable_item_list_get(app->settings_list, LanTesterSettingsItemAutoTestTcpPort),
+        app->autotest_tcp_port_input);
 }
 
 static void settings_enter_callback(void* context, uint32_t index) {
@@ -1531,6 +1612,31 @@ static void settings_enter_callback(void* context, uint32_t index) {
             sizeof(app->autotest_dns_host),
             false);
         /* Override back navigation to return to Settings (not Diagnostics) */
+        view_set_previous_callback(
+            text_input_get_view(app->text_input_tool), lan_tester_nav_back_settings);
+        view_dispatcher_switch_to_view(app->view_dispatcher, LanTesterViewToolInput);
+    } else if(index == LanTesterSettingsItemAutoTestInetIp) {
+        ip_keyboard_setup(
+            app->ip_keyboard,
+            "AutoTest Internet IP:",
+            app->autotest_inet_ip_input,
+            false,
+            autotest_inet_ip_input_callback,
+            app,
+            app->autotest_inet_ip_input,
+            sizeof(app->autotest_inet_ip_input),
+            lan_tester_nav_back_settings);
+        view_dispatcher_switch_to_view(app->view_dispatcher, LanTesterViewIpKeyboard);
+    } else if(index == LanTesterSettingsItemAutoTestTcpPort) {
+        text_input_reset(app->text_input_tool);
+        text_input_set_header_text(app->text_input_tool, "AT TCP port (1-65535):");
+        text_input_set_result_callback(
+            app->text_input_tool,
+            autotest_tcp_port_input_callback,
+            app,
+            app->autotest_tcp_port_input,
+            sizeof(app->autotest_tcp_port_input),
+            false);
         view_set_previous_callback(
             text_input_get_view(app->text_input_tool), lan_tester_nav_back_settings);
         view_dispatcher_switch_to_view(app->view_dispatcher, LanTesterViewToolInput);
@@ -1901,6 +2007,12 @@ static LanTesterApp* lan_tester_app_alloc(void) {
         app->submenu_cat_diag,
         "Traceroute",
         LanTesterMenuItemTraceroute,
+        lan_tester_submenu_callback,
+        app);
+    submenu_add_item(
+        app->submenu_cat_diag,
+        "TCP Ping",
+        LanTesterMenuItemTcpPing,
         lan_tester_submenu_callback,
         app);
     submenu_add_item(
@@ -2281,7 +2393,7 @@ static LanTesterApp* lan_tester_app_alloc(void) {
         "Ethernet analyzer &\n"
         "security toolkit for\n"
         "Flipper Zero + W5500.\n"
-        "34 tools: scan, ping,\n"
+        "35 tools: scan, ping,\n"
         "SNMP, DHCP, LLDP/CDP,\n"
         "802.1X, VLAN, IPMI,\n"
         "TFTP, NTP,\n"
@@ -2358,6 +2470,16 @@ static LanTesterApp* lan_tester_app_alloc(void) {
         variable_item_list_add(app->settings_list, "AT DNS host", 0, NULL, app);
     variable_item_set_current_value_text(item_at_dns, app->autotest_dns_host);
 
+    /* AutoTest Internet target — opens IP keyboard */
+    VariableItem* item_at_inet =
+        variable_item_list_add(app->settings_list, "AT Internet IP", 0, NULL, app);
+    variable_item_set_current_value_text(item_at_inet, app->autotest_inet_ip_input);
+
+    /* AutoTest TCP fallback port — opens text input */
+    VariableItem* item_at_tcp_port =
+        variable_item_list_add(app->settings_list, "AT TCP port", 0, NULL, app);
+    variable_item_set_current_value_text(item_at_tcp_port, app->autotest_tcp_port_input);
+
     /* AutoTest LLDP wait — 10/20/30/60 seconds */
     VariableItem* item_at_lldp = variable_item_list_add(
         app->settings_list,
@@ -2395,6 +2517,9 @@ static LanTesterApp* lan_tester_app_alloc(void) {
     item_ping_interval =
         variable_item_list_get(app->settings_list, LanTesterSettingsItemPingInterval);
     item_at_dns = variable_item_list_get(app->settings_list, LanTesterSettingsItemAutoTestDnsHost);
+    item_at_inet = variable_item_list_get(app->settings_list, LanTesterSettingsItemAutoTestInetIp);
+    item_at_tcp_port =
+        variable_item_list_get(app->settings_list, LanTesterSettingsItemAutoTestTcpPort);
     item_at_lldp =
         variable_item_list_get(app->settings_list, LanTesterSettingsItemAutoTestLldpWait);
     item_at_arp = variable_item_list_get(app->settings_list, LanTesterSettingsItemAutoTestArpScan);
@@ -2414,6 +2539,8 @@ static LanTesterApp* lan_tester_app_alloc(void) {
     variable_item_set_current_value_text(item_manual_ip, app->manual_ip_input);
     variable_item_set_current_value_text(item_manual_mask, app->manual_mask_input);
     variable_item_set_current_value_text(item_manual_gw, app->manual_gw_input);
+    variable_item_set_current_value_text(item_at_inet, app->autotest_inet_ip_input);
+    variable_item_set_current_value_text(item_at_tcp_port, app->autotest_tcp_port_input);
 
     /* Ping count: index = count - 1 */
     variable_item_set_current_value_index(item_ping_count, app->ping_count - 1);
@@ -2821,6 +2948,10 @@ static int32_t lan_tester_worker_fn(void* context) {
         break;
     case LanTesterMenuItemTraceroute:
         lan_tester_run_cat(app, "lan_tester_diag", LanTesterMenuItemTraceroute);
+        lan_tester_update_view(app->text_box_tool, app->tool_text);
+        break;
+    case LanTesterMenuItemTcpPing:
+        lan_tester_run_cat(app, "lan_tester_diag", LanTesterMenuItemTcpPing);
         lan_tester_update_view(app->text_box_tool, app->tool_text);
         break;
     case LanTesterMenuItemPingSweep:
@@ -3344,6 +3475,47 @@ static void lan_tester_port_scan_start_callback(void* context) {
     view_dispatcher_switch_to_view(app->view_dispatcher, LanTesterViewToolInput);
 }
 
+/* ==================== TCP Ping input callbacks ==================== */
+
+/* TCP Ping: step 2 — port entered, run the connect test */
+static void lan_tester_tcp_ping_port_callback(void* context) {
+    LanTesterApp* app = context;
+    furi_assert(app);
+
+    int p = atoi(app->tcp_ping_port_input);
+    if(p < 1 || p > 65535) p = 443;
+    app->tcp_ping_port = (uint16_t)p;
+    /* Normalise the buffer so it shows what was actually applied next time */
+    snprintf(app->tcp_ping_port_input, sizeof(app->tcp_ping_port_input), "%d", p);
+    lan_tester_settings_save(app);
+
+    furi_string_set(app->tool_text, "Connecting...\n");
+    text_box_set_text(app->text_box_tool, furi_string_get_cstr(app->tool_text));
+    lan_tester_worker_start(app, LanTesterMenuItemTcpPing, LanTesterViewToolResult);
+}
+
+/* TCP Ping: step 1 — target IP entered, ask for the port */
+static void lan_tester_tcp_ping_ip_callback(void* context) {
+    LanTesterApp* app = context;
+    furi_assert(app);
+
+    lan_tester_parse_ip(app->tcp_ping_ip_input, app->tcp_ping_target);
+    lan_tester_settings_save(app);
+
+    text_input_reset(app->text_input_tool);
+    text_input_set_header_text(app->text_input_tool, "Port (1-65535):");
+    text_input_set_result_callback(
+        app->text_input_tool,
+        lan_tester_tcp_ping_port_callback,
+        app,
+        app->tcp_ping_port_input,
+        sizeof(app->tcp_ping_port_input),
+        false);
+    view_set_previous_callback(
+        text_input_get_view(app->text_input_tool), lan_tester_nav_back_diag);
+    view_dispatcher_switch_to_view(app->view_dispatcher, LanTesterViewToolInput);
+}
+
 /* ==================== Ping sweep CIDR input callback ==================== */
 
 static void lan_tester_ping_sweep_input_callback(void* context) {
@@ -3814,6 +3986,32 @@ static void lan_tester_submenu_callback(void* context, uint32_t index) {
             sizeof(app->traceroute_host_input),
             false);
         view_dispatcher_switch_to_view(app->view_dispatcher, LanTesterViewHostInput);
+        break;
+
+    case LanTesterMenuItemTcpPing:
+        app->tool_back_view = LanTesterViewCatDiag;
+        /* Pre-fill with the gateway on first use, if we have a lease */
+        if(app->tcp_ping_ip_input[0] == '\0' && app->dhcp_valid) {
+            snprintf(
+                app->tcp_ping_ip_input,
+                sizeof(app->tcp_ping_ip_input),
+                "%d.%d.%d.%d",
+                app->dhcp_gw[0],
+                app->dhcp_gw[1],
+                app->dhcp_gw[2],
+                app->dhcp_gw[3]);
+        }
+        ip_keyboard_setup(
+            app->ip_keyboard,
+            "TCP Ping target IP:",
+            app->tcp_ping_ip_input,
+            false,
+            lan_tester_tcp_ping_ip_callback,
+            app,
+            app->tcp_ping_ip_input,
+            sizeof(app->tcp_ping_ip_input),
+            lan_tester_nav_back_diag);
+        view_dispatcher_switch_to_view(app->view_dispatcher, LanTesterViewIpKeyboard);
         break;
 
     case LanTesterMenuItemMacChanger:

@@ -28,6 +28,7 @@ Turn your **Flipper Zero + W5500 Lite** module into a professional-grade portabl
 | **Continuous Ping** | Real-time RTT graph with min/max/avg and packet loss, configurable interval |
 | **DNS Lookup** | Resolve hostnames via UDP DNS, supports custom DNS server |
 | **Traceroute** | ICMP-based hop-by-hop path discovery, accepts IPs and hostnames with DNS resolve |
+| **TCP Ping** | TCP connect test to any IP and port — reachability check for networks that filter ICMP |
 | **Ping Sweep** | ICMP sweep of an entire subnet with interactive host list — click to ping, scan, or WOL |
 | **Port Scanner** | TCP connect scan: Top-20, Top-100 presets, or custom port range (1-65535) |
 | **LLDP/CDP** | Passive IEEE 802.1AB & Cisco CDP neighbor discovery with full TLV parsing |
@@ -219,6 +220,7 @@ To keep memory use low on the Flipper's limited heap, each tool category is comp
 - **Continuous Ping** — live RTT graph with loss tracking, runs until Back.
 - **DNS Lookup** — resolves a hostname via the DHCP-provided DNS server.
 - **Traceroute** — hop-by-hop ICMP path discovery up to 30 hops.
+- **TCP Ping** — TCP connect test to any IP and port. Use when ICMP is filtered: an accepted connection or a refusal (RST) both prove the host is reachable.
 - **NTP Diagnostics** — stratum, root delay, reference ID, RTT, UTC time and clock diff.
 - **Apply NTP Sync** — apply cached NTP time to Flipper clock (run NTP Diagnostics first).
 - **DNS Poison Check** — compare local vs public DNS responses.
@@ -481,6 +483,7 @@ ufbt install            # установка .fap на SD-карту Flipper
 - **Continuous Ping** — график RTT с отслеживанием потерь.
 - **DNS Lookup** — разрешение имён через DNS.
 - **Traceroute** — ICMP-трассировка до 30 хопов.
+- **TCP Ping** — TCP-проверка доступности по IP и порту. Полезно, когда ICMP заблокирован: и успешное соединение, и отказ (RST) означают, что хост доступен.
 - **NTP Diagnostics** — stratum, root delay, reference ID, RTT, UTC-время и расхождение.
 - **Apply NTP Sync** — применение NTP-времени к часам Flipper (сначала запустите NTP Diagnostics).
 - **DNS Poison Check** — сравнение локального и публичного DNS.
