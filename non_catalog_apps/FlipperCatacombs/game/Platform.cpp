@@ -140,9 +140,15 @@ uint8_t Platform::GetInput() {
 
 // ---------------- DRAW ----------------
 
+static constexpr uint8_t kDisplayPages = DISPLAY_HEIGHT / 8;
+
+static inline int16_t floor_div8(int16_t value) {
+    return (value >= 0) ? (value >> 3) : (int16_t)(-(((-value) + 7) >> 3));
+}
+
 static inline void set_pixel(int16_t x, int16_t y, bool color) {
     if(!g_state) return;
-    if(x < 0 || y < 0 || x >= DISPLAY_WIDTH || y >= DISPLAY_HEIGHT) return;
+    if((uint16_t)x >= DISPLAY_WIDTH || (uint16_t)y >= DISPLAY_HEIGHT) return;
 
     uint8_t* buf = g_state->back_buffer;
     uint16_t idx = (uint16_t)(x + (y >> 3) * DISPLAY_WIDTH);
@@ -168,77 +174,191 @@ uint8_t* Platform::GetScreenBuffer() {
 }
 
 void Platform::DrawVLine(uint8_t x, int8_t y0, int8_t y1, uint8_t pattern) {
-    if(y0 > y1) {
-        int8_t t = y0;
-        y0 = y1;
-        y1 = t;
+    if(!g_state || pattern == 0 || x >= DISPLAY_WIDTH) return;
+
+    int16_t top = y0;
+    int16_t bottom = y1;
+
+    if(top > bottom) {
+        int16_t t = top;
+        top = bottom;
+        bottom = t;
     }
-    for(int y = y0; y <= y1; y++) {
-        if(pattern & (1 << (y & 7))) set_pixel(x, y, 1);
+
+    if(bottom < 0 || top >= DISPLAY_HEIGHT) return;
+
+    if(top < 0) top = 0;
+    if(bottom >= DISPLAY_HEIGHT) bottom = DISPLAY_HEIGHT - 1;
+
+    uint8_t start_page = (uint8_t)(top >> 3);
+    uint8_t end_page = (uint8_t)(bottom >> 3);
+    uint8_t start_bit = (uint8_t)(top & 7);
+    uint8_t end_bit = (uint8_t)(bottom & 7);
+
+    uint8_t* buf = g_state->back_buffer;
+
+    if(start_page == end_page) {
+        uint8_t clip_mask =
+            (uint8_t)((uint8_t)(0xFFu << start_bit) & (uint8_t)(0xFFu >> (7u - end_bit)));
+        buf[(uint16_t)x + (uint16_t)start_page * DISPLAY_WIDTH] |= (uint8_t)(pattern & clip_mask);
+        return;
     }
+
+    buf[(uint16_t)x + (uint16_t)start_page * DISPLAY_WIDTH] |=
+        (uint8_t)(pattern & (uint8_t)(0xFFu << start_bit));
+
+    for(uint8_t page = (uint8_t)(start_page + 1); page < end_page; page++) {
+        buf[(uint16_t)x + (uint16_t)page * DISPLAY_WIDTH] |= pattern;
+    }
+
+    buf[(uint16_t)x + (uint16_t)end_page * DISPLAY_WIDTH] |=
+        (uint8_t)(pattern & (uint8_t)(0xFFu >> (7u - end_bit)));
+}
+
+static inline uint8_t get_page_mask(uint8_t page, uint8_t total_pages, uint8_t height) {
+    if((page + 1u) != total_pages) return 0xFFu;
+    uint8_t tail_bits = (uint8_t)(height & 7u);
+    return tail_bits ? (uint8_t)((1u << tail_bits) - 1u) : 0xFFu;
 }
 
 void Platform::DrawBitmap(int16_t x, int16_t y, const uint8_t* bmp) {
-    if(!bmp) return;
-    uint8_t w = bmp[0], h = bmp[1];
-    const uint8_t* data = bmp + 2;
-    uint8_t pages = (h + 7) >> 3;
+    if(!g_state || !bmp) return;
 
-    for(uint8_t page = 0; page < pages; page++) {
-        for(uint8_t i = 0; i < w; i++) {
-            uint8_t byte = data[i + page * w];
-            for(uint8_t b = 0; b < 8; b++) {
-                uint8_t py = (uint8_t)(page * 8 + b);
-                if(py >= h) break;
-                if(byte & (1 << b)) set_pixel(x + i, y + py, COLOUR_WHITE);
+    uint8_t w = bmp[0];
+    uint8_t h = bmp[1];
+    if(!w || !h) return;
+
+    int16_t x0 = x < 0 ? 0 : x;
+    int16_t x1 = x + w;
+    if(x1 > DISPLAY_WIDTH) x1 = DISPLAY_WIDTH;
+    if(x0 >= x1) return;
+
+    const uint8_t* data = bmp + 2;
+    uint8_t pages = (uint8_t)((h + 7u) >> 3);
+    uint8_t* dst = g_state->back_buffer;
+
+    for(int16_t dx = x0; dx < x1; dx++) {
+        uint8_t sx = (uint8_t)(dx - x);
+        const uint8_t* src_col = data + sx;
+
+        for(uint8_t page = 0; page < pages; page++) {
+            int16_t base_y = y + ((int16_t)page << 3);
+            if(base_y <= -8 || base_y >= DISPLAY_HEIGHT) continue;
+
+            uint8_t src = src_col[(uint16_t)page * w] & get_page_mask(page, pages, h);
+            if(src == 0) continue;
+
+            int16_t dst_page = floor_div8(base_y);
+            uint8_t y_shift = (uint8_t)(base_y - (dst_page << 3));
+
+            uint8_t low = (uint8_t)(src << y_shift);
+            if((uint16_t)dst_page < kDisplayPages) {
+                uint16_t idx = (uint16_t)dx + (uint16_t)dst_page * DISPLAY_WIDTH;
+                dst[idx] &= (uint8_t)~low;
+            }
+
+            if(y_shift && (uint16_t)(dst_page + 1) < kDisplayPages) {
+                uint8_t high = (uint8_t)(src >> (8u - y_shift));
+                uint16_t idx = (uint16_t)dx + (uint16_t)(dst_page + 1) * DISPLAY_WIDTH;
+                dst[idx] &= (uint8_t)~high;
             }
         }
     }
 }
 
 void Platform::DrawSolidBitmap(int16_t x, int16_t y, const uint8_t* bmp) {
-    if(!bmp) return;
-    uint8_t w = bmp[0], h = bmp[1];
-    const uint8_t* data = bmp + 2;
-    uint8_t pages = (h + 7) >> 3;
+    if(!g_state || !bmp) return;
 
-    for(uint8_t page = 0; page < pages; page++) {
-        for(uint8_t i = 0; i < w; i++) {
-            uint8_t byte = data[i + page * w];
-            for(uint8_t b = 0; b < 8; b++) {
-                uint8_t py = (uint8_t)(page * 8 + b);
-                if(py >= h) break;
-                bool pixel = (byte & (1 << b)) != 0;
-                set_pixel(x + i, y + py, pixel ? COLOUR_WHITE : COLOUR_BLACK);
+    uint8_t w = bmp[0];
+    uint8_t h = bmp[1];
+    if(!w || !h) return;
+
+    int16_t x0 = x < 0 ? 0 : x;
+    int16_t x1 = x + w;
+    if(x1 > DISPLAY_WIDTH) x1 = DISPLAY_WIDTH;
+    if(x0 >= x1) return;
+
+    const uint8_t* data = bmp + 2;
+    uint8_t pages = (uint8_t)((h + 7u) >> 3);
+    uint8_t* dst = g_state->back_buffer;
+
+    for(int16_t dx = x0; dx < x1; dx++) {
+        uint8_t sx = (uint8_t)(dx - x);
+        const uint8_t* src_col = data + sx;
+
+        for(uint8_t page = 0; page < pages; page++) {
+            int16_t base_y = y + ((int16_t)page << 3);
+            if(base_y <= -8 || base_y >= DISPLAY_HEIGHT) continue;
+
+            uint8_t page_mask = get_page_mask(page, pages, h);
+            uint8_t src = src_col[(uint16_t)page * w] & page_mask;
+            uint8_t fill = (uint8_t)(~src) & page_mask;
+
+            int16_t dst_page = floor_div8(base_y);
+            uint8_t y_shift = (uint8_t)(base_y - (dst_page << 3));
+
+            uint8_t region_low = (uint8_t)(page_mask << y_shift);
+            uint8_t fill_low = (uint8_t)(fill << y_shift);
+            if((uint16_t)dst_page < kDisplayPages) {
+                uint16_t idx = (uint16_t)dx + (uint16_t)dst_page * DISPLAY_WIDTH;
+                dst[idx] = (uint8_t)((dst[idx] & (uint8_t)~region_low) | fill_low);
+            }
+
+            if(y_shift && (uint16_t)(dst_page + 1) < kDisplayPages) {
+                uint8_t region_high = (uint8_t)(page_mask >> (8u - y_shift));
+                uint8_t fill_high = (uint8_t)(fill >> (8u - y_shift));
+                uint16_t idx = (uint16_t)dx + (uint16_t)(dst_page + 1) * DISPLAY_WIDTH;
+                dst[idx] = (uint8_t)((dst[idx] & (uint8_t)~region_high) | fill_high);
             }
         }
     }
 }
 
 void Platform::DrawSprite(int16_t x, int16_t y, const uint8_t* bmp, uint8_t frame) {
-    if(!bmp) return;
+    if(!g_state || !bmp) return;
 
     uint8_t w = bmp[0];
     uint8_t h = bmp[1];
-    uint8_t pages = (h + 7) >> 3;
+    if(!w || !h) return;
+
+    int16_t x0 = x < 0 ? 0 : x;
+    int16_t x1 = x + w;
+    if(x1 > DISPLAY_WIDTH) x1 = DISPLAY_WIDTH;
+    if(x0 >= x1) return;
+
+    uint8_t pages = (uint8_t)((h + 7u) >> 3);
     uint16_t frame_size = (uint16_t)(w * pages);
+    const uint8_t* data = bmp + 2 + (uint32_t)frame * frame_size * 2u;
+    uint8_t* dst = g_state->back_buffer;
 
-    const uint8_t* data = bmp + 2 + (uint32_t)frame * frame_size * 2;
+    for(int16_t dx = x0; dx < x1; dx++) {
+        uint8_t sx = (uint8_t)(dx - x);
 
-    for(uint8_t page = 0; page < pages; page++) {
-        for(uint8_t i = 0; i < w; i++) {
-            uint16_t idx = (uint16_t)((i + page * w) * 2);
-            uint8_t s = data[idx + 0];
-            uint8_t m = data[idx + 1];
+        for(uint8_t page = 0; page < pages; page++) {
+            int16_t base_y = y + ((int16_t)page << 3);
+            if(base_y <= -8 || base_y >= DISPLAY_HEIGHT) continue;
 
-            for(uint8_t b = 0; b < 8; b++) {
-                uint8_t py = (uint8_t)(page * 8 + b);
-                if(py >= h) break;
+            uint16_t src_index = (uint16_t)((page * w + sx) * 2u);
+            uint8_t src = data[src_index];
+            uint8_t mask = data[src_index + 1] & get_page_mask(page, pages, h);
+            if(mask == 0) continue;
 
-                uint8_t bit = (uint8_t)(1u << b);
-                if(m & bit) {
-                    set_pixel(x + i, y + py, (s & bit) ? COLOUR_BLACK : COLOUR_WHITE);
-                }
+            uint8_t fill = (uint8_t)(src & mask);
+            int16_t dst_page = floor_div8(base_y);
+            uint8_t y_shift = (uint8_t)(base_y - (dst_page << 3));
+
+            uint8_t region_low = (uint8_t)(mask << y_shift);
+            uint8_t fill_low = (uint8_t)(fill << y_shift);
+            if((uint16_t)dst_page < kDisplayPages) {
+                uint16_t idx = (uint16_t)dx + (uint16_t)dst_page * DISPLAY_WIDTH;
+                dst[idx] = (uint8_t)((dst[idx] & (uint8_t)~region_low) | fill_low);
+            }
+
+            if(y_shift && (uint16_t)(dst_page + 1) < kDisplayPages) {
+                uint8_t region_high = (uint8_t)(mask >> (8u - y_shift));
+                uint8_t fill_high = (uint8_t)(fill >> (8u - y_shift));
+                uint16_t idx = (uint16_t)dx + (uint16_t)(dst_page + 1) * DISPLAY_WIDTH;
+                dst[idx] = (uint8_t)((dst[idx] & (uint8_t)~region_high) | fill_high);
             }
         }
     }

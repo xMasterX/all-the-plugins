@@ -1,0 +1,71 @@
+name: FAP Build & Auto Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: flipperdevices/flipperzero-ufbt-action@v0.1
+        id: build-app
+        with:
+          sdk-channel: release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name }}-${{ steps.build-app.outputs.suffix }}
+          path: ${{ steps.build-app.outputs.fap-artifacts }}
+
+      - id: ver
+        shell: bash
+        run: |
+          set -euo pipefail
+          LAST_TAG="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1 || true)"
+          if [[ -z "${LAST_TAG}" ]]; then
+            LAST_TAG="v1.0.0"
+          fi
+          v="${LAST_TAG#v}"
+          IFS='.' read -r MA MI PA <<< "${v}"
+          NEXT_TAG="v${MA}.${MI}.$((PA+1))"
+          echo "next_tag=${NEXT_TAG}" >> "$GITHUB_OUTPUT"
+
+      - shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.ver.outputs.next_tag }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            exit 0
+          fi
+          git tag -a "$TAG" -m "Auto release $TAG"
+          git push origin "$TAG"
+
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.ver.outputs.next_tag }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            exit 0
+          fi
+          gh release create "$TAG" --title "$TAG" --notes "Automated build from ${{ github.sha }}" ${{ steps.build-app.outputs.fap-artifacts }}
