@@ -1,5 +1,8 @@
 [English](README.md) | [繁體中文](README_zh-TW.md) | [简体中文](README_zh-CN.md)
 
+> [!WARNING]
+> **本翻譯可能落後於英文版。** 功能描述、CAN ID 表、硬體接線指南等以 [英文 README](README.md) 為準。如果你發現翻譯與英文版不一致，歡迎提交 PR 修正。
+
 # Tesla Mod — Flipper Zero
 
 [![GitHub stars](https://img.shields.io/github/stars/hypery11/flipper-tesla-fsd?style=flat-square&logo=github)](https://github.com/hypery11/flipper-tesla-fsd/stargazers)
@@ -152,6 +155,18 @@ git clone https://github.com/hypery11/flipper-tesla-fsd.git applications_user/te
 | Model S / X（2021+） | HW4 | `>= 2026.2.3`（除 2026.8.6） | Auto | 支援 |
 | Model S / X（2016-2019） | HW1 / HW2 | 任何 | Legacy | v2.0 已實作，**待上車驗證** |
 
+### 14.x 實驗性開關（預設全部關閉）
+
+針對 Tesla 2026.14.x / 2026.20 行為，**預設全部關閉**。這些是探針，不是已確認的通用修法 — 即時狀態見 [#122](https://github.com/hypery11/flipper-tesla-fsd/issues/122)。在 ESP32 網頁儀表板切換（部分也在 Flipper 設定中）。
+
+| 開關 | 說明 |
+|------|------|
+| **Abort Guard**（ESP32） | Steer-jerk 緩解（[#108](https://github.com/hypery11/flipper-tesla-fsd/issues/108)）。啟動瞬間的方向盤抽動其實是車自己**中止**接管（`DAS_autopilotState` → `8 ABORTING` → `9 ABORTED`）。開啟後一偵測到 abort 狀態就立刻切掉所有 activation 注入，並維持到乾淨脫離。**已上車驗證：** 在寬／直路上消除了抽動（數百次循環 0 次，原本約 1/25–30）。侷限：部分窄路會直接跳到 `FAULT (9)`、沒有前導訊號，擋不住。 |
+| **Soft Engage** | Steer-jerk 緩解（[#108](https://github.com/hypery11/flipper-tesla-fsd/issues/108)）。把啟動邊緣的注入壓住，直到方向盤回到中心 ±5° 內。需要匯流排上有 `0x129`（方向盤角度）；沒有就退化成只有 AP-First。直路抽動已大致被 Abort Guard 取代。 |
+| **Nag Burst** | 以爆發／暫停方式回放 `0x370`（約 1 秒開 / 1.5 秒關），而非連續（[#122](https://github.com/hypery11/flipper-tesla-fsd/issues/122)）。休息期被認為是一些在野裝置能躲過更嚴格 14.x nag 偵測的原因。搭配 ±1.8 Nm 轉向扭力上限。 |
+| **EPAS-faithful（Mode-C）** | 模擬真實 EPAS 的 demand-state 扭力模型，不去翻 `handsOnLevel`（[#100](https://github.com/hypery11/flipper-tesla-fsd/issues/100)）。用於標準 nag 抑制會觸發 preflight 的車。**尚未上車確認。** |
+| **Signal Map**（ESP32 → 進階） | 自訂 nag 抑制讀取 AP-state／hands-on／方向盤的位置：`id + byte/shift/mask`（[#122](https://github.com/hypery11/flipper-tesla-fsd/issues/122)）。用於 `0x39B`/`0x399` 佈局不同的車型變體。有新鮮度閘門 — 設錯會 fail-closed。DAS id 留 `0` 為自動偵測。 |
+
 ### 社群測試回報
 
 實車回報（用 [Car compatibility report](https://github.com/hypery11/flipper-tesla-fsd/issues/new?template=car_compatibility.yml) issue template 自己回報）：
@@ -215,7 +230,7 @@ git clone https://github.com/hypery11/flipper-tesla-fsd.git applications_user/te
 
 | 專案 | 是什麼 | 硬體 |
 |------|--------|------|
-| [slxslx/tesla-open-can-mod-slx-repo](https://gitlab.com/slxslx/tesla-open-can-mod-slx-repo) | 原始 Tesla-OPEN-CAN-MOD 上游 namespace 被下架後事實上的接班 fork。範圍更廣 — 「general CAN mod tool, not just FSD」 | Adafruit RP2040 CAN、Feather M4、ESP32、M5Stack ATOMIC CAN |
+| [slxslx/tesla-open-can-mod-slx-repo](https://gitlab.com/slxslx/tesla-open-can-mod-slx-repo) | 原始 Tesla-OPEN-CAN-MOD namespace 改名搬到 ev-open-can-tools（GitLab 仍在、開發移往 GitHub）後的社群 fork。範圍更廣 — 「general CAN mod tool, not just FSD」 | Adafruit RP2040 CAN、Feather M4、ESP32、M5Stack ATOMIC CAN |
 | ESP32 移植 — PR [#6](https://github.com/hypery11/flipper-tesla-fsd/pull/6) by @elonleo | 把本專案 CAN 邏輯完整移植到 ESP32，內建 WiFi 網頁儀表板。~$14 的 Flipper + Add-On 替代方案 | M5Stack ATOM Lite + ATOMIC CAN、Waveshare ESP32-S3-RS485-CAN |
 | [tumik/S3XY-candump](https://github.com/tumik/S3XY-candump) | 用 enhauto S3XY Commander 當 Panda-protocol bridge 透過 WiFi dump 整條 Tesla CAN bus 的 Python 工具 | Commander dongle |
 | [dzid26/ESP32-DualCAN](https://github.com/dzid26/ESP32-DualCAN) | 「Dorky Commander」— 開源硬體版的 enhauto S3XY Commander | ESP32 + dual CAN |
@@ -226,6 +241,10 @@ git clone https://github.com/hypery11/flipper-tesla-fsd.git applications_user/te
 
 - [commaai/opendbc](https://github.com/commaai/opendbc) — Tesla CAN 訊號資料庫
 - [ElectronicCats/flipper-MCP2515-CANBUS](https://github.com/ElectronicCats/flipper-MCP2515-CANBUS) — Flipper 用 MCP2515 驅動
+- 社群貢獻者 — 本專案賴以運作的實車測試、擷取與研究：
+  - **協議、nag killer 與 2026.14.x：** @jewelrylin（T-2CAN 雙匯流排擷取、frame-content preflight 測試、X179 Service Mode 針腳圖）、@DrStrangeglovebox（非凡 `0x370` 參考擷取 + HW4 雙 CAN 資料 + 安全發現）、@ssw0209-sys（Mode-C 轉向扭力參考 + HW4 14.x 測試）、@0xAccretion（HW4 Highland 國產車 DAS 佈局發現，#116/#117）、@dunckencn（國行 HW3 start-after-AP 驗證、steer-jerk 與 bus-off 回報）、@kristopf007（HW4 14.x 實車測試）
+  - **功能、擷取與 PR：** @JakNo（ScrollPress AP / `0x3C2`）、@vrs11（Continuous AP）、@sqladm1n（RTC 擷取日誌 PR + 匯流排/接線排查）、@DmitroPanteliuk（全速率 `0x229` 擷取）、@se7en7777777（`0x485` / Highland / 校驗和分析）、@RoyRakete（TLSSC 封禁車組合）、@mamixsystem（post-SOP10 連接器參考）
+  - **封禁研究、平台測試、ESP32、bug 修復：** @THER4iN、@MiniCS、@kp43h8、@gauner1986、@dmagyar、@ViPiMP、@marcobellinoroci-source、@danpadure、@bruvv、@Symness、@hkloudou、@nagotti、@patatman、@JordanzhaoD
 - `Starmixcraft/tesla-fsd-can-mod` — 原始 CanFeather FSD 研究（GitLab 上已被下架，鏡像在 [Karolynaz/waymo-fsd-can-mod](https://github.com/Karolynaz/waymo-fsd-can-mod)）
 - mikegapinski/tesla-can-explorer — 從 Tesla 主機 `libQtCarVAPI.so` 萃取的 4 萬個 Tesla CAN 訊號字典
 - talas9/tesla_can_signals — 各車型 wire format 對照

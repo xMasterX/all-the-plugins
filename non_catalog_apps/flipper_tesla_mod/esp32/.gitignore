@@ -1,2 +1,5 @@
 .pio/
 .vscode/
+build_output/
+TESLA.md
+PROJECT.md

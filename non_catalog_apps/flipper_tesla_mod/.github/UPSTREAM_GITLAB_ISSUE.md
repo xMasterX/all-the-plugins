@@ -1,3 +1,8 @@
+> Note: the original GitLab upstream (`Tesla-OPEN-CAN-MOD`) is now dormant — the
+> group was renamed to `ev-open-can-tools` and active development moved to GitHub
+> at https://github.com/ev-open-can-tools/ev-open-can-tools . Post coordination
+> there, not on GitLab.
+
 **Title:** Flipper Zero port of this project
 
 **Body:**
@@ -27,4 +32,5 @@ Happy to coordinate if you want to link to it or if there are upstream changes w
 
 ---
 
-Open at: https://gitlab.com/Tesla-OPEN-CAN-MOD/tesla-open-can-mod/-/issues/new
+Open at: https://github.com/ev-open-can-tools/ev-open-can-tools/issues/new
+(the GitLab `Tesla-OPEN-CAN-MOD` tracker is dormant — use the GitHub repo above)

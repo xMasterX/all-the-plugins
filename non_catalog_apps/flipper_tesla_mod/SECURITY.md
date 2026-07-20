@@ -20,10 +20,16 @@
 > **Tesla has begun issuing VIN-level bans** (confirmed April 2026,
 > issue #18). Affected vehicles lose the TLSSC toggle silently — no OTA
 > update, no warning. The ban persists across account transfers, FSD
-> re-subscriptions, and software reinstalls from Service. CAN injection
-> cannot override a VIN-level ban. Pulling the SIM card before use
-> reduces but does not eliminate detection risk. Community member
-> @THER4iN documented the full ban sequence with testing evidence.
+> re-subscriptions, and software reinstalls from Service. Pulling the
+> SIM card before use reduces but does not eliminate detection risk.
+>
+> **What we now know about the ban mechanism** (community research, April 2026):
+> - The ban downgrades `GTW_autopilot` tier from SELF_DRIVING (3) to ENHANCED (2) in `0x7FF` mux=2 byte[5] bits 4:2
+> - `0x3FD` mux=0 byte[4] bit 7 (TLSSC UI visible flag) is independently cleared
+> - `0x259 APP_fsdSuspendState` is set to SUSPENDED on banned cars
+> - The AP ECU's primary entitlement path appears to be **Ethernet** — shadow-injecting `0x7FF` alone does not override the ban. However, other CAN-side mechanisms DO affect AP behavior: **TLSSC Restore (0x331) + 0x3FD mux0 bit38** has been confirmed by @RoyRakete to reliably re-enable AP/TACC on banned HW3 / 2026.2.6 ([#18](https://github.com/hypery11/flipper-tesla-fsd/issues/18#issuecomment-4413430516))
+> - TLSSC Restore alone can partially recover stop sign / traffic light control on Palladium and HW4 platforms, but does NOT restore full FSD
+> - Ban enforcement is platform-specific: Intel HW3 is more aggressive than Palladium/HW4
 
 This project is published for testing, research, and educational purposes.
 It is intended for use on **private property** and **off public roads**
@@ -74,6 +80,23 @@ project's TX path can write to:
 - `0x082` `UI_tripPlanning` — periodic write of `0x05` in byte 0 to
   trigger battery preconditioning, only when the user enables the
   Precondition setting
+- `0x331` `DAS_autopilotConfig` — overwrites byte[0] lower 6 bits to
+  0x1B (SELF_DRIVING) for TLSSC Restore on banned vehicles; only when
+  the user enables the TLSSC Restore setting
+- `0x3F8` `UI_driverAssistControl` — Nav FSD Route (bits 13/48/49),
+  Hands-Off (bit14), Dev Mode (bit5), Force LHD (bits 40-41),
+  Telemetry Off (bit43); only when the corresponding Settings toggle
+  is ON
+- `0x7FF` `GTW_carConfig` — replays the learned-healthy snapshot when
+  GTW Config Replay (formerly "Ban Shield") detects the gateway has
+  modified a frame; only when the feature is armed
+- `0x3C2` `VCLEFT_switchStatus` — on mux=1 frames, runs a time-based
+  scroll-wheel engage gesture: holds `swcRightPressed` (bits 12-13)
+  ~250 ms, emits `swcRightScrollTicks` up (bits 24-29) ~150 ms, holds
+  `swcRightPressed` ~250 ms, then one final scroll-up. Only when the
+  ScrollPress AP setting is ON, op mode is Service, HW is detected as
+  HW4, and `DAS_autopilotState` has transitioned from UNAVAIL to AVAIL
+  since the last firing. Does not write to `0x3FD`
 
 It does NOT write to:
 
@@ -107,7 +130,12 @@ sure you're not perturbing the bus.
 
 Before each session:
 
-1. Pull the SIM card from the car (Model 3/Y: behind the glovebox)
+1. Disable cellular uplink — on cars with a physical SIM (some
+   pre-2024 builds), pull it from behind the glovebox. On cars with
+   eSIM (most 2024+ builds), disconnect the TCU modem (requires trim
+   removal) or park in a low-coverage area (underground garage,
+   metal-shielded structure). There is no user-facing "airplane mode"
+   toggle on Tesla.
 2. Disable WiFi on the car (Settings → WiFi → Forget all networks)
 3. Plug Flipper + Add-On into OBD-II
 4. Boot the app, **stay in Listen-Only**

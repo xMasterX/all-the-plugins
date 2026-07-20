@@ -1,0 +1,120 @@
+name: build
+
+# Builds the Flipper .fap and every ESP32 firmware variant on each push, PR,
+# and tag. Tag pushes (v*) also attach all artifacts to the GitHub Release so
+# testers can download a coherent build without a local toolchain.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed for the release-upload job on tags
+
+jobs:
+  host-tests:
+    name: Host unit tests (protocol core)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build + run protocol-core tests
+        run: make -C test check
+
+  flipper-fap:
+    name: Flipper .fap (ufbt)
+    needs: [host-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install ufbt
+        run: pip install --upgrade ufbt
+      - name: Fetch SDK (release channel)
+        run: ufbt update --channel=release
+      - name: Build app
+        run: ufbt
+      - name: Collect .fap
+        run: |
+          mkdir -p out
+          # ufbt drops the artifact in dist/ and/or .ufbt/build/
+          find dist .ufbt/build -name 'tesla_mod.fap' -exec cp {} out/ \; 2>/dev/null || true
+          ls -la out
+          test -f out/tesla_mod.fap
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flipper-tesla_mod-fap
+          path: out/tesla_mod.fap
+          if-no-files-found: error
+
+  esp32-matrix:
+    name: ESP32 ${{ matrix.env }}
+    needs: [host-tests]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        env:
+          - m5stack-atom
+          - m5stack-atom-matrix
+          - m5stack-atom-swap-pins
+          - esp32-mcp2515
+          - esp32-lilygo
+          - lilygo-t2can
+          - ttgo-tdisplay
+          - waveshare-s3-can
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            esp32/.pio
+          key: pio-${{ matrix.env }}-${{ hashFiles('esp32/platformio.ini') }}
+      - name: Install PlatformIO
+        run: pip install --upgrade platformio
+      - name: Build ${{ matrix.env }}
+        working-directory: esp32
+        run: pio run -e ${{ matrix.env }}
+      - name: Stage firmware
+        working-directory: esp32
+        run: |
+          mkdir -p out
+          cp ".pio/build/${{ matrix.env }}/firmware.bin" "out/tesla-fsd-${{ matrix.env }}.bin"
+          test -f ".pio/build/${{ matrix.env }}/firmware.bin"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: esp32-${{ matrix.env }}
+          path: esp32/out/tesla-fsd-${{ matrix.env }}.bin
+          if-no-files-found: error
+
+  release:
+    name: Attach artifacts to release
+    needs: [flipper-fap, esp32-matrix]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Flatten + rename
+        run: |
+          mkdir -p release
+          find artifacts -name '*.fap' -exec cp {} release/ \;
+          find artifacts -name '*.bin' -exec cp {} release/ \;
+          ls -la release
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${GITHUB_REF_NAME}" release/* --repo "${GITHUB_REPOSITORY}" --clobber

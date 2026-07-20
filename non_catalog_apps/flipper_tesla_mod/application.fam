@@ -3,13 +3,14 @@ App(
     name="Tesla Mod",
     apptype=FlipperAppType.EXTERNAL,
     entry_point="tesla_fsd_main",
+    sources=["*.c*", "!test", "!tools", "!examples"],  # FAP build: exclude host tests, Python tooling, and .cantest examples (the *.c* glob would otherwise match .cantest)
     requires=["gui"],
-    stack_size=4 * 1024,
+    stack_size=8 * 1024,
     fap_icon="icon.png",
     fap_category="GPIO",
     fap_icon_assets="assets",
     fap_author="hypery11",
-    fap_version="2.9.0",
+    fap_version="2.16.1",
     fap_description="Tesla CAN bus toolkit — FSD region-gate bypass, nag killer, BMS dashboard, and more. Requires CAN Add-On.",
     fap_weburl="https://github.com/hypery11/flipper-tesla-fsd",
 )
