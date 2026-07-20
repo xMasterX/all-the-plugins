@@ -1,3 +1,14 @@
+# v1.7
+
+## Added
+- GPS Baudrate selection (@xMasterX)
+- Ability to add GPS to file (@xMasterX)
+
+# v1.6
+
+## Changed
+- N/A
+
 # v1.5
 
 ## Changed

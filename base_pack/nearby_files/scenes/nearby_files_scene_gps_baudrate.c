@@ -153,7 +153,7 @@ bool nearby_files_scene_gps_baudrate_on_event(void* context, SceneManagerEvent e
 
         if(new_baudrate != 0) {
             if(gps_reader_set_baudrate(app->gps_reader, new_baudrate)) {
-                nearby_files_save_config_baudrate(new_baudrate);
+                nearby_files_save_config(app);
                 nearby_files_scene_gps_baudrate_show_result(app->dialogs, new_baudrate);
             }
             scene_manager_previous_scene(app->scene_manager);

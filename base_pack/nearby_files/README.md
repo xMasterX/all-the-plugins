@@ -1,5 +1,8 @@
 # Nearby Files
 
+[![](https://img.shields.io/badge/install-app_catalog-orange?style=for-the-badge)](https://lab.flipper.net/apps/nearby_files)
+[![](https://img.shields.io/github/v/release/Stichoza/flipper-nearby-files?style=for-the-badge)](https://github.com/Stichoza/flipper-nearby-files/releases/latest)
+
 A GPS-enabled file browser for Flipper Zero that displays SubGHz, NFC, and RFID files sorted by distance from your current location.
 
 <img src=".catalog/screenshots/screenshot1.png" width="256"> <img src=".catalog/screenshots/screenshot2.png" width="256"> <img src=".catalog/screenshots/screenshot3.png" width="256">
@@ -11,7 +14,9 @@ A GPS-enabled file browser for Flipper Zero that displays SubGHz, NFC, and RFID 
 
 
 > [!Tip]
-> Check out [flipper-map.stichoza.com](https://flipper-map.stichoza.com) for a web version of this app. Visualize files on a map in your browser.
+> - Check out **[Flipper Map](https://apps.apple.com/us/app/flipper-map/id6759526315)** for iOS – Organize Sub-GHz files on a map and see nearby files.
+> - Check out **[flipper-map.stichoza.com](https://flipper-map.stichoza.com)** for a web version of this app. Visualize files on a map in your browser.
+> - Check out **[qUnleashed](https://github.com/DarkFlippers/qUnleashed.git)** app to get your location over RPC – no GPS module needed.
 
 ## Features
 
@@ -24,9 +29,9 @@ A GPS-enabled file browser for Flipper Zero that displays SubGHz, NFC, and RFID 
 
 ## Installation
 
-The app comes bundled with [Momentum](https://momentum-fw.dev/) firmware. If you're using any other firmware, you can install by any of following ways:
+The app comes bundled with [Unleashed](https://flipperunleashed.com/) firmware (extra apps pack) and [Momentum](https://momentum-fw.dev/). If you're using any other firmware, you can install by any of following ways:
 
-### Option 1: Install from App Catalog
+### Option 1: Install from Flipper App Catalog
 
 1. Go to [lab.flipper.net](https://lab.flipper.net/apps/nearby_files) and search for **Nearby Files**.
 2. Connect your Flipper Zero to your PC or laptop using USB cable.

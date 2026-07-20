@@ -14,7 +14,7 @@ App(
             cdefines=["timegm=mktime"],
         ),
     ],
-    fap_version="1.7",
+    fap_version="1.8",
     fap_author="Stichoza",
     fap_description="A GPS-enabled file browser that displays files sorted by distance from your current location.",
 )
