@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.1
+
+- Fix `fap_version` in `application.fam`
+
 ## 0.7
 
 - Major internal refactor: split monolithic app into focused modules for app lifecycle, controller logic, HID engine, UI rendering, and settings persistence

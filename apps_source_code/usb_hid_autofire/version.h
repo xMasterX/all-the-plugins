@@ -1,1 +1,1 @@
-#define VERSION "0.7"
+#define VERSION FAP_VERSION
