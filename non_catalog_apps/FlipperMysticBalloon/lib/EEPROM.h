@@ -5,43 +5,31 @@
 
 #include <furi.h>
 #include <storage/storage.h>
+#include "../game/save_layout.h"
 
-#define EEPROM_LIB_PATH "/ext/apps_data/eeprom.bin"
+#define EEPROM_LIB_PATH APP_DATA_PATH("eeprom.bin")
 
 class EEPROMClass {
 public:
-    static constexpr int kSize = 1024;
+    static constexpr int kSize = MyblSave::kSize;
+    static constexpr size_t kPathSize = 128;
 
     EEPROMClass()
         : loaded_(false)
         , dirty_(false)
-        , autosave_interval_ms_(0)
-        , last_autosave_ms_(0) {
+        , path_resolved_(false) {
         memset(mem_, 0x00, kSize);
-        file_path_[0] = '\0';
+        memset(file_path_, 0x00, kPathSize);
+        strncpy(file_path_, EEPROM_LIB_PATH, kPathSize - 1);
     }
 
-    void begin(const char* path = EEPROM_LIB_PATH, uint32_t autosave_interval_ms = 0) {
-        const char* new_path = (path && *path) ? path : EEPROM_LIB_PATH;
-        if(strncmp(file_path_, new_path, sizeof(file_path_)) != 0) {
-            strncpy(file_path_, new_path, sizeof(file_path_) - 1);
-            file_path_[sizeof(file_path_) - 1] = '\0';
-            loaded_ = false;
-            dirty_ = false;
-            memset(mem_, 0x00, kSize);
-        } else if(file_path_[0] == '\0') {
-            file_path_[sizeof(file_path_) - 1] = '\0';
-            loaded_ = false;
-            dirty_ = false;
-            memset(mem_, 0x00, kSize);
-        }
-
-        autosave_interval_ms_ = autosave_interval_ms;
-        last_autosave_ms_ = now_ms_();
+    void begin() {
         ensureLoaded_();
     }
 
-    int length() const { return kSize; }
+    int length() const {
+        return kSize;
+    }
 
     uint8_t read(int addr) const {
         ensureLoaded_();
@@ -65,7 +53,7 @@ public:
         }
     }
 
-    template<typename T>
+    template <typename T>
     T& get(int addr, T& out) const {
         ensureLoaded_();
         if(addr < 0 || addr + (int)sizeof(T) > kSize) return out;
@@ -73,7 +61,7 @@ public:
         return out;
     }
 
-    template<typename T>
+    template <typename T>
     const T& put(int addr, const T& in) {
         ensureLoaded_();
         if(addr < 0 || addr + (int)sizeof(T) > kSize) return in;
@@ -97,17 +85,6 @@ public:
         dirty_ = true;
     }
 
-    void tick() {
-        if(autosave_interval_ms_ == 0) return;
-        if(!dirty_) return;
-
-        const uint32_t now = now_ms_();
-        if((uint32_t)(now - last_autosave_ms_) >= autosave_interval_ms_) {
-            (void)commit();
-            last_autosave_ms_ = now;
-        }
-    }
-
     bool commit() {
         ensureLoaded_();
         if(!dirty_) return true;
@@ -117,21 +94,50 @@ public:
         return ok;
     }
 
-    bool isDirty() const { return dirty_; }
+    bool isDirty() const {
+        return dirty_;
+    }
 
 private:
+    bool resolvePathIfNeeded_(Storage* storage) const {
+        if(path_resolved_) return true;
+        if(!storage) return false;
+
+        FuriString* path = furi_string_alloc_set_str(file_path_);
+        if(!path) return false;
+
+        storage_common_resolve_path_and_ensure_app_directory(storage, path);
+        const char* resolved = furi_string_get_cstr(path);
+
+        bool ok = false;
+        if(resolved && resolved[0]) {
+            const size_t len = strlen(resolved);
+            if(len < kPathSize) {
+                memcpy(file_path_, resolved, len + 1);
+                path_resolved_ = true;
+                ok = true;
+            }
+        }
+
+        furi_string_free(path);
+        return ok;
+    }
+
+    static void ensureDefaultDir_(Storage* storage) {
+        if(!storage) return;
+        (void)storage_common_mkdir(storage, STORAGE_APP_DATA_PATH_PREFIX);
+    }
+
     void ensureLoaded_() const {
         if(loaded_) return;
-
-        if(file_path_[0] == '\0') {
-            strncpy(file_path_, EEPROM_LIB_PATH, sizeof(file_path_) - 1);
-            file_path_[sizeof(file_path_) - 1] = '\0';
-        }
 
         Storage* storage = (Storage*)furi_record_open(RECORD_STORAGE);
         if(!storage) {
             return;
         }
+
+        (void)resolvePathIfNeeded_(storage);
+        ensureDefaultDir_(storage);
 
         File* file = storage_file_alloc(storage);
         if(!file) {
@@ -139,20 +145,32 @@ private:
             return;
         }
 
-        if(storage_file_exists(storage, file_path_)) {
-            bool ok = storage_file_open(file, file_path_, FSAM_READ, FSOM_OPEN_EXISTING);
-            if(ok) {
-                memset(mem_, 0x00, kSize);
-                (void)storage_file_read(file, mem_, kSize);
+        memset(mem_, 0x00, kSize);
+        bool ok = storage_file_open(file, file_path_, FSAM_READ_WRITE, FSOM_OPEN_ALWAYS);
+        if(ok) {
+            const uint64_t file_size = storage_file_size(file);
+            bool need_rewrite = false;
+
+            (void)storage_file_seek(file, 0, true);
+            const size_t rd = storage_file_read(file, mem_, kSize);
+            if(rd < (size_t)kSize) {
+                need_rewrite = true;
+            }
+
+            if(file_size != (uint64_t)kSize) {
+                need_rewrite = true;
+            }
+
+            if(need_rewrite) {
+                (void)storage_file_seek(file, 0, true);
+                const size_t wr = storage_file_write(file, mem_, kSize);
+                if(wr == (size_t)kSize) {
+                    (void)storage_file_truncate(file);
+                    (void)storage_file_sync(file);
+                }
             }
             (void)storage_file_close(file);
         } else {
-            memset(mem_, 0x00, kSize);
-            bool ok = storage_file_open(file, file_path_, FSAM_WRITE, FSOM_CREATE_ALWAYS);
-            if(ok) {
-                (void)storage_file_write(file, mem_, kSize);
-                (void)storage_file_sync(file);
-            }
             (void)storage_file_close(file);
         }
 
@@ -167,17 +185,26 @@ private:
         Storage* storage = (Storage*)furi_record_open(RECORD_STORAGE);
         if(!storage) return false;
 
+        if(!path_resolved_ && !resolvePathIfNeeded_(storage)) {
+            furi_record_close(RECORD_STORAGE);
+            return false;
+        }
+
+        ensureDefaultDir_(storage);
+
         File* file = storage_file_alloc(storage);
         if(!file) {
             furi_record_close(RECORD_STORAGE);
             return false;
         }
 
-        bool ok = storage_file_open(file, file_path_, FSAM_WRITE, FSOM_CREATE_ALWAYS);
+        bool ok = storage_file_open(file, file_path_, FSAM_READ_WRITE, FSOM_OPEN_ALWAYS);
         bool success = false;
 
         if(ok) {
+            (void)storage_file_seek(file, 0, true);
             size_t wr = storage_file_write(file, mem_, kSize);
+            (void)storage_file_truncate(file);
             (void)storage_file_sync(file);
             (void)storage_file_close(file);
             success = (wr == (size_t)kSize);
@@ -190,22 +217,13 @@ private:
         return success;
     }
 
-    static uint32_t now_ms_() {
-        const uint32_t tick = furi_get_tick();
-        const uint32_t hz = furi_kernel_get_tick_frequency();
-        if(hz == 0) return tick;
-        return (tick * 1000u) / hz;
-    }
-
 private:
     mutable uint8_t mem_[kSize];
     mutable bool loaded_;
     mutable bool dirty_;
+    mutable bool path_resolved_;
 
-    mutable char file_path_[64];
-
-    mutable uint32_t autosave_interval_ms_;
-    mutable uint32_t last_autosave_ms_;
+    mutable char file_path_[kPathSize];
 };
 
 #if (__cplusplus >= 201703L)

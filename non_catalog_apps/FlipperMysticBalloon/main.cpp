@@ -75,6 +75,14 @@ typedef struct {
 } FlipperState;
 
 static FlipperState* g_state = NULL;
+static volatile uint32_t g_input_cb_inflight = 0;
+static volatile uint8_t g_input_cb_enabled = 0;
+
+static void wait_input_callbacks_idle() {
+    while(__atomic_load_n((uint32_t*)&g_input_cb_inflight, __ATOMIC_ACQUIRE) != 0) {
+        furi_delay_ms(1);
+    }
+}
 static void framebuffer_commit_callback(
     uint8_t* data,
     size_t size,
@@ -97,8 +105,17 @@ static void framebuffer_commit_callback(
 
 static void input_events_callback(const void* value, void* ctx) {
     if(!value || !ctx) return;
-    InputEvent* e = (InputEvent*)value;
-    Arduboy2Base::FlipperInputCallback(e, ctx);
+    if(__atomic_load_n((uint8_t*)&g_input_cb_enabled, __ATOMIC_ACQUIRE) == 0) return;
+
+    (void)__atomic_fetch_add((uint32_t*)&g_input_cb_inflight, 1, __ATOMIC_ACQ_REL);
+
+    if(__atomic_load_n((uint8_t*)&g_input_cb_enabled, __ATOMIC_ACQUIRE) != 0) {
+        const InputEvent* event = (const InputEvent*)value;
+        Arduboy2Base::InputContext* input_ctx = (Arduboy2Base::InputContext*)ctx;
+        Arduboy2Base::FlipperInputCallback(event, input_ctx);
+    }
+
+    (void)__atomic_fetch_sub((uint32_t*)&g_input_cb_inflight, 1, __ATOMIC_ACQ_REL);
 }
 
 static void game_setup() {
@@ -129,8 +146,9 @@ static bool has_visible_enemy_on_screen() {
         const int16_t enemy_right = walkers[i].pos.x + 7;
         const int16_t enemy_bottom = walkers[i].pos.y + 7;
 
-        const bool intersects = !(enemy_left > view_right || enemy_right < view_left ||
-                                  enemy_top > view_bottom || enemy_bottom < view_top);
+        const bool intersects =
+            !(enemy_left > view_right || enemy_right < view_left || enemy_top > view_bottom ||
+              enemy_bottom < view_top);
         if(intersects) {
             return true;
         }
@@ -246,11 +264,17 @@ extern "C" int32_t mybl_app(void* p) {
 
     g_state->exit_requested = false;
     g_state->invert_frame = false;
+    __atomic_store_n((uint32_t*)&g_input_cb_inflight, 0, __ATOMIC_RELEASE);
+    __atomic_store_n((uint8_t*)&g_input_cb_enabled, 1, __ATOMIC_RELEASE);
 
     memset(g_state->screen_buffer, 0x00, BUFFER_SIZE);
     memset(g_state->front_buffer, 0x00, BUFFER_SIZE);
 
-    arduboy.begin(g_state->screen_buffer, &g_state->input_state, g_state->game_mutex, &g_state->exit_requested);
+    arduboy.begin(
+        g_state->screen_buffer,
+        &g_state->input_state,
+        g_state->game_mutex,
+        &g_state->exit_requested);
     Sprites::setArduboy(&arduboy);
     g_state->gui = (Gui*)furi_record_open(RECORD_GUI);
     gui_add_framebuffer_callback(g_state->gui, framebuffer_commit_callback, g_state);
@@ -285,9 +309,16 @@ extern "C" int32_t mybl_app(void* p) {
     }
 
     if(g_state->input_sub) {
+        __atomic_store_n((uint8_t*)&g_input_cb_enabled, 0, __ATOMIC_RELEASE);
         furi_pubsub_unsubscribe(g_state->input_events, g_state->input_sub);
         g_state->input_sub = NULL;
     }
+
+    wait_input_callbacks_idle();
+
+    Arduboy2Base::InputContext* input_ctx = arduboy.inputContext();
+    input_ctx->input_state = nullptr;
+    input_ctx->runtime = nullptr;
 
     if(g_state->input_events) {
         furi_record_close(RECORD_INPUT_EVENTS);
