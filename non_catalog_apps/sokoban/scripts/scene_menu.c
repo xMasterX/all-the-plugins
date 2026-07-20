@@ -1,11 +1,9 @@
 #include "app.h"
-#include "game.h"
-#include "app_gameplay.h"
 #include "racso_sokoban_icons.h"
 #include "wave/scene_management.h"
 #include "wave/pagination.h"
 #include "wave/calc.h"
-#include "save_data_manager.h"
+#include "levels_database.h"
 #include <furi.h>
 #include <gui/gui.h>
 #include <storage/storage.h>
@@ -133,6 +131,14 @@ void menu_render_callback(Canvas* const canvas, void* context)
     }
 }
 
+static int get_first_unplayed_level_index(LevelsCollection* collection)
+{
+    for (int i = 0; i < collection->levelsCount; i++)
+        if (collection->levels[i].playerBest == 0)
+            return i;
+    return collection->levelsCount - 1;
+}
+
 void menu_input_callback(InputKey key, InputType type, void* context)
 {
     AppContext* app = (AppContext*)context;
@@ -163,7 +169,10 @@ void menu_input_callback(InputKey key, InputType type, void* context)
         if (state == MenuState_Main)
             gameplayState->selectedCollection = 0;
         else if (state == MenuState_CollectionSelection)
-            gameplayState->selectedLevel = 0;
+        {
+            LevelsCollection *collection = &database->collections[gameplayState->selectedCollection];
+            gameplayState->selectedLevel = get_first_unplayed_level_index(collection);
+        }
         else if (state == MenuState_LevelSelection)
         {
             scene_manager_set_scene(app->sceneManager, SceneType_Game);
