@@ -27,9 +27,11 @@ static const char* app_names[] = {"Sub-GHz", "NFC", "125 kHz RFID", "iButton"};
 
 typedef struct {
     uint32_t gps_baudrate;
+    uint32_t gps_protocol; // GpsProtocol, kept last so old configs just fail to load
 } NearbyFilesConfig;
 
-static bool nearby_files_load_config_baudrate(uint32_t* baudrate) {
+static bool nearby_files_load_config(GpsProtocol* protocol, uint32_t* baudrate) {
+    furi_check(protocol);
     furi_check(baudrate);
 
     NearbyFilesConfig config = {0};
@@ -43,12 +45,14 @@ static bool nearby_files_load_config_baudrate(uint32_t* baudrate) {
     }
 
     *baudrate = config.gps_baudrate;
+    *protocol = (config.gps_protocol == GpsProtocolRpc) ? GpsProtocolRpc : GpsProtocolNmea;
     return true;
 }
 
-bool nearby_files_save_config_baudrate(uint32_t baudrate) {
+bool nearby_files_save_config(NearbyFilesApp* app) {
     NearbyFilesConfig config = {
-        .gps_baudrate = baudrate,
+        .gps_baudrate = gps_reader_get_baudrate(app->gps_reader),
+        .gps_protocol = (uint32_t)gps_reader_get_protocol(app->gps_reader),
     };
 
     return saved_struct_save(
@@ -310,11 +314,13 @@ bool nearby_files_add_gps_to_file(
 NearbyFilesApp* nearby_files_app_alloc(void) {
     NearbyFilesApp* app = malloc(sizeof(NearbyFilesApp));
     uint32_t config_baudrate = 0;
+    GpsProtocol config_protocol = GpsProtocolNmea;
 
     app->gui = furi_record_open(RECORD_GUI);
     app->storage = furi_record_open(RECORD_STORAGE);
     app->loader = furi_record_open(RECORD_LOADER);
     app->dialogs = furi_record_open(RECORD_DIALOGS);
+    app->notifications = furi_record_open(RECORD_NOTIFICATION);
 
     app->view_dispatcher = view_dispatcher_alloc();
     app->scene_manager = scene_manager_alloc(&nearby_files_scene_handlers, app);
@@ -357,7 +363,9 @@ NearbyFilesApp* nearby_files_app_alloc(void) {
         "Lists Sub-GHz, NFC, RFID,\niButton\n"
         "files sorted by distance from\n"
         "current location.\n"
-        "(GPS module required)\n"
+        "GPS from a UART module or a\n"
+        "companion phone over USB/BLE\n"
+        "(pick it in GPS Source).\n"
         "\n"
         "Files must include Lat: and\n"
         "Lon: entries to be able to\n"
@@ -377,6 +385,7 @@ NearbyFilesApp* nearby_files_app_alloc(void) {
         "\n"
         "Author: @Stichoza\n"
         "Baudrate & Add GPS:\n@xMasterX (MMX)\n"
+        "GPS RPC: @apfxtech\n"
         "\n"
         "For information or issues,\n"
         "go to https://github.com/Stichoza/flipper-nearby-files");
@@ -386,13 +395,15 @@ NearbyFilesApp* nearby_files_app_alloc(void) {
     view_dispatcher_attach_to_gui(app->view_dispatcher, app->gui, ViewDispatcherTypeFullscreen);
 
     // Load config before GPS reader starts serial init.
-    nearby_files_load_config_baudrate(&config_baudrate);
+    nearby_files_load_config(&config_protocol, &config_baudrate);
 
     // Initialize GPS reader
-    app->gps_reader = gps_reader_alloc(config_baudrate);
+    app->gps_reader = gps_reader_alloc(config_protocol, config_baudrate);
+    gps_reader_set_notification(app->gps_reader, app->notifications);
 
     // Initialize GPS timer
     app->gps_timer = furi_timer_alloc(nearby_files_gps_timer_callback, FuriTimerTypePeriodic, app);
+    app->scan_triggered = false;
 
     // Initialize file list
     app->files = NULL;
@@ -442,6 +453,7 @@ void nearby_files_app_free(NearbyFilesApp* app) {
     furi_record_close(RECORD_STORAGE);
     furi_record_close(RECORD_LOADER);
     furi_record_close(RECORD_DIALOGS);
+    furi_record_close(RECORD_NOTIFICATION);
 
     FURI_LOG_I(TAG, "App cleanup complete");
     free(app);
@@ -471,6 +483,7 @@ void nearby_files_add_file(
         furi_string_set_strn(display_name, name, name_len);
     }
     item->name = display_name;
+    item->display_label = furi_string_alloc();
     item->app_name = app_name;
 
     // Initialize GPS fields - will be populated later for performance
@@ -487,6 +500,7 @@ void nearby_files_clear_files(NearbyFilesApp* app) {
         for(size_t i = 0; i < app->file_count; i++) {
             furi_string_free(app->files[i].path);
             furi_string_free(app->files[i].name);
+            furi_string_free(app->files[i].display_label);
         }
         free(app->files);
         app->files = NULL;
@@ -579,19 +593,17 @@ void nearby_files_populate_list(NearbyFilesApp* app) {
     for(size_t i = 0; i < app->file_count; i++) {
         // Format distance and create display string
         char distance_str[16];
-        char display_name[256];
 
         nearby_files_format_distance(app->files[i].distance, distance_str, sizeof(distance_str));
-        snprintf(
-            display_name,
-            sizeof(display_name),
+        furi_string_printf(
+            app->files[i].display_label,
             "[%s] %s",
             distance_str,
             furi_string_get_cstr(app->files[i].name));
 
         variable_item_list_add(
             app->variable_item_list,
-            display_name,
+            furi_string_get_cstr(app->files[i].display_label),
             0, // No values count for simple list items
             NULL, // No change callback
             NULL); // No item context needed
@@ -616,14 +628,21 @@ bool nearby_files_parse_coordinates(const char* file_path, double* latitude, dou
         return false;
     }
 
-    char buffer[256];
+    uint8_t chunk[512];
     bool lat_found = false, lon_found = false;
 
-    // Read file character by character to build lines
     FuriString* line = furi_string_alloc();
 
-    while(storage_file_read(file, buffer, 1) == 1) {
-        if(buffer[0] == '\n' || buffer[0] == '\r') {
+    size_t read = 0;
+    while(!(lat_found && lon_found) &&
+          (read = storage_file_read(file, chunk, sizeof(chunk))) > 0) {
+        for(size_t i = 0; i < read; i++) {
+            const char c = (char)chunk[i];
+            if(c != '\n' && c != '\r') {
+                furi_string_push_back(line, c);
+                continue;
+            }
+
             // Process the line
             const char* line_str = furi_string_get_cstr(line);
 
@@ -652,14 +671,11 @@ bool nearby_files_parse_coordinates(const char* file_path, double* latitude, dou
                 }
             }
 
-            // If both found, we can stop reading
-            if(lat_found && lon_found) break;
-
             // Reset line for next iteration
             furi_string_reset(line);
-        } else {
-            // Add character to current line
-            furi_string_push_back(line, buffer[0]);
+
+            // If both found, we can stop reading
+            if(lat_found && lon_found) break;
         }
     }
 
@@ -705,7 +721,10 @@ void nearby_files_process_gps_coordinates(NearbyFilesApp* app) {
     GpsCoordinates current_coords = gps_reader_get_coordinates(app->gps_reader);
 
     if(!current_coords.valid) {
+        // GPS dropped out between the trigger and the scan. Drop the raw list so
+        // we show "No files found" instead of every scanned file at 0 m.
         FURI_LOG_W(TAG, "GPS coordinates not available yet");
+        nearby_files_clear_files(app);
         return;
     }
 
@@ -724,8 +743,10 @@ void nearby_files_process_gps_coordinates(NearbyFilesApp* app) {
         // Parse GPS coordinates from file
         if(nearby_files_parse_coordinates(
                furi_string_get_cstr(item->path), &latitude, &longitude)) {
-            // Check if coordinates are valid (not zero)
-            if((float)latitude != 0.0f && (float)longitude != 0.0f) {
+            // Check if coordinates are valid (not zero and not NaN). A NaN
+            // value means the file has no real GPS fix, so skip it.
+            if((float)latitude != 0.0f && (float)longitude != 0.0f &&
+               !isnan(latitude) && !isnan(longitude)) {
                 // File has valid GPS coordinates
                 item->latitude = latitude;
                 item->longitude = longitude;
@@ -743,11 +764,13 @@ void nearby_files_process_gps_coordinates(NearbyFilesApp* app) {
                 // File has zero coordinates, treat as invalid
                 furi_string_free(item->path);
                 furi_string_free(item->name);
+                furi_string_free(item->display_label);
             }
         } else {
             // File doesn't have GPS coordinates, free its resources
             furi_string_free(item->path);
             furi_string_free(item->name);
+            furi_string_free(item->display_label);
         }
     }
 
@@ -825,11 +848,10 @@ void nearby_files_file_selected_callback(void* context, uint32_t index) {
 }
 
 void nearby_files_start_gps_wait(NearbyFilesApp* app) {
-    // Call GPS timer callback immediately to show initial status
-    nearby_files_gps_timer_callback(app);
+    app->scan_triggered = false;
 
-    // Start a timer to periodically check GPS status
     furi_timer_start(app->gps_timer, 1000); // Check every 1 second
+    nearby_files_gps_timer_callback(app);
 }
 
 void nearby_files_gps_timer_callback(void* context) {
@@ -848,21 +870,31 @@ void nearby_files_gps_timer_callback(void* context) {
         (double)coords.longitude);
 
     if(coords.valid) {
-        // GPS is ready, stop timer and trigger scanning scene
-        furi_timer_stop(app->gps_timer);
+        if(!app->scan_triggered) {
+            app->scan_triggered = true;
+            furi_timer_stop(app->gps_timer);
 
-        FURI_LOG_I(TAG, "GPS coordinates available, starting file scan");
+            FURI_LOG_I(TAG, "GPS coordinates available, starting file scan");
 
-        // Send custom event to trigger scanning
-        view_dispatcher_send_custom_event(app->view_dispatcher, NearbyFilesCustomEventStartScan);
+            // Send custom event to trigger scanning
+            view_dispatcher_send_custom_event(
+                app->view_dispatcher, NearbyFilesCustomEventStartScan);
+        }
     } else {
         // Update GPS status display
         widget_reset(app->widget);
 
+        const bool rpc_source = gps_reader_get_protocol(app->gps_reader) == GpsProtocolRpc;
+
         if(!coords.module_detected) {
-            // No GPS module detected
             widget_add_string_element(
-                app->widget, 64, 24, AlignCenter, AlignCenter, FontPrimary, "No GPS Module");
+                app->widget,
+                64,
+                24,
+                AlignCenter,
+                AlignCenter,
+                FontPrimary,
+                rpc_source ? "No USB/BLE GPS" : "No GPS Module");
             widget_add_string_element(
                 app->widget,
                 64,
@@ -870,7 +902,7 @@ void nearby_files_gps_timer_callback(void* context) {
                 AlignCenter,
                 AlignCenter,
                 FontSecondary,
-                "Please connect GPS module");
+                rpc_source ? "Connect companion GPS" : "Please connect GPS module");
         } else {
             // GPS module detected, show satellite count
             widget_add_string_element(

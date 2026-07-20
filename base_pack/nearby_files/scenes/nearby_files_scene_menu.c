@@ -4,6 +4,7 @@
 typedef enum {
     NearbyFilesMenuItemRefreshList,
     NearbyFilesMenuItemAddGpsPosition,
+    NearbyFilesMenuItemGpsSource,
     NearbyFilesMenuItemGpsBaudrate,
     NearbyFilesMenuItemAbout,
     NearbyFilesMenuItemExit,
@@ -19,6 +20,10 @@ void nearby_files_scene_menu_submenu_callback(void* context, uint32_t index) {
     case NearbyFilesMenuItemAddGpsPosition:
         view_dispatcher_send_custom_event(
             app->view_dispatcher, NearbyFilesCustomEventAddGpsPosition);
+        break;
+    case NearbyFilesMenuItemGpsSource:
+        view_dispatcher_send_custom_event(
+            app->view_dispatcher, NearbyFilesCustomEventGpsSourceMenu);
         break;
     case NearbyFilesMenuItemGpsBaudrate:
         view_dispatcher_send_custom_event(
@@ -55,10 +60,20 @@ void nearby_files_scene_menu_on_enter(void* context) {
 
     submenu_add_item(
         app->submenu,
+        "GPS Source",
+        NearbyFilesMenuItemGpsSource,
+        nearby_files_scene_menu_submenu_callback,
+        app);
+
+    const bool baudrate_locked = (gps_reader_get_protocol(app->gps_reader) == GpsProtocolRpc);
+    submenu_add_lockable_item(
+        app->submenu,
         "GPS Baudrate",
         NearbyFilesMenuItemGpsBaudrate,
         nearby_files_scene_menu_submenu_callback,
-        app);
+        app,
+        baudrate_locked,
+        "Not used in\nRPC mode");
 
     submenu_add_item(
         app->submenu,
@@ -91,6 +106,10 @@ bool nearby_files_scene_menu_on_event(void* context, SceneManagerEvent event) {
             break;
         case NearbyFilesCustomEventAddGpsPosition:
             scene_manager_next_scene(app->scene_manager, NearbyFilesSceneAddGps);
+            consumed = true;
+            break;
+        case NearbyFilesCustomEventGpsSourceMenu:
+            scene_manager_next_scene(app->scene_manager, NearbyFilesSceneGpsSource);
             consumed = true;
             break;
         case NearbyFilesCustomEventGpsBaudrateMenu:

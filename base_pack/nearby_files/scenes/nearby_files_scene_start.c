@@ -56,5 +56,8 @@ bool nearby_files_scene_start_on_event(void* context, SceneManagerEvent event) {
 
 void nearby_files_scene_start_on_exit(void* context) {
     NearbyFilesApp* app = context;
+    // Stop the periodic GPS poll so it never keeps firing (and re-scanning) once
+    // we leave the waiting screen.
+    furi_timer_stop(app->gps_timer);
     widget_reset(app->widget);
 }

@@ -11,9 +11,10 @@
 #include <storage/storage.h>
 #include <toolbox/dir_walk.h>
 #include <loader/loader.h>
+#include <notification/notification.h>
 #include "gps_reader.h"
 
-#define NEARBY_FILES_VERSION  "1.7"
+#define NEARBY_FILES_VERSION  "1.8"
 #define NEARBY_FILES_APP_NAME "Nearby Files"
 
 #ifdef __cplusplus
@@ -45,6 +46,9 @@ typedef enum {
     NearbyFilesCustomEventSetBaudrate38400,
     NearbyFilesCustomEventSetBaudrate57600,
     NearbyFilesCustomEventSetBaudrate115200,
+    NearbyFilesCustomEventGpsSourceMenu,
+    NearbyFilesCustomEventSetSourceNmea,
+    NearbyFilesCustomEventSetSourceRpc,
     NearbyFilesCustomEventAbout,
     NearbyFilesCustomEventExit,
     NearbyFilesCustomEventStartScan,
@@ -53,6 +57,7 @@ typedef enum {
 typedef struct {
     FuriString* path;
     FuriString* name;
+    FuriString* display_label;
     const char* app_name;
     double latitude;
     double longitude;
@@ -71,8 +76,10 @@ struct NearbyFilesApp {
     Storage* storage;
     Loader* loader;
     DialogsApp* dialogs;
+    NotificationApp* notifications;
     GpsReader* gps_reader;
     FuriTimer* gps_timer;
+    bool scan_triggered; // One-shot guard so the scan/distance calc runs once per wait
 
     NearbyFileItem* files;
     size_t file_count;
@@ -109,7 +116,7 @@ bool nearby_files_add_gps_to_file(
     NearbyFilesApp* app,
     const char* extension,
     const char* base_path);
-bool nearby_files_save_config_baudrate(uint32_t baudrate);
+bool nearby_files_save_config(NearbyFilesApp* app);
 
 #ifdef __cplusplus
 }

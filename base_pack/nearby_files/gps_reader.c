@@ -1,6 +1,9 @@
 #include <string.h>
 #include <minmea.h>
+#include <notification/notification_messages.h>
 #include "gps_reader.h"
+
+#define GPS_BLINK_THROTTLE_MS 300
 
 typedef enum {
     WorkerEvtStop = (1 << 0),
@@ -24,8 +27,9 @@ static bool gps_reader_is_supported_baudrate(uint32_t baudrate) {
 
 // Forward declarations
 static void gps_reader_parse_nmea(GpsReader* gps_reader, char* line);
-static void gps_reader_start_worker(GpsReader* gps_reader);
-static void gps_reader_stop_worker(GpsReader* gps_reader);
+static void gps_reader_reset_coordinates_locked(GpsReader* gps_reader);
+static void gps_reader_start_transport(GpsReader* gps_reader);
+static void gps_reader_stop_transport(GpsReader* gps_reader);
 
 static void
     gps_reader_on_irq_cb(FuriHalSerialHandle* handle, FuriHalSerialRxEvent ev, void* context) {
@@ -97,6 +101,8 @@ static void gps_reader_parse_nmea(GpsReader* gps_reader, char* line) {
     gps_reader->coordinates.module_detected = true;
     furi_mutex_release(gps_reader->mutex);
 
+    bool got_fix = false;
+
     switch(minmea_sentence_id(line, false)) {
     case MINMEA_SENTENCE_RMC: {
         struct minmea_sentence_rmc frame;
@@ -107,6 +113,7 @@ static void gps_reader_parse_nmea(GpsReader* gps_reader, char* line) {
             gps_reader->coordinates.latitude = minmea_tocoord(&frame.latitude);
             gps_reader->coordinates.longitude = minmea_tocoord(&frame.longitude);
             furi_mutex_release(gps_reader->mutex);
+            got_fix = true;
         } else {
             FURI_LOG_D("GPS", "RMC sentence invalid or parse failed");
         }
@@ -126,6 +133,7 @@ static void gps_reader_parse_nmea(GpsReader* gps_reader, char* line) {
                 gps_reader->coordinates.valid = true;
                 gps_reader->coordinates.latitude = minmea_tocoord(&frame.latitude);
                 gps_reader->coordinates.longitude = minmea_tocoord(&frame.longitude);
+                got_fix = true;
             } else {
                 FURI_LOG_D(
                     "GPS", "GGA sentence parsed, no fix (sats: %d)", frame.satellites_tracked);
@@ -145,6 +153,7 @@ static void gps_reader_parse_nmea(GpsReader* gps_reader, char* line) {
             gps_reader->coordinates.latitude = minmea_tocoord(&frame.latitude);
             gps_reader->coordinates.longitude = minmea_tocoord(&frame.longitude);
             furi_mutex_release(gps_reader->mutex);
+            got_fix = true;
         } else {
             FURI_LOG_D("GPS", "GLL sentence invalid or not active");
         }
@@ -152,6 +161,10 @@ static void gps_reader_parse_nmea(GpsReader* gps_reader, char* line) {
 
     default:
         break;
+    }
+
+    if(got_fix) {
+        gps_reader_blink(gps_reader, true);
     }
 }
 
@@ -229,14 +242,14 @@ static int32_t gps_reader_worker(void* context) {
     return 0;
 }
 
-static void gps_reader_start_worker(GpsReader* gps_reader) {
+void gps_reader_start_nmea(GpsReader* gps_reader) {
     gps_reader->rx_stream = furi_stream_buffer_alloc(GPS_RX_BUF_SIZE, 1);
     gps_reader->thread =
         furi_thread_alloc_ex("GpsReaderWorker", 1024, gps_reader_worker, gps_reader);
     furi_thread_start(gps_reader->thread);
 }
 
-static void gps_reader_stop_worker(GpsReader* gps_reader) {
+void gps_reader_stop_nmea(GpsReader* gps_reader) {
     furi_thread_flags_set(furi_thread_get_id(gps_reader->thread), WorkerEvtStop);
     furi_thread_join(gps_reader->thread);
     furi_thread_free(gps_reader->thread);
@@ -244,13 +257,59 @@ static void gps_reader_stop_worker(GpsReader* gps_reader) {
     gps_reader->rx_stream = NULL;
 }
 
-GpsReader* gps_reader_alloc(uint32_t initial_baudrate) {
+static void gps_reader_reset_coordinates_locked(GpsReader* gps_reader) {
+    gps_reader->coordinates.valid = false;
+    gps_reader->coordinates.latitude = 0.0f;
+    gps_reader->coordinates.longitude = 0.0f;
+    gps_reader->coordinates.module_detected = false;
+    gps_reader->coordinates.satellite_count = 0;
+}
+
+static void gps_reader_start_transport(GpsReader* gps_reader) {
+    if(gps_reader->protocol == GpsProtocolRpc) {
+        gps_reader_start_rpc(gps_reader);
+    } else {
+        gps_reader_start_nmea(gps_reader);
+    }
+}
+
+static void gps_reader_stop_transport(GpsReader* gps_reader) {
+    if(gps_reader->protocol == GpsProtocolRpc) {
+        gps_reader_stop_rpc(gps_reader);
+    } else {
+        gps_reader_stop_nmea(gps_reader);
+    }
+}
+
+void gps_reader_set_notification(GpsReader* gps_reader, NotificationApp* notifications) {
+    furi_assert(gps_reader);
+    gps_reader->notifications = notifications;
+}
+
+void gps_reader_blink(GpsReader* gps_reader, bool ok) {
+    if(!gps_reader->notifications) return;
+
+    const uint32_t now = furi_get_tick();
+    if(now - gps_reader->last_blink_tick < furi_ms_to_ticks(GPS_BLINK_THROTTLE_MS)) return;
+    gps_reader->last_blink_tick = now;
+
+    notification_message(
+        gps_reader->notifications, ok ? &sequence_blink_green_10 : &sequence_blink_red_10);
+}
+
+GpsReader* gps_reader_alloc(GpsProtocol protocol, uint32_t initial_baudrate) {
     GpsReader* gps_reader = malloc(sizeof(GpsReader));
 
     gps_reader->mutex = furi_mutex_alloc(FuriMutexTypeNormal);
+    gps_reader->protocol = protocol;
     gps_reader->rx_stream = NULL;
     gps_reader->thread = NULL;
     gps_reader->serial_handle = NULL;
+    gps_reader->rpc = NULL;
+    gps_reader->rpc_timer = NULL;
+    gps_reader->rpc_last_rx = 0;
+    gps_reader->notifications = NULL;
+    gps_reader->last_blink_tick = 0;
     if(gps_reader_is_supported_baudrate(initial_baudrate)) {
         gps_reader->baudrate = initial_baudrate;
     } else {
@@ -258,13 +317,9 @@ GpsReader* gps_reader_alloc(uint32_t initial_baudrate) {
     }
 
     // Initialize coordinates as invalid
-    gps_reader->coordinates.valid = false;
-    gps_reader->coordinates.latitude = 0.0f;
-    gps_reader->coordinates.longitude = 0.0f;
-    gps_reader->coordinates.module_detected = false;
-    gps_reader->coordinates.satellite_count = 0;
+    gps_reader_reset_coordinates_locked(gps_reader);
 
-    gps_reader_start_worker(gps_reader);
+    gps_reader_start_transport(gps_reader);
 
     return gps_reader;
 }
@@ -272,11 +327,41 @@ GpsReader* gps_reader_alloc(uint32_t initial_baudrate) {
 void gps_reader_free(GpsReader* gps_reader) {
     furi_assert(gps_reader);
 
-    gps_reader_stop_worker(gps_reader);
+    gps_reader_stop_transport(gps_reader);
 
     furi_mutex_free(gps_reader->mutex);
 
     free(gps_reader);
+}
+
+GpsProtocol gps_reader_get_protocol(GpsReader* gps_reader) {
+    furi_assert(gps_reader);
+
+    furi_mutex_acquire(gps_reader->mutex, FuriWaitForever);
+    const GpsProtocol protocol = gps_reader->protocol;
+    furi_mutex_release(gps_reader->mutex);
+
+    return protocol;
+}
+
+bool gps_reader_set_protocol(GpsReader* gps_reader, GpsProtocol protocol) {
+    furi_assert(gps_reader);
+
+    furi_mutex_acquire(gps_reader->mutex, FuriWaitForever);
+    const bool same = gps_reader->protocol == protocol;
+    furi_mutex_release(gps_reader->mutex);
+    if(same) return true;
+
+    gps_reader_stop_transport(gps_reader);
+
+    furi_mutex_acquire(gps_reader->mutex, FuriWaitForever);
+    gps_reader->protocol = protocol;
+    gps_reader_reset_coordinates_locked(gps_reader);
+    furi_mutex_release(gps_reader->mutex);
+
+    gps_reader_start_transport(gps_reader);
+
+    return true;
 }
 
 GpsCoordinates gps_reader_get_coordinates(GpsReader* gps_reader) {
@@ -317,12 +402,13 @@ bool gps_reader_set_baudrate(GpsReader* gps_reader, uint32_t baudrate) {
     gps_reader->coordinates.valid = false;
     gps_reader->coordinates.module_detected = false;
     gps_reader->coordinates.satellite_count = 0;
+    const bool nmea_active = gps_reader->protocol == GpsProtocolNmea;
     furi_mutex_release(gps_reader->mutex);
 
-    // Full worker restart ensures the new baudrate takes effect immediately
-    // without stale serial or buffered RX state from the previous session.
-    gps_reader_stop_worker(gps_reader);
-    gps_reader_start_worker(gps_reader);
+    if(nmea_active) {
+        gps_reader_stop_nmea(gps_reader);
+        gps_reader_start_nmea(gps_reader);
+    }
 
     return true;
 }
