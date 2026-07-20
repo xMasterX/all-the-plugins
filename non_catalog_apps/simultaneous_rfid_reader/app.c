@@ -78,10 +78,10 @@ static UHFReaderApp* uhf_reader_app_alloc() {
     App->EpcIndexFile = IndexFile;
 
     //Initializing the arrays for storing all tag information from the read screen
-    App->EpcValues = (char**)malloc(150 * 26);
-    App->TidValues = (char**)malloc(150 * 41);
-    App->ResValues = (char**)malloc(150 * 17);
-    App->MemValues = (char**)malloc(150 * 33);
+    App->EpcValues = (char**)malloc(50 * 26);
+    App->TidValues = (char**)malloc(50 * 41);
+    App->ResValues = (char**)malloc(50 * 17);
+    App->MemValues = (char**)malloc(50 * 33);
     App->EpcToSave = (char*)malloc(25);
     App->NumberOfEpcsToRead = 0;
 
