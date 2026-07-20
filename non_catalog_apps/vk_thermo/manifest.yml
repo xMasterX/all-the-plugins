@@ -1,0 +1,25 @@
+# Flipper Application Catalog Manifest
+# Submit to: https://github.com/flipperdevices/flipper-application-catalog
+# Location in catalog repo: applications/NFC/vk_thermo/manifest.yml
+
+short_description: "Read temperature from your VivoKey Thermo via NFC. Supports multi-Thermo tracking, history, and graph views."
+
+description: "@README.md"
+
+changelog: "@docs/changelog.md"
+
+author: "VivoKey Technologies"
+
+sourcecode:
+  type: git
+  location:
+    origin: https://github.com/VivoKey/vkthermo-flipper.git
+
+icon: "icons/vk_thermo_10px.png"
+
+screenshots:
+  - './screenshots/vkthermo-flipper-main.png'
+  - './screenshots/vkthermo-flipper-result-c.png'
+  - './screenshots/vkthermo-flipper-log.png'
+  - './screenshots/vkthermo-flipper-graph.png'
+  - './screenshots/vkthermo-flipper-settings.png'

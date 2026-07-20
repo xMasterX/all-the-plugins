@@ -14,8 +14,8 @@ App(
     fap_icon="icons/vk_thermo_10px.png",
     fap_icon_assets="icons",
     fap_category="NFC",
-    fap_version="1.0",
-    fap_description="Read temperature from your VivoKey Thermo via NFC. Multi-thermo tracking, history, and graph views.",
+    fap_version="1.1",
+    fap_description="Read temperature from your VivoKey Thermo or Temptress via NFC. Supports TMP112/117/119 sensors. Multi-device tracking, history, and graph views.",
     fap_author="VivoKey Technologies",
     fap_weburl="https://github.com/VivoKey/vkthermo-flipper",
 )
