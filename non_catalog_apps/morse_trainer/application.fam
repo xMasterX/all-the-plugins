@@ -1,0 +1,12 @@
+App(
+    appid="morse_trainer",
+    name="Morse Trainer",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="morse_trainer_app",
+    stack_size=2 * 1024,
+    fap_category="Games",
+    fap_icon="icon.png",
+    fap_version="1.0",
+    fap_author="Baris Mert",
+    fap_description="Learn Morse code from zero through progressive levels",
+)
