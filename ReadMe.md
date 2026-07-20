@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `19 Jul 20:17 GMT +3`
+### Apps checked & updated at `20 Jul 03:27 GMT +3`
 
 
 # Default pack
@@ -194,6 +194,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Tower Defense | ![Games Badge] | [by apfxtech](https://git.aperturefox.ru/FlipperZero/MyFlipperApps/src/branch/main/apps/games) |  | ![None Badge] |
 | Oregon Trail | ![Games Badge] | [by jlaughter](https://github.com/jlaughter/flipper_oregon_trail) |  | ![None Badge] |
 | Flipcraft | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/Flipcraft) |  | ![None Badge] |
+| Morse Trainer | ![Games Badge] | [by barismert98](https://github.com/barismert98/flipper-morse-trainer) |  | [![Author Badge]](https://lab.flipper.net/apps/morse_trainer) |
 | Air Mouse | ![GPIO Badge] | [by ginkage](https://github.com/ginkage/FlippAirMouse/) |  | [![Author Badge]](https://lab.flipper.net/apps/air_mouse) |
 | Plantower PMSx003 sensor reader | ![GPIO Badge] | [by 3cky](https://github.com/3cky/flipperzero-airmon) |  | [![UFW Badge]](https://lab.flipper.net/apps/airmon) |
 | Bar code scanner emulator via COM port | ![GPIO Badge] | [by polarikus](https://github.com/polarikus/flipper-zero_bc_scanner_emulator) |  | [![Author Badge]](https://lab.flipper.net/apps/bc_scanner) |
@@ -365,6 +366,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | CAN Tools | ![Tools Badge] | [by MatthewKuKanich](https://github.com/MatthewKuKanich/FlipperCANTools/tree/main/can_tools) |  | ![None Badge] |
 | Theme Manager | ![Tools Badge] | [by Hoasker](https://github.com/Hoasker/flipper-theme-manager) |  | [![Author Badge]](https://lab.flipper.net/apps/theme_manager) |
 | ZeroFIDO | ![Tools Badge] | [by MinorGlitch](https://github.com/MinorGlitch/zerofido) |  | [![Author Badge]](https://lab.flipper.net/apps/zerofido) |
+| Morse Flipper | ![Tools Badge] | [by yo3gnd](https://github.com/yo3gnd/morse-flipper/tree/market-flavour) |  | [![Author Badge]](https://lab.flipper.net/apps/morse_flipper) |
 | USB HID Autofire | ![USB Badge] | [by pbek](https://github.com/pbek/usb_hid_autofire) |  | [![UFW Badge]](https://lab.flipper.net/apps/usb_hid_autofire) |
 | USB Consumer Control | ![USB Badge] | [by WithSecureLabs](https://github.com/WithSecureLabs/usb-consumer-control/tree/main) |  | ![None Badge] |
 | HID File Transfer | ![USB Badge] | [by Kavakuo](https://github.com/Kavakuo/HID-File-Transfer) | Get client app in [original repo](https://github.com/Kavakuo/HID-File-Transfer) | ![None Badge] |
