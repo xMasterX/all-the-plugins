@@ -7,15 +7,22 @@
 dist/
 build/
 
+# Node / Cloudflare worker
+node_modules/
+.wrangler/
+
+# ESP-IDF
+esp32-wifi-fw/sdkconfig
+esp32-wifi-fw/sdkconfig.old
+esp32-wifi-fw/managed_components/
+esp32-wifi-fw/dependencies.lock
+
 # ufbt
 .ufbt/
 
-# Android companion
-android-companion/.gradle/
-android-companion/build/
-android-companion/app/build/
-android-companion/local.properties
-android-companion/release-artifacts/
+# AI Assistants
+.gemini/
+.codex/
 
 # IDE
 .vscode/
