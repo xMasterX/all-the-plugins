@@ -1,5 +1,14 @@
-# Arduventure
+Step into the shoes of a hero exploring a mysterious pixel world. Battle fierce enemies, defeat powerful bosses, and uncover secrets across four unique locations.
 
-A top-down action RPG ported to Flipper Zero. The game features four distinct locations, boss fights, random encounters, and a progression system with inventory management and equipment upgrades.
+## What to Expect
 
-This project is a [port](https://github.com/apfxtech/FlipperArduventure.git) of the original [game](https://github.com/Team-ARG-Museum/ID-46-Arduventure.git) project. The main goal of this fork is to port the game from the Arduboy console to **Flipper Zero**.
+**Explore** — Journey through forests, dark caves, and dangerous dungeons filled with hidden treasures.
+**Fight** — Engage in thrilling turn-based battles against various creatures and epic bosses.
+**Grow** — Level up your character, collect powerful equipment, and become stronger with every victory.
+**Experience** — Enjoy nostalgic 8-bit music and classic retro gameplay on the go.
+
+## Equipment & Progression
+
+Collect amulets and weapons to enhance your abilities. Every battle brings you closer to becoming a legend!
+
+*Game ported from the original Arduventure by TEAM a.r.g. to Flipper Zero.*

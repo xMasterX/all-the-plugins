@@ -44,10 +44,6 @@ extern osc_t osc[4];
 
 void ATM_playroutine(void);
 
-void atm_system_init(void);
-void atm_system_deinit(void);
-void atm_set_enabled(uint8_t en);
-
 class ATMsynth {
 public:
     ATMsynth() {}
@@ -67,4 +63,8 @@ extern ATMsynth ATM;
 
 #ifdef __cplusplus
 }
+#endif
+
+#ifdef ATM_LIB_IMPLEMENTATION
+#include "scr/ATMlib.cpp"
 #endif

@@ -1,8 +1,11 @@
-#include "lib/ATMlib.h"
+#ifdef ARDULIB_USE_ATM
+#include "../ATMlib.h"
+#include "../include/ArduboyAudioState.h"
 
 #include <string.h>
 #include <furi.h>
 #include <furi_hal.h>
+#include <furi_hal_resources.h>
 #include <stm32wbxx_ll_tim.h>
 #include <stm32wbxx_ll_dma.h>
 
@@ -90,51 +93,57 @@ static inline uint16_t read_u16_le(const uint8_t** pp) {
 }
 
 static constexpr uint32_t ATM_PWM_ARR = 255;
-static constexpr uint32_t ATM_PWM_PSC = 3;
+static constexpr uint32_t ATM_PWM_PSC = 7;
 static constexpr uint32_t ATM_LOGICAL_HZ = 31250;
 
 static inline uint32_t tick_div_from_rate(uint8_t tr) {
     if(tr < 1) tr = 1;
-    return (uint32_t)(ATM_LOGICAL_HZ / (uint32_t)tr);
+    uint32_t div = ATM_LOGICAL_HZ / (uint32_t)tr;
+    if(div < 1) div = 1;
+    return div;
 }
 
 static constexpr size_t ATM_LOGICAL_SAMPLES_PER_HALF = 128;
-static constexpr size_t ATM_DMA_SAMPLES_PER_HALF = ATM_LOGICAL_SAMPLES_PER_HALF * 2;
+static constexpr size_t ATM_DMA_SAMPLES_PER_HALF = ATM_LOGICAL_SAMPLES_PER_HALF;
 static constexpr size_t ATM_DMA_TOTAL = ATM_DMA_SAMPLES_PER_HALF * 2;
 
 static uint32_t dma_buf[ATM_DMA_TOTAL];
 
-static bool atm_running = false;
-static bool atm_paused = false;
-static float atm_master_volume = 1.0f;
+static bool ardulib_atm_running = false;
+static bool ardulib_atm_paused = false;
 
-static uint32_t atm_tick_div = 0;
-static uint32_t atm_tick_acc = 0;
-static uint32_t atm_tick_pending = 0;
+static constexpr float ATM_MASTER_GAIN_MAX = 1.7f;
+static constexpr uint16_t ATM_MASTER_GAIN_DEFAULT_Q8 = (uint16_t)(1.8f * 256.0f + 0.5f);
+static uint16_t ardulib_atm_master_gain_q8 = ATM_MASTER_GAIN_DEFAULT_Q8;
 
-static FuriThread* atm_thread = NULL;
-static FuriMessageQueue* atm_cmd_q = NULL;
+static uint32_t ardulib_atm_tick_div = 0;
+static uint32_t ardulib_atm_tick_acc = 0;
+static uint32_t ardulib_atm_tick_pending = 0;
+
+static FuriThread* ardulib_atm_thread = NULL;
+static FuriMessageQueue* ardulib_atm_cmd_q = NULL;
 static void dma_isr(void* ctx);
 
-static uint8_t atm_audio_enabled = 1;
+static uint8_t ardulib_atm_audio_enabled = 0;
 
-static inline uint8_t atm_render_logical_sample_u8() {
+static inline uint8_t ardulib_atm_render_logical_sample_u8() {
     osc[2].phase = (uint16_t)(osc[2].phase + osc[2].freq);
     int8_t phase2 = (int8_t)(osc[2].phase >> 8);
     if(phase2 < 0) phase2 = (int8_t)(~phase2);
     phase2 = (int8_t)(phase2 << 1);
     phase2 = (int8_t)(phase2 - 128);
-    int8_t vol = (int8_t)((((int16_t)phase2 * (int8_t)osc[2].vol) << 1) >> 8);
+    int8_t c2 = (int8_t)((((int16_t)phase2 * (int8_t)osc[2].vol) << 1) >> 8);
+    int16_t mix = c2;
 
     osc[0].phase = (uint16_t)(osc[0].phase + osc[0].freq);
-    int8_t vol0 = (int8_t)osc[0].vol;
-    if(osc[0].phase >= 0xC000) vol0 = (int8_t)(-vol0);
-    vol = (int8_t)(vol + vol0);
+    int8_t c0 = (int8_t)osc[0].vol;
+    if(osc[0].phase >= 0xC000) c0 = (int8_t)(-c0);
+    mix += c0;
 
     osc[1].phase = (uint16_t)(osc[1].phase + osc[1].freq);
-    int8_t vol1 = (int8_t)osc[1].vol;
-    if(osc[1].phase & 0x8000) vol1 = (int8_t)(-vol1);
-    vol = (int8_t)(vol + vol1);
+    int8_t c1 = (int8_t)osc[1].vol;
+    if(osc[1].phase & 0x8000) c1 = (int8_t)(-c1);
+    mix += c1;
 
     uint16_t freq = osc[3].freq;
     freq <<= 1;
@@ -142,53 +151,57 @@ static inline uint8_t atm_render_logical_sample_u8() {
     if(freq & 0x4000) freq ^= 1;
     osc[3].freq = freq;
 
-    int8_t vol3 = (int8_t)osc[3].vol;
-    if(freq & 0x8000) vol3 = (int8_t)(-vol3);
-    vol = (int8_t)(vol + vol3);
+    int8_t c3 = (int8_t)osc[3].vol;
+    if(freq & 0x8000) c3 = (int8_t)(-c3);
+    mix += c3;
 
-    int16_t out = (int16_t)vol + (int16_t)pcm;
-
-    float centered = (float)(out - 128);
-    centered *= atm_master_volume;
-    int16_t outv = (int16_t)(128.0f + centered);
+    const uint16_t gain_q8 = __atomic_load_n(&ardulib_atm_master_gain_q8, __ATOMIC_RELAXED);
+    int32_t centered = ((int32_t)mix * (int32_t)gain_q8) >> 9;
+    if(centered > 127) centered = 127;
+    if(centered < -127) centered = -127;
+    int16_t outv = (int16_t)(128 + centered);
     if(outv < 0) outv = 0;
     if(outv > 255) outv = 255;
 
-    atm_tick_acc++;
-    if(atm_tick_acc >= atm_tick_div) {
-        atm_tick_acc = 0;
-        __atomic_fetch_add(&atm_tick_pending, 1, __ATOMIC_RELAXED);
+    ardulib_atm_tick_acc++;
+    if(ardulib_atm_tick_acc >= ardulib_atm_tick_div) {
+        ardulib_atm_tick_acc = 0;
+        __atomic_fetch_add(&ardulib_atm_tick_pending, 1, __ATOMIC_RELAXED);
     }
 
     return (uint8_t)outv;
 }
 
-static inline void atm_fill_half(size_t half_index) {
+static inline void ardulib_atm_fill_half(size_t half_index) {
     uint32_t* dst = dma_buf + (half_index * ATM_DMA_SAMPLES_PER_HALF);
-    const uint8_t en = __atomic_load_n(&atm_audio_enabled, __ATOMIC_RELAXED);
+    const uint8_t en = __atomic_load_n(&ardulib_atm_audio_enabled, __ATOMIC_RELAXED);
     for(size_t i = 0; i < ATM_LOGICAL_SAMPLES_PER_HALF; i++) {
-        uint8_t s = (!en || atm_paused) ? 128 : atm_render_logical_sample_u8();
+        uint8_t s = (!en || ardulib_atm_paused) ? 128 : ardulib_atm_render_logical_sample_u8();
         uint32_t duty = (uint32_t)s;
         if(duty > ATM_PWM_ARR) duty = ATM_PWM_ARR;
-        dst[i * 2 + 0] = duty;
-        dst[i * 2 + 1] = duty;
+        dst[i] = duty;
     }
 }
 
 static void tim16_dma_start() {
     furi_check(furi_hal_speaker_is_mine());
+    furi_hal_gpio_init_ex(
+        &gpio_speaker, GpioModeAltFunctionPushPull, GpioPullNo, GpioSpeedVeryHigh, GpioAltFn14TIM16);
+
+    ardulib_atm_tick_div = tick_div_from_rate(tickRate);
 
     for(size_t i = 0; i < ATM_DMA_TOTAL; i++)
         dma_buf[i] = 128;
 
-    atm_tick_acc = 0;
-    __atomic_store_n(&atm_tick_pending, 0, __ATOMIC_RELAXED);
+    ardulib_atm_tick_acc = 0;
+    __atomic_store_n(&ardulib_atm_tick_pending, 0, __ATOMIC_RELAXED);
 
-    atm_fill_half(0);
-    atm_fill_half(1);
+    ardulib_atm_fill_half(0);
+    ardulib_atm_fill_half(1);
 
     LL_TIM_DisableAllOutputs(TIM16);
     LL_TIM_DisableCounter(TIM16);
+    LL_TIM_SetCounter(TIM16, 0);
 
     LL_TIM_SetPrescaler(TIM16, ATM_PWM_PSC);
     LL_TIM_SetAutoReload(TIM16, ATM_PWM_ARR);
@@ -251,11 +264,11 @@ static void tim16_dma_stop() {
 static void dma_isr(void* /*ctx*/) {
     if(LL_DMA_IsActiveFlag_HT1(DMA1)) {
         LL_DMA_ClearFlag_HT1(DMA1);
-        atm_fill_half(0);
+        ardulib_atm_fill_half(0);
     }
     if(LL_DMA_IsActiveFlag_TC1(DMA1)) {
         LL_DMA_ClearFlag_TC1(DMA1);
-        atm_fill_half(1);
+        ardulib_atm_fill_half(1);
     }
 }
 
@@ -476,13 +489,13 @@ void ATM_playroutine(void) {
                     case 92:
                         tickRate = (uint8_t)(tickRate + *ch->ptr++);
                         if(tickRate < 1) tickRate = 1;
-                        atm_tick_div = tick_div_from_rate(tickRate);
+                        ardulib_atm_tick_div = tick_div_from_rate(tickRate);
                         break;
 
                     case 93:
                         tickRate = *ch->ptr++;
                         if(tickRate < 1) tickRate = 1;
-                        atm_tick_div = tick_div_from_rate(tickRate);
+                        ardulib_atm_tick_div = tick_div_from_rate(tickRate);
                         break;
 
                     case 94:
@@ -592,19 +605,19 @@ struct AtmCmd {
 };
 
 static inline void push_cmd(const AtmCmd& c) {
-    if(!atm_cmd_q) ATMsynth::systemInit();
-    furi_message_queue_put(atm_cmd_q, &c, FuriWaitForever);
+    if(!ardulib_atm_cmd_q) ATMsynth::systemInit();
+    furi_message_queue_put(ardulib_atm_cmd_q, &c, FuriWaitForever);
 }
 
-static int32_t atm_thread_fn(void* /*ctx*/) {
+static int32_t ardulib_atm_thread_fn(void* /*ctx*/) {
     AtmCmd cmd;
     bool speaker_owned = false;
 
     while(true) {
-        if(furi_message_queue_get(atm_cmd_q, &cmd, 10) == FuriStatusOk) {
+        if(furi_message_queue_get(ardulib_atm_cmd_q, &cmd, 10) == FuriStatusOk) {
             if(cmd.type == AtmCmdStop) {
-                atm_running = false;
-                atm_paused = false;
+                ardulib_atm_running = false;
+                ardulib_atm_paused = false;
 
                 if(speaker_owned) {
                     tim16_dma_stop();
@@ -618,8 +631,8 @@ static int32_t atm_thread_fn(void* /*ctx*/) {
             }
 
             if(cmd.type == AtmCmdQuit) {
-                atm_running = false;
-                atm_paused = false;
+                ardulib_atm_running = false;
+                ardulib_atm_paused = false;
 
                 if(speaker_owned) {
                     tim16_dma_stop();
@@ -633,7 +646,7 @@ static int32_t atm_thread_fn(void* /*ctx*/) {
             }
 
             if(cmd.type == AtmCmdTogglePause) {
-                if(atm_running) atm_paused = !atm_paused;
+                if(ardulib_atm_running) ardulib_atm_paused = !ardulib_atm_paused;
                 continue;
             }
 
@@ -649,9 +662,10 @@ static int32_t atm_thread_fn(void* /*ctx*/) {
 
             if(cmd.type == AtmCmdSetVolume) {
                 float v = cmd.u.vol.v;
-                if(v < 0) v = 0;
-                if(v > 1) v = 1;
-                atm_master_volume = v;
+                if(v < 0.0f) v = 0.0f;
+                if(v > ATM_MASTER_GAIN_MAX) v = ATM_MASTER_GAIN_MAX;
+                __atomic_store_n(
+                    &ardulib_atm_master_gain_q8, (uint16_t)(v * 256.0f + 0.5f), __ATOMIC_RELAXED);
                 continue;
             }
 
@@ -662,7 +676,7 @@ static int32_t atm_thread_fn(void* /*ctx*/) {
                 ChannelActiveMute = 0b11110000;
 
                 tickRate = 25;
-                atm_tick_div = tick_div_from_rate(tickRate);
+                ardulib_atm_tick_div = tick_div_from_rate(tickRate);
 
                 osc[3].freq = 0x0001;
                 channel_state[3].freq = 0x0001;
@@ -676,23 +690,23 @@ static int32_t atm_thread_fn(void* /*ctx*/) {
                     channel_state[n].ptr = getTrackPointer(*song++);
                 }
 
-                atm_running = true;
-                atm_paused = false;
+                ardulib_atm_running = true;
+                ardulib_atm_paused = false;
 
-                const uint8_t en = __atomic_load_n(&atm_audio_enabled, __ATOMIC_RELAXED);
+                const uint8_t en = __atomic_load_n(&ardulib_atm_audio_enabled, __ATOMIC_RELAXED);
                 if(en && !speaker_owned) {
                     if(furi_hal_speaker_acquire(200)) {
                         speaker_owned = true;
                         tim16_dma_start();
                     } else {
-                        atm_running = false;
+                        ardulib_atm_running = false;
                     }
                 }
                 continue;
             }
         }
 
-        const uint8_t en = __atomic_load_n(&atm_audio_enabled, __ATOMIC_RELAXED);
+        const uint8_t en = __atomic_load_n(&ardulib_atm_audio_enabled, __ATOMIC_RELAXED);
 
         if(!en) {
             if(speaker_owned) {
@@ -701,7 +715,7 @@ static int32_t atm_thread_fn(void* /*ctx*/) {
                 speaker_owned = false;
             }
         } else {
-            if(atm_running && !speaker_owned) {
+            if(ardulib_atm_running && !speaker_owned) {
                 if(furi_hal_speaker_acquire(200)) {
                     speaker_owned = true;
                     tim16_dma_start();
@@ -709,10 +723,10 @@ static int32_t atm_thread_fn(void* /*ctx*/) {
             }
         }
 
-        if(atm_running && en && !atm_paused) {
-            uint32_t pending = __atomic_load_n(&atm_tick_pending, __ATOMIC_RELAXED);
+        if(ardulib_atm_running && en && !ardulib_atm_paused) {
+            uint32_t pending = __atomic_load_n(&ardulib_atm_tick_pending, __ATOMIC_RELAXED);
             if(pending) {
-                __atomic_fetch_sub(&atm_tick_pending, 1, __ATOMIC_RELAXED);
+                __atomic_fetch_sub(&ardulib_atm_tick_pending, 1, __ATOMIC_RELAXED);
                 ATM_playroutine();
             }
         }
@@ -723,33 +737,42 @@ static int32_t atm_thread_fn(void* /*ctx*/) {
 ATMsynth ATM;
 
 void ATMsynth::systemInit() {
-    if(atm_cmd_q) return;
-    atm_cmd_q = furi_message_queue_alloc(8, sizeof(AtmCmd));
+    if(ardulib_atm_cmd_q) return;
+    __atomic_store_n(&ardulib_atm_audio_enabled, g_arduboy_audio_enabled ? 1 : 0, __ATOMIC_RELAXED);
+    ardulib_atm_cmd_q = furi_message_queue_alloc(8, sizeof(AtmCmd));
+    if(!ardulib_atm_cmd_q) return;
 
-    atm_thread = furi_thread_alloc();
-    furi_thread_set_name(atm_thread, "ATMlib");
-    furi_thread_set_stack_size(atm_thread, 2048);
-    furi_thread_set_priority(atm_thread, FuriThreadPriorityHigh);
-    furi_thread_set_callback(atm_thread, atm_thread_fn);
-    furi_thread_start(atm_thread);
+    ardulib_atm_thread = furi_thread_alloc();
+    if(!ardulib_atm_thread) {
+        furi_message_queue_free(ardulib_atm_cmd_q);
+        ardulib_atm_cmd_q = NULL;
+        return;
+    }
+
+    furi_thread_set_name(ardulib_atm_thread, "ArdulibATM");
+    furi_thread_set_stack_size(ardulib_atm_thread, 2048);
+    furi_thread_set_priority(ardulib_atm_thread, FuriThreadPriorityHigh);
+    furi_thread_set_callback(ardulib_atm_thread, ardulib_atm_thread_fn);
+    furi_thread_start(ardulib_atm_thread);
 }
 
 void ATMsynth::systemDeinit() {
-    AtmCmd c{};
-    c.type = AtmCmdQuit;
-    furi_message_queue_put(atm_cmd_q, &c, FuriWaitForever);
-    tim16_dma_stop();
-
-    if(furi_hal_speaker_is_mine()) {
-        furi_hal_speaker_release();
+    if(!ardulib_atm_cmd_q || !ardulib_atm_thread) {
+        ardulib_atm_running = false;
+        ardulib_atm_paused = false;
+        __atomic_store_n(&ardulib_atm_tick_pending, 0, __ATOMIC_RELAXED);
+        return;
     }
 
-    __atomic_store_n(&atm_tick_pending, 0, __ATOMIC_RELAXED);
-    furi_thread_join(atm_thread);
-    furi_thread_free(atm_thread);
-    furi_message_queue_free(atm_cmd_q);
-    atm_cmd_q = NULL;
-    atm_thread = NULL;
+    AtmCmd c{};
+    c.type = AtmCmdQuit;
+    furi_message_queue_put(ardulib_atm_cmd_q, &c, FuriWaitForever);
+    __atomic_store_n(&ardulib_atm_tick_pending, 0, __ATOMIC_RELAXED);
+    furi_thread_join(ardulib_atm_thread);
+    furi_thread_free(ardulib_atm_thread);
+    furi_message_queue_free(ardulib_atm_cmd_q);
+    ardulib_atm_cmd_q = NULL;
+    ardulib_atm_thread = NULL;
 }
 
 void ATMsynth::play(const uint8_t* song) {
@@ -786,15 +809,6 @@ void ATMsynth::unMuteChannel(uint8_t ch) {
 }
 
 void ATMsynth::setEnabled(bool en) {
-    __atomic_store_n(&atm_audio_enabled, en ? 1 : 0, __ATOMIC_RELAXED);
+    __atomic_store_n(&ardulib_atm_audio_enabled, en ? 1 : 0, __ATOMIC_RELAXED);
 }
-
-void atm_system_init(void) {
-    ATMsynth::systemInit();
-}
-void atm_system_deinit(void) {
-    ATMsynth::systemDeinit();
-}
-void atm_set_enabled(uint8_t en) {
-    ATMsynth::setEnabled(en != 0);
-}
+#endif

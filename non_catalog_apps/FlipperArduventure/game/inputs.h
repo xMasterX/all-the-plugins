@@ -57,6 +57,11 @@ void checkInputs()
     case STATE_MENU_MAIN:
       if (arduboy.justPressed(UP_BUTTON) && (cursorY > 2 + firstGame)) cursorY--;
       else if (arduboy.justPressed(DOWN_BUTTON) && (cursorY < 6)) cursorY++;
+      else if (arduboy.justPressed(A_BUTTON))
+      {
+        // Back button exits the main loop from the menu.
+        arduboy.exitToBootloader();
+      }
       else if (arduboy.justPressed(B_BUTTON))
       {
         if (cursorY == 6) arduboy.exitToBootloader();

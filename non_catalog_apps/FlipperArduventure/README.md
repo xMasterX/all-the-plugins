@@ -1,4 +1,4 @@
-# ARDUVENTURE
+# Arduventure
 
 This project is a [port](https://github.com/apfxtech/FlipperArduventure.git) of the original [Arduventure](https://github.com/Team-ARG-Museum/ID-46-Arduventure.git) project. The main goal of this fork is to port the game from the Arduboy console to **Flipper Zero**.
 
@@ -35,49 +35,34 @@ Story, characters, sprites, tiles, design and art: copyrighted to TEAM a.r.g. NO
 
 ## Installation
 
-### Option 1: Download a release
+### Option 1: Flipper Lab (Recommended)
+
+Install the stable build directly from Flipper Lab:
+
+**https://lab.flipper.net/apps/arduventure**
+
+This is the most reliable way to get the latest stable version.
+
+### Option 2: Download a Release
+
 1. Go to the **Releases** page of this repository.
 2. Download the latest build/package.
 3. Copy it to your Flipper Zero (e.g., via qFlipper) into the appropriate apps/games folder.
 4. Launch it from the Flipper menu.
 
-### Option 2: Build from source
+### Option 3: Build from Source (Dev Build)
 
-#### Build instructions
-
-To compile the game you need:
-- Flipper Zero firmware source code
-- The Flipper build toolchain set up on your system
-
-##### 1) Clone the firmware source
-
-Make sure you have enough free disk space, then clone the Flipper Zero firmware repository with submodules:
+Clone this repository into your firmware's `applications_user` directory and run:
 
 ```bash
-git clone --recursive https://github.com/flipperdevices/flipperzero-firmware.git
+./fbt launch APPSRC=arduventure
 ```
 
-##### 2) Prepare the environment
+This builds and launches the latest development version directly on your Flipper Zero.
 
-Build the base firmware once using Flipper Build Tool (`fbt`) to ensure your environment is correct:
-
-```bash
-./fbt
-```
-
-##### 3) Install and build the game
-
-1. Copy the game source folder into the firmware’s user applications directory:
-
-`./flipperzero-firmware/applications_user/`
-
-2. Build the application (FAP file) with:
-
-```bash
-./fbt fap_arduventure && mv build/f7-firmware-D/.extapps/arduventure.fap ./
-```
-
-After a successful build, the resulting `.fap` can be found under the `build/` directory. Copy it to your Flipper Zero SD card into the `apps/` folder.
+## Original
+**Team A.R.G. Museum**
+[ID-46-Arduventure](https://github.com/Team-ARG-Museum/ID-46-Arduventure.git)
 
 ## Game map
 ![Image](package/art/ArduventureMap.png)
