@@ -11,6 +11,7 @@ App(
         "ASN_DISABLE_OER_SUPPORT",
         "ASN_DISABLE_XER_SUPPORT",
         "ASN_DISABLE_RANDOM_FILL",
+        "ASN_DISABLE_PRINT_SUPPORT",
     ],
     requires=[
         "gui", "storage", "nfc",
@@ -45,12 +46,13 @@ App(
                 "-DASN_DISABLE_OER_SUPPORT",
                 "-DASN_DISABLE_XER_SUPPORT",
                 "-DASN_DISABLE_RANDOM_FILL",
+                "-DASN_DISABLE_PRINT_SUPPORT",
                 "-Os",
             ],
         ),
         Lib(
             name="loclass",
-            cflags=["-O3"],
+            cflags=["-Os"],
         ),
     ],
     fap_weburl="https://seader.ericbetts.dev",
@@ -71,6 +73,6 @@ App(
     apptype=FlipperAppType.PLUGIN,
     entry_point="plugin_hf_ep",
     requires=["seader"],
-    sources=["hf_interface_fal/hf.c"],
+    sources=["hf_interface_fal/hf.c", "hf_bridge_policy.c", "hf_buffer_pool.c", "hf_14a_session.c"],
     fal_embedded=True,
 )

@@ -17,26 +17,40 @@ test-host:
 	cc $(HOST_TEST_CFLAGS) \
 		lib/host_tests/vendor/munit/munit.c \
 		lib/host_tests/test_main.c \
+			lib/host_tests/test_board_identity.c \
 			lib/host_tests/test_lrc.c \
 			lib/host_tests/test_board_power_lifecycle.c \
 			lib/host_tests/test_hf_read_lifecycle.c \
+			lib/host_tests/test_hf_buffer_pool.c \
 			lib/host_tests/test_sam_startup_ui.c \
 			lib/host_tests/test_sam_key_label.c \
 		lib/host_tests/test_ccid_logic.c \
+		lib/host_tests/test_uart_tx_logic.c \
+		lib/host_tests/test_uart_rx_logic.c \
 		lib/host_tests/test_t1_existing.c \
 		lib/host_tests/test_t1_protocol.c \
 		lib/host_tests/test_snmp.c \
 			lib/host_tests/test_uhf_status_label.c \
 			lib/host_tests/test_credential_sio_label.c \
 			lib/host_tests/test_hf_read_plan.c \
+			lib/host_tests/test_hf_bridge_policy.c \
+			lib/host_tests/test_hf_14a_session.c \
+			lib/host_tests/test_hf_sam_response_view.c \
 			lib/host_tests/test_wiegand_plugin.c \
 			lib/host_tests/test_runtime_policy.c \
+			lib/host_tests/test_ui_memory_policy.c \
 		lib/host_tests/t1_test_stubs.c \
 		lib/host_tests/bit_buffer_mock.c \
 			lrc.c \
+			board_identity.c \
 			board_power_lifecycle.c \
 			sam_startup_ui.c \
 			ccid_logic.c \
+			hf_buffer_pool.c \
+			uart_tx_logic.c \
+			uart_rx_logic.c \
+			allocation_policy.c \
+			worker_loop_policy.c \
 		credential_sio_label.c \
 		t_1_logic.c \
 		t_1.c \
@@ -48,9 +62,13 @@ test-host:
 			uhf_tag_config_view.c \
 			uhf_snmp_probe.c \
 			hf_read_lifecycle.c \
+			hf_bridge_policy.c \
+			hf_14a_session.c \
+			hf_sam_response_view.c \
 			seader_hf_read_plan.c \
 			wiegand_interface_fal/wiegand.c \
 		runtime_policy.c \
+		ui_memory_policy.c \
 		-o build/host_tests/seader_tests
 	./build/host_tests/seader_tests
 
