@@ -11,7 +11,6 @@
 #include "game/game.hpp"
 #include "lib/Arduboy2.h"
 #include "lib/ArduboyTones.h"
-#include "lib/EEPROM.h"
 //#include "lib/ArduboyFX.h"
 
 #define DISPLAY_WIDTH  128
@@ -112,26 +111,6 @@ static void input_events_callback(const void* value, void* ctx) {
     }
 
     __atomic_fetch_sub(&s_input_cb_inflight, 1, __ATOMIC_RELAXED);
-}
-
-void save_audio_on_off() {
-    a.audio.saveOnOff();
-    g_arduboy_audio_enabled = a.audio.enabled();
-}
-
-void toggle_audio() {
-    if(a.audio.enabled()) {
-        a.audio.off();
-        sound.noTone();
-    } else {
-        a.audio.on();
-    }
-    a.audio.saveOnOff();
-    g_arduboy_audio_enabled = a.audio.enabled();
-}
-
-bool audio_enabled() {
-    return a.audio.enabled();
 }
 
 uint16_t time_ms() {
@@ -298,7 +277,6 @@ extern "C" int32_t arduboy3d_app(void* p) {
     sound.noTone();
     a.audio.off();
     furi_delay_ms(100);
-    EEPROM.commit();
 
     __atomic_store_n(&s_input_queue, (FuriMessageQueue*)NULL, __ATOMIC_RELEASE);
 

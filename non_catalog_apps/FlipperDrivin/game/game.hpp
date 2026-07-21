@@ -15,9 +15,6 @@ extern uint8_t state;
 
 uint16_t time_ms();
 uint8_t poll_btns();
-void save_audio_on_off();
-void toggle_audio();
-bool audio_enabled();
 
 void game_setup();
 void game_loop();

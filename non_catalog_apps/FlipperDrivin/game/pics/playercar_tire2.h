@@ -5,9 +5,18 @@
 #define playercar_tire2_H
 
 static const unsigned char playercar_tire2[] PROGMEM = {
-	// Size of bitmap: 4 x 5. Hotspot at :0, 6
-	4,5,0,6,
-	0x1F,0x11,0x1F,0x1F,0x1F,0x1F,0x1F,0x11
-};
+    // Size of bitmap: 4 x 5. Hotspot at :0, 6
+    4,
+    5,
+    0,
+    6,
+    0x1F,
+    0x11,
+    0x1F,
+    0x1F,
+    0x1F,
+    0x1F,
+    0x1F,
+    0x11};
 
 #endif
