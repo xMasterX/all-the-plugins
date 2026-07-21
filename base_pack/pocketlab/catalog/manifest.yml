@@ -28,10 +28,9 @@ changelog: '@docs/catalog-changelog.md'
 screenshots:
   - screenshots/menu.png
   - screenshots/labs.png
-  - screenshots/lesson.png
   - screenshots/quiz.png
   - screenshots/profile.png
   - screenshots/achievements.png
   - screenshots/about.png
-  - screenshots/reward.png
+  - screenshots/levelup.png
   - screenshots/settings.png
