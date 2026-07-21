@@ -9,20 +9,18 @@
 #include <gui/view_dispatcher.h>
 #include <gui/modules/submenu.h>
 #include <gui/modules/widget.h>
-#include <gui/modules/text_input.h>
-#include <gui/modules/text_input.h>
-
+#include "keyboard/text_input.h"
 #include <flipper_format/flipper_format.h>
 
 #include "barcode_utils.h"
 
-#define TAG "BARCODE"
-#define VERSION "1.1"
+#define TAG          "BARCODE"
+#define VERSION      "1.1"
 #define FILE_VERSION "1"
 
 #define TEXT_BUFFER_SIZE 128
 
-#define BARCODE_HEIGHT 50
+#define BARCODE_HEIGHT  50
 #define BARCODE_Y_START 3
 
 //the folder where the codabar encoding table is located
