@@ -4,8 +4,8 @@
 #include <furi.h>
 #include <flipper_format.h>
 
-#define GENIE_SETTINGS_FILE EXT_PATH("apps_data") "/genie/genie.txt"
-#define GENIE_SETTINGS_NAME "Genie settings file"
+#define GENIE_SETTINGS_FILE    EXT_PATH("apps_data") "/genie/genie.txt"
+#define GENIE_SETTINGS_NAME    "Genie settings file"
 #define GENIE_SETTINGS_VERSION 1
 
 #define TAG "GenieIni"

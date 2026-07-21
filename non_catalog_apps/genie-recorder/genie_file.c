@@ -7,7 +7,7 @@
 #define GENIE_SAVE_FOLDER      \
     GENIE_APPS_DATA_FOLDER "/" \
                            "genie"
-#define GENIE_SAVE_NAME "keys"
+#define GENIE_SAVE_NAME      "keys"
 #define GENIE_SAVE_EXTENSION ".txt"
 
 // Should match application.fam, fap_version.
