@@ -271,6 +271,7 @@ void slotmachine_app_free(SlotMachineApp* app) {
     gui_remove_view_port(app->gui, app->view_port);
     view_port_free(app->view_port);
     furi_record_close(RECORD_GUI); // free memory
+    furi_message_queue_free(app->input_queue);
     furi_mutex_free(app->model_mutex);
     for(int i = 0; i < COLUMNS_COUNT; i++) {
         free(app->columns[i]);

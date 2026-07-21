@@ -497,6 +497,8 @@ int32_t flipper_hero_app() {
     furi_record_close(RECORD_GUI);
     view_port_free(view_port);
     furi_message_queue_free(event_queue);
+    furi_timer_stop(timer);
+    furi_timer_free(timer);
     furi_mutex_free(plugin_state->mutex);
     return 0;
 }
