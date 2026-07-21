@@ -5,9 +5,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define SSD1306_WIDTH 128
-#define SSD1306_HEIGHT 64
-#define SSD1306_PAGES (SSD1306_HEIGHT / 8)
+#define SSD1306_WIDTH    128
+#define SSD1306_HEIGHT   64
+#define SSD1306_PAGES    (SSD1306_HEIGHT / 8)
 #define SSD1306_BUF_SIZE (SSD1306_WIDTH * SSD1306_PAGES)
 
 #define SSD1306_ADDR_3C (0x3C << 1)
@@ -44,8 +44,17 @@ void ssd1306_set_charge_pump(SSD1306* d, bool enable);
 
 // Scrolling
 void ssd1306_scroll_h(SSD1306* d, bool left, uint8_t start_page, uint8_t end_page, uint8_t speed);
-void ssd1306_scroll_hv(SSD1306* d, bool left, uint8_t start_page, uint8_t end_page, uint8_t speed, uint8_t v_offset);
+void ssd1306_scroll_hv(
+    SSD1306* d,
+    bool left,
+    uint8_t start_page,
+    uint8_t end_page,
+    uint8_t speed,
+    uint8_t v_offset);
 void ssd1306_scroll_stop(SSD1306* d);
+
+// Fade / Blink
+void ssd1306_set_fade_blink(SSD1306* d, uint8_t mode);
 
 // Drawing primitives
 void ssd1306_clear(SSD1306* d);
