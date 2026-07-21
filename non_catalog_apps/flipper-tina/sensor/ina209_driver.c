@@ -21,7 +21,7 @@
 #include "sensor_driver.h"
 #include "ina209_driver.h"
 
-#define INA209_I2C_TIMEOUT 10 // ms
+#define INA209_I2C_TIMEOUT 2 // ms
 
 #define INA209_REG_CONFIG 0x00
 #define INA209_REG_STATUS 0x01

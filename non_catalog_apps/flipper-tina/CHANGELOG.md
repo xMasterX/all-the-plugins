@@ -1,3 +1,6 @@
+v0.8
+- Fixed application freezing when the sensor is not connected
+
 v0.7
 - Added new averaging settings allowing faster sampling
 

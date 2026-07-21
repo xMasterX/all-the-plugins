@@ -21,7 +21,7 @@
 #include "sensor_driver.h"
 #include "ina228_driver.h"
 
-#define INA228_I2C_TIMEOUT 10 // ms
+#define INA228_I2C_TIMEOUT 2 // ms
 
 #define INA228_REG_CONFIG     0x00
 #define INA228_REG_ADC_CONFIG 0x01
