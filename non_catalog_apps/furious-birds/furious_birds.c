@@ -4,6 +4,7 @@
 #include <gui/gui.h>
 #include <furi_hal.h>
 #include <stdlib.h>
+#include <math.h>
 #include <gui/view_dispatcher.h>
 #include <notification/notification.h>
 #include <gui/modules/widget.h>
@@ -30,11 +31,13 @@
 
 #define AIMING_SPEED 2
 
-#define PIG_CENTER_X  6
-#define PIG_CENTER_Y  6
-#define PIG_MIN_COUNT 3
-#define PIG_MAX_COUNT 10
-#define RED_SPEED     6
+#define PIG_CENTER_X      6
+#define PIG_CENTER_Y      6
+#define PIG_MIN_COUNT     3
+#define PIG_MAX_COUNT     10
+#define RED_SPEED         6
+#define RED_INITIAL_SPEED 1.0
+#define RED_GRAVITY       0.006
 
 #define PIGS_AREA_X_START 50
 #define PIGS_AREA_X_END   120
@@ -78,8 +81,10 @@ typedef struct {
 } Pig;
 
 typedef struct {
-    uint8_t x;
+    double x;
     double y;
+    double vx;
+    double vy;
 } Red;
 
 typedef struct {
@@ -132,7 +137,9 @@ typedef enum {
 #define EVENTS_MASK (EventStop | EventTick)
 
 void draw_red(Canvas* canvas, AppModel* model) {
-    canvas_draw_icon(canvas, model->red->x - RED_CENTER_X, model->red->y - RED_CENTER_Y, &I_Red);
+    int16_t draw_x = (int16_t)round(model->red->x) - RED_CENTER_X;
+    int16_t draw_y = (int16_t)round(model->red->y) - RED_CENTER_Y;
+    canvas_draw_icon(canvas, draw_x, draw_y, &I_Red);
 }
 
 void draw_slingshot(Canvas* canvas) {
@@ -144,8 +151,10 @@ uint8_t distance_between(Pig* pig1, Pig* pig2) {
         (pig2->x - pig1->x) * (pig2->x - pig1->x) + (pig2->y - pig1->y) * (pig2->y - pig1->y));
 }
 
-uint8_t distance_between_red_and_pig(Red* red, Pig* pig) {
-    return sqrt((red->x - pig->x) * (red->x - pig->x) + (red->y - pig->y) * (red->y - pig->y));
+double distance_between_red_and_pig(Red* red, Pig* pig) {
+    double dx = red->x - pig->x;
+    double dy = red->y - pig->y;
+    return sqrt(dx * dx + dy * dy);
 }
 
 double_t degree_to_radian(int8_t degree) {
@@ -162,6 +171,8 @@ Red* init_red(AppModel* model) {
     Red* red = malloc(sizeof(Red));
     red->x = RED_START_X;
     red->y = calculate_red_start_y(model);
+    red->vx = 0;
+    red->vy = 0;
     return red;
 }
 
@@ -232,6 +243,8 @@ void draw_pigs(Canvas* canvas, AppModel* model) {
 void recalculate_start_position(AppModel* model) {
     model->angle_radians = degree_to_radian(model->angle);
     model->red->y = calculate_red_start_y(model);
+    model->red->vx = 0;
+    model->red->vy = 0;
 }
 
 void draw_aiming_line(Canvas* canvas, AppModel* model) {
@@ -251,6 +264,8 @@ void next_level(AppModel* model) {
     model->level++;
     model->state = GameStateAiming;
     model->red->x = RED_START_X;
+    model->red->vx = 0;
+    model->red->vy = 0;
     model->angle = ANGLE_START;
     model->angle_radians = degree_to_radian(model->angle);
     model->red->y = calculate_red_start_y(model);
@@ -270,6 +285,8 @@ void next_attempt(AppModel* model) {
     model->state = GameStateAiming;
     model->red->x = RED_START_X;
     model->red->y = calculate_red_start_y(model);
+    model->red->vx = 0;
+    model->red->vy = 0;
     model->remaining_attempts--;
 }
 
@@ -419,6 +436,9 @@ static bool game_input_callback(InputEvent* event, void* ctx) {
             } else if(event->key == InputKeyOk) {
                 notification_message(
                     app->notification, notification_red_start[app->settings->sound]);
+                double speed = RED_INITIAL_SPEED;
+                model->red->vx = cos(model->angle_radians) * speed;
+                model->red->vy = -sin(model->angle_radians) * speed;
                 model->state = GameStateFlying;
             } else if(event->key == InputKeyBack) {
                 view_dispatcher_switch_to_view(app->view_dispatcher, AppLogoView);
@@ -490,8 +510,10 @@ static int32_t furious_birds_worker(void* context) {
                 AppModel * model,
                 {
                     if(model->state == GameStateFlying) {
-                        model->red->x++;
-                        model->red->y = model->red->y - sin(model->angle_radians);
+                        double gravity = RED_GRAVITY;
+                        model->red->x += model->red->vx;
+                        model->red->y += model->red->vy;
+                        model->red->vy += gravity;
 
                         for(uint8_t i = 0; i < model->pig_count; i++) {
                             if(!model->pigs[i]->visible) {
