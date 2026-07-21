@@ -8,30 +8,29 @@
 #include "src/scene/scene_setup.h"
 #include "src/util/helpers.h"
 
-static List *game_logic;
-static ListItem *current_state;
-static FuriMutex *update_mutex;
+static List* game_logic;
+static ListItem* current_state;
+static FuriMutex* update_mutex;
 
-static void gui_input_events_callback(const void *value, void *ctx) {
+static void gui_input_events_callback(const void* value, void* ctx) {
     furi_mutex_acquire(update_mutex, FuriWaitForever);
-    GameState *instance = ctx;
-    const InputEvent *event = value;
+    GameState* instance = ctx;
+    const InputEvent* event = value;
 
-    if (event->key == InputKeyBack && event->type == InputTypeLong) {
+    if(event->key == InputKeyBack && event->type == InputTypeLong) {
         FURI_LOG_W("INPUT", "EXIT");
         instance->exit = true;
     }
 
-    if (current_state) {
-        ((GameLogic *) current_state->data)->input(instance, event->key, event->type);
+    if(current_state) {
+        ((GameLogic*)current_state->data)->input(instance, event->key, event->type);
     }
     furi_mutex_release(update_mutex);
 }
 
-
-static GameState *prepare() {
+static GameState* prepare() {
     game_logic = list_make();
-    update_mutex = (FuriMutex *) furi_mutex_alloc(FuriMutexTypeNormal);
+    update_mutex = (FuriMutex*)furi_mutex_alloc(FuriMutexTypeNormal);
 
     //Add scenes to the logic list
     list_push_back(&main_screen, game_logic);
@@ -43,14 +42,14 @@ static GameState *prepare() {
 
     current_state = game_logic->head;
 
-    GameState *instance = malloc(sizeof(GameState));
-    ((GameLogic *) current_state->data)->start(instance);
+    GameState* instance = malloc(sizeof(GameState));
+    ((GameLogic*)current_state->data)->start(instance);
 
     instance->hand = list_make();
     instance->deck = list_make();
     instance->waste = list_make();
-    for (int i = 0; i < 7; i++) {
-        if (i < 4) {
+    for(int i = 0; i < 7; i++) {
+        if(i < 4) {
             instance->foundation[i] = list_make();
         }
         instance->tableau[i] = list_make();
@@ -59,14 +58,12 @@ static GameState *prepare() {
     instance->animated_card.position = VECTOR_ZERO;
     instance->animated_card.velocity = VECTOR_ZERO;
 
-
     instance->buffer = buffer_create(SCREEN_WIDTH, SCREEN_HEIGHT, false);
     instance->input = furi_record_open(RECORD_INPUT_EVENTS);
     instance->gui = furi_record_open(RECORD_GUI);
     instance->canvas = gui_direct_draw_acquire(instance->gui);
-    instance->notification_app = (NotificationApp *) furi_record_open(RECORD_NOTIFICATION);
+    instance->notification_app = (NotificationApp*)furi_record_open(RECORD_NOTIFICATION);
     notification_message_block(instance->notification_app, &sequence_display_backlight_enforce_on);
-
 
     instance->input_subscription =
         furi_pubsub_subscribe(instance->input, gui_input_events_callback, instance);
@@ -74,15 +71,16 @@ static GameState *prepare() {
     return instance;
 }
 
-static void cleanup(GameState *instance) {
+static void cleanup(GameState* instance) {
     furi_pubsub_unsubscribe(instance->input, instance->input_subscription);
-    notification_message_block(instance->notification_app, &sequence_display_backlight_enforce_auto);
+    notification_message_block(
+        instance->notification_app, &sequence_display_backlight_enforce_auto);
 
     list_free(instance->hand);
     list_free(instance->deck);
     list_free(instance->waste);
-    for (int i = 0; i < 7; i++) {
-        if (i < 4) {
+    for(int i = 0; i < 7; i++) {
+        if(i < 4) {
             list_free(instance->foundation[i]);
         }
         list_free(instance->tableau[i]);
@@ -130,18 +128,18 @@ static void direct_draw_run(GameState* instance) {
     furi_thread_set_current_priority(FuriThreadPriorityIdle);
     do {
         FuriStatus status = furi_mutex_acquire(update_mutex, 20);
-        if (!status) continue;
+        if(!status) continue;
 
-        GameLogic *curr_state = (GameLogic *) current_state->data;
+        GameLogic* curr_state = (GameLogic*)current_state->data;
         currFrameTime = curr_time();
         instance->delta_time = (currFrameTime - lastFrameTime) / 64000000.0f;
         lastFrameTime = currFrameTime;
 
         check_pointer(curr_state);
         curr_state->update(instance);
-        if (instance->scene_switch == 1) {
+        if(instance->scene_switch == 1) {
             next_scene(instance);
-        } else if (instance->scene_switch == 2) {
+        } else if(instance->scene_switch == 2) {
             prev_scene(instance);
         }
         check_pointer(curr_state);
@@ -171,13 +169,13 @@ static void direct_draw_run(GameState* instance) {
         }
         furi_mutex_release(update_mutex);
         furi_thread_yield();
-    } while (!instance->exit);
+    } while(!instance->exit);
 }
 
-int32_t solitaire_app(void *p) {
+int32_t solitaire_app(void* p) {
     UNUSED(p);
     int32_t return_code = 0;
-    GameState *instance = prepare();
+    GameState* instance = prepare();
 
     direct_draw_run(instance);
 

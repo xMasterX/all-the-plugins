@@ -20,22 +20,22 @@ static const NotificationSequence sequence_cheer = {
     NULL,
 };
 
-void start_result_screen(void *data) {
-    GameState *state = (GameState *) data;
+void start_result_screen(void* data) {
+    GameState* state = (GameState*)data;
     dolphin_deed(DolphinDeedPluginGameWin);
     size_t diff = (state->game_end - state->game_start) / furi_kernel_get_tick_frequency();
-    hours = (int) (diff / 3600);
-    minutes = (int) (diff % 3600) / 60;
-    seconds = (int) (diff % 60);
+    hours = (int)(diff / 3600);
+    minutes = (int)(diff % 3600) / 60;
+    seconds = (int)(diff % 60);
     state->lateRender = true;
     state->isDirty = true;
     state->clearBuffer = false;
     isStarted = false;
-    notification_message(state->notification_app, (const NotificationSequence *) &sequence_cheer);
+    notification_message(state->notification_app, (const NotificationSequence*)&sequence_cheer);
 }
 
-void render_result_screen(void *data) {
-    GameState *state = (GameState *) data;
+void render_result_screen(void* data) {
+    GameState* state = (GameState*)data;
 
     canvas_set_color(state->canvas, ColorWhite);
     canvas_draw_box(state->canvas, 22, 14, 85, 30);
@@ -47,7 +47,7 @@ void render_result_screen(void *data) {
     canvas_set_font(state->canvas, FontSecondary);
     canvas_draw_str_aligned(state->canvas, 64, 26, AlignCenter, AlignTop, "Solve time:");
 
-    if(hours>0)
+    if(hours > 0)
         snprintf(timeString, sizeof(timeString), "%02d:%02d:%02d", hours, minutes, seconds);
     else
         snprintf(timeString, sizeof(timeString), "%02d:%02d", minutes, seconds);
@@ -55,20 +55,19 @@ void render_result_screen(void *data) {
     canvas_draw_str_aligned(state->canvas, 64, 35, AlignCenter, AlignTop, timeString);
 }
 
-void update_result_screen(void *data) {
-    GameState *state = (GameState *) data;
+void update_result_screen(void* data) {
+    GameState* state = (GameState*)data;
     state->clearBuffer = false;
     state->lateRender = true;
-    if (!isStarted) {
+    if(!isStarted) {
         state->isDirty = true;
         isStarted = true;
     }
 }
 
-
-void input_result_screen(void *data, InputKey key, InputType type) {
-    GameState *state = (GameState *) data;
-    if (key == InputKeyOk && type == InputTypePress) {
+void input_result_screen(void* data, InputKey key, InputType type) {
+    GameState* state = (GameState*)data;
+    if(key == InputKeyOk && type == InputTypePress) {
         state->scene_switch = 1;
     }
 }

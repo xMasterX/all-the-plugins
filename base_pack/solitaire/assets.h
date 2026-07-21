@@ -279,4 +279,3 @@ extern const Buffer sprite_clubs;
                                                                                                       ████████████████████████████████████████████████████████████████████████████████████████████████            
 */
 extern const Buffer sprite_logo;
-
