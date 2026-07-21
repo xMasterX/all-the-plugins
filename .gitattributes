@@ -1,0 +1,31 @@
+# Apps here are imported from many upstreams, so line endings arrive mixed.
+# Normalise every text file to LF, both in the repository and in working trees,
+# so a CRLF file cannot come back with the next upstream sync.
+* text=auto eol=lf
+
+# Assets must never be line-ending converted.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.bmp binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.bin binary
+*.dat binary
+*.raw binary
+*.hex binary
+*.uf2 binary
+*.fap binary
+*.fxbm binary
+*.atm binary
+*.mid binary
+*.vxl binary
+*.zip binary
+*.7z binary
+*.gz binary
+*.pdf binary
