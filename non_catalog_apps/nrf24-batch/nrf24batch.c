@@ -355,7 +355,7 @@ void check_en_power_5V(void) {
 }
 
 static bool select_settings_file() {
-    DialogsApp* dialogs = furi_record_open("dialogs");
+    DialogsApp* dialogs = furi_record_open(RECORD_DIALOGS);
     bool result = false;
     FuriString* path;
     path = furi_string_alloc();
@@ -364,7 +364,7 @@ static bool select_settings_file() {
     dialog_file_browser_set_basic_options(&browser_options, ".txt", NULL);
     browser_options.hide_ext = false;
     bool ret = dialog_file_browser_show(dialogs, path, path, &browser_options);
-    furi_record_close("dialogs");
+    furi_record_close(RECORD_DIALOGS);
     if(ret) {
         if(!file_stream_open(
                file_stream, furi_string_get_cstr(path), FSAM_READ_WRITE, FSOM_OPEN_EXISTING)) {

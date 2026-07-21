@@ -32,7 +32,6 @@ static void view_stats_draw_callback(Canvas *canvas, void *_model) {
 
   if (!shared_task) {
     canvas_draw_str(canvas, 4, 9, "No current task");
-    furi_record_close("app");
     return;
   }
 
