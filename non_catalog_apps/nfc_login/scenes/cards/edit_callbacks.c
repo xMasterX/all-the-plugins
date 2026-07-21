@@ -2,15 +2,16 @@
 #include "cards_scene.h"
 #include "../../storage/nfc_login_card_storage.h"
 #include "../scene_manager.h"
+#include "../../settings/nfc_login_notify.h"
 #include <ctype.h>
 
 void app_edit_text_result_callback(void* context) {
     App* app = context;
     if(app->edit_state == EditStateName || app->edit_state == EditStatePassword) {
         if(app_save_cards(app)) {
-            notification_message(app->notification, &sequence_success);
+            nfc_login_notify(app, NfcLoginNotifySuccess);
         } else {
-            notification_message(app->notification, &sequence_error);
+            nfc_login_notify(app, NfcLoginNotifyError);
             FURI_LOG_E(TAG, "Failed to save card after edit");
         }
         app->edit_state = EditStateNone;
@@ -25,7 +26,8 @@ void app_edit_text_result_callback(void* context) {
         size_t idx = 0;
         // skip spaces and parse two hex chars per byte
         while(*p && idx < MAX_UID_LEN) {
-            while(*p == ' ') p++;
+            while(*p == ' ')
+                p++;
             if(!isxdigit((unsigned char)p[0])) break;
             unsigned int byte_val = 0;
             if(sscanf(p, "%2x", &byte_val) == 1) {
@@ -36,30 +38,34 @@ void app_edit_text_result_callback(void* context) {
             } else {
                 break;
             }
-            while(*p == ' ') p++;
+            while(*p == ' ')
+                p++;
         }
         if(idx > 0) {
             app->cards[app->edit_card_index].uid_len = idx;
             memcpy(app->cards[app->edit_card_index].uid, uid, idx);
             if(app_save_cards(app)) {
-                notification_message(app->notification, &sequence_success);
+                nfc_login_notify(app, NfcLoginNotifySuccess);
             } else {
-                notification_message(app->notification, &sequence_error);
+                nfc_login_notify(app, NfcLoginNotifyError);
                 FURI_LOG_E(TAG, "Failed to save card after UID edit");
             }
         } else {
-            notification_message(app->notification, &sequence_error);
+            nfc_login_notify(app, NfcLoginNotifyError);
         }
         app->edit_state = EditStateNone;
         // Return to edit menu
         app->widget_state = 3;
         widget_reset(app->widget);
-        widget_add_string_element(app->widget, 0, 0, AlignLeft, AlignTop, FontPrimary, "Edit Card");
+        widget_add_string_element(
+            app->widget, 0, 0, AlignLeft, AlignTop, FontPrimary, "Edit Card");
         const char* items[] = {"Name", "Password", "UID", "Delete"};
         for(size_t i = 0; i < 4; i++) {
             char line[32];
-            snprintf(line, sizeof(line), "%s %s", (i == app->edit_menu_index) ? ">" : " ", items[i]);
-            widget_add_string_element(app->widget, 0, 12 + i * 12, AlignLeft, AlignTop, FontSecondary, line);
+            snprintf(
+                line, sizeof(line), "%s %s", (i == app->edit_menu_index) ? ">" : " ", items[i]);
+            widget_add_string_element(
+                app->widget, 0, 12 + i * 12, AlignLeft, AlignTop, FontSecondary, line);
         }
         app_switch_to_view(app, ViewWidget);
     }
@@ -70,18 +76,18 @@ void app_edit_uid_byte_input_done(void* context) {
     // Use the length that was set when opening the byte input (app->edit_uid_len)
     // This is the actual UID length, not MAX_UID_LEN
     size_t actual_len = app->edit_uid_len;
-    
+
     if(app->edit_card_index < app->card_count && actual_len > 0 && actual_len <= MAX_UID_LEN) {
         app->cards[app->edit_card_index].uid_len = actual_len;
         memcpy(app->cards[app->edit_card_index].uid, app->edit_uid_bytes, actual_len);
         if(app_save_cards(app)) {
-            notification_message(app->notification, &sequence_success);
+            nfc_login_notify(app, NfcLoginNotifySuccess);
         } else {
-            notification_message(app->notification, &sequence_error);
+            nfc_login_notify(app, NfcLoginNotifyError);
             FURI_LOG_E(TAG, "Failed to save card after UID byte edit");
         }
     } else {
-        notification_message(app->notification, &sequence_error);
+        nfc_login_notify(app, NfcLoginNotifyError);
     }
     app->edit_state = EditStateNone;
     // Return to edit menu

@@ -11,28 +11,28 @@
 
 int32_t nfc_login(void* p) {
     UNUSED(p);
-    
+
     App* app = malloc(sizeof(App));
     memset(app, 0, sizeof(App));
-    
+
     app->gui = furi_record_open(RECORD_GUI);
     app->notification = furi_record_open(RECORD_NOTIFICATION);
-    
+
     scene_manager_init(app);
     app_load_settings(app);
-    
+
     if(app->hid_mode == HidModeBle) {
         app_start_ble_advertising();
     }
-    
+
     ensure_crypto_key();
-    
+
     app->passcode_prompt_active = false;
     app->passcode_sequence_len = 0;
     app->passcode_needed = false;
     app->passcode_failed_attempts = 0;
     memset(app->passcode_sequence, 0, sizeof(app->passcode_sequence));
-    
+
     if(get_passcode_disabled()) {
         app_load_cards(app);
         app_switch_to_view(app, ViewSubmenu);
@@ -43,12 +43,12 @@ int32_t nfc_login(void* p) {
         app->widget_state = has_passcode_set ? 7 : 6;
         app_switch_to_view(app, ViewPasscodeCanvas);
     }
-    
+
     nfc_login_cli_register_commands(app);
     nfc_login_cli_set_app_instance(app);
-    
+
     view_dispatcher_run(app->view_dispatcher);
-    
+
     nfc_login_cli_unregister_commands();
     nfc_login_cli_clear_app_instance();
     if(app->scanning) {
@@ -65,7 +65,7 @@ int32_t nfc_login(void* p) {
             furi_thread_free(app->enroll_scan_thread);
         }
     }
-    
+
     // CRITICAL: Only deinitialize USB if USB mode was used
     // BLE mode should NEVER touch USB functions
     if(app->hid_mode == HidModeUsb && app->previous_usb_config) {
@@ -74,14 +74,14 @@ int32_t nfc_login(void* p) {
         // BLE mode - stop advertising but don't deinit (let it stay connected)
         app_stop_ble_advertising();
     }
-    
+
     view_dispatcher_remove_view(app->view_dispatcher, ViewSubmenu);
     view_dispatcher_remove_view(app->view_dispatcher, ViewTextInput);
     view_dispatcher_remove_view(app->view_dispatcher, ViewWidget);
     view_dispatcher_remove_view(app->view_dispatcher, ViewFileBrowser);
     view_dispatcher_remove_view(app->view_dispatcher, ViewByteInput);
     view_dispatcher_remove_view(app->view_dispatcher, ViewPasscodeCanvas);
-    
+
     submenu_free(app->submenu);
     text_input_free(app->text_input);
     widget_free(app->widget);
@@ -90,11 +90,11 @@ int32_t nfc_login(void* p) {
     byte_input_free(app->byte_input);
     passcode_canvas_view_free(app->passcode_canvas_view);
     view_dispatcher_free(app->view_dispatcher);
-    
+
     furi_record_close(RECORD_NOTIFICATION);
     furi_record_close(RECORD_GUI);
-    
+
     free(app);
-    
+
     return 0;
 }

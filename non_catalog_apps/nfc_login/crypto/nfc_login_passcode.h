@@ -5,11 +5,13 @@
 #include <stdint.h>
 #include <input/input.h>
 
-#define MAX_PASSCODE_SEQUENCE_LEN 64  // Max button sequence length (e.g., "up down up up left right ok back")
-#define MIN_PASSCODE_BUTTONS 4        // Minimum 4 buttons for passcode
-#define MAX_PASSCODE_BUTTONS 8        // Maximum 8 buttons for passcode
-#define PASSCODE_HEADER_SIZE 3       // 2 bytes for passcode length + 1 byte for flags in cards.enc header
-#define PASSCODE_FLAG_DISABLED 0x01  // Flag bit for passcode disabled
+#define MAX_PASSCODE_SEQUENCE_LEN \
+    64 // Max button sequence length (e.g., "up down up up left right ok back")
+#define MIN_PASSCODE_BUTTONS 4 // Minimum 4 buttons for passcode
+#define MAX_PASSCODE_BUTTONS 8 // Maximum 8 buttons for passcode
+#define PASSCODE_HEADER_SIZE \
+    3 // 2 bytes for passcode length + 1 byte for flags in cards.enc header
+#define PASSCODE_FLAG_DISABLED 0x01 // Flag bit for passcode disabled
 
 // Get button sequence passcode from encrypted settings storage
 // Returns the button sequence as a string (e.g., "up down up up")

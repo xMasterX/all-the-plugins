@@ -2,6 +2,7 @@
 #include "scenes/cards/cards_scene.h"
 #include "scenes/settings/settings_scene.h"
 #include "../../storage/nfc_login_card_storage.h"
+#include "../../settings/nfc_login_notify.h"
 
 #include <ctype.h>
 
@@ -75,7 +76,7 @@ int32_t app_enroll_scan_thread(void* context) {
             if(uid && uid_len > 0 && uid_len <= MAX_UID_LEN) {
                 app->enrollment_card.uid_len = uid_len;
                 memcpy(app->enrollment_card.uid, uid, uid_len);
-                notification_message(app->notification, &sequence_success);
+                nfc_login_notify(app, NfcLoginNotifySuccess);
                 app->enrollment_scanning = false;
                 if(app->widget_state == 3) {
                     view_dispatcher_send_custom_event(app->view_dispatcher, EventEditUidDone);
@@ -108,19 +109,23 @@ void app_text_input_result_callback(void* context) {
                 memcpy(&app->cards[app->card_count], &app->enrollment_card, sizeof(NfcCard));
                 app->card_count++;
                 if(app_save_cards(app)) {
-                    notification_message(app->notification, &sequence_success);
+                    nfc_login_notify(app, NfcLoginNotifySuccess);
                 } else {
                     FURI_LOG_E(TAG, "app_text_input_result_callback: Save failed, removing card");
                     app->card_count--;
-                    notification_message(app->notification, &sequence_error);
+                    nfc_login_notify(app, NfcLoginNotifyError);
                 }
             } else {
-                FURI_LOG_E(TAG, "app_text_input_result_callback: Max cards reached (%d)", MAX_CARDS);
-                notification_message(app->notification, &sequence_error);
+                FURI_LOG_E(
+                    TAG, "app_text_input_result_callback: Max cards reached (%d)", MAX_CARDS);
+                nfc_login_notify(app, NfcLoginNotifyError);
             }
         } else {
-            FURI_LOG_E(TAG, "app_text_input_result_callback: Invalid password or UID (password_len=%zu, uid_len=%zu)",
-                       strlen(app->enrollment_card.password), app->enrollment_card.uid_len);
+            FURI_LOG_E(
+                TAG,
+                "app_text_input_result_callback: Invalid password or UID (password_len=%zu, uid_len=%zu)",
+                strlen(app->enrollment_card.password),
+                app->enrollment_card.uid_len);
         }
         app->enrollment_state = EnrollmentStateNone;
         view_dispatcher_switch_to_view(app->view_dispatcher, ViewSubmenu);
@@ -149,10 +154,12 @@ bool app_import_nfc_file(App* app, const char* path) {
             if(len > 0 && line[len - 1] == '\r') line[len - 1] = '\0';
             if(strncmp(line, "UID:", 4) == 0) {
                 const char* p = line + 4;
-                while(*p == ' ') p++;
+                while(*p == ' ')
+                    p++;
                 size_t idx = 0;
                 while(*p && idx < MAX_UID_LEN) {
-                    while(*p == ' ') p++;
+                    while(*p == ' ')
+                        p++;
                     if(!isxdigit((unsigned char)p[0])) break;
                     unsigned int byte_val = 0;
                     if(sscanf(p, "%2x", &byte_val) == 1) {
@@ -162,7 +169,8 @@ bool app_import_nfc_file(App* app, const char* path) {
                     } else {
                         break;
                     }
-                    while(*p == ' ') p++;
+                    while(*p == ' ')
+                        p++;
                 }
                 if(idx > 0) {
                     app->enrollment_card.uid_len = idx;
@@ -212,8 +220,10 @@ bool app_custom_event_callback(void* context, uint32_t event) {
         widget_reset(app->widget);
         widget_add_icon_element(app->widget, 2, 6, &I_Scanning_123x52);
         widget_add_icon_element(app->widget, 124, 56, &I_ButtonRight_4x7);
-        widget_add_string_element(app->widget, 117, 56, AlignRight, AlignTop, FontSecondary, "Manual");
-        widget_add_string_element(app->widget, 0, 56, AlignRight, AlignTop, FontSecondary, "Back=Cancel");
+        widget_add_string_element(
+            app->widget, 117, 56, AlignRight, AlignTop, FontSecondary, "Manual");
+        widget_add_string_element(
+            app->widget, 0, 56, AlignRight, AlignTop, FontSecondary, "Back=Cancel");
         app_switch_to_view(app, ViewWidget);
         app->widget_state = 1;
         if(!app->enrollment_scanning) {
@@ -245,27 +255,33 @@ bool app_custom_event_callback(void* context, uint32_t event) {
         app_switch_to_view(app, ViewTextInput);
         return true;
     case EventEditUidDone:
-        if(app->edit_card_index < app->card_count &&
-           app->enrollment_card.uid_len > 0 &&
+        if(app->edit_card_index < app->card_count && app->enrollment_card.uid_len > 0 &&
            app->enrollment_card.uid_len <= MAX_UID_LEN) {
             app->cards[app->edit_card_index].uid_len = app->enrollment_card.uid_len;
-            memcpy(app->cards[app->edit_card_index].uid, app->enrollment_card.uid, app->enrollment_card.uid_len);
+            memcpy(
+                app->cards[app->edit_card_index].uid,
+                app->enrollment_card.uid,
+                app->enrollment_card.uid_len);
             if(!app_save_cards(app)) {
                 FURI_LOG_E(TAG, "Failed to save card after UID scan");
             }
         }
         app->widget_state = 3;
         widget_reset(app->widget);
-        widget_add_string_element(app->widget, 0, 0, AlignLeft, AlignTop, FontPrimary, "Edit Card");
+        widget_add_string_element(
+            app->widget, 0, 0, AlignLeft, AlignTop, FontPrimary, "Edit Card");
         {
             const char* items[] = {"Name", "Password", "UID (scan)", "Delete"};
             for(size_t i = 0; i < 4; i++) {
                 char line[32];
-                snprintf(line, sizeof(line), "%s %s", (i == app->edit_menu_index) ? ">" : " ", items[i]);
-                widget_add_string_element(app->widget, 0, 12 + i * 12, AlignLeft, AlignTop, FontSecondary, line);
+                snprintf(
+                    line, sizeof(line), "%s %s", (i == app->edit_menu_index) ? ">" : " ", items[i]);
+                widget_add_string_element(
+                    app->widget, 0, 12 + i * 12, AlignLeft, AlignTop, FontSecondary, line);
             }
         }
-        widget_add_string_element(app->widget, 0, 60, AlignLeft, AlignTop, FontSecondary, "Back=List");
+        widget_add_string_element(
+            app->widget, 0, 60, AlignLeft, AlignTop, FontSecondary, "Back=List");
         app_switch_to_view(app, ViewWidget);
         return true;
     case EventManualUidEntry:
@@ -307,13 +323,13 @@ void app_enroll_uid_byte_input_done(void* context) {
             break;
         }
     }
-    
+
     if(actual_len > 0 && actual_len <= MAX_UID_LEN) {
         app->enrollment_card.uid_len = actual_len;
         // Proceed to password entry
         view_dispatcher_send_custom_event(app->view_dispatcher, EventPromptPassword);
     } else {
-        notification_message(app->notification, &sequence_error);
+        nfc_login_notify(app, NfcLoginNotifyError);
         app->enrollment_state = EnrollmentStateNone;
         app_switch_to_view(app, ViewSubmenu);
     }

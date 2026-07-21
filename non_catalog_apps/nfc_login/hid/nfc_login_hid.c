@@ -7,11 +7,11 @@
 // ============================================================================
 
 bool is_ble_hid_ready(void) {
-    #if HAS_BLE_HID_API
+#if HAS_BLE_HID_API
     return ble_hid_is_ready();
-    #else
+#else
     return false;
-    #endif
+#endif
 }
 
 void release_all_keys_with_mode(HidMode mode) {
@@ -26,9 +26,9 @@ bool initialize_hid_and_wait_with_mode(HidMode mode) {
     // CRITICAL: Route to correct implementation based on mode
     // BLE and USB are completely separate
     if(mode == HidModeBle) {
-        #ifdef BtIconHid
+#ifdef BtIconHid
         furi_hal_bt_set_app_icon(BtIconHid);
-        #endif
+#endif
         return ble_hid_init();
     } else {
         return usb_hid_init();
@@ -48,7 +48,7 @@ void deinitialize_hid_with_restore_and_mode(FuriHalUsbInterface* previous_config
 
 uint32_t app_type_password(App* app, const char* password) {
     if(!password || !app) return 0;
-    
+
     // CRITICAL: Check mode FIRST and route to correct implementation
     // BLE and USB are completely separate - no cross-contamination
     if(app->hid_mode == HidModeBle) {

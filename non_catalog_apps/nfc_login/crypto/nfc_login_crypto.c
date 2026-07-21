@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define TAG "nfc_login_crypto"
+#define TAG             "nfc_login_crypto"
 #define CRYPTO_KEY_SLOT FURI_HAL_CRYPTO_ENCLAVE_UNIQUE_KEY_SLOT
 
 static void generate_iv_from_device_uid(uint8_t* iv) {
@@ -123,12 +123,17 @@ bool decrypt_data(const uint8_t* input, size_t input_len, uint8_t* output, size_
     return success;
 }
 
-bool encrypt_data_with_passcode_sequence(const uint8_t* input, size_t input_len, uint8_t* output, size_t* output_len, const char* sequence) {
+bool encrypt_data_with_passcode_sequence(
+    const uint8_t* input,
+    size_t input_len,
+    uint8_t* output,
+    size_t* output_len,
+    const char* sequence) {
     if(!input || !output || !output_len || input_len == 0 || !sequence) {
         FURI_LOG_E(TAG, "encrypt_data_with_passcode_sequence: Invalid parameters");
         return false;
     }
-    
+
     size_t seq_len = strlen(sequence);
     if(seq_len == 0) {
         FURI_LOG_E(TAG, "encrypt_data_with_passcode_sequence: Invalid sequence");
@@ -174,15 +179,15 @@ bool encrypt_data_with_passcode_sequence(const uint8_t* input, size_t input_len,
     // Uses key mixing and XOR operations for encryption
     uint8_t iv_copy[AES_BLOCK_SIZE];
     memcpy(iv_copy, iv, AES_BLOCK_SIZE);
-    
+
     for(size_t block = 0; block < padded_len; block += AES_BLOCK_SIZE) {
         uint8_t block_data[AES_BLOCK_SIZE];
-        
+
         // XOR with previous ciphertext (CBC mode)
         for(size_t i = 0; i < AES_BLOCK_SIZE; i++) {
             block_data[i] = padded_input[block + i] ^ iv_copy[i];
         }
-        
+
         // Simple block encryption using key
         for(int round = 0; round < 4; round++) {
             for(size_t i = 0; i < AES_BLOCK_SIZE; i++) {
@@ -191,12 +196,12 @@ bool encrypt_data_with_passcode_sequence(const uint8_t* input, size_t input_len,
                 block_data[i] ^= key[(i + round + 1) % AES_KEY_SIZE];
             }
         }
-        
+
         // Store ciphertext and update IV for next block
         memcpy(output + block, block_data, AES_BLOCK_SIZE);
         memcpy(iv_copy, block_data, AES_BLOCK_SIZE);
     }
-    
+
     memset(padded_input, 0, padded_len);
     memset(key, 0, AES_KEY_SIZE);
     free(padded_input);
@@ -205,14 +210,20 @@ bool encrypt_data_with_passcode_sequence(const uint8_t* input, size_t input_len,
     return true;
 }
 
-bool decrypt_data_with_passcode_sequence(const uint8_t* input, size_t input_len, uint8_t* output, size_t* output_len, const char* sequence) {
+bool decrypt_data_with_passcode_sequence(
+    const uint8_t* input,
+    size_t input_len,
+    uint8_t* output,
+    size_t* output_len,
+    const char* sequence) {
     if(!input || !output || !output_len) {
         FURI_LOG_E(TAG, "decrypt_data_with_passcode_sequence: Invalid parameters");
         return false;
     }
 
     if(input_len == 0 || input_len % AES_BLOCK_SIZE != 0) {
-        FURI_LOG_E(TAG, "decrypt_data_with_passcode_sequence: Invalid input length: %zu", input_len);
+        FURI_LOG_E(
+            TAG, "decrypt_data_with_passcode_sequence: Invalid input length: %zu", input_len);
         return false;
     }
 
@@ -225,7 +236,7 @@ bool decrypt_data_with_passcode_sequence(const uint8_t* input, size_t input_len,
         FURI_LOG_E(TAG, "decrypt_data_with_passcode_sequence: Invalid sequence");
         return false;
     }
-    
+
     if(strlen(sequence) == 0) {
         FURI_LOG_E(TAG, "decrypt_data_with_passcode_sequence: Invalid sequence");
         return false;
@@ -245,14 +256,14 @@ bool decrypt_data_with_passcode_sequence(const uint8_t* input, size_t input_len,
     // Simple block cipher decryption (CBC mode) without mbedtls
     uint8_t iv_copy[AES_BLOCK_SIZE];
     memcpy(iv_copy, iv, AES_BLOCK_SIZE);
-    
+
     for(size_t block = 0; block < input_len; block += AES_BLOCK_SIZE) {
         uint8_t cipher_block[AES_BLOCK_SIZE];
         uint8_t block_data[AES_BLOCK_SIZE];
-        
+
         memcpy(cipher_block, input + block, AES_BLOCK_SIZE);
         memcpy(block_data, cipher_block, AES_BLOCK_SIZE);
-        
+
         // Simple block decryption (reverse of encryption)
         for(int round = 3; round >= 0; round--) {
             for(size_t i = 0; i < AES_BLOCK_SIZE; i++) {
@@ -261,16 +272,16 @@ bool decrypt_data_with_passcode_sequence(const uint8_t* input, size_t input_len,
                 block_data[i] ^= key[(i + round) % AES_KEY_SIZE];
             }
         }
-        
+
         // XOR with previous ciphertext (CBC mode)
         for(size_t i = 0; i < AES_BLOCK_SIZE; i++) {
             output[block + i] = block_data[i] ^ iv_copy[i];
         }
-        
+
         // Update IV for next block
         memcpy(iv_copy, cipher_block, AES_BLOCK_SIZE);
     }
-    
+
     memset(key, 0, AES_KEY_SIZE);
 
     // Remove padding
