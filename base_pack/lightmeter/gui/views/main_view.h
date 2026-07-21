@@ -9,11 +9,11 @@
    with reasonable resolution in 1-10k range
    on 20px of screen height  */
 #define LUX_HISTORGRAM_LOGBASE 1.4
-#define LUX_HISTORGRAM_BOTTOM 64 + 12
+#define LUX_HISTORGRAM_BOTTOM  64 + 12
 
 /* 40 pixels between 45th and 85th
    between left and right button labels */
-#define LUX_HISTORGRAM_LEFT 45
+#define LUX_HISTORGRAM_LEFT   45
 #define LUX_HISTORGRAM_LENGTH 40
 
 typedef struct MainView MainView;

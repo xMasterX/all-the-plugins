@@ -8,7 +8,7 @@
 
 #define WORKER_TAG "Main View"
 
-static const int iso_numbers[] = {
+const int iso_numbers[] = {
     [ISO_6] = 6,
     [ISO_12] = 12,
     [ISO_25] = 25,
@@ -261,56 +261,47 @@ void main_view_set_lux(MainView* main_view, float val) {
 
 void main_view_reset_lux(MainView* main_view) {
     furi_assert(main_view);
-    with_view_model(
-        main_view->view, MainViewModel * model, { model->peakLux = 0; }, true);
+    with_view_model(main_view->view, MainViewModel * model, { model->peakLux = 0; }, true);
 }
 
 void main_view_set_EV(MainView* main_view, float val) {
     furi_assert(main_view);
-    with_view_model(
-        main_view->view, MainViewModel * model, { model->EV = val; }, true);
+    with_view_model(main_view->view, MainViewModel * model, { model->EV = val; }, true);
 }
 
 void main_view_set_response(MainView* main_view, bool val) {
     furi_assert(main_view);
-    with_view_model(
-        main_view->view, MainViewModel * model, { model->response = val; }, true);
+    with_view_model(main_view->view, MainViewModel * model, { model->response = val; }, true);
 }
 
 void main_view_set_iso(MainView* main_view, int iso) {
     furi_assert(main_view);
-    with_view_model(
-        main_view->view, MainViewModel * model, { model->iso = iso; }, true);
+    with_view_model(main_view->view, MainViewModel * model, { model->iso = iso; }, true);
 }
 
 void main_view_set_nd(MainView* main_view, int nd) {
     furi_assert(main_view);
-    with_view_model(
-        main_view->view, MainViewModel * model, { model->nd = nd; }, true);
+    with_view_model(main_view->view, MainViewModel * model, { model->nd = nd; }, true);
 }
 
 void main_view_set_aperture(MainView* main_view, int aperture) {
     furi_assert(main_view);
-    with_view_model(
-        main_view->view, MainViewModel * model, { model->aperture = aperture; }, true);
+    with_view_model(main_view->view, MainViewModel * model, { model->aperture = aperture; }, true);
 }
 
 void main_view_set_speed(MainView* main_view, int speed) {
     furi_assert(main_view);
-    with_view_model(
-        main_view->view, MainViewModel * model, { model->speed = speed; }, true);
+    with_view_model(main_view->view, MainViewModel * model, { model->speed = speed; }, true);
 }
 
 void main_view_set_dome(MainView* main_view, bool dome) {
     furi_assert(main_view);
-    with_view_model(
-        main_view->view, MainViewModel * model, { model->dome = dome; }, true);
+    with_view_model(main_view->view, MainViewModel * model, { model->dome = dome; }, true);
 }
 
 void main_view_set_lux_only(MainView* main_view, bool lux_only) {
     furi_assert(main_view);
-    with_view_model(
-        main_view->view, MainViewModel * model, { model->lux_only = lux_only; }, true);
+    with_view_model(main_view->view, MainViewModel * model, { model->lux_only = lux_only; }, true);
 }
 
 void main_view_set_measurement_resolution(MainView* main_view, int measurement_resolution) {
@@ -337,8 +328,7 @@ void main_view_set_sensor_type(MainView* main_view, int sensor_type) {
 bool main_view_get_dome(MainView* main_view) {
     furi_assert(main_view);
     bool val = false;
-    with_view_model(
-        main_view->view, MainViewModel * model, { val = model->dome; }, true);
+    with_view_model(main_view->view, MainViewModel * model, { val = model->dome; }, true);
     return val;
 }
 

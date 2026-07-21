@@ -1,15 +1,15 @@
 #pragma once
 
-#define LM_VERSION_APP "1.2"
-#define LM_DEVELOPED "Oleksii Kutuzov"
-#define LM_GITHUB "https://github.com/oleksiikutuzov/flipperzero-lightmeter"
+#define LM_VERSION_APP "1.3"
+#define LM_DEVELOPED   "Oleksii Kutuzov"
+#define LM_GITHUB      "https://github.com/oleksiikutuzov/flipperzero-lightmeter"
 
-#define DOME_COEFFICIENT 2.3
-#define DEFAULT_ISO ISO_100
-#define DEFAULT_ND ND_0
-#define DEFAULT_APERTURE AP_2_8
-#define DEFAULT_SPEED SPEED_125
-#define DEFAULT_DOME WITHOUT_DOME
+#define DOME_COEFFICIENT  2.3
+#define DEFAULT_ISO       ISO_100
+#define DEFAULT_ND        ND_0
+#define DEFAULT_APERTURE  AP_2_8
+#define DEFAULT_SPEED     SPEED_125
+#define DEFAULT_DOME      WITHOUT_DOME
 #define DEFAULT_BACKLIGHT BACKLIGHT_AUTO
 
 typedef enum {
@@ -121,4 +121,7 @@ typedef enum {
     SENSOR_MAX44009,
 } LightMeterSensorType;
 
-typedef enum { BACKLIGHT_AUTO, BACKLIGHT_ON } LightMeterBacklight;
+typedef enum {
+    BACKLIGHT_AUTO,
+    BACKLIGHT_ON
+} LightMeterBacklight;
