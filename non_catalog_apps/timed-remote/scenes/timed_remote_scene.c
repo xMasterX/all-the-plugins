@@ -1,35 +1,32 @@
 #include "timed_remote_scene.h"
 
-/* Scene handler tables */
-
-void (*const timed_remote_scene_on_enter_handlers[])(void *) = {
-    timed_remote_scene_ir_browse_on_enter,
-    timed_remote_scene_ir_select_on_enter,
-    timed_remote_scene_timer_config_on_enter,
-    timed_remote_scene_timer_running_on_enter,
-    timed_remote_scene_confirm_on_enter,
+static void (*const scene_on_enter[])(void*) = {
+    [SCENE_BROWSE] = scene_browse_enter,
+    [SCENE_SELECT] = scene_select_enter,
+    [SCENE_CONFIG] = scene_cfg_enter,
+    [SCENE_RUN] = scene_run_enter,
+    [SCENE_DONE] = scene_done_enter,
 };
 
-bool (*const timed_remote_scene_on_event_handlers[])(void *,
-                                                     SceneManagerEvent) = {
-    timed_remote_scene_ir_browse_on_event,
-    timed_remote_scene_ir_select_on_event,
-    timed_remote_scene_timer_config_on_event,
-    timed_remote_scene_timer_running_on_event,
-    timed_remote_scene_confirm_on_event,
+static bool (*const scene_on_event[])(void*, SceneManagerEvent) = {
+    [SCENE_BROWSE] = scene_browse_event,
+    [SCENE_SELECT] = scene_select_event,
+    [SCENE_CONFIG] = scene_cfg_event,
+    [SCENE_RUN] = scene_run_event,
+    [SCENE_DONE] = scene_done_event,
 };
 
-void (*const timed_remote_scene_on_exit_handlers[])(void *) = {
-    timed_remote_scene_ir_browse_on_exit,
-    timed_remote_scene_ir_select_on_exit,
-    timed_remote_scene_timer_config_on_exit,
-    timed_remote_scene_timer_running_on_exit,
-    timed_remote_scene_confirm_on_exit,
+static void (*const scene_on_exit[])(void*) = {
+    [SCENE_BROWSE] = scene_browse_exit,
+    [SCENE_SELECT] = scene_select_exit,
+    [SCENE_CONFIG] = scene_cfg_exit,
+    [SCENE_RUN] = scene_run_exit,
+    [SCENE_DONE] = scene_done_exit,
 };
 
-const SceneManagerHandlers timed_remote_scene_handlers = {
-    .on_enter_handlers = timed_remote_scene_on_enter_handlers,
-    .on_event_handlers = timed_remote_scene_on_event_handlers,
-    .on_exit_handlers = timed_remote_scene_on_exit_handlers,
-    .scene_num = TimedRemoteSceneCount,
+const SceneManagerHandlers scene_handlers = {
+    .on_enter_handlers = scene_on_enter,
+    .on_event_handlers = scene_on_event,
+    .on_exit_handlers = scene_on_exit,
+    .scene_num = SCENE_COUNT,
 };

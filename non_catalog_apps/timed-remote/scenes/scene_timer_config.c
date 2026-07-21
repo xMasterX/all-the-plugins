@@ -1,202 +1,201 @@
+#include <stdio.h>
+
 #include "../timed_remote.h"
 #include "timed_remote_scene.h"
 
 enum {
-  TimerConfigIndexMode,
-  TimerConfigIndexHours,
-  TimerConfigIndexMinutes,
-  TimerConfigIndexSeconds,
-  TimerConfigIndexRepeat,
-  TimerConfigIndexConfirm,
+    ITEM_MODE,
+    ITEM_HOURS,
+    ITEM_MINUTES,
+    ITEM_SECONDS,
+    ITEM_REPEAT,
+    ITEM_START,
 };
 
-static void timer_config_mode_change(VariableItem *item) {
-  TimedRemoteApp *app = variable_item_get_context(item);
-  uint8_t index = variable_item_get_current_value_index(item);
-  app->timer_mode = (index == 0) ? TimerModeCountdown : TimerModeScheduled;
-  variable_item_set_current_value_text(
-      item, app->timer_mode == TimerModeCountdown ? "Countdown" : "Scheduled");
+#define REPEAT_OFF       0U
+#define REPEAT_UNLIMITED 255U
 
-  /* Disable repeat in scheduled mode */
-  if (app->timer_mode == TimerModeScheduled) {
-    app->repeat_count = 0;
-  }
+static void add_time_item(
+    VariableItemList*,
+    const char*,
+    uint8_t,
+    uint8_t,
+    VariableItemChangeCallback,
+    TimedRemoteApp*);
+static void build_items(TimedRemoteApp*);
+static uint8_t index_from_repeat(uint8_t);
+static void set_repeat_text(VariableItem*, uint8_t);
+static uint8_t repeat_from_index(uint8_t);
+static void set_two_digits(VariableItem*, uint8_t);
+static uint32_t start_item_index(const TimedRemoteApp*);
 
-  /* Trigger rebuild to show/hide repeat options */
-  view_dispatcher_send_custom_event(app->view_dispatcher,
-                                    TimedRemoteEventModeChanged);
+static void set_two_digits(VariableItem* item, uint8_t value) {
+    char text[4];
+
+    snprintf(text, sizeof(text), "%02d", value);
+    variable_item_set_current_value_text(item, text);
 }
 
-static void timer_config_hours_change(VariableItem *item) {
-  TimedRemoteApp *app = variable_item_get_context(item);
-  uint8_t index = variable_item_get_current_value_index(item);
-  app->hours = index;
-  char buf[4];
-  snprintf(buf, sizeof(buf), "%02d", app->hours);
-  variable_item_set_current_value_text(item, buf);
+static uint8_t repeat_from_index(uint8_t index) {
+    if(index == 0) return REPEAT_OFF;
+    if(index == 1) return REPEAT_UNLIMITED;
+    return index - 1;
 }
 
-static void timer_config_minutes_change(VariableItem *item) {
-  TimedRemoteApp *app = variable_item_get_context(item);
-  uint8_t index = variable_item_get_current_value_index(item);
-  app->minutes = index;
-  char buf[4];
-  snprintf(buf, sizeof(buf), "%02d", app->minutes);
-  variable_item_set_current_value_text(item, buf);
+static uint8_t index_from_repeat(uint8_t repeat) {
+    if(repeat == REPEAT_OFF) return 0;
+    if(repeat == REPEAT_UNLIMITED) return 1;
+    return repeat + 1;
 }
 
-static void timer_config_seconds_change(VariableItem *item) {
-  TimedRemoteApp *app = variable_item_get_context(item);
-  uint8_t index = variable_item_get_current_value_index(item);
-  app->seconds = index;
-  char buf[4];
-  snprintf(buf, sizeof(buf), "%02d", app->seconds);
-  variable_item_set_current_value_text(item, buf);
-}
+static void set_repeat_text(VariableItem* item, uint8_t repeat) {
+    char text[16];
 
-static void timer_config_repeat_change(VariableItem *item) {
-  TimedRemoteApp *app = variable_item_get_context(item);
-  uint8_t index = variable_item_get_current_value_index(item);
-
-  char buf[16];
-  if (index == 0) {
-    /* Off */
-    app->repeat_count = 0;
-    snprintf(buf, sizeof(buf), "Off");
-  } else if (index == 1) {
-    /* Unlimited */
-    app->repeat_count = 255;
-    snprintf(buf, sizeof(buf), "Unlimited");
-  } else {
-    /* 1, 2, 3, ... 99 */
-    app->repeat_count = index - 1;
-    snprintf(buf, sizeof(buf), "%d", app->repeat_count);
-  }
-  variable_item_set_current_value_text(item, buf);
-}
-
-static void timer_config_enter_callback(void *context, uint32_t index) {
-  TimedRemoteApp *app = context;
-  /* In countdown mode, confirm is at index 5, in scheduled mode it's at index 4 */
-  uint32_t confirm_index = app->timer_mode == TimerModeCountdown
-                               ? TimerConfigIndexConfirm
-                               : (TimerConfigIndexSeconds + 1);
-  if (index == confirm_index) {
-    view_dispatcher_send_custom_event(app->view_dispatcher,
-                                      TimedRemoteEventTimerConfigured);
-  }
-}
-
-static void build_timer_config_list(TimedRemoteApp *app) {
-  VariableItem *item;
-  char buf[16];
-
-  variable_item_list_reset(app->variable_item_list);
-
-  /* Mode: Countdown / Scheduled */
-  item = variable_item_list_add(app->variable_item_list, "Mode", 2,
-                                timer_config_mode_change, app);
-  variable_item_set_current_value_index(
-      item, app->timer_mode == TimerModeCountdown ? 0 : 1);
-  variable_item_set_current_value_text(
-      item, app->timer_mode == TimerModeCountdown ? "Countdown" : "Scheduled");
-
-  /* Hours: 0-23 */
-  item = variable_item_list_add(app->variable_item_list, "Hours", 24,
-                                timer_config_hours_change, app);
-  variable_item_set_current_value_index(item, app->hours);
-  snprintf(buf, sizeof(buf), "%02d", app->hours);
-  variable_item_set_current_value_text(item, buf);
-
-  /* Minutes: 0-59 */
-  item = variable_item_list_add(app->variable_item_list, "Minutes", 60,
-                                timer_config_minutes_change, app);
-  variable_item_set_current_value_index(item, app->minutes);
-  snprintf(buf, sizeof(buf), "%02d", app->minutes);
-  variable_item_set_current_value_text(item, buf);
-
-  /* Seconds: 0-59 */
-  item = variable_item_list_add(app->variable_item_list, "Seconds", 60,
-                                timer_config_seconds_change, app);
-  variable_item_set_current_value_index(item, app->seconds);
-  snprintf(buf, sizeof(buf), "%02d", app->seconds);
-  variable_item_set_current_value_text(item, buf);
-
-  /* Repeat options - only for countdown mode */
-  if (app->timer_mode == TimerModeCountdown) {
-    /* Repeat: Off, Unlimited, 1, 2, 3, ... 99 (total 101 values) */
-    item = variable_item_list_add(app->variable_item_list, "Repeat", 101,
-                                  timer_config_repeat_change, app);
-
-    /* Convert repeat_count to index */
-    uint8_t repeat_index;
-    if (app->repeat_count == 0) {
-      repeat_index = 0; /* Off */
-    } else if (app->repeat_count == 255) {
-      repeat_index = 1; /* Unlimited */
-    } else {
-      repeat_index = app->repeat_count + 1; /* 1-99 */
+    if(repeat == REPEAT_OFF) {
+        variable_item_set_current_value_text(item, "Off");
+        return;
     }
-    variable_item_set_current_value_index(item, repeat_index);
-
-    /* Set display text */
-    if (app->repeat_count == 0) {
-      variable_item_set_current_value_text(item, "Off");
-    } else if (app->repeat_count == 255) {
-      variable_item_set_current_value_text(item, "Unlimited");
-    } else {
-      snprintf(buf, sizeof(buf), "%d", app->repeat_count);
-      variable_item_set_current_value_text(item, buf);
+    if(repeat == REPEAT_UNLIMITED) {
+        variable_item_set_current_value_text(item, "Unlimited");
+        return;
     }
-  }
 
-  /* Confirm button */
-  variable_item_list_add(app->variable_item_list, ">> Start Timer <<", 0, NULL,
-                         NULL);
-
-  variable_item_list_set_enter_callback(app->variable_item_list,
-                                        timer_config_enter_callback, app);
+    snprintf(text, sizeof(text), "%u", repeat);
+    variable_item_set_current_value_text(item, text);
 }
 
-void timed_remote_scene_timer_config_on_enter(void *context) {
-  TimedRemoteApp *app = context;
-  build_timer_config_list(app);
-  view_dispatcher_switch_to_view(app->view_dispatcher,
-                                 TimedRemoteViewVariableItemList);
+static uint32_t start_item_index(const TimedRemoteApp* app) {
+    if(app->mode == MODE_COUNTDOWN) return ITEM_START;
+    return ITEM_REPEAT;
 }
 
-bool timed_remote_scene_timer_config_on_event(void *context,
-                                               SceneManagerEvent event) {
-  TimedRemoteApp *app = context;
-  bool consumed = false;
+static void on_mode_change(VariableItem* item) {
+    TimedRemoteApp* app;
+    uint8_t mode_index;
 
-  if (event.type == SceneManagerEventTypeCustom) {
-    if (event.event == TimedRemoteEventModeChanged) {
-      /* Rebuild the list to show/hide repeat options */
-      build_timer_config_list(app);
-      consumed = true;
-    } else if (event.event == TimedRemoteEventTimerConfigured) {
-      /* Initialize repeats remaining based on repeat_count encoding */
-      if (app->repeat_count == 0) {
-        /* Off - single execution */
-        app->repeats_remaining = 1;
-      } else if (app->repeat_count == 255) {
-        /* Unlimited */
-        app->repeats_remaining = 255;
-      } else {
-        /* Fixed count (1-99): initial + N repeats = N+1 total executions */
-        app->repeats_remaining = app->repeat_count + 1;
-      }
-      scene_manager_next_scene(app->scene_manager,
-                               TimedRemoteSceneTimerRunning);
-      consumed = true;
+    app = variable_item_get_context(item);
+    mode_index = variable_item_get_current_value_index(item);
+    app->mode = mode_index == 0 ? MODE_COUNTDOWN : MODE_SCHEDULED;
+    variable_item_set_current_value_text(
+        item, app->mode == MODE_COUNTDOWN ? "Countdown" : "Scheduled");
+    if(app->mode == MODE_SCHEDULED) app->repeat = REPEAT_OFF;
+
+    view_dispatcher_send_custom_event(app->vd, EVENT_MODE_CHANGED);
+}
+
+static void on_hours_change(VariableItem* item) {
+    TimedRemoteApp* app;
+
+    app = variable_item_get_context(item);
+    app->h = variable_item_get_current_value_index(item);
+    set_two_digits(item, app->h);
+}
+
+static void on_minutes_change(VariableItem* item) {
+    TimedRemoteApp* app;
+
+    app = variable_item_get_context(item);
+    app->m = variable_item_get_current_value_index(item);
+    set_two_digits(item, app->m);
+}
+
+static void on_seconds_change(VariableItem* item) {
+    TimedRemoteApp* app;
+
+    app = variable_item_get_context(item);
+    app->s = variable_item_get_current_value_index(item);
+    set_two_digits(item, app->s);
+}
+
+static void on_repeat_change(VariableItem* item) {
+    TimedRemoteApp* app;
+
+    app = variable_item_get_context(item);
+    app->repeat = repeat_from_index(variable_item_get_current_value_index(item));
+    set_repeat_text(item, app->repeat);
+}
+
+static void on_enter(void* context, uint32_t index) {
+    TimedRemoteApp* app;
+
+    app = context;
+    if(index != start_item_index(app)) return;
+
+    view_dispatcher_send_custom_event(app->vd, EVENT_TIMER_CONFIGURED);
+}
+
+static void add_time_item(
+    VariableItemList* list,
+    const char* name,
+    uint8_t value_count,
+    uint8_t value,
+    VariableItemChangeCallback callback,
+    TimedRemoteApp* app) {
+    VariableItem* item;
+
+    item = variable_item_list_add(list, name, value_count, callback, app);
+    variable_item_set_current_value_index(item, value);
+    set_two_digits(item, value);
+}
+
+static void build_items(TimedRemoteApp* app) {
+    VariableItem* item;
+
+    variable_item_list_reset(app->vlist);
+
+    item = variable_item_list_add(app->vlist, "Mode", 2, on_mode_change, app);
+    variable_item_set_current_value_index(item, app->mode == MODE_COUNTDOWN ? 0 : 1);
+    variable_item_set_current_value_text(
+        item, app->mode == MODE_COUNTDOWN ? "Countdown" : "Scheduled");
+
+    add_time_item(app->vlist, "Hours", 24, app->h, on_hours_change, app);
+    add_time_item(app->vlist, "Minutes", 60, app->m, on_minutes_change, app);
+    add_time_item(app->vlist, "Seconds", 60, app->s, on_seconds_change, app);
+
+    if(app->mode == MODE_COUNTDOWN) {
+        item = variable_item_list_add(app->vlist, "Repeat", 101, on_repeat_change, app);
+        variable_item_set_current_value_index(item, index_from_repeat(app->repeat));
+        set_repeat_text(item, app->repeat);
     }
-  }
 
-  return consumed;
+    variable_item_list_add(app->vlist, ">> Start Timer <<", 0, NULL, NULL);
+    variable_item_list_set_enter_callback(app->vlist, on_enter, app);
 }
 
-void timed_remote_scene_timer_config_on_exit(void *context) {
-  TimedRemoteApp *app = context;
-  variable_item_list_reset(app->variable_item_list);
+void scene_cfg_enter(void* context) {
+    TimedRemoteApp* app;
+
+    app = context;
+    build_items(app);
+    view_dispatcher_switch_to_view(app->vd, VIEW_LIST);
+}
+
+bool scene_cfg_event(void* context, SceneManagerEvent event) {
+    TimedRemoteApp* app;
+
+    app = context;
+    if(event.type != SceneManagerEventTypeCustom) return false;
+
+    if(event.event == EVENT_MODE_CHANGED) {
+        build_items(app);
+        return true;
+    }
+    if(event.event != EVENT_TIMER_CONFIGURED) return false;
+
+    if(app->repeat == REPEAT_OFF)
+        app->repeat_left = 1;
+    else if(app->repeat == REPEAT_UNLIMITED)
+        app->repeat_left = REPEAT_UNLIMITED;
+    else
+        app->repeat_left = app->repeat + 1;
+
+    scene_manager_next_scene(app->sm, SCENE_RUN);
+    return true;
+}
+
+void scene_cfg_exit(void* context) {
+    TimedRemoteApp* app;
+
+    app = context;
+    variable_item_list_reset(app->vlist);
 }

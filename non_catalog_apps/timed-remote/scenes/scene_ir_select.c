@@ -1,80 +1,77 @@
+#include <string.h>
+
 #include "../helpers/ir_helper.h"
 #include "../timed_remote.h"
 #include "timed_remote_scene.h"
 
-static IrSignalList *signal_list = NULL;
+static IrSignalList* signals;
 
-static void ir_select_callback(void *context, uint32_t index) {
-  TimedRemoteApp *app = context;
-  if (signal_list && index < signal_list->count) {
-    /* Free any previous signal */
-    if (app->ir_signal) {
-      infrared_signal_free(app->ir_signal);
-    }
-    /* Copy the selected signal */
-    app->ir_signal = infrared_signal_alloc();
-    infrared_signal_set_signal(app->ir_signal,
-                               signal_list->items[index].signal);
+static void pick_signal(void* context, uint32_t index) {
+    TimedRemoteApp* app;
 
-    /* Copy signal name */
-    strncpy(app->signal_name,
-            furi_string_get_cstr(signal_list->items[index].name),
-            sizeof(app->signal_name) - 1);
-    app->signal_name[sizeof(app->signal_name) - 1] = '\0';
+    app = context;
+    if(signals == NULL || index >= signals->count) return;
 
-    view_dispatcher_send_custom_event(app->view_dispatcher,
-                                      TimedRemoteEventSignalSelected);
-  }
+    if(app->ir != NULL) infrared_signal_free(app->ir);
+
+    app->ir = infrared_signal_alloc();
+    if(app->ir == NULL) return;
+
+    infrared_signal_set_signal(app->ir, signals->items[index].signal);
+    strncpy(app->sig, furi_string_get_cstr(signals->items[index].name), sizeof(app->sig) - 1);
+    app->sig[sizeof(app->sig) - 1] = '\0';
+    view_dispatcher_send_custom_event(app->vd, EVENT_SIGNAL_SELECTED);
 }
 
-void timed_remote_scene_ir_select_on_enter(void *context) {
-  TimedRemoteApp *app = context;
+void scene_select_enter(void* context) {
+    TimedRemoteApp* app;
+    size_t i;
 
-  submenu_reset(app->submenu);
-  submenu_set_header(app->submenu, "Select Signal");
+    app = context;
+    submenu_reset(app->submenu);
+    submenu_set_header(app->submenu, "Select Signal");
 
-  /* Load signals from selected file */
-  signal_list = ir_signal_list_alloc();
-  if (ir_helper_load_file(app->selected_file_path, signal_list)) {
-    if (signal_list->count == 0) {
-      submenu_add_item(app->submenu, "(No signals in file)", 0, NULL, NULL);
+    signals = ir_list_alloc();
+    if(signals == NULL) {
+        submenu_add_item(app->submenu, "(Out of memory)", 0, NULL, NULL);
+    } else if(ir_load(app->file, signals)) {
+        if(signals->count == 0) {
+            submenu_add_item(app->submenu, "(No signals in file)", 0, NULL, NULL);
+        } else {
+            for(i = 0; i < signals->count; i++) {
+                submenu_add_item(
+                    app->submenu,
+                    furi_string_get_cstr(signals->items[i].name),
+                    i,
+                    pick_signal,
+                    app);
+            }
+        }
     } else {
-      for (size_t i = 0; i < signal_list->count; i++) {
-        submenu_add_item(app->submenu,
-                         furi_string_get_cstr(signal_list->items[i].name), i,
-                         ir_select_callback, app);
-      }
+        submenu_add_item(app->submenu, "(Error reading file)", 0, NULL, NULL);
     }
-  } else {
-    submenu_add_item(app->submenu, "(Error reading file)", 0, NULL, NULL);
-  }
 
-  view_dispatcher_switch_to_view(app->view_dispatcher, TimedRemoteViewSubmenu);
+    view_dispatcher_switch_to_view(app->vd, VIEW_MENU);
 }
 
-bool timed_remote_scene_ir_select_on_event(void *context,
-                                           SceneManagerEvent event) {
-  TimedRemoteApp *app = context;
-  bool consumed = false;
+bool scene_select_event(void* context, SceneManagerEvent event) {
+    TimedRemoteApp* app;
 
-  if (event.type == SceneManagerEventTypeCustom) {
-    if (event.event == TimedRemoteEventSignalSelected) {
-      scene_manager_next_scene(app->scene_manager,
-                               TimedRemoteSceneTimerConfig);
-      consumed = true;
-    }
-  }
+    app = context;
+    if(event.type != SceneManagerEventTypeCustom) return false;
+    if(event.event != EVENT_SIGNAL_SELECTED) return false;
 
-  return consumed;
+    scene_manager_next_scene(app->sm, SCENE_CONFIG);
+    return true;
 }
 
-void timed_remote_scene_ir_select_on_exit(void *context) {
-  TimedRemoteApp *app = context;
-  submenu_reset(app->submenu);
+void scene_select_exit(void* context) {
+    TimedRemoteApp* app;
 
-  /* Free signal list */
-  if (signal_list) {
-    ir_signal_list_free(signal_list);
-    signal_list = NULL;
-  }
+    app = context;
+    submenu_reset(app->submenu);
+    if(signals == NULL) return;
+
+    ir_list_free(signals);
+    signals = NULL;
 }

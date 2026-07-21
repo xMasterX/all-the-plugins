@@ -2,59 +2,37 @@
 
 #include <gui/scene_manager.h>
 
-/* Scene IDs */
 typedef enum {
-  TimedRemoteSceneIrBrowse,
-  TimedRemoteSceneIrSelect,
-  TimedRemoteSceneTimerConfig,
-  TimedRemoteSceneTimerRunning,
-  TimedRemoteSceneConfirm,
-  TimedRemoteSceneCount,
-} TimedRemoteScene;
+    SCENE_BROWSE,
+    SCENE_SELECT,
+    SCENE_CONFIG,
+    SCENE_RUN,
+    SCENE_DONE,
+    SCENE_COUNT,
+} SceneId;
 
-/* Scene event IDs */
 typedef enum {
-  TimedRemoteSceneEventConsumed = true,
-  TimedRemoteSceneEventNotConsumed = false,
-} TimedRemoteSceneEvent;
+    EVENT_FILE_SELECTED,
+    EVENT_SIGNAL_SELECTED,
+    EVENT_MODE_CHANGED,
+    EVENT_TIMER_CONFIGURED,
+    EVENT_TIMER_TICK,
+    EVENT_FIRE_SIGNAL,
+    EVENT_DONE,
+} EvId;
 
-/* Custom events */
-typedef enum {
-  /* File/signal selected */
-  TimedRemoteEventFileSelected,
-  TimedRemoteEventSignalSelected,
-  /* Timer configuration */
-  TimedRemoteEventModeChanged,
-  TimedRemoteEventTimerConfigured,
-  /* Timer events */
-  TimedRemoteEventTimerTick,
-  TimedRemoteEventTimerFired,
-  /* Confirmation */
-  TimedRemoteEventConfirmDone,
-} TimedRemoteCustomEvent;
-
-/* Scene handlers - declared extern, defined in individual scene files */
-extern void timed_remote_scene_ir_browse_on_enter(void *context);
-extern bool timed_remote_scene_ir_browse_on_event(void *context,
-                                                  SceneManagerEvent event);
-extern void timed_remote_scene_ir_browse_on_exit(void *context);
-
-extern void timed_remote_scene_ir_select_on_enter(void *context);
-extern bool timed_remote_scene_ir_select_on_event(void *context,
-                                                  SceneManagerEvent event);
-extern void timed_remote_scene_ir_select_on_exit(void *context);
-
-extern void timed_remote_scene_timer_config_on_enter(void *context);
-extern bool timed_remote_scene_timer_config_on_event(void *context,
-                                                     SceneManagerEvent event);
-extern void timed_remote_scene_timer_config_on_exit(void *context);
-
-extern void timed_remote_scene_timer_running_on_enter(void *context);
-extern bool timed_remote_scene_timer_running_on_event(void *context,
-                                                      SceneManagerEvent event);
-extern void timed_remote_scene_timer_running_on_exit(void *context);
-
-extern void timed_remote_scene_confirm_on_enter(void *context);
-extern bool timed_remote_scene_confirm_on_event(void *context,
-                                                SceneManagerEvent event);
-extern void timed_remote_scene_confirm_on_exit(void *context);
+void scene_browse_enter(void*);
+bool scene_browse_event(void*, SceneManagerEvent);
+void scene_browse_exit(void*);
+void scene_select_enter(void*);
+bool scene_select_event(void*, SceneManagerEvent);
+void scene_select_exit(void*);
+void scene_cfg_enter(void*);
+bool scene_cfg_event(void*, SceneManagerEvent);
+void scene_cfg_exit(void*);
+void scene_run_enter(void*);
+bool scene_run_event(void*, SceneManagerEvent);
+void scene_run_exit(void*);
+void scene_done_enter(void*);
+bool scene_done_event(void*, SceneManagerEvent);
+void scene_done_exit(void*);
