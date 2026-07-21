@@ -17,15 +17,15 @@
 
 #include <src/missingno_i.h>
 
-#define RECALC_NONE 0x00
-#define RECALC_EXP 0x01
-#define RECALC_EVS 0x02
-#define RECALC_IVS 0x04
-#define RECALC_STATS 0x08
+#define RECALC_NONE     0x00
+#define RECALC_EXP      0x01
+#define RECALC_EVS      0x02
+#define RECALC_IVS      0x04
+#define RECALC_STATS    0x08
 #define RECALC_NICKNAME 0x10
-#define RECALC_MOVES 0x20
-#define RECALC_TYPES 0x40
-#define RECALC_ALL 0xFF
+#define RECALC_MOVES    0x20
+#define RECALC_TYPES    0x40
+#define RECALC_ALL      0xFF
 
 #define FXBM_SPRITE_SIZE 404 // Each 56x56 sprite
 

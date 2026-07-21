@@ -78,9 +78,11 @@ void pokemon_gender_set(PokemonData* pdata, Gender gender) {
      * Where percent is (255/100)
      */
     if(gender == GENDER_MALE) {
-        while((atk_iv * 17) <= ratio) atk_iv++;
+        while((atk_iv * 17) <= ratio)
+            atk_iv++;
     } else {
-        while((atk_iv * 17) > ratio) atk_iv--;
+        while((atk_iv * 17) > ratio)
+            atk_iv--;
     }
 
     pokemon_stat_set(pdata, STAT_ATK_IV, NONE, atk_iv);
