@@ -35,20 +35,41 @@ static bool external_is_connected(void) {
     if(!was_on) otg_power_on();
 
     bool present = false;
-    const SubGhzDevice* d =
-        subghz_devices_get_by_name(SUBGHZ_DEVICE_CC1101_EXT_NAME);
+    const SubGhzDevice* d = subghz_devices_get_by_name(SUBGHZ_DEVICE_CC1101_EXT_NAME);
     if(d) present = subghz_devices_is_connect(d);
 
     if(!was_on) otg_power_off();
     return present;
 }
 
-const SubGhzDevice* wmbus_radio_select(
-    const SubGhzDevice* current,
-    WmbusModule module) {
+bool wmbus_radio_detect_external(void) {
+    return external_is_connected();
+}
 
+const SubGhzDevice* wmbus_radio_select(const SubGhzDevice* current, WmbusModuleSetting module) {
     const SubGhzDevice* target = NULL;
-    if(module == WmbusModuleExternal && external_is_connected()) {
+    bool want_ext = false;
+
+    switch(module) {
+    case WmbusModuleAuto:
+        /* Auto: probe for an external CC1101, use it when present. */
+        want_ext = external_is_connected();
+        if(want_ext) {
+            FURI_LOG_I(TAG, "Auto: external CC1101 detected");
+        } else {
+            FURI_LOG_I(TAG, "Auto: no external CC1101, using internal");
+        }
+        break;
+    case WmbusModuleExternal:
+        want_ext = true;
+        break;
+    case WmbusModuleInternal:
+    default:
+        want_ext = false;
+        break;
+    }
+
+    if(want_ext && external_is_connected()) {
         otg_power_on();
         target = subghz_devices_get_by_name(SUBGHZ_DEVICE_CC1101_EXT_NAME);
         if(!target) {
@@ -69,15 +90,13 @@ const SubGhzDevice* wmbus_radio_select(
 
 bool wmbus_radio_is_external(const SubGhzDevice* dev) {
     if(!dev) return false;
-    const SubGhzDevice* internal =
-        subghz_devices_get_by_name(SUBGHZ_DEVICE_CC1101_INT_NAME);
+    const SubGhzDevice* internal = subghz_devices_get_by_name(SUBGHZ_DEVICE_CC1101_INT_NAME);
     return dev != internal;
 }
 
 void wmbus_radio_release(const SubGhzDevice* dev) {
     if(!dev) return;
-    const SubGhzDevice* internal =
-        subghz_devices_get_by_name(SUBGHZ_DEVICE_CC1101_INT_NAME);
+    const SubGhzDevice* internal = subghz_devices_get_by_name(SUBGHZ_DEVICE_CC1101_INT_NAME);
     if(dev != internal) {
         subghz_devices_end(dev);
     }
