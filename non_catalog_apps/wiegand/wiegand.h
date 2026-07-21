@@ -25,7 +25,7 @@ extern volatile uint32_t data_fall[];
 extern volatile uint32_t data_rise[];
 extern bool data_saved;
 
-#define WIEGAND_KEY_NAME_SIZE 25
+#define WIEGAND_KEY_NAME_SIZE    25
 #define WIEGAND_APPS_DATA_FOLDER EXT_PATH("apps_data")
 #define WIEGAND_SAVE_FOLDER      \
     WIEGAND_APPS_DATA_FOLDER "/" \
