@@ -8,7 +8,7 @@ App(
     fap_category="Media",
     fap_version="1.0",
     fap_description="ATM music player from Arduventure.",
-    fap_icon_assets="icons",
+    fap_icon_assets="icon",
     fap_file_assets="assets",
     fap_icon="icon.png",
     fap_author="@apfxtech",

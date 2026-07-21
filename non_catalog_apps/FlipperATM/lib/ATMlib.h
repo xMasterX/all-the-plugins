@@ -63,6 +63,7 @@ public:
     static void systemDeinit();
     static void setEnabled(bool en);
     static void setMasterVolume(float v);
+    static void setUniformToneMode(bool en);
 };
 
 extern ATMsynth ATM;

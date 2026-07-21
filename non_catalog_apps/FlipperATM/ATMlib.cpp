@@ -125,48 +125,69 @@ static void dma_isr(void* ctx);
 
 static uint8_t atm_audio_enabled = 1;
 static uint32_t channel_levels_packed = 0;
+static uint8_t atm_uniform_tone_mode = 0;
 
 static inline uint8_t atm_render_logical_sample_u8() {
-    osc[2].phase = (uint16_t)(osc[2].phase + osc[2].freq);
-    int8_t phase2 = (int8_t)(osc[2].phase >> 8);
-    if(phase2 < 0) phase2 = (int8_t)(~phase2);
-    phase2 = (int8_t)(phase2 << 1);
-    phase2 = (int8_t)(phase2 - 128);
-    int8_t c2 = (int8_t)((((int16_t)phase2 * (int8_t)osc[2].vol) << 1) >> 8);
-    int16_t mix = c2;
+    int8_t c0 = 0;
+    int8_t c1 = 0;
+    int8_t c2 = 0;
+    int8_t c3 = 0;
+    int16_t mix = 0;
 
-    osc[0].phase = (uint16_t)(osc[0].phase + osc[0].freq);
-    int8_t c0 = (int8_t)osc[0].vol;
-    if(osc[0].phase >= 0xC000) c0 = (int8_t)(-c0);
-    mix += c0;
+    const uint8_t uniform = __atomic_load_n(&atm_uniform_tone_mode, __ATOMIC_RELAXED);
+    if(uniform) {
+        for(uint8_t i = 0; i < 4; i++) {
+            osc[i].phase = (uint16_t)(osc[i].phase + osc[i].freq);
+            int8_t c = (int8_t)osc[i].vol;
+            if(osc[i].phase & 0x8000) c = (int8_t)(-c);
+            mix += c;
+            if(i == 0) c0 = c;
+            if(i == 1) c1 = c;
+            if(i == 2) c2 = c;
+            if(i == 3) c3 = c;
+        }
+    } else {
+        osc[2].phase = (uint16_t)(osc[2].phase + osc[2].freq);
+        int8_t phase2 = (int8_t)(osc[2].phase >> 8);
+        if(phase2 < 0) phase2 = (int8_t)(~phase2);
+        phase2 = (int8_t)(phase2 << 1);
+        phase2 = (int8_t)(phase2 - 128);
+        c2 = (int8_t)((((int16_t)phase2 * (int8_t)osc[2].vol) << 1) >> 8);
+        mix = c2;
 
-    osc[1].phase = (uint16_t)(osc[1].phase + osc[1].freq);
-    int8_t c1 = (int8_t)osc[1].vol;
-    if(osc[1].phase & 0x8000) c1 = (int8_t)(-c1);
-    mix += c1;
+        osc[0].phase = (uint16_t)(osc[0].phase + osc[0].freq);
+        c0 = (int8_t)osc[0].vol;
+        if(osc[0].phase >= 0xC000) c0 = (int8_t)(-c0);
+        mix += c0;
 
-    uint16_t freq = osc[3].freq;
-    freq <<= 1;
-    if(freq & 0x8000) freq ^= 1;
-    if(freq & 0x4000) freq ^= 1;
-    osc[3].freq = freq;
+        osc[1].phase = (uint16_t)(osc[1].phase + osc[1].freq);
+        c1 = (int8_t)osc[1].vol;
+        if(osc[1].phase & 0x8000) c1 = (int8_t)(-c1);
+        mix += c1;
 
-    int8_t c3 = (int8_t)osc[3].vol;
-    if(freq & 0x8000) c3 = (int8_t)(-c3);
-    mix += c3;
+        uint16_t freq = osc[3].freq;
+        freq <<= 1;
+        if(freq & 0x8000) freq ^= 1;
+        if(freq & 0x4000) freq ^= 1;
+        osc[3].freq = freq;
+
+        c3 = (int8_t)osc[3].vol;
+        if(freq & 0x8000) c3 = (int8_t)(-c3);
+        mix += c3;
+    }
 
     const uint8_t l0 = vol_meter_step(&channel_meters[0], abs_i8_to_u8(c0));
     const uint8_t l1 = vol_meter_step(&channel_meters[1], abs_i8_to_u8(c1));
     const uint8_t l2 = vol_meter_step(&channel_meters[2], abs_i8_to_u8(c2));
     const uint8_t l3 = vol_meter_step(&channel_meters[3], abs_i8_to_u8(c3));
-    const uint32_t packed =
-        (uint32_t)l0 | ((uint32_t)l1 << 8) | ((uint32_t)l2 << 16) | ((uint32_t)l3 << 24);
+    const uint32_t packed = (uint32_t)l0 | ((uint32_t)l1 << 8) | ((uint32_t)l2 << 16) |
+                            ((uint32_t)l3 << 24);
     __atomic_store_n(&channel_levels_packed, packed, __ATOMIC_RELAXED);
 
     const uint16_t gain_q8 = __atomic_load_n(&atm_master_gain_q8, __ATOMIC_RELAXED);
 
-    // Keep 6 dB headroom for 4-channel summing at unity gain, then apply master gain.
-    int32_t centered = ((int32_t)mix * (int32_t)gain_q8) >> 9;
+    // Uniform-tone mode needs extra headroom: four similar waveforms fold into each other harder.
+    int32_t centered = ((int32_t)mix * (int32_t)gain_q8) >> (uniform ? 10 : 9);
     if(centered > 127) centered = 127;
     if(centered < -127) centered = -127;
 
@@ -560,11 +581,12 @@ void ATM_playroutine(void) {
         }
 
         if(!(ChannelActiveMute & (1 << n))) {
-            if(n == 3) {
+            const uint8_t uniform = __atomic_load_n(&atm_uniform_tone_mode, __ATOMIC_RELAXED);
+            if(n == 3 && !uniform) {
                 osc[n].vol = (uint8_t)(ch->vol >> 1);
             } else {
                 osc[n].freq = ch->freq;
-                osc[n].vol = ch->vol;
+                osc[n].vol = uniform ? (uint8_t)((ch->vol * 3) >> 2) : ch->vol;
             }
         }
 
@@ -593,6 +615,7 @@ enum AtmCmdType : uint8_t {
     AtmCmdMute,
     AtmCmdUnmute,
     AtmCmdSetVolume,
+    AtmCmdSetUniformToneMode,
     AtmCmdQuit,
 };
 
@@ -608,6 +631,9 @@ struct AtmCmd {
         struct {
             float v;
         } vol;
+        struct {
+            uint8_t en;
+        } mode;
     } u;
 };
 
@@ -671,7 +697,7 @@ static int32_t atm_thread_fn(void* /*ctx*/) {
             }
 
             if(cmd.type == AtmCmdUnmute) {
-                ChannelActiveMute = (uint8_t)(ChannelActiveMute & (uint8_t)~(1 << cmd.u.ch.ch));
+                ChannelActiveMute = (uint8_t)(ChannelActiveMute & (uint8_t) ~(1 << cmd.u.ch.ch));
                 continue;
             }
 
@@ -684,10 +710,16 @@ static int32_t atm_thread_fn(void* /*ctx*/) {
                 continue;
             }
 
+            if(cmd.type == AtmCmdSetUniformToneMode) {
+                __atomic_store_n(&atm_uniform_tone_mode, cmd.u.mode.en ? 1 : 0, __ATOMIC_RELAXED);
+                continue;
+            }
+
             if(cmd.type == AtmCmdPlay) {
                 const uint8_t* song = cmd.u.play.song;
 
                 memset(channel_state, 0, sizeof(channel_state));
+                memset(osc, 0, sizeof(osc));
                 __atomic_store_n(&channel_levels_packed, 0, __ATOMIC_RELAXED);
                 for(uint8_t i = 0; i < 4; i++) {
                     vol_meter_reset(&channel_meters[i]);
@@ -826,6 +858,13 @@ void ATMsynth::setMasterVolume(float v) {
     AtmCmd c{};
     c.type = AtmCmdSetVolume;
     c.u.vol.v = v;
+    push_cmd(c);
+}
+
+void ATMsynth::setUniformToneMode(bool en) {
+    AtmCmd c{};
+    c.type = AtmCmdSetUniformToneMode;
+    c.u.mode.en = en ? 1 : 0;
     push_cmd(c);
 }
 

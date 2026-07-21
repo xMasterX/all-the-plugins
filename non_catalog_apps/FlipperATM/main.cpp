@@ -43,8 +43,8 @@
 #define ATM_TXT_OP_SET_VIBRATO       "SET_VIBRATO"
 
 #define ATM_SONG_MAX_TEXT_SIZE (32 * 1024)
-#define ATM_VOLUME_UNIT_STEP 0.1f
-#define ATM_VOLUME_UNIT_MAX  8
+#define ATM_VOLUME_UNIT_STEP   0.1f
+#define ATM_VOLUME_UNIT_MAX    8
 
 typedef enum {
     AtmViewBrowser = 0,
@@ -123,6 +123,20 @@ static char atm_char_upper(char c) {
     return c;
 }
 
+static bool atm_str_contains_ci(const char* haystack, const char* needle) {
+    if(!haystack || !needle || !needle[0]) return false;
+    for(const char* h = haystack; *h; h++) {
+        const char* hp = h;
+        const char* np = needle;
+        while(*hp && *np && atm_char_upper(*hp) == atm_char_upper(*np)) {
+            hp++;
+            np++;
+        }
+        if(*np == '\0') return true;
+    }
+    return false;
+}
+
 static bool atm_token_equals(const char* token, const char* keyword) {
     while(*token && *keyword) {
         if(atm_char_upper(*token) != atm_char_upper(*keyword)) return false;
@@ -159,7 +173,7 @@ static void atm_update_levels(FlipperAtmApp* app) {
     const uint16_t meter_max_level = 63;
     const uint16_t meter_inner_w = 120;
     atm_get_channel_levels(raw_levels);
-    raw_levels[3] = (uint8_t)(raw_levels[3] > 31 ? 63 : raw_levels[3] * 2);
+    // raw_levels[3] = (uint8_t)(raw_levels[3] > 31 ? 63 : raw_levels[3] * 2);
     app->ui_dither_phase++;
 
     for(size_t i = 0; i < 4; i++) {
@@ -509,8 +523,7 @@ static bool atm_parse_song_text(
         if(!atm_next_token(&tz, token, sizeof(token))) goto out;
     }
 
-    if(!atm_token_equals(token, ATM_TXT_CMD_ENTRY))
-        goto out;
+    if(!atm_token_equals(token, ATM_TXT_CMD_ENTRY)) goto out;
     for(size_t i = 0; i < 4; i++) {
         if(!atm_parse_arg_i32(&tz, &value)) goto out;
         entry[i] = (uint8_t)(value & 0xFF);
@@ -592,7 +605,8 @@ static bool atm_load_song_from_file(
         uint8_t* compiled = NULL;
         size_t compiled_size = 0;
         if(read_total == (size_t)file_size &&
-           atm_parse_song_text(text, &compiled, &compiled_size, out_song_name, out_song_name_size)) {
+           atm_parse_song_text(
+               text, &compiled, &compiled_size, out_song_name, out_song_name_size)) {
             if(app->song_buf) free(app->song_buf);
             app->song_buf = compiled;
             app->song_size = compiled_size;
@@ -608,14 +622,16 @@ static bool atm_load_song_from_file(
 }
 
 static bool atm_play_selected_file(FlipperAtmApp* app) {
+    const char* selected_path = furi_string_get_cstr(app->selected_path);
     char short_name[48];
-    atm_extract_file_name(furi_string_get_cstr(app->selected_path), short_name, sizeof(short_name));
+    atm_extract_file_name(selected_path, short_name, sizeof(short_name));
 
     char song_name[48] = {0};
-    if(atm_load_song_from_file(
-           app, furi_string_get_cstr(app->selected_path), song_name, sizeof(song_name))) {
-        snprintf(app->song_name, sizeof(app->song_name), "%s", song_name[0] ? song_name : short_name);
+    if(atm_load_song_from_file(app, selected_path, song_name, sizeof(song_name))) {
+        snprintf(
+            app->song_name, sizeof(app->song_name), "%s", song_name[0] ? song_name : short_name);
         atm_reset_ui_level_meters(app);
+        ATM.setUniformToneMode(atm_str_contains_ci(selected_path, "blheli32"));
         ATM.play(app->song_buf);
         app->playing = true;
         app->paused = false;
@@ -767,7 +783,8 @@ static void atm_player_draw_callback(Canvas* canvas, void* model_ptr) {
 
     canvas_draw_frame(canvas, vol_x, vol_y, vol_w, vol_h);
     const uint8_t center_x = (uint8_t)(vol_x + 1 + (vol_inner_w / 2));
-    canvas_draw_line(canvas, center_x, (uint8_t)(vol_y + 1), center_x, (uint8_t)(vol_y + vol_h - 2));
+    canvas_draw_line(
+        canvas, center_x, (uint8_t)(vol_y + 1), center_x, (uint8_t)(vol_y + vol_h - 2));
 
     int8_t vu = model->volume_units;
     if(vu > ATM_VOLUME_UNIT_MAX) vu = ATM_VOLUME_UNIT_MAX;
@@ -775,16 +792,14 @@ static void atm_player_draw_callback(Canvas* canvas, void* model_ptr) {
 
     if(vu >= 0) {
         uint8_t w = (uint8_t)(((uint16_t)vu * (vol_inner_w / 2)) / ATM_VOLUME_UNIT_MAX);
-        if(w) canvas_draw_box(canvas, (uint8_t)(center_x + 1), (uint8_t)(vol_y + 1), w, (uint8_t)(vol_h - 2));
+        if(w)
+            canvas_draw_box(
+                canvas, (uint8_t)(center_x + 1), (uint8_t)(vol_y + 1), w, (uint8_t)(vol_h - 2));
     } else {
         uint8_t w = (uint8_t)(((uint16_t)(-vu) * (vol_inner_w / 2)) / ATM_VOLUME_UNIT_MAX);
         if(w) {
             canvas_draw_box(
-                canvas,
-                (uint8_t)(center_x - w),
-                (uint8_t)(vol_y + 1),
-                w,
-                (uint8_t)(vol_h - 2));
+                canvas, (uint8_t)(center_x - w), (uint8_t)(vol_y + 1), w, (uint8_t)(vol_h - 2));
         }
     }
 
@@ -808,7 +823,13 @@ static void atm_player_draw_callback(Canvas* canvas, void* model_ptr) {
         const uint8_t y = (uint8_t)(meter_top + i * (meter_outer_h + meter_gap));
 
         canvas_draw_frame(canvas, meter_x, y, meter_outer_w, meter_outer_h);
-        if(w) canvas_draw_box(canvas, (uint8_t)(meter_x + meter_frame), (uint8_t)(y + meter_frame), w, meter_inner_h);
+        if(w)
+            canvas_draw_box(
+                canvas,
+                (uint8_t)(meter_x + meter_frame),
+                (uint8_t)(y + meter_frame),
+                w,
+                meter_inner_h);
     }
 }
 
