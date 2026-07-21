@@ -2,6 +2,7 @@
 
 #include "Arduino.h"
 #include "ArduboyTones.h"
+#include "ArduboyAudio.h"
 #include "EEPROM.h"
 #include <stdint.h>
 #include <stddef.h>
@@ -94,12 +95,23 @@ class Arduboy2Base {
 public:
     ArduboyAudio audio;
 
+    struct InputRuntime {
+        volatile uint8_t held = 0;
+        volatile uint8_t press_latch = 0;
+        volatile uint8_t release_latch = 0;
+    };
+
     struct InputContext {
         volatile uint8_t* input_state = nullptr;
+        InputRuntime* runtime = nullptr;
     };
 
     InputContext* inputContext() {
         return &input_ctx_;
+    }
+
+    void clearInputMask(uint8_t input_mask) {
+        FlipperInputClearMask(input_mask, &input_ctx_);
     }
 
     void begin(
@@ -111,9 +123,13 @@ public:
         sBuffer = screen_buffer;
         input_state_ = input_state;
         input_ctx_.input_state = input_state_;
+        input_ctx_.runtime = &input_runtime_;
         game_mutex_ = game_mutex;
         exit_requested_ = exit_requested;
         external_timing_ = false;
+        frame_count_ = 0;
+        last_frame_ms_ = 0;
+        resetInputState();
     }
 
     void exitToBootloader() {
@@ -133,40 +149,59 @@ public:
             rect2.y >= rect1.y + rect1.height || rect2.y + rect2.height <= rect1.y);
     }
 
-    static void FlipperInputCallback(InputEvent* event, void* ctx_ptr) {
+    static void FlipperInputCallback(const InputEvent* event, void* ctx_ptr) {
         if(!event || !ctx_ptr) return;
         InputContext* ctx = (InputContext*)ctx_ptr;
         volatile uint8_t* st = ctx->input_state;
-        if(!st) return;
+        InputRuntime* rt = ctx->runtime;
+        if(!st && !rt) return;
 
-        uint8_t bit = 0;
-        switch(event->key) {
-        case InputKeyUp:
-            bit = INPUT_UP;
-            break;
-        case InputKeyDown:
-            bit = INPUT_DOWN;
-            break;
-        case InputKeyLeft:
-            bit = INPUT_LEFT;
-            break;
-        case InputKeyRight:
-            bit = INPUT_RIGHT;
-            break;
-        case InputKeyOk:
-            bit = INPUT_B;
-            break;
-        case InputKeyBack:
-            bit = INPUT_A;
-            break;
-        default:
-            return;
+        const uint8_t bit = FlipperInputMaskFromKey_(event->key);
+        if(!bit) return;
+
+        if(event->type == InputTypePress) {
+            if(rt) {
+                (void)__atomic_fetch_or((uint8_t*)&rt->held, bit, __ATOMIC_RELAXED);
+                (void)__atomic_fetch_or((uint8_t*)&rt->press_latch, bit, __ATOMIC_RELAXED);
+            }
+            if(st) {
+                (void)__atomic_fetch_or((uint8_t*)st, bit, __ATOMIC_RELAXED);
+            }
+        } else if(event->type == InputTypeRepeat) {
+            // Repeat keeps the held state alive, but must not retrigger justPressed edges.
+            if(rt) {
+                (void)__atomic_fetch_or((uint8_t*)&rt->held, bit, __ATOMIC_RELAXED);
+            }
+            if(st) {
+                (void)__atomic_fetch_or((uint8_t*)st, bit, __ATOMIC_RELAXED);
+            }
+        } else if(event->type == InputTypeRelease) {
+            if(rt) {
+                (void)__atomic_fetch_and((uint8_t*)&rt->held, (uint8_t)~bit, __ATOMIC_RELAXED);
+                (void)__atomic_fetch_or((uint8_t*)&rt->release_latch, bit, __ATOMIC_RELAXED);
+            }
+            if(st) {
+                (void)__atomic_fetch_and((uint8_t*)st, (uint8_t)~bit, __ATOMIC_RELAXED);
+            }
+        }
+    }
+
+    static void FlipperInputClearMask(uint8_t input_mask, void* ctx_ptr) {
+        if(!input_mask || !ctx_ptr) return;
+        InputContext* ctx = (InputContext*)ctx_ptr;
+
+        if(ctx->runtime) {
+            (void)__atomic_fetch_and(
+                (uint8_t*)&ctx->runtime->held, (uint8_t)~input_mask, __ATOMIC_RELAXED);
+            (void)__atomic_fetch_and(
+                (uint8_t*)&ctx->runtime->press_latch, (uint8_t)~input_mask, __ATOMIC_RELAXED);
+            (void)__atomic_fetch_and(
+                (uint8_t*)&ctx->runtime->release_latch, (uint8_t)~input_mask, __ATOMIC_RELAXED);
         }
 
-        if(event->type == InputTypePress || event->type == InputTypeRepeat) {
-            *st = (uint8_t)(*st | bit);
-        } else if(event->type == InputTypeRelease) {
-            *st = (uint8_t)(*st & (uint8_t)~bit);
+        if(ctx->input_state) {
+            (void)__atomic_fetch_and(
+                (uint8_t*)ctx->input_state, (uint8_t)~input_mask, __ATOMIC_RELAXED);
         }
     }
 
@@ -202,7 +237,47 @@ public:
 
     void pollButtons() {
         prev_buttons_ = cur_buttons_;
-        cur_buttons_ = mapInputToArduboyMask_(input_state_ ? *input_state_ : 0);
+        uint8_t in = 0;
+        uint8_t press = 0;
+        uint8_t release = 0;
+
+        if(input_ctx_.runtime) {
+            in = __atomic_load_n((uint8_t*)&input_ctx_.runtime->held, __ATOMIC_RELAXED);
+            press = __atomic_exchange_n((uint8_t*)&input_ctx_.runtime->press_latch, 0, __ATOMIC_RELAXED);
+            release =
+                __atomic_exchange_n((uint8_t*)&input_ctx_.runtime->release_latch, 0, __ATOMIC_RELAXED);
+        } else if(input_state_) {
+            in = __atomic_load_n((uint8_t*)input_state_, __ATOMIC_RELAXED);
+        }
+
+        cur_buttons_ = mapInputToArduboyMask_(in);
+        press_edges_ = mapInputToArduboyMask_(press);
+        release_edges_ = mapInputToArduboyMask_(release);
+    }
+
+    void clearButtonState() {
+        prev_buttons_ = 0;
+        cur_buttons_ = 0;
+        press_edges_ = 0;
+        release_edges_ = 0;
+        if(input_ctx_.runtime) {
+            (void)__atomic_store_n((uint8_t*)&input_ctx_.runtime->press_latch, 0, __ATOMIC_RELAXED);
+            (void)__atomic_store_n(
+                (uint8_t*)&input_ctx_.runtime->release_latch, 0, __ATOMIC_RELAXED);
+        }
+    }
+
+    void resetInputState() {
+        if(input_ctx_.runtime) {
+            (void)__atomic_store_n((uint8_t*)&input_ctx_.runtime->held, 0, __ATOMIC_RELAXED);
+            (void)__atomic_store_n((uint8_t*)&input_ctx_.runtime->press_latch, 0, __ATOMIC_RELAXED);
+            (void)__atomic_store_n(
+                (uint8_t*)&input_ctx_.runtime->release_latch, 0, __ATOMIC_RELAXED);
+        }
+        if(input_state_) {
+            (void)__atomic_store_n((uint8_t*)input_state_, 0, __ATOMIC_RELAXED);
+        }
+        clearButtonState();
     }
 
     bool pressed(uint8_t mask) const {
@@ -212,10 +287,12 @@ public:
         return (cur_buttons_ & mask) == 0;
     }
     bool justPressed(uint8_t mask) const {
-        return ((cur_buttons_ & mask) != 0) && ((prev_buttons_ & mask) == 0);
+        return ((press_edges_ & mask) != 0) ||
+               (((cur_buttons_ & mask) != 0) && ((prev_buttons_ & mask) == 0));
     }
     bool justReleased(uint8_t mask) const {
-        return ((cur_buttons_ & mask) == 0) && ((prev_buttons_ & mask) != 0);
+        return ((release_edges_ & mask) != 0) ||
+               (((cur_buttons_ & mask) == 0) && ((prev_buttons_ & mask) != 0));
     }
 
     uint8_t* getBuffer() {
@@ -374,6 +451,25 @@ public:
 uint8_t* sBuffer = nullptr;
 
 private:
+    static uint8_t FlipperInputMaskFromKey_(InputKey key) {
+        switch(key) {
+        case InputKeyUp:
+            return INPUT_UP;
+        case InputKeyDown:
+            return INPUT_DOWN;
+        case InputKeyLeft:
+            return INPUT_LEFT;
+        case InputKeyRight:
+            return INPUT_RIGHT;
+        case InputKeyOk:
+            return INPUT_B;
+        case InputKeyBack:
+            return INPUT_A;
+        default:
+            return 0;
+        }
+    }
+
     volatile bool* exit_requested_ = nullptr;
 
     static inline uint8_t page_mask_(int16_t p, int16_t pages, int16_t h) {
@@ -609,6 +705,7 @@ private:
     bool external_timing_ = false;
 
     volatile uint8_t* input_state_ = nullptr;
+    InputRuntime input_runtime_{};
     InputContext input_ctx_{};
 
     uint32_t frame_duration_ms_ = 16;
@@ -617,6 +714,8 @@ private:
 
     uint8_t cur_buttons_ = 0;
     uint8_t prev_buttons_ = 0;
+    uint8_t press_edges_ = 0;
+    uint8_t release_edges_ = 0;
 };
 
 class Arduboy2 : public Arduboy2Base {};

@@ -632,7 +632,11 @@ static void state_hiscores(uint8_t btns, uint8_t pressed) {
 
     load();
     for(uint8_t i = 0; i < 18; ++i) {
-        uint8_t n = savedata.best_game[i];
+        uint8_t n = 0xff;
+        uint8_t best_hole = savedata.best_holes[i];
+        uint8_t best_game = savedata.best_game[i];
+        if(best_hole < 100) n = best_hole;
+        if(best_game < 100 && best_game < n) n = best_game;
         if(n >= 100) n = 0;
         shots[i] = n;
     }
@@ -641,7 +645,7 @@ static void state_hiscores(uint8_t btns, uint8_t pressed) {
 
 #if !ARDUGOLF_FX
     draw_scorecard(0, 0, 12);
-    draw_scorecard(4, 0, 12);
+    draw_scorecard(4, 9, 12);
 #endif
 
 #if ARDUGOLF_FX

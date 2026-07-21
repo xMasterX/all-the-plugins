@@ -192,7 +192,7 @@ static int32_t arduboy_tone_sound_thread_fn(void* /*ctx*/) {
     return 0;
 }
 
-static void arduboy_tone_sound_system_init() {
+[[maybe_unused]] static inline void arduboy_tone_sound_system_init() {
     if(g_arduboy_sound_queue || g_arduboy_sound_thread) return;
     g_arduboy_sound_queue = furi_message_queue_alloc(4, sizeof(ArduboyToneSoundRequest));
     g_arduboy_sound_thread = furi_thread_alloc();
@@ -204,7 +204,7 @@ static void arduboy_tone_sound_system_init() {
     furi_thread_start(g_arduboy_sound_thread);
 }
 
-static void arduboy_tone_sound_system_deinit() {
+[[maybe_unused]] static inline void arduboy_tone_sound_system_deinit() {
     if(!g_arduboy_sound_thread) return;
     g_arduboy_sound_thread_running = false;
     furi_thread_join(g_arduboy_sound_thread);
@@ -217,43 +217,7 @@ static void arduboy_tone_sound_system_deinit() {
     g_arduboy_tones_playing = false;
 }
 
-class ArduboyAudio {
-public:
-    void begin() {
-        if(EEPROM.read(2))
-            on();
-        else
-            off();
-    }
-
-    void on() {
-        bool was_enabled = g_arduboy_audio_enabled;
-        g_arduboy_audio_enabled = true;
-        if(!was_enabled) {
-            arduboy_tone_sound_system_init();
-        }
-    }
-
-    void off() {
-        bool was_enabled = g_arduboy_audio_enabled;
-        g_arduboy_audio_enabled = false;
-        if(was_enabled) {
-            ArduboyToneSoundRequest req = {.pattern = NULL};
-            if(g_arduboy_sound_queue) (void)furi_message_queue_put(g_arduboy_sound_queue, &req, 0);
-            arduboy_tone_sound_system_deinit();
-        }
-    }
-
-    static bool enabled() {
-        return g_arduboy_audio_enabled;
-    }
-
-    void saveOnOff() {
-        EEPROM.update(2, g_arduboy_audio_enabled);
-        EEPROM.commit();
-    }
-};
-
+class ArduboyAudio;
 class ArduboyTones {
 public:
     explicit ArduboyTones(bool /*enabled*/) {}

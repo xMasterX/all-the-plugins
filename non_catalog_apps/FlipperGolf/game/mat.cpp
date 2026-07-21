@@ -11,8 +11,7 @@ A = pitch, B = yaw
 
 */
 
-void rotation(mat3& m, uint8_t yaw, int8_t pitch)
-{
+void rotation(mat3& m, uint8_t yaw, int8_t pitch) {
     int8_t sinA = fsin((uint8_t)pitch);
     int8_t cosA = fcos((uint8_t)pitch);
     int8_t sinB = fsin(yaw);
@@ -31,8 +30,7 @@ void rotation(mat3& m, uint8_t yaw, int8_t pitch)
     m[8] = fmuls8(cosA, cosB);
 }
 
-void rotation16(dmat3& m, uint16_t yaw, int16_t pitch)
-{
+void rotation16(dmat3& m, uint16_t yaw, int16_t pitch) {
     int16_t sinA = fsin16((uint16_t)pitch);
     int16_t cosA = fcos16((uint16_t)pitch);
     int16_t sinB = fsin16(yaw);
@@ -51,7 +49,6 @@ void rotation16(dmat3& m, uint16_t yaw, int16_t pitch)
     m[8] = mul_f15_s16(cosA, cosB);
 }
 
-
 /*
 Rotation matrix:
 
@@ -63,8 +60,7 @@ A = pitch, B = yaw
 
 */
 
-void rotation_phys(mat3& m, uint8_t yaw, int8_t pitch)
-{
+void rotation_phys(mat3& m, uint8_t yaw, int8_t pitch) {
     int8_t sinA = fsin((uint8_t)pitch);
     int8_t cosA = fcos((uint8_t)pitch);
     int8_t sinB = fsin(yaw);
@@ -83,8 +79,7 @@ void rotation_phys(mat3& m, uint8_t yaw, int8_t pitch)
     m[8] = fmuls8(cosA, cosB);
 }
 
-dvec3 matvec(mat3 const& m, vec3 v)
-{
+dvec3 matvec(mat3 const& m, vec3 v) {
     dvec3 r;
     r.x = v.x * m[0] + v.y * m[1] + v.z * m[2];
     r.y = v.x * m[3] + v.y * m[4] + v.z * m[5];
@@ -92,8 +87,7 @@ dvec3 matvec(mat3 const& m, vec3 v)
     return r;
 }
 
-dvec3 matvec_t(mat3 const& m, vec3 v)
-{
+dvec3 matvec_t(mat3 const& m, vec3 v) {
     dvec3 r;
     r.x = v.x * m[0] + v.y * m[3] + v.z * m[6];
     r.y = v.x * m[1] + v.y * m[4] + v.z * m[7];
@@ -101,8 +95,7 @@ dvec3 matvec_t(mat3 const& m, vec3 v)
     return r;
 }
 
-dvec3 matvec(mat3 const& m, dvec3 v)
-{
+dvec3 matvec(mat3 const& m, dvec3 v) {
     dvec3 r;
     r.x = mul_f7_s16(v.x, m[0]) + mul_f7_s16(v.y, m[1]) + mul_f7_s16(v.z, m[2]);
     r.y = mul_f7_s16(v.x, m[3]) + mul_f7_s16(v.y, m[4]) + mul_f7_s16(v.z, m[5]);
@@ -110,8 +103,7 @@ dvec3 matvec(mat3 const& m, dvec3 v)
     return r;
 }
 
-dvec3 matvec_t(mat3 const& m, dvec3 v)
-{
+dvec3 matvec_t(mat3 const& m, dvec3 v) {
     dvec3 r;
     r.x = mul_f7_s16(v.x, m[0]) + mul_f7_s16(v.y, m[3]) + mul_f7_s16(v.z, m[6]);
     r.y = mul_f7_s16(v.x, m[1]) + mul_f7_s16(v.y, m[4]) + mul_f7_s16(v.z, m[7]);
@@ -119,8 +111,7 @@ dvec3 matvec_t(mat3 const& m, dvec3 v)
     return r;
 }
 
-dvec3 matvec(dmat3 const& m, dvec3 v)
-{
+dvec3 matvec(dmat3 const& m, dvec3 v) {
     dvec3 r;
     r.x = mul_f15_s16(v.x, m[0]) + mul_f15_s16(v.y, m[1]) + mul_f15_s16(v.z, m[2]);
     r.y = mul_f15_s16(v.x, m[3]) + mul_f15_s16(v.y, m[4]) + mul_f15_s16(v.z, m[5]);
@@ -128,18 +119,15 @@ dvec3 matvec(dmat3 const& m, dvec3 v)
     return r;
 }
 
-
 // find x such that (a*x*x) == (1<<24)
-static uint16_t inv_sqrt(uint16_t a)
-{
+static uint16_t inv_sqrt(uint16_t a) {
     uint16_t x = 0x100; // 1
 
-    for(uint8_t i = 0; i < 8; ++i)
-    {
+    for(uint8_t i = 0; i < 8; ++i) {
         uint16_t t;
         t = mul_f8_u16(x, x); // x*x
         t = mul_f8_u16(a, t); // a*x*x
-        t >>= 1;              // 0.5 * a*x*x
+        t >>= 1; // 0.5 * a*x*x
         myassert(t <= 0x180);
         x = mul_f8_u16(uint16_t(0x180 - t), x);
     }
@@ -147,12 +135,10 @@ static uint16_t inv_sqrt(uint16_t a)
     return x;
 }
 
-dvec3 normalized(dvec3 v)
-{
+dvec3 normalized(dvec3 v) {
     // TODO: fit v.x into int8_t and propagate precision?
     //       would save a lot of ops
-    while(tmax(tabs(v.x), tabs(v.y), tabs(v.z)) >= (1 << 8))
-    {
+    while(tmax(tabs(v.x), tabs(v.y), tabs(v.z)) >= (1 << 8)) {
         v.x /= 2;
         v.y /= 2;
         v.z /= 2;
@@ -168,8 +154,7 @@ dvec3 normalized(dvec3 v)
     return v;
 }
 
-int16_t dot(dvec3 a, dvec3 b)
-{
+int16_t dot(dvec3 a, dvec3 b) {
     int16_t r = 0;
     r += mul_f8_s16(a.x, b.x);
     r += mul_f8_s16(a.y, b.y);

@@ -46,8 +46,7 @@ void clear_pixel(uint8_t x, uint8_t y) {
     buf[(y >> 3) * FBW + x] &= CLEAR_MASK[y & 7];
 }
 
-static void draw_vline(uint8_t x, int16_t y0, int16_t y1, uint16_t pat)
-{
+static void draw_vline(uint8_t x, int16_t y0, int16_t y1, uint16_t pat) {
     if(y0 > y1) return;
     if(y1 < 0) return;
     if(y0 >= FBH) return;
@@ -65,8 +64,7 @@ static void draw_vline(uint8_t x, int16_t y0, int16_t y1, uint16_t pat)
 
     uint8_t* p = &buf[(uint16_t(t0) * (FBW / 8)) + x];
 
-    if(t0 == t1)
-    {
+    if(t0 == t1) {
         uint8_t m = uint8_t(m0 & m1);
         uint8_t tp = *p;
         tp |= (pattern & m);
@@ -84,8 +82,7 @@ static void draw_vline(uint8_t x, int16_t y0, int16_t y1, uint16_t pat)
         p += FBW;
     }
 
-    for(int8_t t = int8_t(t1 - t0 - 8); t > 0; t -= 8)
-    {
+    for(int8_t t = int8_t(t1 - t0 - 8); t > 0; t -= 8) {
         *p = pattern;
         p += FBW;
     }
@@ -98,7 +95,6 @@ static void draw_vline(uint8_t x, int16_t y0, int16_t y1, uint16_t pat)
         *p = tp;
     }
 }
-
 
 static void draw_tri_segment(
     int16_t ax,
@@ -172,7 +168,7 @@ static void draw_circle_set_pixel(uint8_t x, int16_t y) {
     if(x >= FBW) return;
     if(y < 0 || y >= FBH) return;
     uint8_t* p = &buf[((uint16_t(y & 0x38) << 4) + x)];
-    *p &= (uint8_t)~(1u << (y & 0x7));
+    *p &= (uint8_t) ~(1u << (y & 0x7));
 }
 
 static void draw_circle_bresenham_segment_outline(int16_t cx, int16_t cy, int16_t x, int16_t y) {
