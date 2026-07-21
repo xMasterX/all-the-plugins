@@ -1,4 +1,6 @@
 # Static analysis for the pure, host-compilable core (src/core).
+# sha1.c is vendored public-domain code and is excluded from the run in CI
+# (see .github/workflows/ci.yml); these rules apply to our own core sources.
 # The Flipper app sources are additionally linted by the compiler through
 # `ufbt` (the firmware build enables -Wall -Werror and friends).
 Checks: >
@@ -15,6 +17,6 @@ Checks: >
   -readability-function-cognitive-complexity,
   -misc-include-cleaner,
   -bugprone-easily-swappable-parameters
-WarningsAsErrors: ''
+WarningsAsErrors: '*'
 HeaderFilterRegex: 'src/core/.*\.h$'
 FormatStyle: file

@@ -78,5 +78,7 @@ jobs:
       - name: Install clang-tidy
         run: sudo apt-get update && sudo apt-get install -y clang-tidy
 
+      # sha1.c is vendored, public-domain code (after Steve Reid) that we keep
+      # verbatim, so only our own core sources are analyzed.
       - name: Analyze core
-        run: clang-tidy src/core/*.c -- -std=c11 -Isrc/core
+        run: clang-tidy $(find src/core -name '*.c' -not -name 'sha1.c') -- -std=c11 -Isrc/core
