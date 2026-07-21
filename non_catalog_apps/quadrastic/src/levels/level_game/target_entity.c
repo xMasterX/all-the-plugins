@@ -28,13 +28,11 @@
 #include "player_entity.h"
 
 #define TARGET_ANIMATION_DURATION 30.0f
-#define TARGET_ANIMATION_RADIUS 10.0f
-#define TARGET_SIZE 3.0f
-#define HALF_TARGET_SIZE 1.5f
+#define TARGET_ANIMATION_RADIUS   10.0f
+#define TARGET_SIZE               3.0f
+#define HALF_TARGET_SIZE          1.5f
 
-static Vector
-random_pos(Entity* player_entity)
-{
+static Vector random_pos(Entity* player_entity) {
     const int full_size = ceilf(TARGET_SIZE);
     const int half_size = ceilf(HALF_TARGET_SIZE);
 
@@ -43,17 +41,15 @@ random_pos(Entity* player_entity)
     Vector pos;
     do {
         pos.x = half_size + rand() % (SCREEN_WIDTH - full_size);
-    } while (fabsf(pos.x - player_pos.x) < 2 * TARGET_SIZE);
+    } while(fabsf(pos.x - player_pos.x) < 2 * TARGET_SIZE);
     do {
         pos.y = half_size + rand() % (SCREEN_HEIGHT - full_size);
-    } while (fabsf(pos.y - player_pos.y) < 2 * TARGET_SIZE);
+    } while(fabsf(pos.y - player_pos.y) < 2 * TARGET_SIZE);
 
     return pos;
 }
 
-Entity*
-target_create(Level* level, GameManager* manager)
-{
+Entity* target_create(Level* level, GameManager* manager) {
     Entity* target = level_add_entity(level, &target_description);
 
     // Set target position
@@ -70,9 +66,7 @@ target_create(Level* level, GameManager* manager)
     return target;
 }
 
-void
-target_reset(Entity* self, GameManager* manager)
-{
+void target_reset(Entity* self, GameManager* manager) {
     // Set target position.
     Level* level = game_manager_current_level_get(manager);
     GameLevelContext* level_context = level_context_get(level);
@@ -83,43 +77,37 @@ target_reset(Entity* self, GameManager* manager)
     target_context->time = 0.0f;
 }
 
-static void
-target_update(Entity* self, GameManager* manager, void* _entity_context)
-{
+static void target_update(Entity* self, GameManager* manager, void* _entity_context) {
     UNUSED(self);
 
     // Check pause
     Level* level = game_manager_current_level_get(manager);
     GameLevelContext* level_context = level_context_get(level);
-    if (level_context->is_paused) {
+    if(level_context->is_paused) {
         return;
     }
 
     // Update animation
     TargetContext* target_context = _entity_context;
-    if (target_context->time < TARGET_ANIMATION_DURATION) {
+    if(target_context->time < TARGET_ANIMATION_DURATION) {
         target_context->time += 1.0f;
     }
 }
 
 static void
-target_render(Entity* self,
-              GameManager* manager,
-              Canvas* canvas,
-              void* _entity_context)
-{
+    target_render(Entity* self, GameManager* manager, Canvas* canvas, void* _entity_context) {
     UNUSED(manager);
 
     Vector pos = entity_pos_get(self);
     TargetContext* target_context = _entity_context;
 
     // Draw animation
-    if (target_context->time < TARGET_ANIMATION_DURATION) {
+    if(target_context->time < TARGET_ANIMATION_DURATION) {
         float step = TARGET_ANIMATION_RADIUS / TARGET_ANIMATION_DURATION;
-        float radius =
-          CLAMP(TARGET_ANIMATION_RADIUS - target_context->time * step,
-                TARGET_ANIMATION_RADIUS,
-                HALF_TARGET_SIZE);
+        float radius = CLAMP(
+            TARGET_ANIMATION_RADIUS - target_context->time * step,
+            TARGET_ANIMATION_RADIUS,
+            HALF_TARGET_SIZE);
         canvas_draw_circle(canvas, pos.x, pos.y, radius);
         canvas_draw_dot(canvas, pos.x, pos.y);
         return;
@@ -130,14 +118,10 @@ target_render(Entity* self,
 }
 
 static void
-target_collision(Entity* self,
-                 Entity* other,
-                 GameManager* manager,
-                 void* _entity_context)
-{
+    target_collision(Entity* self, Entity* other, GameManager* manager, void* _entity_context) {
     UNUSED(_entity_context);
 
-    if (entity_description_get(other) != &player_description) {
+    if(entity_description_get(other) != &player_description) {
         return;
     }
 

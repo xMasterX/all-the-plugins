@@ -19,11 +19,11 @@
 #include <furi_hal_random.h>
 #include <bt/bt_service/bt.h>
 
-#define AMI_TOOL_RETAIL_KEY_SIZE (160U)
-#define AMI_TOOL_RETAIL_KEY_FILENAME "key_retail.bin"
+#define AMI_TOOL_RETAIL_KEY_SIZE                (160U)
+#define AMI_TOOL_RETAIL_KEY_FILENAME            "key_retail.bin"
 #define AMI_TOOL_GENERATE_MAX_AMIIBO_PAGE_ITEMS (32U)
-#define AMI_TOOL_SAVED_MAX_PAGE_ITEMS (12U)
-#define AMI_TOOL_NFC_FOLDER ANY_PATH("nfc")
+#define AMI_TOOL_SAVED_MAX_PAGE_ITEMS           (12U)
+#define AMI_TOOL_NFC_FOLDER                     ANY_PATH("nfc")
 
 typedef struct AmiToolApp AmiToolApp;
 
@@ -42,10 +42,10 @@ typedef enum {
     RfidxStatusArgumentError,
 } RfidxStatus;
 
-#define RFIDX_OK RfidxStatusOk
-#define RFIDX_DRNG_ERROR RfidxStatusDrngError
+#define RFIDX_OK                           RfidxStatusOk
+#define RFIDX_DRNG_ERROR                   RfidxStatusDrngError
 #define RFIDX_AMIIBO_HMAC_VALIDATION_ERROR RfidxStatusAmiiboHmacError
-#define RFIDX_ARGUMENT_ERROR RfidxStatusArgumentError
+#define RFIDX_ARGUMENT_ERROR               RfidxStatusArgumentError
 
 #define NTAG_SIGNATURE_SIZE (32U)
 
@@ -313,10 +313,7 @@ void ami_tool_store_uid(AmiToolApp* app, const uint8_t* uid, size_t len);
 void ami_tool_clear_cached_tag(AmiToolApp* app);
 AmiToolRetailKeyStatus ami_tool_load_retail_key(AmiToolApp* app);
 bool ami_tool_has_retail_key(const AmiToolApp* app);
-bool ami_tool_extract_amiibo_id(
-    const MfUltralightData* tag_data,
-    char* buffer,
-    size_t buffer_size);
+bool ami_tool_extract_amiibo_id(const MfUltralightData* tag_data, char* buffer, size_t buffer_size);
 const char* ami_tool_write_status_to_string(AmiToolWriteStatus status);
 AmiToolWriteStatus ami_tool_write_custom_sequence(
     AmiToolApp* app,
@@ -346,8 +343,6 @@ RfidxStatus amiibo_format_dump(MfUltralightData* tag_data, Ntag21xMetadataHeader
 RfidxStatus amiibo_change_uid(MfUltralightData* tag_data);
 RfidxStatus amiibo_set_uid(MfUltralightData* tag_data, const uint8_t* uid, size_t uid_len);
 void amiibo_configure_rf_interface(MfUltralightData* tag_data);
-RfidxStatus amiibo_generate(
-    const uint8_t* uuid,
-    MfUltralightData* tag_data,
-    Ntag21xMetadataHeader* header);
+RfidxStatus
+    amiibo_generate(const uint8_t* uuid, MfUltralightData* tag_data, Ntag21xMetadataHeader* header);
 RfidxStatus amiibo_prepare_blank_tag(MfUltralightData* tag_data);

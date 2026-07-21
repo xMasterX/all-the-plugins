@@ -4,7 +4,7 @@
 #include <notification/notification_messages.h>
 
 #define RX_BUF_SIZE 64
-#define UART_CH (FuriHalSerialIdUsart)
+#define UART_CH     (FuriHalSerialIdUsart)
 
 typedef struct {
     uint16_t pm1_0cf; // PM1.0 ug/m3 (ultrafine particles)

@@ -14,8 +14,7 @@ static int32_t nfc_scan_thread(void* ctx) {
 
     while(app->nfc_scanning) {
         MfUltralightData* mfu_data = mf_ultralight_alloc();
-        MfUltralightError err =
-            mf_ultralight_poller_sync_read_card(app->nfc, mfu_data, NULL);
+        MfUltralightError err = mf_ultralight_poller_sync_read_card(app->nfc, mfu_data, NULL);
 
         if(err == MfUltralightErrorNone) {
             char barcode[18];
@@ -27,11 +26,9 @@ static int32_t nfc_scan_thread(void* ctx) {
             if(decoded) {
                 memcpy(app->barcode, barcode, TAGTINKER_BC_LEN);
                 app->barcode[TAGTINKER_BC_LEN] = '\0';
-                view_dispatcher_send_custom_event(
-                    app->view_dispatcher, NfcScanEventSuccess);
+                view_dispatcher_send_custom_event(app->view_dispatcher, NfcScanEventSuccess);
             } else {
-                view_dispatcher_send_custom_event(
-                    app->view_dispatcher, NfcScanEventNotEsl);
+                view_dispatcher_send_custom_event(app->view_dispatcher, NfcScanEventNotEsl);
             }
             return 0;
         }
@@ -50,8 +47,7 @@ void tagtinker_scene_nfc_scan_on_enter(void* ctx) {
 
     popup_reset(app->popup);
     popup_set_header(app->popup, "Scan NFC Tag", 64, 10, AlignCenter, AlignTop);
-    popup_set_text(
-        app->popup, "Hold ESL tag\nto Flipper back", 64, 32, AlignCenter, AlignCenter);
+    popup_set_text(app->popup, "Hold ESL tag\nto Flipper back", 64, 32, AlignCenter, AlignCenter);
 
     view_dispatcher_switch_to_view(app->view_dispatcher, TagTinkerViewPopup);
 
@@ -75,8 +71,7 @@ bool tagtinker_scene_nfc_scan_on_event(void* ctx, SceneManagerEvent event) {
 
         if(idx < 0) {
             popup_reset(app->popup);
-            popup_set_header(
-                app->popup, "Decode Error", 64, 20, AlignCenter, AlignCenter);
+            popup_set_header(app->popup, "Decode Error", 64, 20, AlignCenter, AlignCenter);
             popup_set_text(
                 app->popup, "Tag read but\nbarcode invalid", 64, 36, AlignCenter, AlignCenter);
             popup_set_timeout(app->popup, 2000);
@@ -104,8 +99,7 @@ bool tagtinker_scene_nfc_scan_on_event(void* ctx, SceneManagerEvent event) {
 
     if(event.event == NfcScanEventNotEsl) {
         popup_reset(app->popup);
-        popup_set_header(
-            app->popup, "Not an ESL tag", 64, 20, AlignCenter, AlignCenter);
+        popup_set_header(app->popup, "Not an ESL tag", 64, 20, AlignCenter, AlignCenter);
         popup_set_text(
             app->popup, "Tag detected but\nno valid ESL data", 64, 36, AlignCenter, AlignCenter);
         popup_set_timeout(app->popup, 2000);

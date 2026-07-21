@@ -7,7 +7,7 @@
 #include <furi.h>
 
 #define PCSG_HISTORY_MAX 50
-#define TAG "PCSGHistory"
+#define TAG              "PCSGHistory"
 
 typedef struct {
     FuriString* item_str;

@@ -4,7 +4,12 @@
 
 void scene_menu_show(SubGhzPlaylistCreator* app) {
     app->current_view = SubGhzPlaylistCreatorViewSubmenu;
-    FURI_LOG_D(TAG, "Showing menu view. Dispatcher: %p, Submenu View: %p, ViewId: %lu", app->view_dispatcher, submenu_get_view(app->submenu), (uint32_t)SubGhzPlaylistCreatorViewSubmenu);
+    FURI_LOG_D(
+        TAG,
+        "Showing menu view. Dispatcher: %p, Submenu View: %p, ViewId: %lu",
+        app->view_dispatcher,
+        submenu_get_view(app->submenu),
+        (uint32_t)SubGhzPlaylistCreatorViewSubmenu);
     view_dispatcher_switch_to_view(app->view_dispatcher, SubGhzPlaylistCreatorViewSubmenu);
 }
 
@@ -14,4 +19,4 @@ void scene_menu_init_view(SubGhzPlaylistCreator* app) {
     // And added to the dispatcher there.
     // This function can remain empty for now if allocation and adding are done elsewhere.
     UNUSED(app);
-} 
+}

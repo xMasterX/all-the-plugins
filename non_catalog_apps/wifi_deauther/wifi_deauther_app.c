@@ -30,7 +30,7 @@ WifideautherApp* wifi_deauther_app_alloc() {
 
     app->view_dispatcher = view_dispatcher_alloc();
     app->scene_manager = scene_manager_alloc(&wifi_deauther_scene_handlers, app);
-    
+
     view_dispatcher_set_event_callback_context(app->view_dispatcher, app);
 
     view_dispatcher_set_custom_event_callback(
@@ -113,7 +113,7 @@ int32_t wifi_deauther_app(void* p) {
     view_dispatcher_run(wifi_deauther_app->view_dispatcher);
 
     wifi_deauther_app_free(wifi_deauther_app);
-    
+
     if(furi_hal_power_is_otg_enabled() && !otg_was_enabled) {
         furi_hal_power_disable_otg();
     }

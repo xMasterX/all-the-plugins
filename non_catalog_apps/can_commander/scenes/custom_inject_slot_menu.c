@@ -90,9 +90,7 @@ static bool cancommander_scene_custom_inject_hex_nibble(char c, uint8_t* out) {
     return false;
 }
 
-static bool cancommander_scene_custom_inject_parse_hex_bytes(
-    const char* hex,
-    uint8_t out[8]) {
+static bool cancommander_scene_custom_inject_parse_hex_bytes(const char* hex, uint8_t out[8]) {
     if(!hex || !out) {
         return false;
     }
@@ -117,9 +115,7 @@ static bool cancommander_scene_custom_inject_parse_hex_bytes(
     return true;
 }
 
-static void cancommander_scene_custom_inject_hex_from_bytes(
-    const uint8_t in[8],
-    char out[17]) {
+static void cancommander_scene_custom_inject_hex_from_bytes(const uint8_t in[8], char out[17]) {
     static const char kHex[] = "0123456789ABCDEF";
     for(uint8_t i = 0U; i < 8U; i++) {
         out[i * 2U] = kHex[(uint8_t)((in[i] >> 4U) & 0x0FU)];
@@ -129,8 +125,7 @@ static void cancommander_scene_custom_inject_hex_from_bytes(
 }
 
 static void cancommander_scene_custom_inject_prepare_bytes_editor(App* app) {
-    char* slot_args =
-        app_custom_inject_get_slot_args(app, app_custom_inject_get_active_slot(app));
+    char* slot_args = app_custom_inject_get_slot_args(app, app_custom_inject_get_active_slot(app));
     if(!slot_args) {
         strncpy(app->custom_inject_edit_bytes, "0", sizeof(app->custom_inject_edit_bytes) - 1U);
         strncpy(
@@ -181,8 +176,8 @@ static void cancommander_scene_custom_inject_slot_ensure_running(App* app) {
         return;
     }
 
-    const bool custom_inject_active =
-        app->tool_active && app->dashboard_mode == AppDashboardCustomInject;
+    const bool custom_inject_active = app->tool_active &&
+                                      app->dashboard_mode == AppDashboardCustomInject;
     if(custom_inject_active) {
         return;
     }
@@ -208,7 +203,8 @@ static void cancommander_scene_custom_inject_slot_refresh_labels(App* app) {
     char count[12] = {0};
     char interval[12] = {0};
 
-    if(!cancommander_scene_custom_inject_get_arg(slot_args, "slot_name", slot_name, sizeof(slot_name))) {
+    if(!cancommander_scene_custom_inject_get_arg(
+           slot_args, "slot_name", slot_name, sizeof(slot_name))) {
         snprintf(slot_name, sizeof(slot_name), "Slot%u", (unsigned)slot_number);
     }
     if(!cancommander_scene_custom_inject_get_arg(slot_args, "bus", bus, sizeof(bus))) {
@@ -223,19 +219,33 @@ static void cancommander_scene_custom_inject_slot_refresh_labels(App* app) {
     if(!cancommander_scene_custom_inject_get_arg(slot_args, "count", count, sizeof(count))) {
         strncpy(count, "1", sizeof(count) - 1U);
     }
-    if(!cancommander_scene_custom_inject_get_arg(slot_args, "interval_ms", interval, sizeof(interval))) {
+    if(!cancommander_scene_custom_inject_get_arg(
+           slot_args, "interval_ms", interval, sizeof(interval))) {
         strncpy(interval, "0", sizeof(interval) - 1U);
     }
 
-    snprintf(cancommander_custom_slot_name_item, sizeof(cancommander_custom_slot_name_item), "Name: %s", slot_name);
-    snprintf(cancommander_custom_slot_bus_item, sizeof(cancommander_custom_slot_bus_item), "Bus: %s", bus);
-    snprintf(cancommander_custom_slot_id_item, sizeof(cancommander_custom_slot_id_item), "ID: %s", id);
+    snprintf(
+        cancommander_custom_slot_name_item,
+        sizeof(cancommander_custom_slot_name_item),
+        "Name: %s",
+        slot_name);
+    snprintf(
+        cancommander_custom_slot_bus_item,
+        sizeof(cancommander_custom_slot_bus_item),
+        "Bus: %s",
+        bus);
+    snprintf(
+        cancommander_custom_slot_id_item, sizeof(cancommander_custom_slot_id_item), "ID: %s", id);
     snprintf(
         cancommander_custom_slot_mux_item,
         sizeof(cancommander_custom_slot_mux_item),
         "Mux: %s",
         (strcmp(mux, "1") == 0 || strcmp(mux, "true") == 0) ? "On" : "Off");
-    snprintf(cancommander_custom_slot_count_item, sizeof(cancommander_custom_slot_count_item), "Count: %s", count);
+    snprintf(
+        cancommander_custom_slot_count_item,
+        sizeof(cancommander_custom_slot_count_item),
+        "Count: %s",
+        count);
     snprintf(
         cancommander_custom_slot_interval_item,
         sizeof(cancommander_custom_slot_interval_item),
@@ -327,7 +337,8 @@ static void cancommander_scene_custom_inject_slot_apply_name(App* app) {
     char name[24] = {0};
     if(slot_args && cancommander_scene_custom_inject_get_arg(
                         app->custom_inject_edit_name, "slot_name", name, sizeof(name))) {
-        app_args_set_key_value(slot_args, sizeof(app->args_custom_inject_slots[0]), "slot_name", name);
+        app_args_set_key_value(
+            slot_args, sizeof(app->args_custom_inject_slots[0]), "slot_name", name);
         app_custom_inject_save(app);
     }
 }
@@ -346,8 +357,8 @@ static void cancommander_scene_custom_inject_slot_apply_id(App* app) {
     const uint8_t slot_number = cancommander_scene_custom_inject_slot_selected_number(app);
     char* slot_args = app_custom_inject_get_slot_args(app, (uint8_t)(slot_number - 1U));
     char id[16] = {0};
-    if(slot_args &&
-       cancommander_scene_custom_inject_get_arg(app->custom_inject_edit_id, "id", id, sizeof(id))) {
+    if(slot_args && cancommander_scene_custom_inject_get_arg(
+                        app->custom_inject_edit_id, "id", id, sizeof(id))) {
         app_args_set_key_value(slot_args, sizeof(app->args_custom_inject_slots[0]), "id", id);
         app_args_set_key_value(slot_args, sizeof(app->args_custom_inject_slots[0]), "ext", "0");
     }
@@ -365,20 +376,24 @@ static void cancommander_scene_custom_inject_slot_apply_mux(App* app) {
     char mux_len[16] = {0};
     char mux_value[16] = {0};
 
-    if(cancommander_scene_custom_inject_get_arg(app->custom_inject_edit_mux, "mux", mux, sizeof(mux))) {
+    if(cancommander_scene_custom_inject_get_arg(
+           app->custom_inject_edit_mux, "mux", mux, sizeof(mux))) {
         app_args_set_key_value(slot_args, sizeof(app->args_custom_inject_slots[0]), "mux", mux);
     }
     if(cancommander_scene_custom_inject_get_arg(
            app->custom_inject_edit_mux, "mux_start", mux_start, sizeof(mux_start))) {
-        app_args_set_key_value(slot_args, sizeof(app->args_custom_inject_slots[0]), "mux_start", mux_start);
+        app_args_set_key_value(
+            slot_args, sizeof(app->args_custom_inject_slots[0]), "mux_start", mux_start);
     }
     if(cancommander_scene_custom_inject_get_arg(
            app->custom_inject_edit_mux, "mux_len", mux_len, sizeof(mux_len))) {
-        app_args_set_key_value(slot_args, sizeof(app->args_custom_inject_slots[0]), "mux_len", mux_len);
+        app_args_set_key_value(
+            slot_args, sizeof(app->args_custom_inject_slots[0]), "mux_len", mux_len);
     }
     if(cancommander_scene_custom_inject_get_arg(
            app->custom_inject_edit_mux, "mux_value", mux_value, sizeof(mux_value))) {
-        app_args_set_key_value(slot_args, sizeof(app->args_custom_inject_slots[0]), "mux_value", mux_value);
+        app_args_set_key_value(
+            slot_args, sizeof(app->args_custom_inject_slots[0]), "mux_value", mux_value);
     }
 
     app_custom_inject_save(app);
@@ -390,7 +405,8 @@ static void cancommander_scene_custom_inject_slot_apply_count(App* app) {
     char count[12] = {0};
     if(slot_args && cancommander_scene_custom_inject_get_arg(
                         app->custom_inject_edit_count, "count", count, sizeof(count))) {
-        app_args_set_key_value(slot_args, sizeof(app->args_custom_inject_slots[0]), "count", count);
+        app_args_set_key_value(
+            slot_args, sizeof(app->args_custom_inject_slots[0]), "count", count);
     }
 }
 
@@ -398,9 +414,11 @@ static void cancommander_scene_custom_inject_slot_apply_interval(App* app) {
     const uint8_t slot_number = cancommander_scene_custom_inject_slot_selected_number(app);
     char* slot_args = app_custom_inject_get_slot_args(app, (uint8_t)(slot_number - 1U));
     char interval[16] = {0};
-    if(slot_args && cancommander_scene_custom_inject_get_arg(
-                        app->custom_inject_edit_interval, "interval_ms", interval, sizeof(interval))) {
-        app_args_set_key_value(slot_args, sizeof(app->args_custom_inject_slots[0]), "interval_ms", interval);
+    if(slot_args &&
+       cancommander_scene_custom_inject_get_arg(
+           app->custom_inject_edit_interval, "interval_ms", interval, sizeof(interval))) {
+        app_args_set_key_value(
+            slot_args, sizeof(app->args_custom_inject_slots[0]), "interval_ms", interval);
     }
 }
 
@@ -408,8 +426,10 @@ static void cancommander_scene_custom_inject_slot_apply_set_bit(App* app) {
     const uint8_t slot_number = cancommander_scene_custom_inject_slot_selected_number(app);
     char bit[12] = {0};
     char value[8] = {0};
-    if(!cancommander_scene_custom_inject_get_arg(app->custom_inject_edit_bit, "bit", bit, sizeof(bit)) ||
-       !cancommander_scene_custom_inject_get_arg(app->custom_inject_edit_bit, "value", value, sizeof(value))) {
+    if(!cancommander_scene_custom_inject_get_arg(
+           app->custom_inject_edit_bit, "bit", bit, sizeof(bit)) ||
+       !cancommander_scene_custom_inject_get_arg(
+           app->custom_inject_edit_bit, "value", value, sizeof(value))) {
         app_set_status(app, "Set Bit parse error");
         return;
     }
@@ -459,7 +479,8 @@ void cancommander_scene_custom_inject_slot_menu_on_enter(void* context) {
 
     submenu_set_selected_item(
         app->submenu,
-        scene_manager_get_scene_state(app->scene_manager, cancommander_scene_custom_inject_slot_menu));
+        scene_manager_get_scene_state(
+            app->scene_manager, cancommander_scene_custom_inject_slot_menu));
     view_dispatcher_switch_to_view(app->view_dispatcher, AppViewSubmenu);
 }
 
@@ -483,7 +504,8 @@ bool cancommander_scene_custom_inject_slot_menu_on_event(void* context, SceneMan
 
     switch(event.event) {
     case CustomInjectSlotName:
-        if(!cancommander_scene_custom_inject_get_arg(slot_args, "slot_name", value, sizeof(value))) {
+        if(!cancommander_scene_custom_inject_get_arg(
+               slot_args, "slot_name", value, sizeof(value))) {
             snprintf(value, sizeof(value), "Slot%u", (unsigned)slot_number);
         }
         snprintf(
@@ -506,7 +528,8 @@ bool cancommander_scene_custom_inject_slot_menu_on_event(void* context, SceneMan
         if(!cancommander_scene_custom_inject_get_arg(slot_args, "bus", value, sizeof(value))) {
             strncpy(value, "can0", sizeof(value) - 1U);
         }
-        snprintf(app->custom_inject_edit_bus, sizeof(app->custom_inject_edit_bus), "bus=%s", value);
+        snprintf(
+            app->custom_inject_edit_bus, sizeof(app->custom_inject_edit_bus), "bus=%s", value);
         app_begin_args_editor_apply(
             app,
             app->custom_inject_edit_bus,
@@ -542,7 +565,8 @@ bool cancommander_scene_custom_inject_slot_menu_on_event(void* context, SceneMan
     case CustomInjectSlotSetBit: {
         char bit[12] = {0};
         char bit_value[8] = {0};
-        if(!cancommander_scene_custom_inject_get_arg(app->args_custom_inject_bit, "bit", bit, sizeof(bit))) {
+        if(!cancommander_scene_custom_inject_get_arg(
+               app->args_custom_inject_bit, "bit", bit, sizeof(bit))) {
             strncpy(bit, "0", sizeof(bit) - 1U);
         }
         if(!cancommander_scene_custom_inject_get_arg(
@@ -571,7 +595,8 @@ bool cancommander_scene_custom_inject_slot_menu_on_event(void* context, SceneMan
         char start[12] = {0};
         char len[12] = {0};
         char field_value[24] = {0};
-        if(!cancommander_scene_custom_inject_get_arg(slot_args, "sig_start", start, sizeof(start))) {
+        if(!cancommander_scene_custom_inject_get_arg(
+               slot_args, "sig_start", start, sizeof(start))) {
             strncpy(start, "0", sizeof(start) - 1U);
         }
         if(!cancommander_scene_custom_inject_get_arg(slot_args, "sig_len", len, sizeof(len))) {
@@ -600,53 +625,57 @@ bool cancommander_scene_custom_inject_slot_menu_on_event(void* context, SceneMan
         return true;
     }
 
-    case CustomInjectSlotMux:
-        {
-            char mux[8] = {0};
-            char mux_start[16] = {0};
-            char mux_len[16] = {0};
-            char mux_value[16] = {0};
+    case CustomInjectSlotMux: {
+        char mux[8] = {0};
+        char mux_start[16] = {0};
+        char mux_len[16] = {0};
+        char mux_value[16] = {0};
 
-            if(!cancommander_scene_custom_inject_get_arg(slot_args, "mux", mux, sizeof(mux))) {
-                strncpy(mux, "0", sizeof(mux) - 1U);
-            }
-            if(!cancommander_scene_custom_inject_get_arg(
-                   slot_args, "mux_start", mux_start, sizeof(mux_start))) {
-                strncpy(mux_start, "0", sizeof(mux_start) - 1U);
-            }
-            if(!cancommander_scene_custom_inject_get_arg(slot_args, "mux_len", mux_len, sizeof(mux_len))) {
-                strncpy(mux_len, "1", sizeof(mux_len) - 1U);
-            }
-            if(!cancommander_scene_custom_inject_get_arg(
-                   slot_args, "mux_value", mux_value, sizeof(mux_value))) {
-                strncpy(mux_value, "0", sizeof(mux_value) - 1U);
-            }
-
-            snprintf(
-                app->custom_inject_edit_mux,
-                sizeof(app->custom_inject_edit_mux),
-                "mux=%s mux_start=%s mux_len=%s mux_value=%s",
-                mux,
-                mux_start,
-                mux_len,
-                mux_value);
-            app_begin_args_editor_apply(
-                app,
-                app->custom_inject_edit_mux,
-                sizeof(app->custom_inject_edit_mux),
-                "Mux",
-                "Apply",
-                cancommander_scene_custom_inject_slot_apply_mux,
-                cancommander_scene_custom_inject_slot_menu);
-            scene_manager_next_scene(app->scene_manager, cancommander_scene_args_editor);
+        if(!cancommander_scene_custom_inject_get_arg(slot_args, "mux", mux, sizeof(mux))) {
+            strncpy(mux, "0", sizeof(mux) - 1U);
         }
+        if(!cancommander_scene_custom_inject_get_arg(
+               slot_args, "mux_start", mux_start, sizeof(mux_start))) {
+            strncpy(mux_start, "0", sizeof(mux_start) - 1U);
+        }
+        if(!cancommander_scene_custom_inject_get_arg(
+               slot_args, "mux_len", mux_len, sizeof(mux_len))) {
+            strncpy(mux_len, "1", sizeof(mux_len) - 1U);
+        }
+        if(!cancommander_scene_custom_inject_get_arg(
+               slot_args, "mux_value", mux_value, sizeof(mux_value))) {
+            strncpy(mux_value, "0", sizeof(mux_value) - 1U);
+        }
+
+        snprintf(
+            app->custom_inject_edit_mux,
+            sizeof(app->custom_inject_edit_mux),
+            "mux=%s mux_start=%s mux_len=%s mux_value=%s",
+            mux,
+            mux_start,
+            mux_len,
+            mux_value);
+        app_begin_args_editor_apply(
+            app,
+            app->custom_inject_edit_mux,
+            sizeof(app->custom_inject_edit_mux),
+            "Mux",
+            "Apply",
+            cancommander_scene_custom_inject_slot_apply_mux,
+            cancommander_scene_custom_inject_slot_menu);
+        scene_manager_next_scene(app->scene_manager, cancommander_scene_args_editor);
+    }
         return true;
 
     case CustomInjectSlotCount:
         if(!cancommander_scene_custom_inject_get_arg(slot_args, "count", value, sizeof(value))) {
             strncpy(value, "1", sizeof(value) - 1U);
         }
-        snprintf(app->custom_inject_edit_count, sizeof(app->custom_inject_edit_count), "count=%s", value);
+        snprintf(
+            app->custom_inject_edit_count,
+            sizeof(app->custom_inject_edit_count),
+            "count=%s",
+            value);
         app_begin_args_editor_apply(
             app,
             app->custom_inject_edit_count,
@@ -659,7 +688,8 @@ bool cancommander_scene_custom_inject_slot_menu_on_event(void* context, SceneMan
         return true;
 
     case CustomInjectSlotInterval:
-        if(!cancommander_scene_custom_inject_get_arg(slot_args, "interval_ms", value, sizeof(value))) {
+        if(!cancommander_scene_custom_inject_get_arg(
+               slot_args, "interval_ms", value, sizeof(value))) {
             strncpy(value, "0", sizeof(value) - 1U);
         }
         snprintf(

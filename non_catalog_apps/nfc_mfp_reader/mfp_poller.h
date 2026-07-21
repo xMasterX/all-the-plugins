@@ -5,8 +5,8 @@
 #include <stdbool.h>
 
 /* ---- Card geometry ---- */
-#define MFP_BLOCK_SIZE     16
-#define MFP_MAX_BLOCKS     256
+#define MFP_BLOCK_SIZE 16
+#define MFP_MAX_BLOCKS 256
 /* MIFARE Plus sector counts per NXP MF1PLUSx0y1 spec:
  *
  * "2K" card (MF1PLUS80):
@@ -20,8 +20,8 @@
  *
  * Enum values match NXP's marketing names, not raw user-data size.
  */
-#define MFP_SECTORS_2K     16
-#define MFP_SECTORS_4K     40
+#define MFP_SECTORS_2K 16
+#define MFP_SECTORS_4K 40
 
 typedef enum {
     MfpSL1 = 1,
@@ -128,10 +128,7 @@ MfpError mfp_poller_auth_nonfirst(
  *  Uses SAK as a fast heuristic (0x08/0x18 → SL1, 0x20 → likely SL3),
  *  then sends an AuthFirstPart1 probe to confirm SL3 capability.
  *  Must be called from inside the ISO14443-4A poller callback. */
-MfpError mfp_poller_probe_sl(
-    void* iso4a_poller,
-    uint8_t sak,
-    MfpSecurityLevel* out_sl);
+MfpError mfp_poller_probe_sl(void* iso4a_poller, uint8_t sak, MfpSecurityLevel* out_sl);
 
 /** Read one encrypted block. Must be called after mfp_poller_auth(). */
 MfpError mfp_poller_read_block(

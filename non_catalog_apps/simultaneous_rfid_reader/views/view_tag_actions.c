@@ -57,7 +57,6 @@ void uhf_reader_rename_text_updated(void* context) {
             furi_string_set_str(TempPc, ExtractedPc);
             flipper_format_file_close(App->EpcFile);
 
-            
             free(ExtractedEpc);
         }
     }

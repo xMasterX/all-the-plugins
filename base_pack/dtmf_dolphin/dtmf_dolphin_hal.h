@@ -5,11 +5,11 @@
 #include <stm32wbxx_ll_tim.h>
 #include <stm32wbxx_ll_dma.h>
 
-#define FURI_HAL_SPEAKER_TIMER TIM16
+#define FURI_HAL_SPEAKER_TIMER   TIM16
 #define FURI_HAL_SPEAKER_CHANNEL LL_TIM_CHANNEL_CH1
-#define DMA_INSTANCE DMA1, LL_DMA_CHANNEL_1
+#define DMA_INSTANCE             DMA1, LL_DMA_CHANNEL_1
 
-#define DTMF_DOLPHIN_HAL_DMA_PRESCALER 4
+#define DTMF_DOLPHIN_HAL_DMA_PRESCALER  4
 #define DTMF_DOLPHIN_HAL_DMA_AUTORELOAD 255
 
 #ifdef __cplusplus

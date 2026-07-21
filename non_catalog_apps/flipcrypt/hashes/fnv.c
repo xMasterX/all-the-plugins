@@ -64,7 +64,6 @@
  */
 #define FNV_32_PRIME ((Fnv32_t)0x01000193)
 
-
 /*
  * fnv_32_buf - perform a 32 bit Fowler/Noll/Vo hash on a buffer
  *
@@ -82,32 +81,28 @@
  * NOTE: To use the recommended 32 bit FNV-1 hash, use FNV1_32_INIT as the hval
  *	 argument on the first call to either fnv_32_buf() or fnv_32_str().
  */
-Fnv32_t
-fnv_32_buf(void *buf, size_t len, Fnv32_t hval)
-{
-    unsigned char *bp = (unsigned char *)buf;	/* start of buffer */
-    unsigned char *be = bp + len;		/* beyond end of buffer */
+Fnv32_t fnv_32_buf(void* buf, size_t len, Fnv32_t hval) {
+    unsigned char* bp = (unsigned char*)buf; /* start of buffer */
+    unsigned char* be = bp + len; /* beyond end of buffer */
 
     /*
      * FNV-1 hash each octet in the buffer
      */
-    while (bp < be) {
-
-	/* multiply by the 32 bit FNV magic prime mod 2^32 */
+    while(bp < be) {
+        /* multiply by the 32 bit FNV magic prime mod 2^32 */
 #if defined(NO_FNV_GCC_OPTIMIZATION)
-	hval *= FNV_32_PRIME;
+        hval *= FNV_32_PRIME;
 #else
-	hval += (hval<<1) + (hval<<4) + (hval<<7) + (hval<<8) + (hval<<24);
+        hval += (hval << 1) + (hval << 4) + (hval << 7) + (hval << 8) + (hval << 24);
 #endif
 
-	/* xor the bottom with the current octet */
-	hval ^= (Fnv32_t)*bp++;
+        /* xor the bottom with the current octet */
+        hval ^= (Fnv32_t)*bp++;
     }
 
     /* return our new hash value */
     return hval;
 }
-
 
 /*
  * fnv_32_str - perform a 32 bit Fowler/Noll/Vo hash on a string
@@ -125,31 +120,27 @@ fnv_32_buf(void *buf, size_t len, Fnv32_t hval)
  * NOTE: To use the recommended 32 bit FNV-1 hash, use FNV1_32_INIT as the hval
  *	 argument on the first call to either fnv_32_buf() or fnv_32_str().
  */
-Fnv32_t
-fnv_32_str(char *str, Fnv32_t hval)
-{
-    unsigned char *s = (unsigned char *)str;	/* unsigned string */
+Fnv32_t fnv_32_str(char* str, Fnv32_t hval) {
+    unsigned char* s = (unsigned char*)str; /* unsigned string */
 
     /*
      * FNV-1 hash each octet in the buffer
      */
-    while (*s) {
-
-	/* multiply by the 32 bit FNV magic prime mod 2^32 */
+    while(*s) {
+        /* multiply by the 32 bit FNV magic prime mod 2^32 */
 #if defined(NO_FNV_GCC_OPTIMIZATION)
-	hval *= FNV_32_PRIME;
+        hval *= FNV_32_PRIME;
 #else
-	hval += (hval<<1) + (hval<<4) + (hval<<7) + (hval<<8) + (hval<<24);
+        hval += (hval << 1) + (hval << 4) + (hval << 7) + (hval << 8) + (hval << 24);
 #endif
 
-	/* xor the bottom with the current octet */
-	hval ^= (Fnv32_t)*s++;
+        /* xor the bottom with the current octet */
+        hval ^= (Fnv32_t)*s++;
     }
 
     /* return our new hash value */
     return hval;
 }
-
 
 /*
  * fnv_32a_buf - perform a 32 bit Fowler/Noll/Vo FNV-1a hash on a buffer
@@ -165,32 +156,28 @@ fnv_32_str(char *str, Fnv32_t hval)
  * NOTE: To use the recommended 32 bit FNV-1a hash, use FNV1_32A_INIT as the
  * 	 hval arg on the first call to either fnv_32a_buf() or fnv_32a_str().
  */
-Fnv32_t
-fnv_32a_buf(void *buf, size_t len, Fnv32_t hval)
-{
-    unsigned char *bp = (unsigned char *)buf;	/* start of buffer */
-    unsigned char *be = bp + len;		/* beyond end of buffer */
+Fnv32_t fnv_32a_buf(void* buf, size_t len, Fnv32_t hval) {
+    unsigned char* bp = (unsigned char*)buf; /* start of buffer */
+    unsigned char* be = bp + len; /* beyond end of buffer */
 
     /*
      * FNV-1a hash each octet in the buffer
      */
-    while (bp < be) {
+    while(bp < be) {
+        /* xor the bottom with the current octet */
+        hval ^= (Fnv32_t)*bp++;
 
-	/* xor the bottom with the current octet */
-	hval ^= (Fnv32_t)*bp++;
-
-	/* multiply by the 32 bit FNV magic prime mod 2^32 */
+        /* multiply by the 32 bit FNV magic prime mod 2^32 */
 #if defined(NO_FNV_GCC_OPTIMIZATION)
-	hval *= FNV_32_PRIME;
+        hval *= FNV_32_PRIME;
 #else
-	hval += (hval<<1) + (hval<<4) + (hval<<7) + (hval<<8) + (hval<<24);
+        hval += (hval << 1) + (hval << 4) + (hval << 7) + (hval << 8) + (hval << 24);
 #endif
     }
 
     /* return our new hash value */
     return hval;
 }
-
 
 /*
  * fnv_32a_str - perform a 32 bit Fowler/Noll/Vo FNV-1a hash on a string
@@ -205,24 +192,21 @@ fnv_32a_buf(void *buf, size_t len, Fnv32_t hval)
  * NOTE: To use the recommended 32 bit FNV-1a hash, use FNV1_32A_INIT as the
  *  	 hval arg on the first call to either fnv_32a_buf() or fnv_32a_str().
  */
-Fnv32_t
-fnv_32a_str(char *str, Fnv32_t hval)
-{
-    unsigned char *s = (unsigned char *)str;	/* unsigned string */
+Fnv32_t fnv_32a_str(char* str, Fnv32_t hval) {
+    unsigned char* s = (unsigned char*)str; /* unsigned string */
 
     /*
      * FNV-1a hash each octet in the buffer
      */
-    while (*s) {
+    while(*s) {
+        /* xor the bottom with the current octet */
+        hval ^= (Fnv32_t)*s++;
 
-	/* xor the bottom with the current octet */
-	hval ^= (Fnv32_t)*s++;
-
-	/* multiply by the 32 bit FNV magic prime mod 2^32 */
+        /* multiply by the 32 bit FNV magic prime mod 2^32 */
 #if defined(NO_FNV_GCC_OPTIMIZATION)
-	hval *= FNV_32_PRIME;
+        hval *= FNV_32_PRIME;
 #else
-	hval += (hval<<1) + (hval<<4) + (hval<<7) + (hval<<8) + (hval<<24);
+        hval += (hval << 1) + (hval << 4) + (hval << 7) + (hval << 8) + (hval << 24);
 #endif
     }
 
@@ -252,33 +236,28 @@ fnv_32a_str(char *str, Fnv32_t hval)
  * NOTE: To use the recommended 64 bit FNV-1 hash, use FNV1_64_INIT as the hval
  *	 argument on the first call to either fnv_64_buf() or fnv_64_str().
  */
-Fnv64_t
-fnv_64_buf(void *buf, size_t len, Fnv64_t hval)
-{
-    unsigned char *bp = (unsigned char *)buf;	/* start of buffer */
-    unsigned char *be = bp + len;		/* beyond end of buffer */
+Fnv64_t fnv_64_buf(void* buf, size_t len, Fnv64_t hval) {
+    unsigned char* bp = (unsigned char*)buf; /* start of buffer */
+    unsigned char* be = bp + len; /* beyond end of buffer */
 
     /*
      * FNV-1 hash each octet of the buffer
      */
-    while (bp < be) {
-
-	/* multiply by the 64 bit FNV magic prime mod 2^64 */
+    while(bp < be) {
+        /* multiply by the 64 bit FNV magic prime mod 2^64 */
 #if defined(NO_FNV_GCC_OPTIMIZATION)
-	hval *= FNV_64_PRIME;
+        hval *= FNV_64_PRIME;
 #else /* NO_FNV_GCC_OPTIMIZATION */
-	hval += (hval << 1) + (hval << 4) + (hval << 5) +
-		(hval << 7) + (hval << 8) + (hval << 40);
+        hval += (hval << 1) + (hval << 4) + (hval << 5) + (hval << 7) + (hval << 8) + (hval << 40);
 #endif /* NO_FNV_GCC_OPTIMIZATION */
 
-	/* xor the bottom with the current octet */
-	hval ^= (Fnv64_t)*bp++;
+        /* xor the bottom with the current octet */
+        hval ^= (Fnv64_t)*bp++;
     }
 
     /* return our new hash value */
     return hval;
 }
-
 
 /*
  * fnv_64_str - perform a 64 bit Fowler/Noll/Vo hash on a buffer
@@ -296,32 +275,27 @@ fnv_64_buf(void *buf, size_t len, Fnv64_t hval)
  * NOTE: To use the recommended 64 bit FNV-1 hash, use FNV1_64_INIT as the hval
  *	 argument on the first call to either fnv_64_buf() or fnv_64_str().
  */
-Fnv64_t
-fnv_64_str(char *str, Fnv64_t hval)
-{
-    unsigned char *s = (unsigned char *)str;	/* unsigned string */
+Fnv64_t fnv_64_str(char* str, Fnv64_t hval) {
+    unsigned char* s = (unsigned char*)str; /* unsigned string */
 
     /*
      * FNV-1 hash each octet of the string
      */
-    while (*s) {
-
-	/* multiply by the 64 bit FNV magic prime mod 2^64 */
+    while(*s) {
+        /* multiply by the 64 bit FNV magic prime mod 2^64 */
 #if defined(NO_FNV_GCC_OPTIMIZATION)
-	hval *= FNV_64_PRIME;
+        hval *= FNV_64_PRIME;
 #else /* NO_FNV_GCC_OPTIMIZATION */
-	hval += (hval << 1) + (hval << 4) + (hval << 5) +
-		(hval << 7) + (hval << 8) + (hval << 40);
+        hval += (hval << 1) + (hval << 4) + (hval << 5) + (hval << 7) + (hval << 8) + (hval << 40);
 #endif /* NO_FNV_GCC_OPTIMIZATION */
 
-	/* xor the bottom with the current octet */
-	hval ^= (Fnv64_t)*s++;
+        /* xor the bottom with the current octet */
+        hval ^= (Fnv64_t)*s++;
     }
 
     /* return our new hash value */
     return hval;
 }
-
 
 /*
  * fnv_64a_buf - perform a 64 bit Fowler/Noll/Vo FNV-1a hash on a buffer
@@ -337,33 +311,28 @@ fnv_64_str(char *str, Fnv64_t hval)
  * NOTE: To use the recommended 64 bit FNV-1a hash, use FNV1A_64_INIT as the
  * 	 hval arg on the first call to either fnv_64a_buf() or fnv_64a_str().
  */
-Fnv64_t
-fnv_64a_buf(void *buf, size_t len, Fnv64_t hval)
-{
-    unsigned char *bp = (unsigned char *)buf;	/* start of buffer */
-    unsigned char *be = bp + len;		/* beyond end of buffer */
+Fnv64_t fnv_64a_buf(void* buf, size_t len, Fnv64_t hval) {
+    unsigned char* bp = (unsigned char*)buf; /* start of buffer */
+    unsigned char* be = bp + len; /* beyond end of buffer */
 
     /*
      * FNV-1a hash each octet of the buffer
      */
-    while (bp < be) {
+    while(bp < be) {
+        /* xor the bottom with the current octet */
+        hval ^= (Fnv64_t)*bp++;
 
-	/* xor the bottom with the current octet */
-	hval ^= (Fnv64_t)*bp++;
-
-	/* multiply by the 64 bit FNV magic prime mod 2^64 */
+        /* multiply by the 64 bit FNV magic prime mod 2^64 */
 #if defined(NO_FNV_GCC_OPTIMIZATION)
-	hval *= FNV_64_PRIME;
+        hval *= FNV_64_PRIME;
 #else /* NO_FNV_GCC_OPTIMIZATION */
-	hval += (hval << 1) + (hval << 4) + (hval << 5) +
-		(hval << 7) + (hval << 8) + (hval << 40);
+        hval += (hval << 1) + (hval << 4) + (hval << 5) + (hval << 7) + (hval << 8) + (hval << 40);
 #endif /* NO_FNV_GCC_OPTIMIZATION */
     }
 
     /* return our new hash value */
     return hval;
 }
-
 
 /*
  * fnv_64a_str - perform a 64 bit Fowler/Noll/Vo FNV-1a hash on a buffer
@@ -378,29 +347,24 @@ fnv_64a_buf(void *buf, size_t len, Fnv64_t hval)
  * NOTE: To use the recommended 64 bit FNV-1a hash, use FNV1A_64_INIT as the
  * 	 hval arg on the first call to either fnv_64a_buf() or fnv_64a_str().
  */
-Fnv64_t
-fnv_64a_str(char *str, Fnv64_t hval)
-{
-    unsigned char *s = (unsigned char *)str;	/* unsigned string */
+Fnv64_t fnv_64a_str(char* str, Fnv64_t hval) {
+    unsigned char* s = (unsigned char*)str; /* unsigned string */
 
     /*
      * FNV-1a hash each octet of the string
      */
-    while (*s) {
+    while(*s) {
+        /* xor the bottom with the current octet */
+        hval ^= (Fnv64_t)*s++;
 
-	/* xor the bottom with the current octet */
-	hval ^= (Fnv64_t)*s++;
-
-	/* multiply by the 64 bit FNV magic prime mod 2^64 */
+        /* multiply by the 64 bit FNV magic prime mod 2^64 */
 #if defined(NO_FNV_GCC_OPTIMIZATION)
-	hval *= FNV_64_PRIME;
+        hval *= FNV_64_PRIME;
 #else /* NO_FNV_GCC_OPTIMIZATION */
-	hval += (hval << 1) + (hval << 4) + (hval << 5) +
-		(hval << 7) + (hval << 8) + (hval << 40);
+        hval += (hval << 1) + (hval << 4) + (hval << 5) + (hval << 7) + (hval << 8) + (hval << 40);
 #endif /* NO_FNV_GCC_OPTIMIZATION */
     }
 
     /* return our new hash value */
     return hval;
 }
-

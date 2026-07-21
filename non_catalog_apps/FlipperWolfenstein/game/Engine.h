@@ -15,58 +15,55 @@
 #include "game/Menu.h"
 #include "game/Save.h"
 
-enum
-{
-	GameState_Menu,
-	GameState_PauseMenu,
-	GameState_Loading,
-	GameState_Playing,
-	GameState_Dead,
-	GameState_EnterNextLevel,
-	GameState_StartingLevel
+enum {
+    GameState_Menu,
+    GameState_PauseMenu,
+    GameState_Loading,
+    GameState_Playing,
+    GameState_Dead,
+    GameState_EnterNextLevel,
+    GameState_StartingLevel
 };
 
-enum Difficulty
-{
-	Difficulty_Baby,
-	Difficulty_Easy,
-	Difficulty_Medium,
-	Difficulty_Hard
+enum Difficulty {
+    Difficulty_Baby,
+    Difficulty_Easy,
+    Difficulty_Medium,
+    Difficulty_Hard
 };
 
-class Engine
-{
+class Engine {
 public:
-	void init();
-	void update();
-	void draw();
-	void startNewGame();
-	void startLevel(bool resetPlayer = true);
-	void startingLevel();
-	void finishLevel();
-	void loadGame();
-	void enterNextLevel();
-	Actor* spawnActor(uint8_t spawnId, uint8_t actorType, int8_t cellX, int8_t cellZ);
-	void fadeTransition();
+    void init();
+    void update();
+    void draw();
+    void startNewGame();
+    void startLevel(bool resetPlayer = true);
+    void startingLevel();
+    void finishLevel();
+    void loadGame();
+    void enterNextLevel();
+    Actor* spawnActor(uint8_t spawnId, uint8_t actorType, int8_t cellX, int8_t cellZ);
+    void fadeTransition();
 
-	bool inGame();
-	void exitToMenu();
-	
-	Renderer renderer;
-	Player player;
-	Map map;
-	Menu menu;
-	SaveSystem save;
+    bool inGame();
+    void exitToMenu();
 
-	Actor actors[MAX_ACTIVE_ACTORS];
+    Renderer renderer;
+    Player player;
+    Map map;
+    Menu menu;
+    SaveSystem save;
 
-	int16_t frameCount;
-	uint8_t gameState;
-	uint8_t difficulty;
+    Actor actors[MAX_ACTIVE_ACTORS];
 
-	uint8_t streamBuffer[STREAM_BUFFER_SIZE];
+    int16_t frameCount;
+    uint8_t gameState;
+    uint8_t difficulty;
 
-	int8_t screenFade;
+    uint8_t streamBuffer[STREAM_BUFFER_SIZE];
+
+    int8_t screenFade;
 };
 
 extern Engine engine;

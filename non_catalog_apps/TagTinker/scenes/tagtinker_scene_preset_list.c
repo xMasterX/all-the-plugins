@@ -4,8 +4,8 @@
  */
 
 #include "../tagtinker_app.h"
-#define EVT_ADD_NEW  200
-#define EVT_RECENT   0
+#define EVT_ADD_NEW 200
+#define EVT_RECENT  0
 
 static void recent_list_cb(void* ctx, uint32_t index) {
     TagTinkerApp* app = ctx;
@@ -24,8 +24,7 @@ void tagtinker_scene_preset_list_on_enter(void* ctx) {
     submenu_reset(app->submenu);
     submenu_set_header(app->submenu, "Recent Pushes");
 
-    submenu_add_item(app->submenu, "[+] New Text",
-        EVT_ADD_NEW, recent_list_cb, app);
+    submenu_add_item(app->submenu, "[+] New Text", EVT_ADD_NEW, recent_list_cb, app);
 
     filtered_count = 0;
     for(uint8_t i = 0; i < app->recent_count; i++) {
@@ -33,7 +32,7 @@ void tagtinker_scene_preset_list_on_enter(void* ctx) {
         if(app->selected_target >= 0) {
             TagTinkerTarget* target = &app->targets[app->selected_target];
             if(target->profile.width > 0 && target->profile.height > 0) {
-                if(app->recents[i].width != target->profile.width || 
+                if(app->recents[i].width != target->profile.width ||
                    app->recents[i].height != target->profile.height) {
                     continue; /* Incompatible size, skip */
                 }
@@ -41,13 +40,19 @@ void tagtinker_scene_preset_list_on_enter(void* ctx) {
         }
 
         filtered_indices[filtered_count] = i;
-        snprintf(recent_labels[filtered_count], sizeof(recent_labels[filtered_count]),
+        snprintf(
+            recent_labels[filtered_count],
+            sizeof(recent_labels[filtered_count]),
             "\"%s\"",
             app->recents[i].text);
-        
-        submenu_add_item(app->submenu, recent_labels[filtered_count],
-            EVT_RECENT + filtered_count, recent_list_cb, app);
-        
+
+        submenu_add_item(
+            app->submenu,
+            recent_labels[filtered_count],
+            EVT_RECENT + filtered_count,
+            recent_list_cb,
+            app);
+
         filtered_count++;
     }
 
@@ -68,7 +73,7 @@ bool tagtinker_scene_preset_list_on_event(void* ctx, SceneManagerEvent event) {
     uint32_t f_idx = event.event - EVT_RECENT;
     if(f_idx < filtered_count) {
         uint8_t r_idx = filtered_indices[f_idx];
-        
+
         app->esl_width = app->recents[r_idx].width;
         app->esl_height = app->recents[r_idx].height;
         app->img_page = app->recents[r_idx].page;
@@ -76,11 +81,10 @@ bool tagtinker_scene_preset_list_on_event(void* ctx, SceneManagerEvent event) {
         app->color_clear = app->recents[r_idx].color_clear;
         app->text_padding_pct = app->recents[r_idx].padding;
         app->signal_mode = TagTinkerSignalPP4;
-        strncpy(app->text_input_buf, app->recents[r_idx].text,
-            sizeof(app->text_input_buf) - 1);
+        strncpy(app->text_input_buf, app->recents[r_idx].text, sizeof(app->text_input_buf) - 1);
 
         TagTinkerTarget* target = &app->targets[app->selected_target];
-        
+
         /* Auto-save/update recents order */
         tagtinker_recents_add(app, app->text_input_buf);
 

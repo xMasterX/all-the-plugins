@@ -12,7 +12,7 @@ typedef struct RawSamplesBuffer {
     FuriMutex* mutex;
     struct {
         uint16_t level : 1;
-        uint16_t dur : 15;
+        uint16_t dur   : 15;
     } samples[RAW_SAMPLES_NUM];
     uint32_t idx; /* Current idx (next to write). */
     uint32_t total; /* Total samples: same as RAW_SAMPLES_NUM, we provide

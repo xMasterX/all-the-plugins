@@ -4,9 +4,9 @@
 #include <input/input.h>
 #include <stdlib.h>
 
-#define SCREEN_WIDTH 128
+#define SCREEN_WIDTH  128
 #define SCREEN_HEIGHT 64
-#define TOTAL_PIXELS SCREEN_WIDTH* SCREEN_HEIGHT
+#define TOTAL_PIXELS  SCREEN_WIDTH* SCREEN_HEIGHT
 
 typedef enum {
     EventTypeTick,

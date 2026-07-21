@@ -19,7 +19,8 @@ void metroflip_scene_unknown_on_enter(void* context) {
     View* view = metroflip_card_view_alloc(app);
     metroflip_card_view_set_title(view, "Unsupported");
     metroflip_card_view_set_icon(view, &I_Cross_10x10);
-    metroflip_card_view_set_icon_animation(view, &I_Cross1_10x10, &I_Cross2_10x10, &I_Cross3_10x10);
+    metroflip_card_view_set_icon_animation(
+        view, &I_Cross1_10x10, &I_Cross2_10x10, &I_Cross3_10x10);
 
     uint8_t p = metroflip_card_view_add_page(view, "");
 
@@ -55,8 +56,7 @@ bool metroflip_scene_unknown_on_event(void* context, SceneManagerEvent event) {
                     MetroflipCardViewModel * m,
                     {
                         if(m->anim[0]) {
-                            m->anim_frame =
-                                (m->anim_frame + 1) % METROFLIP_CARD_VIEW_ANIM_FRAMES;
+                            m->anim_frame = (m->anim_frame + 1) % METROFLIP_CARD_VIEW_ANIM_FRAMES;
                         }
                     },
                     true);

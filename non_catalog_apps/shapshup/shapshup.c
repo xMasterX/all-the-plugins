@@ -13,7 +13,7 @@
 #include "shapshup_i.h"
 #include "shapshup_custom_event.h"
 
-#define TAG "ShapShupApp"
+#define TAG         "ShapShupApp"
 #define TICK_PERIOD 500
 
 static bool shapshup_custom_event_callback(void* context, uint32_t event) {

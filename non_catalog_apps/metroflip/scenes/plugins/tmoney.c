@@ -172,7 +172,13 @@ static NfcCommand tmoney_poller_callback(NfcGenericEvent event, void* context) {
 
         // Send read balance command
         error = tmoney_send_iso7816_command(
-            balance_cmd, sizeof(balance_cmd), tx_buffer, rx_buffer, iso14443_4a_poller, app, &stage);
+            balance_cmd,
+            sizeof(balance_cmd),
+            tx_buffer,
+            rx_buffer,
+            iso14443_4a_poller,
+            app,
+            &stage);
         if(error != 0) {
             FURI_LOG_W(TAG, "Failed to read balance");
             break;
@@ -184,7 +190,8 @@ static NfcCommand tmoney_poller_callback(NfcGenericEvent event, void* context) {
         // + 2 for the status bytes
         if(response_length != BALANCE_RESP_LEN + 2) {
             FURI_LOG_E(TAG, "Invalid balance reponse length %d", response_length);
-            view_dispatcher_send_custom_event(app->view_dispatcher, MetroflipCustomEventPollerFail);
+            view_dispatcher_send_custom_event(
+                app->view_dispatcher, MetroflipCustomEventPollerFail);
             break;
         }
         uint8_t balance_data[4] = {0};

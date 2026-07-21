@@ -269,8 +269,7 @@ static void handle_time_setting_select(InputKey key, CountDownTimView* cdv) {
     }
 
     // load current selection from model context
-    with_view_model(
-        cdv->view, CountDownModel * model, { selection = model->select; }, false);
+    with_view_model(cdv->view, CountDownModel * model, { selection = model->select; }, false);
 
     // select
     switch(key) {
@@ -319,8 +318,7 @@ static void handle_time_setting_select(InputKey key, CountDownTimView* cdv) {
     }
 
     // save selection to model context
-    with_view_model(
-        cdv->view, CountDownModel * model, { model->select = selection; }, false);
+    with_view_model(cdv->view, CountDownModel * model, { model->select = selection; }, false);
 }
 
 static void draw_selection(Canvas* canvas, CountDownViewSelect selection) {

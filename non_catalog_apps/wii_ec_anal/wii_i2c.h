@@ -26,9 +26,9 @@
 //
 
 // firmware/targets/f7/furi_hal/furi_hal_i2c_types.h
-#define i2cBus (&furi_hal_i2c_handle_external) // FZ external i2c bus
-#define i2cAddr (ec_i2cAddr << 1)
-#define i2cTimeout (3) // in mS
+#define i2cBus      (&furi_hal_i2c_handle_external) // FZ external i2c bus
+#define i2cAddr     (ec_i2cAddr << 1)
+#define i2cTimeout  (3) // in mS
 #define i2cReadWait (300) //! 300uS: how low can we take this?
 
 //----------------------------------------------------------------------------- ----------------------------------------

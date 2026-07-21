@@ -24,14 +24,12 @@
 
 #include <gui/view.h>
 
-typedef struct
-{
+typedef struct {
     FuriMutex* mutex;
     uint8_t data[];
 } ViewModelLocking;
 
-struct View
-{
+struct View {
     ViewDrawCallback draw_callback;
     ViewInputCallback input_callback;
     ViewCustomCallback custom_callback;

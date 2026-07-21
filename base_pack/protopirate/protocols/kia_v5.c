@@ -223,16 +223,16 @@ const SubGhzProtocol kia_protocol_v5 = {
             | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Send
 #endif
     ,
-    #if PROTOPIRATE_WITH_DECODER
+#if PROTOPIRATE_WITH_DECODER
     .decoder = &kia_protocol_v5_decoder,
-    #else
+#else
     .decoder = NULL,
-    #endif
-    #if PROTOPIRATE_WITH_ENCODER
+#endif
+#if PROTOPIRATE_WITH_ENCODER
     .encoder = &kia_protocol_v5_encoder,
-    #else
+#else
     .encoder = NULL,
-    #endif
+#endif
 };
 
 #if PROTOPIRATE_WITH_ENCODER

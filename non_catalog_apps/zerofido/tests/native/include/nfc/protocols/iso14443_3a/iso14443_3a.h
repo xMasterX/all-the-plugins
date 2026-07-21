@@ -22,5 +22,5 @@ typedef struct {
     uint8_t sak;
 } Iso14443_3aData;
 
-void iso14443_3a_set_atqa(Iso14443_3aData *data, const uint8_t atqa[2]);
-void iso14443_3a_set_sak(Iso14443_3aData *data, uint8_t sak);
+void iso14443_3a_set_atqa(Iso14443_3aData* data, const uint8_t atqa[2]);
+void iso14443_3a_set_sak(Iso14443_3aData* data, uint8_t sak);

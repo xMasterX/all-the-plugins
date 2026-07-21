@@ -17,28 +17,28 @@
 
 #define DERIV_PURPOSE 44
 #define DERIV_ACCOUNT 0
-#define DERIV_CHANGE 0
+#define DERIV_CHANGE  0
 
 #define MAX_TEXT_LEN 30 // 30 = max length of text
 #define MAX_TEXT_BUF (MAX_TEXT_LEN + 1) // max length of text + null terminator
 #define MAX_ADDR_BUF (42 + 1) // 42 = max length of address + null terminator
-#define NUM_ADDRS 6
+#define NUM_ADDRS    6
 
-#define PAGE_LOADING 0
-#define PAGE_INFO 1
-#define PAGE_MNEMONIC 2
-#define PAGE_SEED 3
-#define PAGE_XPRV_ROOT 4
-#define PAGE_XPRV_ACCT 5
-#define PAGE_XPUB_ACCT 6
-#define PAGE_XPRV_EXTD 7
-#define PAGE_XPUB_EXTD 8
+#define PAGE_LOADING    0
+#define PAGE_INFO       1
+#define PAGE_MNEMONIC   2
+#define PAGE_SEED       3
+#define PAGE_XPRV_ROOT  4
+#define PAGE_XPRV_ACCT  5
+#define PAGE_XPUB_ACCT  6
+#define PAGE_XPRV_EXTD  7
+#define PAGE_XPUB_EXTD  8
 #define PAGE_ADDR_BEGIN 9
-#define PAGE_ADDR_END (PAGE_ADDR_BEGIN + NUM_ADDRS - 1)
+#define PAGE_ADDR_END   (PAGE_ADDR_BEGIN + NUM_ADDRS - 1)
 
-#define TEXT_LOADING "Loading..."
-#define TEXT_NEW_WALLET "New wallet"
-#define TEXT_DEFAULT_COIN "Coin"
+#define TEXT_LOADING         "Loading..."
+#define TEXT_NEW_WALLET      "New wallet"
+#define TEXT_DEFAULT_COIN    "Coin"
 #define TEXT_RECEIVE_ADDRESS "receive address:"
 // #define TEXT_DEFAULT_DERIV "m/44'/X'/0'/0"
 const char* TEXT_INFO = "-Scroll pages with up/down-"
@@ -735,8 +735,7 @@ FlipBipScene1* flipbip_scene_1_alloc() {
 void flipbip_scene_1_free(FlipBipScene1* instance) {
     furi_assert(instance);
 
-    with_view_model(
-        instance->view, FlipBipScene1Model * model, { UNUSED(model); }, true);
+    with_view_model(instance->view, FlipBipScene1Model * model, { UNUSED(model); }, true);
 
     // free the address node
     memzero(s_addr_node, sizeof(HDNode));

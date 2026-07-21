@@ -55,7 +55,7 @@ Hid* hid_alloc() {
 
     // View dispatcher
     app->view_dispatcher = view_dispatcher_alloc();
-    
+
     view_dispatcher_attach_to_gui(app->view_dispatcher, app->gui, ViewDispatcherTypeFullscreen);
     view_dispatcher_set_navigation_event_callback(app->view_dispatcher, hid_back_event_callback);
     view_dispatcher_set_event_callback_context(app->view_dispatcher, app);
@@ -66,7 +66,7 @@ Hid* hid_alloc() {
     // Keynote view
     app->hid_keynote = hid_keynote_alloc(app);
     view_dispatcher_add_view(
-       app->view_dispatcher, HidViewKeynote, hid_keynote_get_view(app->hid_keynote));
+        app->view_dispatcher, HidViewKeynote, hid_keynote_get_view(app->hid_keynote));
 
     // Open Keynote view
     app->view_id = HidViewKeynote;

@@ -118,19 +118,18 @@ const SubGhzProtocol mazda_v0_protocol = {
     .name = MAZDA_PROTOCOL_V0_NAME,
     .type = SubGhzProtocolTypeDynamic,
     .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM |
-            SubGhzProtocolFlag_FM |
-            SubGhzProtocolFlag_Decodable | SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save |
-            SubGhzProtocolFlag_Send,
-    #if PROTOPIRATE_WITH_DECODER
+            SubGhzProtocolFlag_FM | SubGhzProtocolFlag_Decodable | SubGhzProtocolFlag_Load |
+            SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
+#if PROTOPIRATE_WITH_DECODER
     .decoder = &subghz_protocol_mazda_v0_decoder,
-    #else
+#else
     .decoder = NULL,
-    #endif
-    #if PROTOPIRATE_WITH_ENCODER
+#endif
+#if PROTOPIRATE_WITH_ENCODER
     .encoder = &subghz_protocol_mazda_v0_encoder,
-    #else
+#else
     .encoder = NULL,
-    #endif
+#endif
 };
 
 // =============================================================================

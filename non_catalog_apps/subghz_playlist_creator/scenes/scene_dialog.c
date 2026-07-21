@@ -9,8 +9,7 @@ void scene_dialog_show_custom(
     const char* left_btn,
     const char* right_btn,
     DialogExResultCallback callback,
-    void* context
-) {
+    void* context) {
     app->current_view = SubGhzPlaylistCreatorViewDialog;
     dialog_ex_set_header(app->dialog, header, 64, 0, AlignCenter, AlignTop);
     dialog_ex_set_text(app->dialog, text, 64, 12, AlignCenter, AlignTop);
@@ -29,4 +28,4 @@ void scene_dialog_show(SubGhzPlaylistCreator* app) {
 
 void scene_dialog_init_view(SubGhzPlaylistCreator* app) {
     UNUSED(app);
-} 
+}

@@ -25,5 +25,5 @@ SOFTWARE.
 
 #pragma once
 
-#define _UI(v) ((unsigned int)(v))
+#define _UI(v)   ((unsigned int)(v))
 #define FMT_4HEX "0x%08X"

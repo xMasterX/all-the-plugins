@@ -6,22 +6,22 @@
 
 #include "../sound_engine/sound_engine_defs.h"
 
-#define INST_PROG_LEN 16
+#define INST_PROG_LEN     16
 #define MUS_SONG_NAME_LEN 16
 #define MUS_INST_NAME_LEN (MUS_SONG_NAME_LEN - 3)
 
-#define SONG_MAX_CHANNELS NUM_CHANNELS
-#define MAX_INSTRUMENTS 31
-#define MAX_PATTERN_LENGTH 256
-#define MAX_PATTERNS 256
+#define SONG_MAX_CHANNELS   NUM_CHANNELS
+#define MAX_INSTRUMENTS     31
+#define MAX_PATTERN_LENGTH  256
+#define MAX_PATTERNS        256
 #define MAX_SEQUENCE_LENGTH 256
 
-#define MUS_NOTE_NONE 127
+#define MUS_NOTE_NONE    127
 #define MUS_NOTE_RELEASE 126
-#define MUS_NOTE_CUT 125
+#define MUS_NOTE_CUT     125
 
 #define MUS_NOTE_INSTRUMENT_NONE 31
-#define MUS_NOTE_VOLUME_NONE 31
+#define MUS_NOTE_VOLUME_NONE     31
 
 #define SONG_FILE_SIG "FZT!SONG"
 #define SONG_FILE_EXT ".fzt"
@@ -90,7 +90,7 @@ typedef enum {
     TE_EFFECT_SET_SUSTAIN = 0x1700, // Nxx
     TE_EFFECT_SET_RELEASE = 0x1800, // Oxx
     TE_EFFECT_PROGRAM_RESTART = 0x1900, // Pxx
-    
+
     TE_EFFECT_SET_RATE = 0x1a00, //Qxx
 
     TE_EFFECT_SET_RING_MOD_SRC = 0x1b00, // Rxx

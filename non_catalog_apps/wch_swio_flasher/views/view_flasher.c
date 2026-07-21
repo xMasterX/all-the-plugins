@@ -183,8 +183,7 @@ static bool view_flasher_input_callback(InputEvent* event, void* context) {
 
 static void view_flasher_timer_callback(void* context) {
     ViewFlasher* instance = context;
-    with_view_model(
-        instance->view, ViewFlasherModel * model, { UNUSED(model); }, true);
+    with_view_model(instance->view, ViewFlasherModel * model, { UNUSED(model); }, true);
 }
 
 static void view_flasher_enter(void* context) {

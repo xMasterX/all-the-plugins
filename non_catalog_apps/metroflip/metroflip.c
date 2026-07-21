@@ -55,8 +55,7 @@ Metroflip* metroflip_alloc() {
         app->view_dispatcher, metroflip_custom_event_callback);
     view_dispatcher_set_navigation_event_callback(
         app->view_dispatcher, metroflip_back_event_callback);
-    view_dispatcher_set_tick_event_callback(
-        app->view_dispatcher, metroflip_tick_callback, 250);
+    view_dispatcher_set_tick_event_callback(app->view_dispatcher, metroflip_tick_callback, 250);
 
     view_dispatcher_attach_to_gui(app->view_dispatcher, app->gui, ViewDispatcherTypeFullscreen);
 
@@ -342,10 +341,8 @@ KeyfileManager manage_keyfiles(
                 "TAG", "assets exist, but cache doesnt, proceeding to copy assets to cache");
             storage_file_close(source);
             storage_file_close(dest);
-            storage_file_open(
-                source, source_path, FSAM_WRITE, FSOM_OPEN_ALWAYS);
-            storage_file_open(
-                dest, dest_path, FSAM_READ, FSOM_OPEN_EXISTING);
+            storage_file_open(source, source_path, FSAM_WRITE, FSOM_OPEN_ALWAYS);
+            storage_file_open(dest, dest_path, FSAM_READ, FSOM_OPEN_EXISTING);
             FURI_LOG_I("TAG", "creating cache file at %s from %s", source_path, dest_path);
             uint8_t* cloned_buffer = malloc(dest_file_length);
             storage_file_read(dest, cloned_buffer, dest_file_length);

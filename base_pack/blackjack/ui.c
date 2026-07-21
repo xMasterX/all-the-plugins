@@ -3,7 +3,7 @@
 
 #include "ui.h"
 
-#define LINE_HEIGHT 16
+#define LINE_HEIGHT  16
 #define ITEM_PADDING 4
 
 const char MoneyMul[4] = {'K', 'B', 'T', 'S'};

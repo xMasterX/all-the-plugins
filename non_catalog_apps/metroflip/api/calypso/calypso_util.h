@@ -95,5 +95,4 @@ int* get_bitmap_positions(const char* binary_string, int* count);
 
 int is_bit_present(int* positions, int count, int bit);
 
-
 #endif // CALYPSO_UTIL_H

@@ -5,10 +5,10 @@
 #include <stdlib.h>
 #include "dml.h"
 
-#define CARD_HEIGHT 23
+#define CARD_HEIGHT      23
 #define CARD_HALF_HEIGHT 11
-#define CARD_WIDTH 17
-#define CARD_HALF_WIDTH 8
+#define CARD_WIDTH       17
+#define CARD_HALF_WIDTH  8
 
 //region types
 typedef struct {

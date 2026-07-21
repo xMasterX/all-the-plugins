@@ -473,16 +473,16 @@ const SubGhzProtocol honda_static_protocol = {
     .flag = SubGhzProtocolFlag_Decodable | SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 |
             SubGhzProtocolFlag_FM | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Load |
             SubGhzProtocolFlag_Send,
-    #if PROTOPIRATE_WITH_DECODER
+#if PROTOPIRATE_WITH_DECODER
     .decoder = &subghz_protocol_honda_static_decoder,
-    #else
+#else
     .decoder = NULL,
-    #endif
-    #if PROTOPIRATE_WITH_ENCODER
+#endif
+#if PROTOPIRATE_WITH_ENCODER
     .encoder = &subghz_protocol_honda_static_encoder,
-    #else
+#else
     .encoder = NULL,
-    #endif
+#endif
 };
 
 #if PROTOPIRATE_WITH_ENCODER

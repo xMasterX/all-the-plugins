@@ -44,12 +44,7 @@ Setting sniff_defaults[] = {
      .min = DATA_RATE_1MBPS,
      .max = DATA_RATE_250KBPS,
      .step = 1},
-    {.name = "RPD",
-     .type = SETTING_TYPE_BOOL,
-     .value.b = true,
-     .min = 0,
-     .max = 1,
-     .step = 1}};
+    {.name = "RPD", .type = SETTING_TYPE_BOOL, .value.b = true, .min = 0, .max = 1, .step = 1}};
 
 NRF24L01_Config sniff_nrf24_config = {
     .channel = DEFAULT_MIN_CHANNEL,

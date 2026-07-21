@@ -1,8 +1,8 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
-#define WIDGET_WIDTH 128
+#define WIDGET_WIDTH  128
 #define WIDGET_HEIGHT 64
-#define UICHAR_WIDTH 5
+#define UICHAR_WIDTH  5
 
 #endif // CONSTANTS_H

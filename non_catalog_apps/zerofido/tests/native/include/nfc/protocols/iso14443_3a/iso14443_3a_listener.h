@@ -13,10 +13,10 @@ typedef enum {
 } Iso14443_3aListenerEventType;
 
 typedef struct {
-    BitBuffer *buffer;
+    BitBuffer* buffer;
 } Iso14443_3aListenerEventData;
 
 typedef struct {
     Iso14443_3aListenerEventType type;
-    Iso14443_3aListenerEventData *data;
+    Iso14443_3aListenerEventData* data;
 } Iso14443_3aListenerEvent;

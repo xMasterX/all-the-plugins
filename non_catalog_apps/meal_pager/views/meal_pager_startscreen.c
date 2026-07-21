@@ -116,8 +116,7 @@ Meal_PagerStartscreen* meal_pager_startscreen_alloc() {
 void meal_pager_startscreen_free(Meal_PagerStartscreen* instance) {
     furi_assert(instance);
 
-    with_view_model(
-        instance->view, Meal_PagerStartscreenModel * model, { UNUSED(model); }, true);
+    with_view_model(instance->view, Meal_PagerStartscreenModel * model, { UNUSED(model); }, true);
     view_free(instance->view);
     free(instance);
 }

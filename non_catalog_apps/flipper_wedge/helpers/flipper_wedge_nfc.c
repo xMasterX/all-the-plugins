@@ -14,16 +14,14 @@
 
 // Type 4 NDEF constants
 #define NDEF_T4_AID_LEN 7
-static const uint8_t NDEF_T4_AID[NDEF_T4_AID_LEN] = {
-    0xD2, 0x76, 0x00, 0x00, 0x85, 0x01, 0x01
-};
+static const uint8_t NDEF_T4_AID[NDEF_T4_AID_LEN] = {0xD2, 0x76, 0x00, 0x00, 0x85, 0x01, 0x01};
 
-#define NDEF_T4_FILE_ID_CC 0xE103      // Capability Container
-#define NDEF_T4_FILE_ID_NDEF 0xE104    // NDEF Message
+#define NDEF_T4_FILE_ID_CC   0xE103 // Capability Container
+#define NDEF_T4_FILE_ID_NDEF 0xE104 // NDEF Message
 
 // APDU retry configuration
-#define NDEF_T4_MAX_RETRIES 3          // Maximum retry attempts for APDU commands
-#define NDEF_T4_RETRY_DELAY_MS 15      // Delay between retries in milliseconds
+#define NDEF_T4_MAX_RETRIES    3 // Maximum retry attempts for APDU commands
+#define NDEF_T4_RETRY_DELAY_MS 15 // Delay between retries in milliseconds
 
 // APDU status codes
 #define APDU_SW1_SUCCESS 0x90
@@ -32,10 +30,10 @@ static const uint8_t NDEF_T4_AID[NDEF_T4_AID_LEN] = {
 typedef enum {
     FlipperWedgeNfcStateIdle,
     FlipperWedgeNfcStateScanning,
-    FlipperWedgeNfcStateTagDetected,  // Scanner detected tag, need to switch to poller
+    FlipperWedgeNfcStateTagDetected, // Scanner detected tag, need to switch to poller
     FlipperWedgeNfcStatePolling,
     FlipperWedgeNfcStateSuccess,
-    FlipperWedgeNfcStateError,  // Poller failed, need to restart scanner
+    FlipperWedgeNfcStateError, // Poller failed, need to restart scanner
 } FlipperWedgeNfcState;
 
 struct FlipperWedgeNfc {
@@ -59,7 +57,11 @@ struct FlipperWedgeNfc {
 // Simple NDEF text record parser
 // Returns number of bytes written to output, 0 if no text records found
 // Parse raw NDEF records (for Type 4 tags - no TLV wrapping)
-static size_t flipper_wedge_nfc_parse_raw_ndef_text(const uint8_t* data, size_t data_len, char* output, size_t output_max) {
+static size_t flipper_wedge_nfc_parse_raw_ndef_text(
+    const uint8_t* data,
+    size_t data_len,
+    char* output,
+    size_t output_max) {
     if(!data || !output || data_len < 4 || output_max == 0) {
         return 0;
     }
@@ -89,8 +91,8 @@ static size_t flipper_wedge_nfc_parse_raw_ndef_text(const uint8_t* data, size_t 
             payload_len = data[pos++];
         } else {
             if(pos + 4 > data_len) break;
-            payload_len = (data[pos] << 24) | (data[pos + 1] << 16) |
-                         (data[pos + 2] << 8) | data[pos + 3];
+            payload_len = (data[pos] << 24) | (data[pos + 1] << 16) | (data[pos + 2] << 8) |
+                          data[pos + 3];
             pos += 4;
         }
 
@@ -123,8 +125,12 @@ static size_t flipper_wedge_nfc_parse_raw_ndef_text(const uint8_t* data, size_t 
             uint8_t status = payload[0];
             uint8_t lang_len = status & 0x3F;
 
-            FURI_LOG_I(TAG, "Type 4 NDEF: Status=0x%02X, lang_len=%d, payload_len=%lu",
-                       status, lang_len, payload_len);
+            FURI_LOG_I(
+                TAG,
+                "Type 4 NDEF: Status=0x%02X, lang_len=%d, payload_len=%lu",
+                status,
+                lang_len,
+                payload_len);
 
             if((uint32_t)(lang_len + 1) <= payload_len) {
                 // Skip language code, extract text
@@ -161,7 +167,11 @@ static size_t flipper_wedge_nfc_parse_raw_ndef_text(const uint8_t* data, size_t 
 }
 
 // Parse TLV-wrapped NDEF records (for Type 2/5 tags)
-static size_t flipper_wedge_nfc_parse_ndef_text(const uint8_t* data, size_t data_len, char* output, size_t output_max) {
+static size_t flipper_wedge_nfc_parse_ndef_text(
+    const uint8_t* data,
+    size_t data_len,
+    char* output,
+    size_t output_max) {
     if(!data || !output || data_len < 4 || output_max == 0) {
         return 0;
     }
@@ -215,7 +225,7 @@ static size_t flipper_wedge_nfc_parse_ndef_text(const uint8_t* data, size_t data
                 } else {
                     if(pos + 4 > data_len) break;
                     payload_len = (data[pos] << 24) | (data[pos + 1] << 16) |
-                                 (data[pos + 2] << 8) | data[pos + 3];
+                                  (data[pos + 2] << 8) | data[pos + 3];
                     pos += 4;
                 }
 
@@ -298,25 +308,25 @@ static bool flipper_wedge_nfc_t4_check_apdu_success(const BitBuffer* rx_buffer) 
 // Build SELECT by AID APDU command
 static void flipper_wedge_nfc_t4_build_select_app_apdu(BitBuffer* tx_buffer) {
     bit_buffer_reset(tx_buffer);
-    bit_buffer_append_byte(tx_buffer, 0x00);  // CLA
-    bit_buffer_append_byte(tx_buffer, 0xA4);  // INS (SELECT)
-    bit_buffer_append_byte(tx_buffer, 0x04);  // P1 (select by name/AID)
-    bit_buffer_append_byte(tx_buffer, 0x00);  // P2
-    bit_buffer_append_byte(tx_buffer, NDEF_T4_AID_LEN);  // Lc (data length)
-    bit_buffer_append_bytes(tx_buffer, NDEF_T4_AID, NDEF_T4_AID_LEN);  // AID data
+    bit_buffer_append_byte(tx_buffer, 0x00); // CLA
+    bit_buffer_append_byte(tx_buffer, 0xA4); // INS (SELECT)
+    bit_buffer_append_byte(tx_buffer, 0x04); // P1 (select by name/AID)
+    bit_buffer_append_byte(tx_buffer, 0x00); // P2
+    bit_buffer_append_byte(tx_buffer, NDEF_T4_AID_LEN); // Lc (data length)
+    bit_buffer_append_bytes(tx_buffer, NDEF_T4_AID, NDEF_T4_AID_LEN); // AID data
     // Note: Some Type 4 tags don't require Le for SELECT, trying without it first
 }
 
 // Build SELECT by File ID APDU command
 static void flipper_wedge_nfc_t4_build_select_file_apdu(BitBuffer* tx_buffer, uint16_t file_id) {
     bit_buffer_reset(tx_buffer);
-    bit_buffer_append_byte(tx_buffer, 0x00);  // CLA
-    bit_buffer_append_byte(tx_buffer, 0xA4);  // INS (SELECT)
-    bit_buffer_append_byte(tx_buffer, 0x00);  // P1 (select by file ID)
-    bit_buffer_append_byte(tx_buffer, 0x0C);  // P2 (first or only occurrence)
-    bit_buffer_append_byte(tx_buffer, 0x02);  // Lc (2 bytes for file ID)
-    bit_buffer_append_byte(tx_buffer, (file_id >> 8) & 0xFF);  // File ID MSB
-    bit_buffer_append_byte(tx_buffer, file_id & 0xFF);  // File ID LSB
+    bit_buffer_append_byte(tx_buffer, 0x00); // CLA
+    bit_buffer_append_byte(tx_buffer, 0xA4); // INS (SELECT)
+    bit_buffer_append_byte(tx_buffer, 0x00); // P1 (select by file ID)
+    bit_buffer_append_byte(tx_buffer, 0x0C); // P2 (first or only occurrence)
+    bit_buffer_append_byte(tx_buffer, 0x02); // Lc (2 bytes for file ID)
+    bit_buffer_append_byte(tx_buffer, (file_id >> 8) & 0xFF); // File ID MSB
+    bit_buffer_append_byte(tx_buffer, file_id & 0xFF); // File ID LSB
     // Note: No Le needed for SELECT file
 }
 
@@ -326,18 +336,16 @@ static void flipper_wedge_nfc_t4_build_read_binary_apdu(
     uint16_t offset,
     uint8_t length) {
     bit_buffer_reset(tx_buffer);
-    bit_buffer_append_byte(tx_buffer, 0x00);  // CLA
-    bit_buffer_append_byte(tx_buffer, 0xB0);  // INS (READ BINARY)
-    bit_buffer_append_byte(tx_buffer, (offset >> 8) & 0xFF);  // P1 (offset MSB)
-    bit_buffer_append_byte(tx_buffer, offset & 0xFF);  // P2 (offset LSB)
-    bit_buffer_append_byte(tx_buffer, length);  // Le (bytes to read)
+    bit_buffer_append_byte(tx_buffer, 0x00); // CLA
+    bit_buffer_append_byte(tx_buffer, 0xB0); // INS (READ BINARY)
+    bit_buffer_append_byte(tx_buffer, (offset >> 8) & 0xFF); // P1 (offset MSB)
+    bit_buffer_append_byte(tx_buffer, offset & 0xFF); // P2 (offset LSB)
+    bit_buffer_append_byte(tx_buffer, length); // Le (bytes to read)
 }
 
 // Read Type 4 NDEF data from ISO14443-4A tag
-static bool flipper_wedge_nfc_read_type4_ndef(
-    Iso14443_4aPoller* poller,
-    FlipperWedgeNfcData* data) {
-
+static bool
+    flipper_wedge_nfc_read_type4_ndef(Iso14443_4aPoller* poller, FlipperWedgeNfcData* data) {
     BitBuffer* tx_buffer = bit_buffer_alloc(256);
     BitBuffer* rx_buffer = bit_buffer_alloc(256);
     bool success = false;
@@ -353,8 +361,12 @@ static bool flipper_wedge_nfc_read_type4_ndef(
 
         for(uint8_t retry = 0; retry < NDEF_T4_MAX_RETRIES; retry++) {
             if(retry > 0) {
-                FURI_LOG_I(TAG, "Type 4 NDEF: Retry attempt %d/%d after %dms delay",
-                           retry + 1, NDEF_T4_MAX_RETRIES, NDEF_T4_RETRY_DELAY_MS);
+                FURI_LOG_I(
+                    TAG,
+                    "Type 4 NDEF: Retry attempt %d/%d after %dms delay",
+                    retry + 1,
+                    NDEF_T4_MAX_RETRIES,
+                    NDEF_T4_RETRY_DELAY_MS);
                 furi_delay_ms(NDEF_T4_RETRY_DELAY_MS);
             }
 
@@ -379,7 +391,8 @@ static bool flipper_wedge_nfc_read_type4_ndef(
                     break;
                 } else {
                     // Application not found (APDU status error) - don't retry
-                    FURI_LOG_W(TAG, "Type 4 NDEF: No NDEF application found (invalid APDU status)");
+                    FURI_LOG_W(
+                        TAG, "Type 4 NDEF: No NDEF application found (invalid APDU status)");
                     break;
                 }
             } else {
@@ -504,7 +517,8 @@ static bool flipper_wedge_nfc_read_type4_ndef(
             flipper_wedge_nfc_t4_build_read_binary_apdu(tx_buffer, 2 + bytes_read, chunk_size);
             error = iso14443_4a_poller_send_block(poller, tx_buffer, rx_buffer);
 
-            if(error != Iso14443_4aErrorNone || !flipper_wedge_nfc_t4_check_apdu_success(rx_buffer)) {
+            if(error != Iso14443_4aErrorNone ||
+               !flipper_wedge_nfc_t4_check_apdu_success(rx_buffer)) {
                 FURI_LOG_W(TAG, "Type 4 NDEF: READ NDEF chunk failed at offset %d", bytes_read);
                 break;
             }
@@ -520,7 +534,12 @@ static bool flipper_wedge_nfc_read_type4_ndef(
                 ndef_data[bytes_read++] = bit_buffer_get_byte(rx_buffer, i);
             }
 
-            FURI_LOG_D(TAG, "Type 4 NDEF: Read %zu bytes, total %d/%d", chunk_received, bytes_read, ndef_len);
+            FURI_LOG_D(
+                TAG,
+                "Type 4 NDEF: Read %zu bytes, total %d/%d",
+                chunk_received,
+                bytes_read,
+                ndef_len);
         }
 
         if(bytes_read == 0) {
@@ -532,7 +551,8 @@ static bool flipper_wedge_nfc_read_type4_ndef(
         FURI_LOG_I(TAG, "Type 4 NDEF: Successfully read %d bytes", bytes_read);
 
         // Log the raw NDEF data for debugging
-        FURI_LOG_I(TAG, "Type 4 NDEF: Raw data (first %d bytes):", bytes_read > 32 ? 32 : bytes_read);
+        FURI_LOG_I(
+            TAG, "Type 4 NDEF: Raw data (first %d bytes):", bytes_read > 32 ? 32 : bytes_read);
         for(uint16_t i = 0; i < bytes_read && i < 32; i++) {
             FURI_LOG_I(TAG, "  [%02d] = 0x%02X", i, ndef_data[i]);
         }
@@ -540,10 +560,7 @@ static bool flipper_wedge_nfc_read_type4_ndef(
         // Step 7: Parse NDEF message to extract text records
         // Type 4 uses raw NDEF records (no TLV wrapping)
         size_t text_len = flipper_wedge_nfc_parse_raw_ndef_text(
-            ndef_data,
-            bytes_read,
-            data->ndef_text,
-            FLIPPER_WEDGE_NDEF_MAX_LEN);
+            ndef_data, bytes_read, data->ndef_text, FLIPPER_WEDGE_NDEF_MAX_LEN);
 
         if(text_len > 0) {
             data->has_ndef = true;
@@ -563,7 +580,8 @@ static bool flipper_wedge_nfc_read_type4_ndef(
     return success;
 }
 
-static NfcCommand flipper_wedge_nfc_poller_callback_iso14443_3a(NfcGenericEvent event, void* context) {
+static NfcCommand
+    flipper_wedge_nfc_poller_callback_iso14443_3a(NfcGenericEvent event, void* context) {
     furi_assert(context);
     FlipperWedgeNfc* instance = context;
 
@@ -585,7 +603,11 @@ static NfcCommand flipper_wedge_nfc_poller_callback_iso14443_3a(NfcGenericEvent 
                 FURI_LOG_I(TAG, "3A UID length from data: %d", uid_len);
 
                 if(uid_len > FLIPPER_WEDGE_NFC_UID_MAX_LEN) {
-                    FURI_LOG_W(TAG, "3A UID length %d exceeds max %d, truncating", uid_len, FLIPPER_WEDGE_NFC_UID_MAX_LEN);
+                    FURI_LOG_W(
+                        TAG,
+                        "3A UID length %d exceeds max %d, truncating",
+                        uid_len,
+                        FLIPPER_WEDGE_NFC_UID_MAX_LEN);
                     uid_len = FLIPPER_WEDGE_NFC_UID_MAX_LEN;
                 }
                 if(uid_len > 0) {
@@ -597,10 +619,14 @@ static NfcCommand flipper_wedge_nfc_poller_callback_iso14443_3a(NfcGenericEvent 
                     // ISO14443-3A doesn't support NDEF - if NDEF was requested, mark as not forum compliant
                     if(instance->parse_ndef) {
                         instance->last_data.error = FlipperWedgeNfcErrorNotForumCompliant;
-                        FURI_LOG_I(TAG, "Got ISO14443-3A UID (not NFC Forum compliant), len: %d", instance->last_data.uid_len);
+                        FURI_LOG_I(
+                            TAG,
+                            "Got ISO14443-3A UID (not NFC Forum compliant), len: %d",
+                            instance->last_data.uid_len);
                     } else {
                         instance->last_data.error = FlipperWedgeNfcErrorNone;
-                        FURI_LOG_I(TAG, "Got ISO14443-3A UID, len: %d", instance->last_data.uid_len);
+                        FURI_LOG_I(
+                            TAG, "Got ISO14443-3A UID, len: %d", instance->last_data.uid_len);
                     }
                     instance->state = FlipperWedgeNfcStateSuccess;
                 } else {
@@ -626,7 +652,8 @@ static NfcCommand flipper_wedge_nfc_poller_callback_iso14443_3a(NfcGenericEvent 
     return NfcCommandContinue;
 }
 
-static NfcCommand flipper_wedge_nfc_poller_callback_iso14443_4a(NfcGenericEvent event, void* context) {
+static NfcCommand
+    flipper_wedge_nfc_poller_callback_iso14443_4a(NfcGenericEvent event, void* context) {
     furi_assert(context);
     FlipperWedgeNfc* instance = context;
 
@@ -665,7 +692,10 @@ static NfcCommand flipper_wedge_nfc_poller_callback_iso14443_4a(NfcGenericEvent 
                         instance->last_data.error = FlipperWedgeNfcErrorNone;
 
                         // ISO14443-4A is Type 4 NDEF - ALWAYS try to read NDEF
-                        FURI_LOG_I(TAG, "Got ISO14443-4A UID, len: %d, attempting Type 4 NDEF read", instance->last_data.uid_len);
+                        FURI_LOG_I(
+                            TAG,
+                            "Got ISO14443-4A UID, len: %d, attempting Type 4 NDEF read",
+                            instance->last_data.uid_len);
 
                         // Attempt to read Type 4 NDEF data
                         Iso14443_4aPoller* iso4a_poller = event.instance;
@@ -680,7 +710,8 @@ static NfcCommand flipper_wedge_nfc_poller_callback_iso14443_4a(NfcGenericEvent 
                         if(!instance->parse_ndef) {
                             // NFC mode: UID is always valid, NDEF is optional
                             if(instance->last_data.error != FlipperWedgeNfcErrorNone) {
-                                FURI_LOG_I(TAG, "Type 4 NDEF parsing failed, will output UID only");
+                                FURI_LOG_I(
+                                    TAG, "Type 4 NDEF parsing failed, will output UID only");
                             }
                             instance->last_data.error = FlipperWedgeNfcErrorNone;
                         }
@@ -709,12 +740,17 @@ static NfcCommand flipper_wedge_nfc_poller_callback_iso14443_4a(NfcGenericEvent 
     return NfcCommandContinue;
 }
 
-static NfcCommand flipper_wedge_nfc_poller_callback_mf_ultralight(NfcGenericEvent event, void* context) {
+static NfcCommand
+    flipper_wedge_nfc_poller_callback_mf_ultralight(NfcGenericEvent event, void* context) {
     furi_assert(context);
     FlipperWedgeNfc* instance = context;
 
     FURI_LOG_I(TAG, "========== MF ULTRALIGHT CALLBACK INVOKED ==========");
-    FURI_LOG_I(TAG, "MF Ultralight callback: protocol=%d, parse_ndef=%d", event.protocol, instance->parse_ndef);
+    FURI_LOG_I(
+        TAG,
+        "MF Ultralight callback: protocol=%d, parse_ndef=%d",
+        event.protocol,
+        instance->parse_ndef);
 
     if(event.protocol == NfcProtocolMfUltralight) {
         const MfUltralightPollerEvent* mfu_event = event.event_data;
@@ -747,7 +783,8 @@ static NfcCommand flipper_wedge_nfc_poller_callback_mf_ultralight(NfcGenericEven
                         instance->last_data.ndef_text[0] = '\0';
                         instance->last_data.error = FlipperWedgeNfcErrorNone;
 
-                        FURI_LOG_I(TAG, "Got MF Ultralight UID, len: %d", instance->last_data.uid_len);
+                        FURI_LOG_I(
+                            TAG, "Got MF Ultralight UID, len: %d", instance->last_data.uid_len);
 
                         // Parse NDEF if requested
                         if(instance->parse_ndef && mfu_data->pages_read > 4) {
@@ -756,14 +793,20 @@ static NfcCommand flipper_wedge_nfc_poller_callback_mf_ultralight(NfcGenericEven
                             // Increased limit from 240 to 1024 to support large text records
                             size_t ndef_data_len = (mfu_data->pages_read - 4) * 4;
                             if(ndef_data_len > 1024) {
-                                FURI_LOG_W(TAG, "Type 2 NDEF: Data too large (%zu bytes), limiting to 1024", ndef_data_len);
+                                FURI_LOG_W(
+                                    TAG,
+                                    "Type 2 NDEF: Data too large (%zu bytes), limiting to 1024",
+                                    ndef_data_len);
                                 ndef_data_len = 1024;
                             }
 
                             const uint8_t* ndef_data = &mfu_data->page[4].data[0];
 
-                            FURI_LOG_I(TAG, "Attempting NDEF parse, data_len=%zu, pages_read=%d",
-                                      ndef_data_len, mfu_data->pages_read);
+                            FURI_LOG_I(
+                                TAG,
+                                "Attempting NDEF parse, data_len=%zu, pages_read=%d",
+                                ndef_data_len,
+                                mfu_data->pages_read);
 
                             size_t text_len = flipper_wedge_nfc_parse_ndef_text(
                                 ndef_data,
@@ -774,7 +817,8 @@ static NfcCommand flipper_wedge_nfc_poller_callback_mf_ultralight(NfcGenericEven
                             if(text_len > 0) {
                                 instance->last_data.has_ndef = true;
                                 instance->last_data.error = FlipperWedgeNfcErrorNone;
-                                FURI_LOG_I(TAG, "Found NDEF text: %s", instance->last_data.ndef_text);
+                                FURI_LOG_I(
+                                    TAG, "Found NDEF text: %s", instance->last_data.ndef_text);
                             } else {
                                 // Type 2 tag but no NDEF text record found
                                 instance->last_data.error = FlipperWedgeNfcErrorNoTextRecord;
@@ -783,7 +827,10 @@ static NfcCommand flipper_wedge_nfc_poller_callback_mf_ultralight(NfcGenericEven
                         } else if(instance->parse_ndef) {
                             // Not enough pages read for NDEF
                             instance->last_data.error = FlipperWedgeNfcErrorNoTextRecord;
-                            FURI_LOG_I(TAG, "Not enough pages for NDEF (pages_read=%d)", mfu_data->pages_read);
+                            FURI_LOG_I(
+                                TAG,
+                                "Not enough pages for NDEF (pages_read=%d)",
+                                mfu_data->pages_read);
                         } else {
                             FURI_LOG_I(TAG, "NDEF parsing not requested (parse_ndef=false)");
                         }
@@ -804,7 +851,9 @@ static NfcCommand flipper_wedge_nfc_poller_callback_mf_ultralight(NfcGenericEven
             return NfcCommandStop;
         } else if(mfu_event->type == MfUltralightPollerEventTypeReadFailed) {
             FURI_LOG_E(TAG, "MFU poller event: READ FAILED");
-            FURI_LOG_E(TAG, "MFU read failed - tag may have been removed or communication error occurred");
+            FURI_LOG_E(
+                TAG,
+                "MFU read failed - tag may have been removed or communication error occurred");
             instance->state = FlipperWedgeNfcStateError;
             return NfcCommandStop;
         } else if(mfu_event->type == MfUltralightPollerEventTypeRequestMode) {
@@ -821,7 +870,8 @@ static NfcCommand flipper_wedge_nfc_poller_callback_mf_ultralight(NfcGenericEven
     return NfcCommandContinue;
 }
 
-static NfcCommand flipper_wedge_nfc_poller_callback_iso15693(NfcGenericEvent event, void* context) {
+static NfcCommand
+    flipper_wedge_nfc_poller_callback_iso15693(NfcGenericEvent event, void* context) {
     furi_assert(context);
     FlipperWedgeNfc* instance = context;
 
@@ -856,7 +906,8 @@ static NfcCommand flipper_wedge_nfc_poller_callback_iso15693(NfcGenericEvent eve
                     uint16_t block_count = iso15_data->system_info.block_count;
                     uint8_t block_size = iso15_data->system_info.block_size;
 
-                    FURI_LOG_D(TAG, "System info: block_count=%d, block_size=%d", block_count, block_size);
+                    FURI_LOG_D(
+                        TAG, "System info: block_count=%d, block_size=%d", block_count, block_size);
 
                     // Check if we have block data
                     const uint8_t* block_data = simple_array_cget_data(iso15_data->block_data);
@@ -868,14 +919,18 @@ static NfcCommand flipper_wedge_nfc_poller_callback_iso15693(NfcGenericEvent eve
                         // Validate Capability Container (CC) at block 0
                         // CC format: [Magic 0xE1][Version/Access][MLEN][Additional features]
                         if(block_data[0] == 0xE1) {
-                            FURI_LOG_D(TAG, "Valid CC found (magic=0xE1), version=0x%02X", block_data[1]);
+                            FURI_LOG_D(
+                                TAG, "Valid CC found (magic=0xE1), version=0x%02X", block_data[1]);
 
                             // NDEF data starts after CC (4 bytes)
                             size_t ndef_data_len = block_data_size - 4;
 
                             // Limit to reasonable size (increased from 256 to 1024 for large text records)
                             if(ndef_data_len > 1024) {
-                                FURI_LOG_W(TAG, "Type 5 NDEF: Data too large (%zu bytes), limiting to 1024", ndef_data_len);
+                                FURI_LOG_W(
+                                    TAG,
+                                    "Type 5 NDEF: Data too large (%zu bytes), limiting to 1024",
+                                    ndef_data_len);
                                 ndef_data_len = 1024;
                             }
 
@@ -888,7 +943,10 @@ static NfcCommand flipper_wedge_nfc_poller_callback_iso15693(NfcGenericEvent eve
                             if(text_len > 0) {
                                 instance->last_data.has_ndef = true;
                                 instance->last_data.error = FlipperWedgeNfcErrorNone;
-                                FURI_LOG_I(TAG, "Found Type 5 NDEF text: %s", instance->last_data.ndef_text);
+                                FURI_LOG_I(
+                                    TAG,
+                                    "Found Type 5 NDEF text: %s",
+                                    instance->last_data.ndef_text);
                             } else {
                                 // Type 5 tag with valid CC but no NDEF text record
                                 instance->last_data.error = FlipperWedgeNfcErrorNoTextRecord;
@@ -897,7 +955,8 @@ static NfcCommand flipper_wedge_nfc_poller_callback_iso15693(NfcGenericEvent eve
                         } else {
                             // No valid Capability Container
                             instance->last_data.error = FlipperWedgeNfcErrorNoTextRecord;
-                            FURI_LOG_D(TAG, "Invalid CC magic: 0x%02X (expected 0xE1)", block_data[0]);
+                            FURI_LOG_D(
+                                TAG, "Invalid CC magic: 0x%02X (expected 0xE1)", block_data[0]);
                         }
                     } else {
                         FURI_LOG_W(TAG, "No block data available or insufficient size");
@@ -936,11 +995,21 @@ static void flipper_wedge_nfc_scanner_callback(NfcScannerEvent event, void* cont
         for(size_t i = 0; i < event.data.protocol_num; i++) {
             const char* proto_name = "Unknown";
             switch(event.data.protocols[i]) {
-                case NfcProtocolIso14443_3a: proto_name = "ISO14443-3A"; break;
-                case NfcProtocolIso14443_4a: proto_name = "ISO14443-4A (ISO-DEP)"; break;
-                case NfcProtocolMfUltralight: proto_name = "MIFARE Ultralight"; break;
-                case NfcProtocolIso15693_3: proto_name = "ISO15693"; break;
-                default: proto_name = "Other"; break;
+            case NfcProtocolIso14443_3a:
+                proto_name = "ISO14443-3A";
+                break;
+            case NfcProtocolIso14443_4a:
+                proto_name = "ISO14443-4A (ISO-DEP)";
+                break;
+            case NfcProtocolMfUltralight:
+                proto_name = "MIFARE Ultralight";
+                break;
+            case NfcProtocolIso15693_3:
+                proto_name = "ISO15693";
+                break;
+            default:
+                proto_name = "Other";
+                break;
             }
             FURI_LOG_I(TAG, "  Protocol[%zu]: %d (%s)", i, event.data.protocols[i], proto_name);
         }
@@ -997,11 +1066,21 @@ static void flipper_wedge_nfc_scanner_callback(NfcScannerEvent event, void* cont
         if(protocol_to_use != NfcProtocolInvalid) {
             const char* proto_name = "Unknown";
             switch(protocol_to_use) {
-                case NfcProtocolIso14443_3a: proto_name = "ISO14443-3A"; break;
-                case NfcProtocolIso14443_4a: proto_name = "ISO14443-4A (ISO-DEP)"; break;
-                case NfcProtocolMfUltralight: proto_name = "MIFARE Ultralight"; break;
-                case NfcProtocolIso15693_3: proto_name = "ISO15693"; break;
-                default: proto_name = "Other"; break;
+            case NfcProtocolIso14443_3a:
+                proto_name = "ISO14443-3A";
+                break;
+            case NfcProtocolIso14443_4a:
+                proto_name = "ISO14443-4A (ISO-DEP)";
+                break;
+            case NfcProtocolMfUltralight:
+                proto_name = "MIFARE Ultralight";
+                break;
+            case NfcProtocolIso15693_3:
+                proto_name = "ISO15693";
+                break;
+            default:
+                proto_name = "Other";
+                break;
             }
             instance->detected_protocol = protocol_to_use;
             instance->state = FlipperWedgeNfcStateTagDetected;
@@ -1028,13 +1107,17 @@ static void flipper_wedge_nfc_start_poller(FlipperWedgeNfc* instance) {
     if(instance->poller) {
         instance->state = FlipperWedgeNfcStatePolling;
         if(instance->detected_protocol == NfcProtocolMfUltralight) {
-            nfc_poller_start(instance->poller, flipper_wedge_nfc_poller_callback_mf_ultralight, instance);
+            nfc_poller_start(
+                instance->poller, flipper_wedge_nfc_poller_callback_mf_ultralight, instance);
         } else if(instance->detected_protocol == NfcProtocolIso14443_3a) {
-            nfc_poller_start(instance->poller, flipper_wedge_nfc_poller_callback_iso14443_3a, instance);
+            nfc_poller_start(
+                instance->poller, flipper_wedge_nfc_poller_callback_iso14443_3a, instance);
         } else if(instance->detected_protocol == NfcProtocolIso14443_4a) {
-            nfc_poller_start(instance->poller, flipper_wedge_nfc_poller_callback_iso14443_4a, instance);
+            nfc_poller_start(
+                instance->poller, flipper_wedge_nfc_poller_callback_iso14443_4a, instance);
         } else if(instance->detected_protocol == NfcProtocolIso15693_3) {
-            nfc_poller_start(instance->poller, flipper_wedge_nfc_poller_callback_iso15693, instance);
+            nfc_poller_start(
+                instance->poller, flipper_wedge_nfc_poller_callback_iso15693, instance);
         }
         FURI_LOG_I(TAG, "Started poller for protocol %d", instance->detected_protocol);
     } else {
@@ -1089,8 +1172,12 @@ void flipper_wedge_nfc_set_callback(
 void flipper_wedge_nfc_start(FlipperWedgeNfc* instance, bool parse_ndef) {
     furi_assert(instance);
 
-    FURI_LOG_I(TAG, "NFC start called, current state=%d, scanner=%p, poller=%p",
-               instance->state, (void*)instance->scanner, (void*)instance->poller);
+    FURI_LOG_I(
+        TAG,
+        "NFC start called, current state=%d, scanner=%p, poller=%p",
+        instance->state,
+        (void*)instance->scanner,
+        (void*)instance->poller);
 
     if(instance->state != FlipperWedgeNfcStateIdle) {
         FURI_LOG_W(TAG, "Already scanning, state=%d", instance->state);
@@ -1125,7 +1212,11 @@ void flipper_wedge_nfc_start(FlipperWedgeNfc* instance, bool parse_ndef) {
     nfc_scanner_start(instance->scanner, flipper_wedge_nfc_scanner_callback, instance);
 
     instance->state = FlipperWedgeNfcStateScanning;
-    FURI_LOG_I(TAG, "NFC scanning started (NDEF: %s), scanner=%p", parse_ndef ? "ON" : "OFF", (void*)instance->scanner);
+    FURI_LOG_I(
+        TAG,
+        "NFC scanning started (NDEF: %s), scanner=%p",
+        parse_ndef ? "ON" : "OFF",
+        (void*)instance->scanner);
 }
 
 void flipper_wedge_nfc_stop(FlipperWedgeNfc* instance) {
@@ -1159,7 +1250,7 @@ bool flipper_wedge_nfc_is_scanning(FlipperWedgeNfc* instance) {
     return instance->state == FlipperWedgeNfcStateScanning ||
            instance->state == FlipperWedgeNfcStateTagDetected ||
            instance->state == FlipperWedgeNfcStatePolling ||
-           instance->state == FlipperWedgeNfcStateError;  // Still scanning during error recovery
+           instance->state == FlipperWedgeNfcStateError; // Still scanning during error recovery
 }
 
 // Call this from the main thread's tick handler to process NFC events
@@ -1169,7 +1260,10 @@ bool flipper_wedge_nfc_tick(FlipperWedgeNfc* instance) {
 
     if(instance->state == FlipperWedgeNfcStateTagDetected) {
         // Scanner detected a tag, switch to poller (safe to do from main thread)
-        FURI_LOG_I(TAG, "Tick: starting poller for detected tag, protocol=%d", instance->detected_protocol);
+        FURI_LOG_I(
+            TAG,
+            "Tick: starting poller for detected tag, protocol=%d",
+            instance->detected_protocol);
         flipper_wedge_nfc_start_poller(instance);
         return false;
     }
@@ -1200,7 +1294,10 @@ bool flipper_wedge_nfc_tick(FlipperWedgeNfc* instance) {
 
     if(instance->state == FlipperWedgeNfcStateSuccess) {
         // Poller got the UID, invoke callback
-        FURI_LOG_I(TAG, "Tick: tag read success, UID len=%d, invoking callback", instance->last_data.uid_len);
+        FURI_LOG_I(
+            TAG,
+            "Tick: tag read success, UID len=%d, invoking callback",
+            instance->last_data.uid_len);
 
         // Stop the poller first
         if(instance->poller) {

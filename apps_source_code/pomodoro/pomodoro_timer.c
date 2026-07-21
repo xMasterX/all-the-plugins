@@ -238,6 +238,5 @@ void pomodoro_draw_callback(Canvas* canvas, void* context, int max_seconds, int 
 }
 
 void pomodoro_timer_update(PomodoroTimer* pomodoro_timer) {
-    with_view_model(
-        pomodoro_timer->view, PomodoroTimerModel * model, { UNUSED(model); }, true);
+    with_view_model(pomodoro_timer->view, PomodoroTimerModel * model, { UNUSED(model); }, true);
 }

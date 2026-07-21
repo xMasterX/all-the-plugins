@@ -54,7 +54,11 @@ static bool pulse_low_bit(RadioClockPulse pulse) {
     return (pulse_to_digit(pulse) & 0x01U) != 0U;
 }
 
-static uint16_t weighted_pair_value(const RadioClockPulse* frame, uint8_t second, uint16_t high_weight, uint16_t low_weight) {
+static uint16_t weighted_pair_value(
+    const RadioClockPulse* frame,
+    uint8_t second,
+    uint16_t high_weight,
+    uint16_t low_weight) {
     uint16_t value = 0U;
 
     if(pulse_high_bit(frame[second])) {
@@ -87,10 +91,7 @@ static void test_captured_jinan_example_full_minute_matches_repeated_blocks(void
     set_bpc_timecode(frame, 34, 7, 11, 1, 26, 7);
     frame_to_string(frame, actual);
 
-    assert(
-        strcmp(
-            actual,
-            "M0013202130023011221M1013202131023011220M2013202131023011220") == 0);
+    assert(strcmp(actual, "M0013202130023011221M1013202131023011220M2013202131023011220") == 0);
 }
 
 static void test_block_fields_and_block_index_digits(void) {
@@ -111,8 +112,10 @@ static void test_block_fields_and_block_index_digits(void) {
             weighted_pair_value(frame, 7U, 2U, 1U) ==
         52U);
     assert(weighted_pair_value(frame, 8U, 0U, 4U) + weighted_pair_value(frame, 9U, 2U, 1U) == 2U);
-    assert(weighted_pair_value(frame, 12U, 8U, 4U) + weighted_pair_value(frame, 13U, 2U, 1U) == 1U);
-    assert(weighted_pair_value(frame, 14U, 8U, 4U) + weighted_pair_value(frame, 15U, 2U, 1U) == 12U);
+    assert(
+        weighted_pair_value(frame, 12U, 8U, 4U) + weighted_pair_value(frame, 13U, 2U, 1U) == 1U);
+    assert(
+        weighted_pair_value(frame, 14U, 8U, 4U) + weighted_pair_value(frame, 15U, 2U, 1U) == 12U);
     assert(
         weighted_pair_value(frame, 16U, 32U, 16U) + weighted_pair_value(frame, 17U, 8U, 4U) +
             weighted_pair_value(frame, 18U, 2U, 1U) + weighted_pair_value(frame, 19U, 64U, 0U) ==

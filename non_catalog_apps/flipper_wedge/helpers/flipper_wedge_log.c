@@ -2,9 +2,9 @@
 #include <storage/storage.h>
 #include <furi_hal_rtc.h>
 
-#define SCAN_LOG_PATH APP_DATA_PATH("scan_log.txt")
-#define SCAN_LOG_MAX_SIZE (200 * 1024)  // 200KB max log size
-#define SCAN_LOG_KEEP_SIZE (100 * 1024)  // Keep most recent 100KB when rotating
+#define SCAN_LOG_PATH      APP_DATA_PATH("scan_log.txt")
+#define SCAN_LOG_MAX_SIZE  (200 * 1024) // 200KB max log size
+#define SCAN_LOG_KEEP_SIZE (100 * 1024) // Keep most recent 100KB when rotating
 
 static FuriMutex* log_mutex = NULL;
 
@@ -12,11 +12,11 @@ static FuriMutex* log_mutex = NULL;
 static void log_rotate(Storage* storage) {
     FileInfo file_info;
     if(storage_common_stat(storage, SCAN_LOG_PATH, &file_info) != FSE_OK) {
-        return;  // File doesn't exist, nothing to rotate
+        return; // File doesn't exist, nothing to rotate
     }
 
     if(file_info.size <= SCAN_LOG_MAX_SIZE) {
-        return;  // File not too large yet
+        return; // File not too large yet
     }
 
     // Read the last SCAN_LOG_KEEP_SIZE bytes
@@ -88,10 +88,16 @@ void flipper_wedge_log_scan(const char* data) {
 
         // Format timestamp: YYYY-MM-DD HH:MM:SS
         char timestamp[32];
-        snprintf(timestamp, sizeof(timestamp),
-                 "%04d-%02d-%02d %02d:%02d:%02d",
-                 datetime.year, datetime.month, datetime.day,
-                 datetime.hour, datetime.minute, datetime.second);
+        snprintf(
+            timestamp,
+            sizeof(timestamp),
+            "%04d-%02d-%02d %02d:%02d:%02d",
+            datetime.year,
+            datetime.month,
+            datetime.day,
+            datetime.hour,
+            datetime.minute,
+            datetime.second);
 
         // Write log entry: [timestamp] data\n
         storage_file_write(log_file, "[", 1);

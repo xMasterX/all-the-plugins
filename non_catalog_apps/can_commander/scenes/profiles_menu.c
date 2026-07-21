@@ -43,11 +43,13 @@ bool cancommander_scene_profiles_menu_on_event(void* context, SceneManagerEvent 
         return false;
     }
 
-    scene_manager_set_scene_state(app->scene_manager, cancommander_scene_profiles_menu, event.event);
+    scene_manager_set_scene_state(
+        app->scene_manager, cancommander_scene_profiles_menu, event.event);
 
     switch(event.event) {
     case ProfilesLoadSmartInjection:
-        scene_manager_next_scene(app->scene_manager, cancommander_scene_custom_inject_load_slots_menu);
+        scene_manager_next_scene(
+            app->scene_manager, cancommander_scene_custom_inject_load_slots_menu);
         return true;
 
     case ProfilesLoadDbcConfig:

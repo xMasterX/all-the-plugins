@@ -14,27 +14,27 @@ typedef enum {
 } MfpEmulateViewState;
 
 /* Per-sector activity bitfield — combined with OR as events arrive. */
-#define MFP_SECTOR_LOADED  0x01  /* keys present, sector can respond */
-#define MFP_SECTOR_AUTHED  0x02  /* reader authenticated at least once */
-#define MFP_SECTOR_READ    0x04  /* at least one block was read */
-#define MFP_SECTOR_WRITTEN 0x08  /* at least one block was written */
+#define MFP_SECTOR_LOADED  0x01 /* keys present, sector can respond */
+#define MFP_SECTOR_AUTHED  0x02 /* reader authenticated at least once */
+#define MFP_SECTOR_READ    0x04 /* at least one block was read */
+#define MFP_SECTOR_WRITTEN 0x08 /* at least one block was written */
 
 typedef struct {
     MfpEmulateViewState state;
     uint32_t auths;
     uint32_t reads;
     uint32_t writes;
-    uint8_t  last_op;       /* 'A' | 'R' | 'W' | 0 */
-    uint8_t  last_sector;
-    uint8_t  last_block;
-    bool     allow_overwrite;
+    uint8_t last_op; /* 'A' | 'R' | 'W' | 0 */
+    uint8_t last_sector;
+    uint8_t last_block;
+    bool allow_overwrite;
     MfpCardSize card_size;
-    uint8_t  uid[7];
-    uint8_t  uid_len;
-    uint8_t  total_sectors;
-    uint8_t  sector_flags[MFP_SECTORS_4K];
-    bool     modified_saved;   /* summary: did writes persist? */
-    char     summary_path[32]; /* summary: short filename */
+    uint8_t uid[7];
+    uint8_t uid_len;
+    uint8_t total_sectors;
+    uint8_t sector_flags[MFP_SECTORS_4K];
+    bool modified_saved; /* summary: did writes persist? */
+    char summary_path[32]; /* summary: short filename */
 } MfpEmulateViewModel;
 
 MfpEmulateView* mfp_emulate_view_alloc(void);

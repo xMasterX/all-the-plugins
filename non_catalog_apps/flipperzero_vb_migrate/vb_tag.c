@@ -20,15 +20,15 @@
 #include "vb_tag.h"
 
 #define VB_NAME_VBDM "VB Digital Monster"
-#define VB_NAME_VBV "VB Digivice -V-"
-#define VB_NAME_VBC "VB Characters"
-#define VB_NAME_VH "Vital Hero"
+#define VB_NAME_VBV  "VB Digivice -V-"
+#define VB_NAME_VBC  "VB Characters"
+#define VB_NAME_VH   "Vital Hero"
 #define VB_NAME_VBBE "Vital Bracelet BE"
 
 #define VB_NAME_VBDM_SHORT "VBDM"
-#define VB_NAME_VBV_SHORT "VBV"
-#define VB_NAME_VBC_SHORT "VBC"
-#define VB_NAME_VH_SHORT "VH"
+#define VB_NAME_VBV_SHORT  "VBV"
+#define VB_NAME_VBC_SHORT  "VBC"
+#define VB_NAME_VH_SHORT   "VH"
 #define VB_NAME_VBBE_SHORT "VBBE"
 
 struct BantBlockCommon {

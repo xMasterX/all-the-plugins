@@ -5,7 +5,7 @@
 
 #define AMI_TOOL_SAVED_MENU_INDEX_PREV_PAGE UINT32_C(0xFFFFFFFC)
 #define AMI_TOOL_SAVED_MENU_INDEX_NEXT_PAGE UINT32_C(0xFFFFFFFB)
-#define AMI_TOOL_SAVED_FILENAME_MAX 254
+#define AMI_TOOL_SAVED_FILENAME_MAX         254
 
 typedef enum {
     AmiToolSavedLoadOk,
@@ -254,8 +254,7 @@ static void ami_tool_scene_saved_refresh(AmiToolApp* app) {
 
     if(status == AmiToolSavedLoadNoFolder) {
         ami_tool_scene_saved_show_message(
-            app,
-            "No saved Amiibo folder found.\nUse Save to Storage to create files.");
+            app, "No saved Amiibo folder found.\nUse Save to Storage to create files.");
     } else if(status == AmiToolSavedLoadError) {
         ami_tool_scene_saved_show_message(
             app, "Unable to open saved Amiibo folder.\nCheck storage and try again.");
@@ -296,10 +295,7 @@ static bool ami_tool_scene_saved_load_entry(AmiToolApp* app, size_t index) {
         app->tag_data_valid = true;
         if(app->tag_data->pages_total > 0) {
             size_t pack_page = app->tag_data->pages_total - 1;
-            memcpy(
-                app->tag_pack,
-                app->tag_data->page[pack_page].data,
-                sizeof(app->tag_pack));
+            memcpy(app->tag_pack, app->tag_data->page[pack_page].data, sizeof(app->tag_pack));
             app->tag_pack_valid = true;
         }
 
@@ -396,8 +392,7 @@ bool ami_tool_scene_saved_on_event(void* context, SceneManagerEvent event) {
         case AmiToolEventInfoActionSaveToStorage:
             if(!ami_tool_info_save_to_storage(app)) {
                 ami_tool_info_show_action_message(
-                    app,
-                    "Unable to save Amiibo.\nLoad one first and check storage access.");
+                    app, "Unable to save Amiibo.\nLoad one first and check storage access.");
             }
             return true;
         case AmiToolEventUsagePrevPage:

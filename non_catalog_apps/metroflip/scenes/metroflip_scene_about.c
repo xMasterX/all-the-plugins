@@ -20,7 +20,8 @@ void metroflip_scene_about_on_enter(void* context) {
     View* view = metroflip_card_view_alloc(app);
     metroflip_card_view_set_title(view, "Metroflip");
     metroflip_card_view_set_icon(view, &I_Train_10x10);
-    metroflip_card_view_set_icon_animation(view, &I_Train1_10x10, &I_Train2_10x10, &I_Train3_10x10);
+    metroflip_card_view_set_icon_animation(
+        view, &I_Train1_10x10, &I_Train2_10x10, &I_Train3_10x10);
 
     /* Page 1: what it is */
     uint8_t p = metroflip_card_view_add_page(view, "About");
@@ -53,8 +54,7 @@ bool metroflip_scene_about_on_event(void* context, SceneManagerEvent event) {
                     MetroflipCardViewModel * m,
                     {
                         if(m->anim[0]) {
-                            m->anim_frame =
-                                (m->anim_frame + 1) % METROFLIP_CARD_VIEW_ANIM_FRAMES;
+                            m->anim_frame = (m->anim_frame + 1) % METROFLIP_CARD_VIEW_ANIM_FRAMES;
                         }
                     },
                     true);

@@ -49,11 +49,13 @@ static const char* const appName = "lora_term"; //$ Name used in log files
                                                         "Animate - Cannot stop timer") //[EOT]
 
 // Declare list extraction macros
-#define ES_ENUM(num, ename, string) ename = num,
+#define ES_ENUM(num, ename, string)   ename = num,
 #define ES_STRING(num, ename, string) string "\r\n",
 
 // Build the enum
-typedef enum err { FOREACH_ES(ES_ENUM) } err_t;
+typedef enum err {
+    FOREACH_ES(ES_ENUM)
+} err_t;
 
 // You need to '#define ERR_C_' in precisely ONE source file
 #ifdef ERR_C_

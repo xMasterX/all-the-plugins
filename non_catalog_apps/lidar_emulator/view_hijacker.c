@@ -74,14 +74,14 @@ ViewHijacker* alloc_view_hijacker() {
 
     view_hijacker->orig_previous_callback = NULL;
     view_hijacker->orig_enter_callback = NULL;
-    view_hijacker->orig_exit_callback = NULL;    
+    view_hijacker->orig_exit_callback = NULL;
     view_hijacker->orig_input_callback = NULL;
     view_hijacker->orig_custom_callback = NULL;
     view_hijacker->orig_context = NULL;
 
     view_hijacker->new_previous_callback = NULL;
     view_hijacker->new_enter_callback = NULL;
-    view_hijacker->new_exit_callback = NULL;    
+    view_hijacker->new_exit_callback = NULL;
     view_hijacker->new_input_callback = NULL;
     view_hijacker->new_custom_callback = NULL;
 
@@ -105,10 +105,10 @@ static uint32_t hijacked_previous_callback(void* context) {
 
     ViewHijacker* view_hijacker = context;
 
-    if (view_hijacker->new_previous_callback)
+    if(view_hijacker->new_previous_callback)
         return view_hijacker->new_previous_callback(view_hijacker);
 
-    if (view_hijacker->orig_previous_callback)
+    if(view_hijacker->orig_previous_callback)
         return view_hijacker->orig_previous_callback(view_hijacker->orig_context);
 
     return VIEW_IGNORE;
@@ -119,11 +119,10 @@ static void hijacked_enter_callback(void* context) {
 
     ViewHijacker* view_hijacker = context;
 
-    if (view_hijacker->new_enter_callback)
+    if(view_hijacker->new_enter_callback)
         view_hijacker->new_enter_callback(view_hijacker);
-    else
-        if (view_hijacker->orig_enter_callback)
-            view_hijacker->orig_enter_callback(view_hijacker->orig_context);
+    else if(view_hijacker->orig_enter_callback)
+        view_hijacker->orig_enter_callback(view_hijacker->orig_context);
 }
 
 static void hijacked_exit_callback(void* context) {
@@ -131,36 +130,35 @@ static void hijacked_exit_callback(void* context) {
 
     ViewHijacker* view_hijacker = context;
 
-    if (view_hijacker->new_exit_callback)
+    if(view_hijacker->new_exit_callback)
         view_hijacker->new_exit_callback(view_hijacker);
-    else
-        if (view_hijacker->orig_exit_callback)
-            view_hijacker->orig_exit_callback(view_hijacker->orig_context);
+    else if(view_hijacker->orig_exit_callback)
+        view_hijacker->orig_exit_callback(view_hijacker->orig_context);
 }
 
-static bool hijacked_input_callback(InputEvent *event, void *context) {
+static bool hijacked_input_callback(InputEvent* event, void* context) {
     furi_check(context);
 
     ViewHijacker* view_hijacker = context;
 
-    if (view_hijacker->new_input_callback)
+    if(view_hijacker->new_input_callback)
         return view_hijacker->new_input_callback(event, view_hijacker);
 
-    if (view_hijacker->orig_input_callback)
+    if(view_hijacker->orig_input_callback)
         return view_hijacker->orig_input_callback(event, view_hijacker->orig_context);
 
     return false;
 }
 
-static bool hijacked_custom_callback(uint32_t event, void *context) {
+static bool hijacked_custom_callback(uint32_t event, void* context) {
     furi_check(context);
 
     ViewHijacker* view_hijacker = context;
 
-    if (view_hijacker->new_custom_callback)
+    if(view_hijacker->new_custom_callback)
         return view_hijacker->new_custom_callback(event, view_hijacker);
 
-    if (view_hijacker->orig_custom_callback)
+    if(view_hijacker->orig_custom_callback)
         return view_hijacker->orig_custom_callback(event, view_hijacker->orig_context);
 
     return false;
@@ -187,8 +185,9 @@ void view_hijacker_attach_to_view(ViewHijacker* view_hijacker, View* view) {
     view_set_context(view, view_hijacker);
 }
 
-void view_hijacker_attach_to_view_dispacher_current(ViewHijacker* view_hijacker, ViewDispatcher* view_dispatcher)
-{
+void view_hijacker_attach_to_view_dispacher_current(
+    ViewHijacker* view_hijacker,
+    ViewDispatcher* view_dispatcher) {
     furi_check(view_hijacker);
     furi_check(view_dispatcher);
 
@@ -198,7 +197,7 @@ void view_hijacker_attach_to_view_dispacher_current(ViewHijacker* view_hijacker,
 void view_hijacker_detach_from_view(ViewHijacker* view_hijacker) {
     furi_check(view_hijacker);
 
-    if (view_hijacker->view) {
+    if(view_hijacker->view) {
         view_hijacker->view->previous_callback = view_hijacker->orig_previous_callback;
         view_hijacker->view->enter_callback = view_hijacker->orig_enter_callback;
         view_hijacker->view->exit_callback = view_hijacker->orig_exit_callback;
@@ -211,35 +210,50 @@ void view_hijacker_detach_from_view(ViewHijacker* view_hijacker) {
     }
 }
 
-void view_hijacker_hijack_previous_callback(ViewHijacker* view_hijacker, ViewNavigationCallback previous_callback, void* context) {
+void view_hijacker_hijack_previous_callback(
+    ViewHijacker* view_hijacker,
+    ViewNavigationCallback previous_callback,
+    void* context) {
     furi_check(view_hijacker);
 
     view_hijacker->new_previous_callback = previous_callback;
     view_hijacker->new_previous_callback_context = context;
 }
 
-void view_hijacker_hijack_enter_callback(ViewHijacker* view_hijacker, ViewCallback enter_callback, void* context) {
+void view_hijacker_hijack_enter_callback(
+    ViewHijacker* view_hijacker,
+    ViewCallback enter_callback,
+    void* context) {
     furi_check(view_hijacker);
 
     view_hijacker->new_enter_callback = enter_callback;
     view_hijacker->new_enter_callback_context = context;
 }
 
-void view_hijacker_hijack_exit_callback(ViewHijacker* view_hijacker, ViewCallback exit_callback, void* context) {
+void view_hijacker_hijack_exit_callback(
+    ViewHijacker* view_hijacker,
+    ViewCallback exit_callback,
+    void* context) {
     furi_check(view_hijacker);
 
     view_hijacker->new_exit_callback = exit_callback;
     view_hijacker->new_exit_callback_context = context;
 }
 
-void view_hijacker_hijack_input_callback(ViewHijacker* view_hijacker, ViewInputCallback input_callback, void* context) {
+void view_hijacker_hijack_input_callback(
+    ViewHijacker* view_hijacker,
+    ViewInputCallback input_callback,
+    void* context) {
     furi_check(view_hijacker);
 
     view_hijacker->new_input_callback = input_callback;
     view_hijacker->new_input_callback_context = context;
 }
 
-void view_hijacker_hijack_custom_callback(ViewHijacker* view_hijacker, ViewCustomCallback custom_callback, void* context) {
+void view_hijacker_hijack_custom_callback(
+    ViewHijacker* view_hijacker,
+    ViewCustomCallback custom_callback,
+    void* context) {
     furi_check(view_hijacker);
 
     view_hijacker->new_custom_callback = custom_callback;

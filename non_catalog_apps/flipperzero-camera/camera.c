@@ -204,8 +204,7 @@ static int32_t camera_worker(void* context) {
             } while(length > 0);
 
             notification_message(app->notification, &sequence_notification);
-            with_view_model(
-                app->view, UartDumpModel * model, { UNUSED(model); }, true);
+            with_view_model(app->view, UartDumpModel * model, { UNUSED(model); }, true);
         }
     }
 
@@ -223,7 +222,7 @@ static UartEchoApp* camera_app_alloc() {
 
     // View dispatcher
     app->view_dispatcher = view_dispatcher_alloc();
-    
+
     view_dispatcher_attach_to_gui(app->view_dispatcher, app->gui, ViewDispatcherTypeFullscreen);
 
     // Views

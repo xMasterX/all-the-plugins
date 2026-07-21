@@ -62,16 +62,24 @@ static void test_nict_layout_vector_2026_04_13_1234(void) {
     set_jjy_timecode(frame, 34, 12, 103, 26, 1, false, false, false, false);
     frame_to_string(frame, actual);
 
+    assert(strcmp(actual, "M01100100M000100010M000100000M001100010M000100110M001000000M") == 0);
     assert(
-        strcmp(
-            actual,
-            "M01100100M000100010M000100000M001100010M000100110M001000000M") == 0);
-    assert(symbols_to_value(frame, minute_bits, minute_weights, sizeof(minute_bits) / sizeof(minute_bits[0])) == 34U);
-    assert(symbols_to_value(frame, hour_bits, hour_weights, sizeof(hour_bits) / sizeof(hour_bits[0])) == 12U);
-    assert(symbols_to_value(frame, doy_bits, doy_weights, sizeof(doy_bits) / sizeof(doy_bits[0])) == 103U);
-    assert(symbols_to_value(frame, year_bits, year_weights, sizeof(year_bits) / sizeof(year_bits[0])) == 26U);
+        symbols_to_value(
+            frame, minute_bits, minute_weights, sizeof(minute_bits) / sizeof(minute_bits[0])) ==
+        34U);
     assert(
-        symbols_to_value(frame, weekday_bits, weekday_weights, sizeof(weekday_bits) / sizeof(weekday_bits[0])) == 1U);
+        symbols_to_value(
+            frame, hour_bits, hour_weights, sizeof(hour_bits) / sizeof(hour_bits[0])) == 12U);
+    assert(
+        symbols_to_value(frame, doy_bits, doy_weights, sizeof(doy_bits) / sizeof(doy_bits[0])) ==
+        103U);
+    assert(
+        symbols_to_value(
+            frame, year_bits, year_weights, sizeof(year_bits) / sizeof(year_bits[0])) == 26U);
+    assert(
+        symbols_to_value(
+            frame, weekday_bits, weekday_weights, sizeof(weekday_bits) / sizeof(weekday_bits[0])) ==
+        1U);
 }
 
 static void test_yesterday_today_tomorrow_dates_encode_requested_days(void) {
@@ -82,19 +90,31 @@ static void test_yesterday_today_tomorrow_dates_encode_requested_days(void) {
     RadioClockPulse frame[JJY_FRAME_SECONDS];
 
     set_jjy_timecode(frame, 0, 0, 102, 26, 0, false, false, false, false);
-    assert(symbols_to_value(frame, doy_bits, doy_weights, sizeof(doy_bits) / sizeof(doy_bits[0])) == 102U);
     assert(
-        symbols_to_value(frame, weekday_bits, weekday_weights, sizeof(weekday_bits) / sizeof(weekday_bits[0])) == 0U);
+        symbols_to_value(frame, doy_bits, doy_weights, sizeof(doy_bits) / sizeof(doy_bits[0])) ==
+        102U);
+    assert(
+        symbols_to_value(
+            frame, weekday_bits, weekday_weights, sizeof(weekday_bits) / sizeof(weekday_bits[0])) ==
+        0U);
 
     set_jjy_timecode(frame, 0, 0, 103, 26, 1, false, false, false, false);
-    assert(symbols_to_value(frame, doy_bits, doy_weights, sizeof(doy_bits) / sizeof(doy_bits[0])) == 103U);
     assert(
-        symbols_to_value(frame, weekday_bits, weekday_weights, sizeof(weekday_bits) / sizeof(weekday_bits[0])) == 1U);
+        symbols_to_value(frame, doy_bits, doy_weights, sizeof(doy_bits) / sizeof(doy_bits[0])) ==
+        103U);
+    assert(
+        symbols_to_value(
+            frame, weekday_bits, weekday_weights, sizeof(weekday_bits) / sizeof(weekday_bits[0])) ==
+        1U);
 
     set_jjy_timecode(frame, 0, 0, 104, 26, 2, false, false, false, false);
-    assert(symbols_to_value(frame, doy_bits, doy_weights, sizeof(doy_bits) / sizeof(doy_bits[0])) == 104U);
     assert(
-        symbols_to_value(frame, weekday_bits, weekday_weights, sizeof(weekday_bits) / sizeof(weekday_bits[0])) == 2U);
+        symbols_to_value(frame, doy_bits, doy_weights, sizeof(doy_bits) / sizeof(doy_bits[0])) ==
+        104U);
+    assert(
+        symbols_to_value(
+            frame, weekday_bits, weekday_weights, sizeof(weekday_bits) / sizeof(weekday_bits[0])) ==
+        2U);
 }
 
 static void test_reserved_and_leap_bits_follow_safe_defaults(void) {

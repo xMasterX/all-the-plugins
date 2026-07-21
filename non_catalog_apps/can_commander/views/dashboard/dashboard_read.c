@@ -32,21 +32,22 @@ static const AppDashFrameEntry* dashboard_read_get_selected(const AppDashboardMo
 
     const uint8_t newest =
         (uint8_t)((model->read_head + APP_DASH_READ_HISTORY - 1U) % APP_DASH_READ_HISTORY);
-    const uint8_t index = (uint8_t)((newest + APP_DASH_READ_HISTORY - offset) % APP_DASH_READ_HISTORY);
+    const uint8_t index =
+        (uint8_t)((newest + APP_DASH_READ_HISTORY - offset) % APP_DASH_READ_HISTORY);
     const AppDashFrameEntry* entry = &model->read_frames[index];
     return entry->valid ? entry : NULL;
 }
 
-static const AppDashFrameEntry* dashboard_read_get_by_offset(
-    const AppDashboardModel* model,
-    uint8_t offset) {
+static const AppDashFrameEntry*
+    dashboard_read_get_by_offset(const AppDashboardModel* model, uint8_t offset) {
     if(!model || offset >= model->read_count) {
         return NULL;
     }
 
     const uint8_t newest =
         (uint8_t)((model->read_head + APP_DASH_READ_HISTORY - 1U) % APP_DASH_READ_HISTORY);
-    const uint8_t index = (uint8_t)((newest + APP_DASH_READ_HISTORY - offset) % APP_DASH_READ_HISTORY);
+    const uint8_t index =
+        (uint8_t)((newest + APP_DASH_READ_HISTORY - offset) % APP_DASH_READ_HISTORY);
     const AppDashFrameEntry* entry = &model->read_frames[index];
     return entry->valid ? entry : NULL;
 }
@@ -68,7 +69,8 @@ static void dashboard_format_hex_bytes(
         if(i >= dlc) {
             break;
         }
-        const int wrote = snprintf(out + pos, out_size - pos, "%s%02X", (pos > 0U) ? " " : "", data[i]);
+        const int wrote =
+            snprintf(out + pos, out_size - pos, "%s%02X", (pos > 0U) ? " " : "", data[i]);
         if(wrote <= 0) {
             break;
         }
@@ -80,10 +82,8 @@ static void dashboard_format_hex_bytes(
     }
 }
 
-static void dashboard_format_frame_header(
-    const AppDashFrameEntry* entry,
-    char* out,
-    size_t out_size) {
+static void
+    dashboard_format_frame_header(const AppDashFrameEntry* entry, char* out, size_t out_size) {
     if(!out || out_size == 0U) {
         return;
     }
@@ -109,10 +109,8 @@ static void dashboard_format_frame_header(
         entry->ext ? "EXT" : "STD");
 }
 
-static void dashboard_format_frame_preview(
-    const AppDashFrameEntry* entry,
-    char* out,
-    size_t out_size) {
+static void
+    dashboard_format_frame_preview(const AppDashFrameEntry* entry, char* out, size_t out_size) {
     if(!out || out_size == 0U) {
         return;
     }
@@ -129,7 +127,8 @@ static void dashboard_format_frame_preview(
     }
 
     char data_preview[16] = {0};
-    dashboard_format_hex_bytes(entry->data, 0U, 3U, entry->dlc, data_preview, sizeof(data_preview));
+    dashboard_format_hex_bytes(
+        entry->data, 0U, 3U, entry->dlc, data_preview, sizeof(data_preview));
     snprintf(
         out,
         out_size,
@@ -141,9 +140,8 @@ static void dashboard_format_frame_preview(
 }
 
 bool dashboard_read_draw(Canvas* canvas, const AppDashboardModel* dashboard) {
-    if(
-        !dashboard ||
-        (dashboard->mode != AppDashboardReadAll && dashboard->mode != AppDashboardFiltered)) {
+    if(!dashboard ||
+       (dashboard->mode != AppDashboardReadAll && dashboard->mode != AppDashboardFiltered)) {
         return false;
     }
 
@@ -152,23 +150,32 @@ bool dashboard_read_draw(Canvas* canvas, const AppDashboardModel* dashboard) {
     canvas_set_font(canvas, FontSecondary);
 
     if(page == 0U) {
-        canvas_draw_str_aligned(canvas, 64, 2, AlignCenter, AlignTop, filtered ? "Filtered" : "Read All");
+        canvas_draw_str_aligned(
+            canvas, 64, 2, AlignCenter, AlignTop, filtered ? "Filtered" : "Read All");
         if(dashboard->read_overload) {
             char fps_text[24] = {0};
-            snprintf(fps_text, sizeof(fps_text), "Rate: %lu fps", (unsigned long)dashboard->read_rate_fps);
+            snprintf(
+                fps_text,
+                sizeof(fps_text),
+                "Rate: %lu fps",
+                (unsigned long)dashboard->read_rate_fps);
             canvas_set_font(canvas, FontSecondary);
             canvas_draw_str_aligned(canvas, 64, 24, AlignCenter, AlignCenter, "Input overload");
             canvas_draw_str_aligned(canvas, 64, 34, AlignCenter, AlignCenter, fps_text);
-            canvas_draw_str_aligned(canvas, 64, 45, AlignCenter, AlignCenter, "Rendering paused >1000");
-            canvas_draw_str_aligned(canvas, 64, 63, AlignCenter, AlignBottom, "Narrow filter scope");
+            canvas_draw_str_aligned(
+                canvas, 64, 45, AlignCenter, AlignCenter, "Rendering paused >1000");
+            canvas_draw_str_aligned(
+                canvas, 64, 63, AlignCenter, AlignBottom, "Narrow filter scope");
             return true;
         }
 
         const AppDashFrameEntry* entry = dashboard_read_get_selected(dashboard);
         if(!entry) {
             canvas_set_font(canvas, FontSecondary);
-            canvas_draw_str_aligned(canvas, 64, 26, AlignCenter, AlignCenter, "Waiting for CAN frames");
-            canvas_draw_str_aligned(canvas, 64, 63, AlignCenter, AlignBottom, "OK Hold  L/R Pg  U/D Nav");
+            canvas_draw_str_aligned(
+                canvas, 64, 26, AlignCenter, AlignCenter, "Waiting for CAN frames");
+            canvas_draw_str_aligned(
+                canvas, 64, 63, AlignCenter, AlignBottom, "OK Hold  L/R Pg  U/D Nav");
             return true;
         }
 
@@ -230,12 +237,7 @@ bool dashboard_read_draw(Canvas* canvas, const AppDashboardModel* dashboard) {
             char preview[32] = {0};
             dashboard_format_frame_preview(entry, preview, sizeof(preview));
             char row[34] = {0};
-            snprintf(
-                row,
-                sizeof(row),
-                "%c %s",
-                (offset == selected) ? '>' : ' ',
-                preview);
+            snprintf(row, sizeof(row), "%c %s", (offset == selected) ? '>' : ' ', preview);
 
             canvas_set_font(canvas, FontSecondary);
             canvas_draw_str(canvas, 2, (int32_t)(22 + line * 10U), row);
@@ -265,10 +267,7 @@ bool dashboard_read_draw(Canvas* canvas, const AppDashboardModel* dashboard) {
             (unsigned long)dashboard->read_ext);
         if(dashboard->read_overload) {
             snprintf(
-                line4,
-                sizeof(line4),
-                "Feed:Paused %lu/s",
-                (unsigned long)dashboard->read_rate_fps);
+                line4, sizeof(line4), "Feed:Paused %lu/s", (unsigned long)dashboard->read_rate_fps);
         } else {
             snprintf(line4, sizeof(line4), "Feed:%s", dashboard->read_hold ? "Hold" : "Live");
         }
@@ -289,10 +288,8 @@ bool dashboard_read_input(App* app, const InputEvent* event) {
         return false;
     }
 
-    if(
-        event->type != InputTypePress && event->type != InputTypeRepeat &&
-        event->type != InputTypeShort &&
-        event->type != InputTypeRelease) {
+    if(event->type != InputTypePress && event->type != InputTypeRepeat &&
+       event->type != InputTypeShort && event->type != InputTypeRelease) {
         return false;
     }
 
@@ -309,8 +306,8 @@ bool dashboard_read_input(App* app, const InputEvent* event) {
                         consumed = true;
                     }
                 } else {
-                    const bool key_was_held =
-                        (key_bit != 0U) && ((model->input_hold_mask & key_bit) != 0U);
+                    const bool key_was_held = (key_bit != 0U) &&
+                                              ((model->input_hold_mask & key_bit) != 0U);
                     if(key_bit != 0U) {
                         model->input_hold_mask |= key_bit;
                     }
@@ -330,8 +327,11 @@ bool dashboard_read_input(App* app, const InputEvent* event) {
                             model->read_page = (uint8_t)((model->read_page + 1U) % 3U);
                             consumed = true;
                         }
-                    } else if((model->read_page == 0U || model->read_page == 1U) && model->read_count > 0U) {
-                        const bool allow_scroll = (!key_was_held || event->type == InputTypeRepeat);
+                    } else if(
+                        (model->read_page == 0U || model->read_page == 1U) &&
+                        model->read_count > 0U) {
+                        const bool allow_scroll =
+                            (!key_was_held || event->type == InputTypeRepeat);
                         if(allow_scroll && event->key == InputKeyUp) {
                             if(model->read_selected > 0U) {
                                 model->read_selected--;
@@ -410,9 +410,8 @@ void dashboard_read_update(App* app, const CcEvent* event, const char* title) {
                 return;
             }
 
-            if(
-                (model->mode == AppDashboardReadAll || model->mode == AppDashboardFiltered) &&
-                model->read_overload) {
+            if((model->mode == AppDashboardReadAll || model->mode == AppDashboardFiltered) &&
+               model->read_overload) {
                 return;
             }
 

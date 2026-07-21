@@ -8,7 +8,7 @@
 #include <furi_hal.h>
 
 #define UBLOX_I2C_ADDRESS 0x42
-#define I2C_TIMEOUT_MS 20
+#define I2C_TIMEOUT_MS    20
 
 #define UBX_NAV_CLASS 0x01
 #define UBX_RXM_CLASS 0x02
@@ -28,26 +28,26 @@
 // The following are respective to a class.
 
 // ACK_CLASS
-#define UBX_ACK_ACK_MESSAGE 0x01
+#define UBX_ACK_ACK_MESSAGE        0x01
 // ACK and NAK have the same length
 #define UBX_ACK_ACK_MESSAGE_LENGTH (8 + 2)
 
 // NAV_CLASS
-#define UBX_NAV_PVT_MESSAGE 0x07
-#define UBX_NAV_PVT_MESSAGE_LENGTH (8 + 92)
-#define UBX_NAV_SAT_MESSAGE 0x35
-#define UBX_NAV_ODO_MESSAGE 0x09
-#define UBX_NAV_ODO_MESSAGE_LENGTH (8 + 20)
-#define UBX_NAV_RESETODO_MESSAGE 0x10
-#define UBX_NAV_TIMEUTC_MESSAGE 0x21
+#define UBX_NAV_PVT_MESSAGE            0x07
+#define UBX_NAV_PVT_MESSAGE_LENGTH     (8 + 92)
+#define UBX_NAV_SAT_MESSAGE            0x35
+#define UBX_NAV_ODO_MESSAGE            0x09
+#define UBX_NAV_ODO_MESSAGE_LENGTH     (8 + 20)
+#define UBX_NAV_RESETODO_MESSAGE       0x10
+#define UBX_NAV_TIMEUTC_MESSAGE        0x21
 #define UBX_NAV_TIMEUTC_MESSAGE_LENGTH (8 + 20)
 
 // CFG_CLASS
-#define UBX_CFG_PMS_MESSAGE 0x86
-#define UBX_CFG_PMS_MESSAGE_LENGTH (8 + 8)
-#define UBX_CFG_ODO_MESSAGE 0x1e
-#define UBX_CFG_ODO_MESSAGE_LENGTH (8 + 20)
-#define UBX_CFG_NAV5_MESSAGE 0x24
+#define UBX_CFG_PMS_MESSAGE         0x86
+#define UBX_CFG_PMS_MESSAGE_LENGTH  (8 + 8)
+#define UBX_CFG_ODO_MESSAGE         0x1e
+#define UBX_CFG_ODO_MESSAGE_LENGTH  (8 + 20)
+#define UBX_CFG_NAV5_MESSAGE        0x24
 #define UBX_CFG_NAV5_MESSAGE_LENGTH (8 + 36)
 /** A frame is a message sent to the GPS. This app supports u-blox 8 devices. */
 

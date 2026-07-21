@@ -46,18 +46,15 @@ static bool
     const MfClassicSectorTrailer* sec_tr =
         mf_classic_get_sector_trailer_by_sector(data, ticket_sector_number);
 
-    const uint64_t key =
-        bit_lib_bytes_to_num_be(sec_tr->key_a.data, COUNT_OF(sec_tr->key_a.data));
+    const uint64_t key = bit_lib_bytes_to_num_be(sec_tr->key_a.data, COUNT_OF(sec_tr->key_a.data));
     if(key != metromoney_1k_keys[ticket_sector_number].a) return false;
 
     FURI_LOG_D(TAG, "passed key check");
 
     // Parse data
-    const uint8_t start_block_num =
-        mf_classic_get_first_block_num_of_sector(ticket_sector_number);
+    const uint8_t start_block_num = mf_classic_get_first_block_num_of_sector(ticket_sector_number);
 
-    const uint8_t* block_start_ptr =
-        &data->block[start_block_num + ticket_block_number].data[0];
+    const uint8_t* block_start_ptr = &data->block[start_block_num + ticket_block_number].data[0];
 
     uint32_t balance = bit_lib_bytes_to_num_le(block_start_ptr, 4) - 100;
 
@@ -180,7 +177,8 @@ static void metromoney_on_enter(Metroflip* app) {
     } else {
         FURI_LOG_I(TAG, "tbilisi not loaded");
         Popup* popup = app->popup;
-        popup_set_header(popup, "Scanning...\nApply card\nto the back", 68, 30, AlignLeft, AlignTop);
+        popup_set_header(
+            popup, "Scanning...\nApply card\nto the back", 68, 30, AlignLeft, AlignTop);
         popup_set_icon(popup, 0, 3, &I_RFIDDolphinReceive_97x61);
 
         view_dispatcher_switch_to_view(app->view_dispatcher, MetroflipViewPopup);
@@ -237,7 +235,6 @@ static bool metromoney_on_event(Metroflip* app, SceneManagerEvent event) {
 }
 
 static void metromoney_on_exit(Metroflip* app) {
-
     widget_reset(app->widget);
     popup_reset(app->popup);
     metroflip_app_blink_stop(app);

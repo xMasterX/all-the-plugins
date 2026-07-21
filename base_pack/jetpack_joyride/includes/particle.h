@@ -7,7 +7,7 @@
 #include "scientist.h"
 #include "barry.h"
 
-#define PARTICLES_MAX 50
+#define PARTICLES_MAX     50
 #define PARTICLE_VELOCITY 2
 
 typedef struct {

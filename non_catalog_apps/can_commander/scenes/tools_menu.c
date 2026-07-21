@@ -43,7 +43,8 @@ void cancommander_scene_tools_menu_on_enter(void* context) {
         app);
 
     submenu_set_selected_item(
-        app->submenu, scene_manager_get_scene_state(app->scene_manager, cancommander_scene_tools_menu));
+        app->submenu,
+        scene_manager_get_scene_state(app->scene_manager, cancommander_scene_tools_menu));
 
     view_dispatcher_switch_to_view(app->view_dispatcher, AppViewSubmenu);
 }
@@ -83,4 +84,3 @@ void cancommander_scene_tools_menu_on_exit(void* context) {
     App* app = context;
     submenu_reset(app->submenu);
 }
-

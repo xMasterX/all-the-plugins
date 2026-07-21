@@ -256,8 +256,6 @@ void view_epc_alloc(UHFReaderApp* App) {
     FuriString* ReservedMem = furi_string_alloc();
     furi_string_set_str(ReservedMem, "Press Read!");
 
-    
-
     //Setting default values for the view model
     ModelEpc->User = UserMem;
     ModelEpc->Epc = Epc;

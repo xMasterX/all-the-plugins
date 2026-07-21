@@ -6,7 +6,7 @@
 #include <input/input.h>
 #include <stdlib.h>
 
-#define SCREEN_WIDTH 128
+#define SCREEN_WIDTH  128
 #define SCREEN_HEIGHT 64
 
 //AUTHOR: https://github.com/DevMilanIan

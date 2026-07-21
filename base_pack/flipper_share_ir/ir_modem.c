@@ -55,7 +55,8 @@ static inline uint32_t ir_modem_abs_diff(uint32_t a, uint32_t b) {
 static inline uint32_t ir_modem_space_to_level(uint32_t duration_us) {
     int32_t rel = (int32_t)duration_us - (int32_t)IR_MODEM_SPACE_BASE_US;
     if(rel <= 0) return 0;
-    int32_t level = (rel + (int32_t)(IR_MODEM_SPACE_STEP_US / 2)) / (int32_t)IR_MODEM_SPACE_STEP_US;
+    int32_t level =
+        (rel + (int32_t)(IR_MODEM_SPACE_STEP_US / 2)) / (int32_t)IR_MODEM_SPACE_STEP_US;
     if(level < 0) level = 0;
     if(level > (int32_t)(IR_MODEM_LEVELS - 1u)) level = (int32_t)(IR_MODEM_LEVELS - 1u);
     return (uint32_t)level;
@@ -122,9 +123,8 @@ bool ir_modem_decode(
     // Find the sync mark: first Mark whose duration is close to SYNC_MARK_US.
     size_t i = 0;
     for(; i < n_events; ++i) {
-        if(events[i].level &&
-           ir_modem_abs_diff(events[i].duration, IR_MODEM_SYNC_MARK_US) <=
-               IR_MODEM_SYNC_MARK_TOL_US) {
+        if(events[i].level && ir_modem_abs_diff(events[i].duration, IR_MODEM_SYNC_MARK_US) <=
+                                  IR_MODEM_SYNC_MARK_TOL_US) {
             break;
         }
     }

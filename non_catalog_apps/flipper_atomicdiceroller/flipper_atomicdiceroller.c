@@ -207,7 +207,8 @@ int32_t flipper_atomicdiceroller_app() {
     }
 
     uint8_t diceBuffer[64];
-    for(uint8_t i = 0; i < 64; i++) diceBuffer[i] = 0;
+    for(uint8_t i = 0; i < 64; i++)
+        diceBuffer[i] = 0;
 
     uint8_t diceBufferCounter = 0;
     uint8_t diceBufferPositionWrite = 0;

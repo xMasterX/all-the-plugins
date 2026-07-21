@@ -12,9 +12,9 @@
 
 #define SCREEN_XRES 128
 #define SCREEN_YRES 64
-#define MIN_ANGLE 0
-#define MAX_ANGLE 180
-#define FREQ 50
+#define MIN_ANGLE   0
+#define MAX_ANGLE   180
+#define FREQ        50
 
 typedef enum Mode {
     Manual = 1,

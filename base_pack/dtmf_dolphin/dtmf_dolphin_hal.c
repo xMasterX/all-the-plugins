@@ -26,7 +26,7 @@ void dtmf_dolphin_speaker_init() {
 }
 
 void dtmf_dolphin_gpio_deinit() {
-    // Disable GPIO output 
+    // Disable GPIO output
     furi_hal_gpio_init(&gpio_ext_pa6, GpioModeAnalog, GpioPullNo, GpioSpeedLow);
     furi_hal_bus_disable(FuriHalBusTIM2);
 }
@@ -42,7 +42,7 @@ void dtmf_dolphin_speaker_stop() {
 }
 
 void dtmf_dolphin_dma_init(uint32_t address, size_t size) {
-    uint32_t dma_dst = (uint32_t)&(FURI_HAL_SPEAKER_TIMER->CCR1);
+    uint32_t dma_dst = (uint32_t) & (FURI_HAL_SPEAKER_TIMER->CCR1);
 
     LL_DMA_ConfigAddresses(DMA_INSTANCE, address, dma_dst, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
     LL_DMA_SetDataLength(DMA_INSTANCE, size);

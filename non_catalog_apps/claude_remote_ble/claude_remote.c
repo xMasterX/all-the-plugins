@@ -1177,7 +1177,7 @@ static inline uint32_t dc_timeout(const ClaudeRemoteState* state) {
     if(state->dc_speed == 2) return 200;
     return 300;
 }
-#define FLASH_DURATION_TICKS 200 /* ~200ms visual feedback */
+#define FLASH_DURATION_TICKS  200 /* ~200ms visual feedback */
 #define BACKLIGHT_SLEEP_TICKS 30000 /* 30s idle before screen sleeps */
 
 /* ── Macro string sender (needs SEND_HID macro) ── */
@@ -3241,8 +3241,7 @@ static int32_t claude_remote_main(void* p) {
             state->hid_connected = furi_hal_hid_is_connected();
 #endif
             /* flush pending single-press after double-click timeout */
-            if(state->dc_pending &&
-               (furi_get_tick() - state->dc_tick) >= dc_timeout(state)) {
+            if(state->dc_pending && (furi_get_tick() - state->dc_tick) >= dc_timeout(state)) {
                 if(state->mode == ModeRemote) {
                     flush_pending(state);
                 } else if(state->mode == ModeMacros) {

@@ -27,8 +27,9 @@ bool cancommander_scene_monitor_on_event(void* context, SceneManagerEvent event)
         bool needs_periodic_refresh = false;
         bool pending = false;
         if(furi_mutex_acquire(app->mutex, FuriWaitForever) == FuriStatusOk) {
-            needs_periodic_refresh = (app->dashboard_mode == AppDashboardReverse ||
-                                      app->dashboard_mode == AppDashboardReplay);
+            needs_periodic_refresh =
+                (app->dashboard_mode == AppDashboardReverse ||
+                 app->dashboard_mode == AppDashboardReplay);
             pending = app->monitor_update_pending;
             app->monitor_update_pending = false;
             if(pending || needs_periodic_refresh) {

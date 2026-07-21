@@ -168,8 +168,7 @@ static void dcf77_about_render_callback(Canvas* canvas, void* model) {
         const size_t next = dcf77_about_next_line(canvas, about_text, pos, line, sizeof(line));
 
         if(line_index >= first_line && line_index < last_line) {
-            canvas_draw_str_aligned(
-                canvas, DCF77_ABOUT_TEXT_X, draw_y, AlignLeft, AlignTop, line);
+            canvas_draw_str_aligned(canvas, DCF77_ABOUT_TEXT_X, draw_y, AlignLeft, AlignTop, line);
             draw_y += font_params->leading_default;
         }
 
@@ -246,8 +245,8 @@ static void dcf77_tx_render_progress_bar(Canvas* const canvas, const AppFSM* app
     const uint8_t bar_x = 4U;
     const uint8_t fill_y = 58U;
     const uint8_t fill_height = 4U;
-    const bool frame_enabled =
-        app_fsm->current_signal == RadioClockSignalTest || app_fsm->tx_frame_enabled;
+    const bool frame_enabled = app_fsm->current_signal == RadioClockSignalTest ||
+                               app_fsm->tx_frame_enabled;
     uint8_t second = app_fsm->tx_progress_second;
     uint32_t elapsed_ms = 0U;
 
@@ -258,8 +257,8 @@ static void dcf77_tx_render_progress_bar(Canvas* const canvas, const AppFSM* app
         elapsed_ms = (furi_get_tick() % furi_kernel_get_tick_frequency()) * 1000U /
                      furi_kernel_get_tick_frequency();
     } else if(furi_get_tick() >= app_fsm->tx_second_start_tick) {
-        elapsed_ms =
-            (furi_get_tick() - app_fsm->tx_second_start_tick) * 1000U / furi_kernel_get_tick_frequency();
+        elapsed_ms = (furi_get_tick() - app_fsm->tx_second_start_tick) * 1000U /
+                     furi_kernel_get_tick_frequency();
     }
 
     if(second >= 60U) {
@@ -299,11 +298,7 @@ static void dcf77_tx_render_progress_bar(Canvas* const canvas, const AppFSM* app
             fill_y + fill_height - 1U);
     }
     canvas_draw_line(
-        canvas,
-        bar_x + fill_width - 1U,
-        fill_y + 1U,
-        bar_x + fill_width - 1U,
-        fill_y + 2U);
+        canvas, bar_x + fill_width - 1U, fill_y + 1U, bar_x + fill_width - 1U, fill_y + 2U);
 }
 
 static void dcf77_tx_get_display_datetime(const AppFSM* app_fsm, DateTime* dt) {
@@ -406,8 +401,7 @@ static void dcf77_tx_render_callback(Canvas* const canvas, void* model) {
         canvas_set_font(canvas, FontPrimary);
         canvas_draw_str_aligned(canvas, 64, 14, AlignCenter, AlignBottom, "Test");
         canvas_set_font(canvas, FontSecondary);
-        snprintf(
-            buffer, sizeof(buffer), "Pulse 0.1s every 0.5s");
+        snprintf(buffer, sizeof(buffer), "Pulse 0.1s every 0.5s");
         canvas_draw_str_aligned(canvas, 64, 30, AlignCenter, AlignBottom, buffer);
         snprintf(
             buffer,
@@ -529,9 +523,7 @@ void dcf77_gui_init(AppFSM* app_fsm) {
         FontPrimary,
         "DCF77 TX\n\ngithub.com/arha/\nflipper-dcf77");
     view_dispatcher_add_view(
-        app_fsm->view_dispatcher,
-        Dcf77ViewStartup,
-        widget_get_view(app_fsm->startup_widget));
+        app_fsm->view_dispatcher, Dcf77ViewStartup, widget_get_view(app_fsm->startup_widget));
 
     app_fsm->submenu = submenu_alloc();
     submenu_add_item(app_fsm->submenu, "Start", Dcf77MenuItemStart, dcf77_menu_callback, app_fsm);
@@ -540,7 +532,8 @@ void dcf77_gui_init(AppFSM* app_fsm) {
     submenu_add_item(
         app_fsm->submenu, "Advanced", Dcf77MenuItemAdvanced, dcf77_menu_callback, app_fsm);
     submenu_add_item(app_fsm->submenu, "About", Dcf77MenuItemAbout, dcf77_menu_callback, app_fsm);
-    view_dispatcher_add_view(app_fsm->view_dispatcher, Dcf77ViewMenu, submenu_get_view(app_fsm->submenu));
+    view_dispatcher_add_view(
+        app_fsm->view_dispatcher, Dcf77ViewMenu, submenu_get_view(app_fsm->submenu));
 
     app_fsm->advanced_menu = submenu_alloc();
     submenu_add_item(
@@ -572,11 +565,7 @@ void dcf77_gui_init(AppFSM* app_fsm) {
 
     app_fsm->lf_settings = variable_item_list_alloc();
     app_fsm->lf_signal_item = variable_item_list_add(
-        app_fsm->lf_settings,
-        "Signal",
-        radio_clock_visible_signal_count(),
-        NULL,
-        app_fsm);
+        app_fsm->lf_settings, "Signal", radio_clock_visible_signal_count(), NULL, app_fsm);
     variable_item_set_current_value_index(
         app_fsm->lf_signal_item, radio_clock_visible_signal_index(app_fsm->current_signal));
     variable_item_set_current_value_text(
@@ -584,7 +573,8 @@ void dcf77_gui_init(AppFSM* app_fsm) {
 
     app_fsm->lf_tx_enabled_item = variable_item_list_add(
         app_fsm->lf_settings, "LF TX enabled", 2, dcf77_lf_transmit_change_callback, app_fsm);
-    variable_item_set_current_value_index(app_fsm->lf_tx_enabled_item, app_fsm->lf_transmit_enabled ? 1 : 0);
+    variable_item_set_current_value_index(
+        app_fsm->lf_tx_enabled_item, app_fsm->lf_transmit_enabled ? 1 : 0);
     variable_item_set_current_value_text(
         app_fsm->lf_tx_enabled_item, app_fsm->lf_transmit_enabled ? "Yes" : "No");
 
@@ -598,8 +588,8 @@ void dcf77_gui_init(AppFSM* app_fsm) {
         app_fsm->lf_freq_item, dcf77_app_get_lf_freq_index(app_fsm->lf_freq));
     variable_item_set_current_value_text(app_fsm->lf_freq_item, app_fsm->lf_freq_text);
 
-    app_fsm->lf_default_freq_item = variable_item_list_add(
-        app_fsm->lf_settings, "Default frequency", 1, NULL, app_fsm);
+    app_fsm->lf_default_freq_item =
+        variable_item_list_add(app_fsm->lf_settings, "Default frequency", 1, NULL, app_fsm);
     variable_item_set_current_value_text(app_fsm->lf_default_freq_item, "");
 
     variable_item_list_set_enter_callback(
@@ -622,7 +612,8 @@ void dcf77_gui_init(AppFSM* app_fsm) {
     variable_item_set_current_value_text(app_fsm->lf_tx_ratio_y_item, app_fsm->tx_ratio_y_text);
     view_set_context(variable_item_list_get_view(app_fsm->tx_ratio_settings), app_fsm);
     view_set_input_callback(
-        variable_item_list_get_view(app_fsm->tx_ratio_settings), dcf77_tx_ratio_settings_input_callback);
+        variable_item_list_get_view(app_fsm->tx_ratio_settings),
+        dcf77_tx_ratio_settings_input_callback);
     view_dispatcher_add_view(
         app_fsm->view_dispatcher,
         Dcf77ViewTxRatioSettings,
@@ -658,18 +649,14 @@ void dcf77_gui_init(AppFSM* app_fsm) {
         variable_item_list_get_view(app_fsm->experimental_time_settings_view));
 
     app_fsm->subghz_settings = variable_item_list_alloc();
-    app_fsm->subghz_tx_item = variable_item_list_add(
-        app_fsm->subghz_settings, "SubGHz TX", 4, NULL, app_fsm);
+    app_fsm->subghz_tx_item =
+        variable_item_list_add(app_fsm->subghz_settings, "SubGHz TX", 4, NULL, app_fsm);
     app_fsm->subghz_tone_item = variable_item_list_add(
-        app_fsm->subghz_settings,
-        "FSK tone",
-        (uint8_t)dcf77_subghz_note_count(),
-        NULL,
-        app_fsm);
+        app_fsm->subghz_settings, "FSK tone", (uint8_t)dcf77_subghz_note_count(), NULL, app_fsm);
     app_fsm->subghz_band_item = variable_item_list_add(
         app_fsm->subghz_settings, "Band", app_fsm->subghz_band_count, NULL, app_fsm);
-    app_fsm->subghz_frequency_item = variable_item_list_add(
-        app_fsm->subghz_settings, "Frequency", 1, NULL, app_fsm);
+    app_fsm->subghz_frequency_item =
+        variable_item_list_add(app_fsm->subghz_settings, "Frequency", 1, NULL, app_fsm);
     app_fsm->subghz_manual_item =
         variable_item_list_add(app_fsm->subghz_settings, "KHz", 1, NULL, app_fsm);
     app_fsm->subghz_timeout_item = variable_item_list_add(
@@ -682,7 +669,8 @@ void dcf77_gui_init(AppFSM* app_fsm) {
         app_fsm->subghz_settings, dcf77_subghz_settings_enter_callback, app_fsm);
     view_set_context(variable_item_list_get_view(app_fsm->subghz_settings), app_fsm);
     view_set_input_callback(
-        variable_item_list_get_view(app_fsm->subghz_settings), dcf77_subghz_settings_input_callback);
+        variable_item_list_get_view(app_fsm->subghz_settings),
+        dcf77_subghz_settings_input_callback);
     view_dispatcher_add_view(
         app_fsm->view_dispatcher,
         Dcf77ViewSubGhzSettings,
@@ -723,17 +711,9 @@ void dcf77_gui_init(AppFSM* app_fsm) {
         NULL,
         app_fsm);
     app_fsm->debug_led_item = variable_item_list_add(
-        app_fsm->debug_settings,
-        "LED",
-        (uint8_t)dcf77_debug_led_color_count(),
-        NULL,
-        app_fsm);
+        app_fsm->debug_settings, "LED", (uint8_t)dcf77_debug_led_color_count(), NULL, app_fsm);
     app_fsm->debug_screen_item = variable_item_list_add(
-        app_fsm->debug_settings,
-        "Screen",
-        (uint8_t)dcf77_debug_screen_mode_count(),
-        NULL,
-        app_fsm);
+        app_fsm->debug_settings, "Screen", (uint8_t)dcf77_debug_screen_mode_count(), NULL, app_fsm);
     app_fsm->debug_speaker_item = variable_item_list_add(
         app_fsm->debug_settings,
         "Speaker",
@@ -754,9 +734,7 @@ void dcf77_gui_init(AppFSM* app_fsm) {
     with_view_model(
         app_fsm->gpio_rf_warning_view,
         Dcf77AppViewModel * warning_model,
-        {
-            warning_model->app_fsm = app_fsm;
-        },
+        { warning_model->app_fsm = app_fsm; },
         false);
     view_set_context(app_fsm->gpio_rf_warning_view, app_fsm);
     view_set_draw_callback(app_fsm->gpio_rf_warning_view, dcf77_gpio_rf_warning_render_callback);
@@ -769,12 +747,7 @@ void dcf77_gui_init(AppFSM* app_fsm) {
     app_fsm->tx_view = view_alloc();
     view_allocate_model(app_fsm->tx_view, ViewModelTypeLockFree, sizeof(Dcf77AppViewModel));
     with_view_model(
-        app_fsm->tx_view,
-        Dcf77AppViewModel * tx_model,
-        {
-            tx_model->app_fsm = app_fsm;
-        },
-        false);
+        app_fsm->tx_view, Dcf77AppViewModel * tx_model, { tx_model->app_fsm = app_fsm; }, false);
     view_set_context(app_fsm->tx_view, app_fsm);
     view_set_draw_callback(app_fsm->tx_view, dcf77_tx_render_callback);
     view_set_input_callback(app_fsm->tx_view, dcf77_tx_input_callback);
@@ -782,8 +755,7 @@ void dcf77_gui_init(AppFSM* app_fsm) {
     view_dispatcher_add_view(app_fsm->view_dispatcher, Dcf77ViewTx, app_fsm->tx_view);
 
     app_fsm->about_view = view_alloc();
-    view_allocate_model(
-        app_fsm->about_view, ViewModelTypeLockFree, sizeof(Dcf77AboutViewModel));
+    view_allocate_model(app_fsm->about_view, ViewModelTypeLockFree, sizeof(Dcf77AboutViewModel));
     with_view_model(
         app_fsm->about_view,
         Dcf77AboutViewModel * about_model,

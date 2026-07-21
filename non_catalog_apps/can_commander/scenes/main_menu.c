@@ -18,14 +18,18 @@ void cancommander_scene_main_menu_on_enter(void* context) {
     submenu_reset(app->submenu);
     submenu_set_header(app->submenu, "CAN Commander");
 
-    submenu_add_item(app->submenu, "Tools", MainMenuTools, cancommander_scene_main_menu_callback, app);
-    submenu_add_item(app->submenu, "Profiles", MainMenuProfiles, cancommander_scene_main_menu_callback, app);
+    submenu_add_item(
+        app->submenu, "Tools", MainMenuTools, cancommander_scene_main_menu_callback, app);
+    submenu_add_item(
+        app->submenu, "Profiles", MainMenuProfiles, cancommander_scene_main_menu_callback, app);
     submenu_add_item(
         app->submenu, "Settings", MainMenuSettings, cancommander_scene_main_menu_callback, app);
-    submenu_add_item(app->submenu, "About", MainMenuAbout, cancommander_scene_main_menu_callback, app);
+    submenu_add_item(
+        app->submenu, "About", MainMenuAbout, cancommander_scene_main_menu_callback, app);
 
     submenu_set_selected_item(
-        app->submenu, scene_manager_get_scene_state(app->scene_manager, cancommander_scene_main_menu));
+        app->submenu,
+        scene_manager_get_scene_state(app->scene_manager, cancommander_scene_main_menu));
 
     view_dispatcher_switch_to_view(app->view_dispatcher, AppViewSubmenu);
 }

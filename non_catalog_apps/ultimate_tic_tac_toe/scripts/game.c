@@ -99,7 +99,8 @@ void game_reset(GameState* game) {
         }
     }
 
-    for(int i = 0; i < 9; i++) game->boardWinner[i] = BoardWinner_TBD;
+    for(int i = 0; i < 9; i++)
+        game->boardWinner[i] = BoardWinner_TBD;
 
     game->winner = BoardWinner_TBD;
     game->playerTurn = PlayerTurn_X;

@@ -184,7 +184,8 @@ void flipper_wedge_startscreen_enter(void* context) {
 FlipperWedgeStartscreen* flipper_wedge_startscreen_alloc() {
     FlipperWedgeStartscreen* instance = malloc(sizeof(FlipperWedgeStartscreen));
     instance->view = view_alloc();
-    view_allocate_model(instance->view, ViewModelTypeLocking, sizeof(FlipperWedgeStartscreenModel));
+    view_allocate_model(
+        instance->view, ViewModelTypeLocking, sizeof(FlipperWedgeStartscreenModel));
     view_set_context(instance->view, instance);
     view_set_draw_callback(instance->view, (ViewDrawCallback)flipper_wedge_startscreen_draw);
     view_set_input_callback(instance->view, flipper_wedge_startscreen_input);
@@ -229,29 +230,17 @@ void flipper_wedge_startscreen_set_connected_status(
         true);
 }
 
-void flipper_wedge_startscreen_set_mode(
-    FlipperWedgeStartscreen* instance,
-    uint8_t mode) {
+void flipper_wedge_startscreen_set_mode(FlipperWedgeStartscreen* instance, uint8_t mode) {
     furi_assert(instance);
     with_view_model(
-        instance->view,
-        FlipperWedgeStartscreenModel * model,
-        {
-            model->mode = mode;
-        },
-        true);
+        instance->view, FlipperWedgeStartscreenModel * model, { model->mode = mode; }, true);
 }
 
 uint8_t flipper_wedge_startscreen_get_mode(FlipperWedgeStartscreen* instance) {
     furi_assert(instance);
     uint8_t mode = 0;
     with_view_model(
-        instance->view,
-        FlipperWedgeStartscreenModel * model,
-        {
-            mode = model->mode;
-        },
-        false);
+        instance->view, FlipperWedgeStartscreenModel * model, { mode = model->mode; }, false);
     return mode;
 }
 
@@ -262,15 +251,11 @@ void flipper_wedge_startscreen_set_display_state(
     with_view_model(
         instance->view,
         FlipperWedgeStartscreenModel * model,
-        {
-            model->display_state = state;
-        },
+        { model->display_state = state; },
         true);
 }
 
-void flipper_wedge_startscreen_set_status_text(
-    FlipperWedgeStartscreen* instance,
-    const char* text) {
+void flipper_wedge_startscreen_set_status_text(FlipperWedgeStartscreen* instance, const char* text) {
     furi_assert(instance);
     with_view_model(
         instance->view,
@@ -285,9 +270,7 @@ void flipper_wedge_startscreen_set_status_text(
         true);
 }
 
-void flipper_wedge_startscreen_set_uid_text(
-    FlipperWedgeStartscreen* instance,
-    const char* text) {
+void flipper_wedge_startscreen_set_uid_text(FlipperWedgeStartscreen* instance, const char* text) {
     furi_assert(instance);
     with_view_model(
         instance->view,

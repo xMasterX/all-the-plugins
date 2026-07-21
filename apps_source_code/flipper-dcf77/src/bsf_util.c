@@ -30,7 +30,8 @@ void set_bsf_timecode(
     pair_timecode_set_weighted(dest, 43U, minute, 2U, 1U);
     pair_timecode_set_weighted(dest, 44U, hour, 16U, 8U);
     pair_timecode_set_weighted(dest, 45U, hour, 4U, 2U);
-    pair_timecode_set_bits(dest, 46U, (hour & 1U) != 0U, pair_timecode_even_parity_bits(dest, 41U, 45U));
+    pair_timecode_set_bits(
+        dest, 46U, (hour & 1U) != 0U, pair_timecode_even_parity_bits(dest, 41U, 45U));
     pair_timecode_set_weighted(dest, 47U, day, 16U, 8U);
     pair_timecode_set_weighted(dest, 48U, day, 4U, 2U);
     pair_timecode_set_bits(dest, 49U, (day & 1U) != 0U, (weekday & 4U) != 0U);
@@ -40,7 +41,8 @@ void set_bsf_timecode(
     pair_timecode_set_weighted(dest, 53U, year, 64U, 32U);
     pair_timecode_set_weighted(dest, 54U, year, 16U, 8U);
     pair_timecode_set_weighted(dest, 55U, year, 4U, 2U);
-    pair_timecode_set_bits(dest, 56U, (year & 1U) != 0U, pair_timecode_even_parity_bits(dest, 47U, 55U));
+    pair_timecode_set_bits(
+        dest, 56U, (year & 1U) != 0U, pair_timecode_even_parity_bits(dest, 47U, 55U));
     pair_timecode_set_bits(dest, 57U, false, leap_second_warning);
     pair_timecode_set_bits(dest, 58U, false, dst_active);
 }

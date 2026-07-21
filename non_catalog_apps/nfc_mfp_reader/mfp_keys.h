@@ -25,4 +25,3 @@ uint8_t mfp_sector_count(MfpCardSize size);
 /** Load dictionary from file into a flat key buffer.
  *  Allocates *out_buf (caller must free). Returns key count. */
 uint32_t mfp_keys_load_dict(Storage* storage, const char* path, uint8_t** out_buf);
-

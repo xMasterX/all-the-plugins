@@ -4,8 +4,8 @@
 
 #include <lib/subghz/subghz_tx_rx_worker.h>
 
-#include <applications/services/power/power_service/power.h>    // otg
-#include <applications/services/notification/notification.h>    // NotificationApp
+#include <applications/services/power/power_service/power.h> // otg
+#include <applications/services/notification/notification.h> // NotificationApp
 #include <notification/notification_messages.h>
 #include <lib/subghz/devices/devices.h>
 #include <lib/subghz/devices/cc1101_configs.h>
@@ -20,7 +20,7 @@
 #define SUBGHZ_MESSAGE_LEN_MAX 60
 
 #define SUBGHZ_DEVICE_CC1101_INT_NAME "cc1101_int"
-#define RECORD_POWER "power"
+#define RECORD_POWER                  "power"
 typedef struct Power Power;
 
 struct SubGhzChatWorker {
@@ -148,7 +148,7 @@ uint8_t ss_subghz_init() {
 
     // FURI_LOG_I(TAG, "ss_subghz_init: subghz_devices_init");
     subghz_devices_init();
-    
+
     // FURI_LOG_I(TAG, "ss_subghz_init: subghz_devices_get_by_name");
     const SubGhzDevice* device = subghz_devices_get_by_name(SUBGHZ_DEVICE_CC1101_INT_NAME);
     // FURI_LOG_I(TAG, "ss_subghz_init: check if the device is connected");
@@ -160,7 +160,7 @@ uint8_t ss_subghz_init() {
 
     // FURI_LOG_I(TAG, "ss_subghz_init: furi_message_queue_alloc");
     subghz_chat->event_queue = furi_message_queue_alloc(80, sizeof(SubGhzChatEvent));
-    
+
     // FURI_LOG_I(TAG, "ss_subghz_init: subghz_tx_rx_worker_alloc");
     furi_assert(subghz_chat);
     subghz_chat->subghz_txrx = subghz_tx_rx_worker_alloc();
@@ -172,9 +172,9 @@ uint8_t ss_subghz_init() {
         subghz_tx_rx_worker_set_callback_have_read(
             subghz_chat->subghz_txrx, ss_subghz_rx_callback, subghz_chat);
     }
-    
+
     furi_hal_power_suppress_charge_enter();
-    
+
     FURI_LOG_I(TAG, "ss_subghz_init: SubGhz init done");
     return 0;
 }

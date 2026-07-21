@@ -19,15 +19,12 @@
 #include <applications/services/locale/locale.h>
 #include <datetime.h>
 #include <stdint.h>
-#define ST25TB_UID_SIZE (8U)
-#define ST25TB_TOTAL_BYTES 64
+#define ST25TB_UID_SIZE         (8U)
+#define ST25TB_TOTAL_BYTES      64
 #define DISTRIBUTION_DATA_START 0
-#define DISTRIBUTION_DATA_END 20
-
-
+#define DISTRIBUTION_DATA_END   20
 
 #define TAG "Metroflip:Scene:Star"
-
 
 typedef struct {
     int outer_key; // e.g., 0x000
@@ -61,18 +58,19 @@ InterticEntry FRA_OrganizationalAuthority_Contract_Provider[] = {
     {0x917, 7, "Saint-Nazaire", "Stran", NULL},
 };
 
-#define NUM_ENTRIES (sizeof(FRA_OrganizationalAuthority_Contract_Provider)/sizeof(FRA_OrganizationalAuthority_Contract_Provider[0]))
+#define NUM_ENTRIES                                          \
+    (sizeof(FRA_OrganizationalAuthority_Contract_Provider) / \
+     sizeof(FRA_OrganizationalAuthority_Contract_Provider[0]))
 
 InterticEntry* find_entry(int outer, int inner) {
-    for (size_t i = 0; i < NUM_ENTRIES; i++) {
-        if (FRA_OrganizationalAuthority_Contract_Provider[i].outer_key == outer &&
-            FRA_OrganizationalAuthority_Contract_Provider[i].inner_key == inner) {
+    for(size_t i = 0; i < NUM_ENTRIES; i++) {
+        if(FRA_OrganizationalAuthority_Contract_Provider[i].outer_key == outer &&
+           FRA_OrganizationalAuthority_Contract_Provider[i].inner_key == inner) {
             return &FRA_OrganizationalAuthority_Contract_Provider[i];
         }
     }
     return NULL; // not found
 }
-
 
 uint8_t st25tb_get_block_byte(const St25tbData* data, size_t block_index, uint8_t byte_index) {
     if(block_index >= st25tb_get_block_count(data->type) || byte_index > 3) return 0;
@@ -80,33 +78,41 @@ uint8_t st25tb_get_block_byte(const St25tbData* data, size_t block_index, uint8_
     return (block >> (8 * (3 - byte_index))) & 0xFF;
 }
 
-void big_endian_version(uint8_t* dst, const St25tbData* data, size_t total_bytes) { // god I hate endianess
+void big_endian_version(
+    uint8_t* dst,
+    const St25tbData* data,
+    size_t total_bytes) { // god I hate endianess
     for(size_t i = 0; i < total_bytes; i += 4) {
-        uint8_t b0 = st25tb_get_block_byte(data, i/4, 0);
-        uint8_t b1 = st25tb_get_block_byte(data, i/4, 1);
-        uint8_t b2 = st25tb_get_block_byte(data, i/4, 2);
-        uint8_t b3 = st25tb_get_block_byte(data, i/4, 3);
-        dst[i]     = b3;
+        uint8_t b0 = st25tb_get_block_byte(data, i / 4, 0);
+        uint8_t b1 = st25tb_get_block_byte(data, i / 4, 1);
+        uint8_t b2 = st25tb_get_block_byte(data, i / 4, 2);
+        uint8_t b3 = st25tb_get_block_byte(data, i / 4, 3);
+        dst[i] = b3;
         dst[i + 1] = b2;
         dst[i + 2] = b1;
         dst[i + 3] = b0;
     }
-
 }
 
 // Converts selected bytes to a bit string
-static void bytes_to_bit_string(const uint8_t* buffer, size_t start_byte, size_t end_byte, char* bit_str) {
+static void
+    bytes_to_bit_string(const uint8_t* buffer, size_t start_byte, size_t end_byte, char* bit_str) {
     char* dst = bit_str;
     for(size_t i = start_byte; i <= end_byte; i++) {
         for(int bit = 7; bit >= 0; bit--) {
-            *dst++ = (buffer[i] & (1 << bit)) ? '1': '0';
+            *dst++ = (buffer[i] & (1 << bit)) ? '1' : '0';
         }
     }
     *dst = '\0';
 }
 
 // Extract arbitrary bits from buffer using a string of bits
-uint64_t extract_bits(const uint8_t* buffer, size_t start_byte, size_t end_byte, size_t start_bit, size_t num_bits) {
+uint64_t extract_bits(
+    const uint8_t* buffer,
+    size_t start_byte,
+    size_t end_byte,
+    size_t start_bit,
+    size_t num_bits) {
     size_t bytes_count = end_byte - start_byte + 1;
     char bit_string[bytes_count * 8 + 1];
     bytes_to_bit_string(buffer, start_byte, end_byte, bit_string);
@@ -119,9 +125,14 @@ uint64_t extract_bits(const uint8_t* buffer, size_t start_byte, size_t end_byte,
     return val;
 }
 
-void append_bytes(uint8_t* dest, size_t* dest_size, size_t dest_max,
-                  const uint8_t* src, size_t src_size,
-                  size_t start, size_t length) {
+void append_bytes(
+    uint8_t* dest,
+    size_t* dest_size,
+    size_t dest_max,
+    const uint8_t* src,
+    size_t src_size,
+    size_t start,
+    size_t length) {
     if(start >= src_size) return; // invalid start
     if(start + length > src_size) length = src_size - start; // clamp length
     if(*dest_size + length > dest_max) length = dest_max - *dest_size; // clamp to dest space
@@ -155,10 +166,13 @@ void Describe_Usage_1(uint8_t* UsageAB, uint64_t ContractMediumEndDate, FuriStri
 
     furi_string_cat_printf(parsed_data, "\n  EventDateStamp: ");
     parse_timestamp(ContractMediumEndDate - EventDateStamp, parsed_data);
-    furi_string_cat_printf(parsed_data, "\n  EventTimeStamp: %02llu:%02llu",
-                           EventTimeStamp / 60, EventTimeStamp % 60);
-    furi_string_cat_printf(parsed_data, "\n  EventValidityTimeFirstStamp:\n  %02llu:%02llu\n",
-                           EventValidityTimeFirstStamp / 60, EventValidityTimeFirstStamp % 60);
+    furi_string_cat_printf(
+        parsed_data, "\n  EventTimeStamp: %02llu:%02llu", EventTimeStamp / 60, EventTimeStamp % 60);
+    furi_string_cat_printf(
+        parsed_data,
+        "\n  EventValidityTimeFirstStamp:\n  %02llu:%02llu\n",
+        EventValidityTimeFirstStamp / 60,
+        EventValidityTimeFirstStamp % 60);
 }
 
 void Describe_Usage_1_1(uint8_t* UsageAB, uint64_t ContractMediumEndDate, FuriString* parsed_data) {
@@ -174,16 +188,19 @@ void Describe_Usage_1_1(uint8_t* UsageAB, uint64_t ContractMediumEndDate, FuriSt
 
     furi_string_cat_printf(parsed_data, "\n  DateStamp: ");
     parse_timestamp(ContractMediumEndDate - EventDateStamp, parsed_data);
-    furi_string_cat_printf(parsed_data, "\n  TimeStamp: %02llu:%02llu\n",
-                           EventTimeStamp / 60, EventTimeStamp % 60);
+    furi_string_cat_printf(
+        parsed_data, "\n  TimeStamp: %02llu:%02llu\n", EventTimeStamp / 60, EventTimeStamp % 60);
     furi_string_cat_printf(parsed_data, "\n  Code/Nature: 0x%llx", EventCode_Nature);
     furi_string_cat_printf(parsed_data, "\n  Code/Type: 0x%llx", EventCode_Type);
     furi_string_cat_printf(parsed_data, "\n  GeoVehicleId: %llu", EventGeoVehicleId);
     furi_string_cat_printf(parsed_data, "\n  GeoRouteId: %llu", EventGeoRouteId);
     furi_string_cat_printf(parsed_data, "\n  Direction: %llu", EventGeoRoute_Direction);
     furi_string_cat_printf(parsed_data, "\n  Passengers: %llu", EventCountPassengers_mb);
-    furi_string_cat_printf(parsed_data, "\n  ValidityTimeFirstStamp:\n      %02llu:%02llu\n",
-                           EventValidityTimeFirstStamp / 60, EventValidityTimeFirstStamp % 60);
+    furi_string_cat_printf(
+        parsed_data,
+        "\n  ValidityTimeFirstStamp:\n      %02llu:%02llu\n",
+        EventValidityTimeFirstStamp / 60,
+        EventValidityTimeFirstStamp % 60);
 }
 
 void Describe_Usage_2(uint8_t* UsageAB, uint64_t ContractMediumEndDate, FuriString* parsed_data) {
@@ -198,15 +215,18 @@ void Describe_Usage_2(uint8_t* UsageAB, uint64_t ContractMediumEndDate, FuriStri
 
     furi_string_cat_printf(parsed_data, "\n  DateStamp: ");
     parse_timestamp(ContractMediumEndDate - EventDateStamp, parsed_data);
-    furi_string_cat_printf(parsed_data, "\n  TimeStamp: %02llu:%02llu",
-                           EventTimeStamp / 60, EventTimeStamp % 60);
+    furi_string_cat_printf(
+        parsed_data, "\n  TimeStamp: %02llu:%02llu", EventTimeStamp / 60, EventTimeStamp % 60);
     furi_string_cat_printf(parsed_data, "\n  Code/Nature: 0x%llx", EventCode_Nature);
     furi_string_cat_printf(parsed_data, "\n  Code/Type: 0x%llx", EventCode_Type);
     furi_string_cat_printf(parsed_data, "\n  GeoRouteId: %llu", EventGeoRouteId);
     furi_string_cat_printf(parsed_data, "\n  Direction: %llu", EventGeoRoute_Direction);
     furi_string_cat_printf(parsed_data, "\n  Passengers: %llu", EventCountPassengers_mb);
-    furi_string_cat_printf(parsed_data, "\n  ValidityTimeFirstStamp:\n     %02llu:%02llu\n",
-                           EventValidityTimeFirstStamp / 60, EventValidityTimeFirstStamp % 60);
+    furi_string_cat_printf(
+        parsed_data,
+        "\n  ValidityTimeFirstStamp:\n     %02llu:%02llu\n",
+        EventValidityTimeFirstStamp / 60,
+        EventValidityTimeFirstStamp % 60);
 }
 
 void Describe_Usage_1_2(uint8_t* UsageAB, uint64_t ContractMediumEndDate, FuriString* parsed_data) {
@@ -223,14 +243,23 @@ void Describe_Usage_1_2(uint8_t* UsageAB, uint64_t ContractMediumEndDate, FuriSt
 
     furi_string_cat_printf(parsed_data, "\n  DateStamp: ");
     parse_timestamp(ContractMediumEndDate - EventDateStamp, parsed_data);
-    furi_string_cat_printf(parsed_data, "\n  TimeStamp: %02llu:%02llu", EventTimeStamp / 60, EventTimeStamp % 60);
+    furi_string_cat_printf(
+        parsed_data, "\n  TimeStamp: %02llu:%02llu", EventTimeStamp / 60, EventTimeStamp % 60);
     furi_string_cat_printf(parsed_data, "\n  Count: %llu", EventCount_mb);
 
     // Proper switch for EventCode_Nature_mb
     switch(EventCode_Nature_mb) {
-        case 0x4: furi_string_cat_printf(parsed_data, "\n  Code/Nature:\n0x%llx (urban bus)", EventCode_Nature_mb); break;
-        case 0x1: furi_string_cat_printf(parsed_data, "\n  Code/Nature:\n0x%llx (tramway)", EventCode_Nature_mb); break;
-        default:  furi_string_cat_printf(parsed_data, "\n  Code/Nature:\n0x%llx (?)", EventCode_Nature_mb); break;
+    case 0x4:
+        furi_string_cat_printf(
+            parsed_data, "\n  Code/Nature:\n0x%llx (urban bus)", EventCode_Nature_mb);
+        break;
+    case 0x1:
+        furi_string_cat_printf(
+            parsed_data, "\n  Code/Nature:\n0x%llx (tramway)", EventCode_Nature_mb);
+        break;
+    default:
+        furi_string_cat_printf(parsed_data, "\n  Code/Nature:\n0x%llx (?)", EventCode_Nature_mb);
+        break;
     }
 
     furi_string_cat_printf(parsed_data, "\n  Code/Type: 0x%llu", EventCode_Type_mb);
@@ -238,8 +267,11 @@ void Describe_Usage_1_2(uint8_t* UsageAB, uint64_t ContractMediumEndDate, FuriSt
     furi_string_cat_printf(parsed_data, "\n  GeoRouteId: %llu", EventGeoRouteId);
     furi_string_cat_printf(parsed_data, "\n  Direction: %llu", EventGeoRoute_Direction);
     furi_string_cat_printf(parsed_data, "\n  Passengers: %llu", EventCountPassengers_mb);
-    furi_string_cat_printf(parsed_data, "\n  ValidityTimeFirstStamp: %02llu:%02llu\n",
-                           EventValidityTimeFirstStamp / 60, EventValidityTimeFirstStamp % 60);
+    furi_string_cat_printf(
+        parsed_data,
+        "\n  ValidityTimeFirstStamp: %02llu:%02llu\n",
+        EventValidityTimeFirstStamp / 60,
+        EventValidityTimeFirstStamp % 60);
 }
 
 void Describe_Usage_3(uint8_t* UsageAB, uint64_t ContractMediumEndDate, FuriString* parsed_data) {
@@ -249,10 +281,13 @@ void Describe_Usage_3(uint8_t* UsageAB, uint64_t ContractMediumEndDate, FuriStri
 
     furi_string_cat_printf(parsed_data, "\n  EventDateStamp: ");
     parse_timestamp(ContractMediumEndDate - EventDateStamp, parsed_data);
-    furi_string_cat_printf(parsed_data, "\n  EventTimeStamp: %02llu:%02llu",
-                           EventTimeStamp / 60, EventTimeStamp % 60);
-    furi_string_cat_printf(parsed_data, "\n  EventValidityTimeFirstStamp:\n    %02llu:%02llu\n",
-                           EventValidityTimeFirstStamp / 60, EventValidityTimeFirstStamp % 60);
+    furi_string_cat_printf(
+        parsed_data, "\n  EventTimeStamp: %02llu:%02llu", EventTimeStamp / 60, EventTimeStamp % 60);
+    furi_string_cat_printf(
+        parsed_data,
+        "\n  EventValidityTimeFirstStamp:\n    %02llu:%02llu\n",
+        EventValidityTimeFirstStamp / 60,
+        EventValidityTimeFirstStamp % 60);
 }
 
 void Describe_Usage_4(uint8_t* UsageAB, uint64_t ContractMediumEndDate, FuriString* parsed_data) {
@@ -262,10 +297,13 @@ void Describe_Usage_4(uint8_t* UsageAB, uint64_t ContractMediumEndDate, FuriStri
 
     furi_string_cat_printf(parsed_data, "\n  EventDateStamp: ");
     parse_timestamp(ContractMediumEndDate - EventDateStamp, parsed_data);
-    furi_string_cat_printf(parsed_data, "\n  EventTimeStamp: %02llu:%02llu",
-                           EventTimeStamp / 60, EventTimeStamp % 60);
-    furi_string_cat_printf(parsed_data, "\n  EventValidityTimeFirstStamp:\n   %02llu:%02llu\n",
-                           EventValidityTimeFirstStamp / 60, EventValidityTimeFirstStamp % 60);
+    furi_string_cat_printf(
+        parsed_data, "\n  EventTimeStamp: %02llu:%02llu", EventTimeStamp / 60, EventTimeStamp % 60);
+    furi_string_cat_printf(
+        parsed_data,
+        "\n  EventValidityTimeFirstStamp:\n   %02llu:%02llu\n",
+        EventValidityTimeFirstStamp / 60,
+        EventValidityTimeFirstStamp % 60);
 }
 
 static void intertic_format_uid(const St25tbData* data, char* out, size_t out_size) {
@@ -281,7 +319,8 @@ static bool intertic_display_card_view(const St25tbData* data, Metroflip* app, b
     // Get distribution data
     uint8_t big_endian_file_buffer[64];
     big_endian_version(big_endian_file_buffer, data, ST25TB_TOTAL_BYTES);
-    uint64_t PID = extract_bits(big_endian_file_buffer, DISTRIBUTION_DATA_START, DISTRIBUTION_DATA_END, 27, 5);
+    uint64_t PID = extract_bits(
+        big_endian_file_buffer, DISTRIBUTION_DATA_START, DISTRIBUTION_DATA_END, 27, 5);
 
     uint8_t distributionData[20];
     size_t distributionData_size = 0;
@@ -297,61 +336,171 @@ static bool intertic_display_card_view(const St25tbData* data, Metroflip* app, b
     size_t reloading1_size = 0;
 
     switch(PID) {
-        case 0x10:
-            FURI_LOG_I(TAG, "PID 0x10");
-            append_bytes(distributionData, &distributionData_size, sizeof(distributionData), big_endian_file_buffer, sizeof(big_endian_file_buffer), 4, 8);
-            append_bytes(distributionData, &distributionData_size, sizeof(distributionData), big_endian_file_buffer, sizeof(big_endian_file_buffer), 0, 3);
-            append_bytes(usageA, &usageA_size, sizeof(usageA), big_endian_file_buffer, sizeof(big_endian_file_buffer), 12, 8);
-            append_bytes(reloading1, &reloading1_size, sizeof(reloading1), big_endian_file_buffer, sizeof(big_endian_file_buffer), 20, 1);
-            append_bytes(counter1, &counter1_size, sizeof(counter1), big_endian_file_buffer, sizeof(big_endian_file_buffer), 21, 3);
-            append_bytes(SWAP, &SWAP_size, sizeof(SWAP), big_endian_file_buffer, sizeof(big_endian_file_buffer), 24, 4);
-            append_bytes(usageA, &usageA_size, sizeof(usageA), big_endian_file_buffer, sizeof(big_endian_file_buffer), 28, 12);
-            append_bytes(usageB, &usageB_size, sizeof(usageB), big_endian_file_buffer, sizeof(big_endian_file_buffer), 40, 20);
-            break;
-        case 0x11 | 0x19:
-            FURI_LOG_I(TAG, "PID 0x11|0x19");
-            append_bytes(distributionData, &distributionData_size, sizeof(distributionData), big_endian_file_buffer, sizeof(big_endian_file_buffer), 4, 16);
-            append_bytes(distributionData, &distributionData_size, sizeof(distributionData), big_endian_file_buffer, sizeof(big_endian_file_buffer), 0, 3);
-            append_bytes(reloading1, &reloading1_size, sizeof(reloading1), big_endian_file_buffer, sizeof(big_endian_file_buffer), 20, 1);
-            append_bytes(counter1, &counter1_size, sizeof(counter1), big_endian_file_buffer, sizeof(big_endian_file_buffer), 21, 3);
-            append_bytes(SWAP, &SWAP_size, sizeof(SWAP), big_endian_file_buffer, sizeof(big_endian_file_buffer), 24, 4);
-            append_bytes(usageA, &usageA_size, sizeof(usageA), big_endian_file_buffer, sizeof(big_endian_file_buffer), 28, 16);
-            append_bytes(usageB, &usageB_size, sizeof(usageB), big_endian_file_buffer, sizeof(big_endian_file_buffer), 44, 16);
-            break;
-        default: {
-            FURI_LOG_I(TAG, "Unknown PID");
-            /* Main still displayed the UID and the raw PID for unknown
+    case 0x10:
+        FURI_LOG_I(TAG, "PID 0x10");
+        append_bytes(
+            distributionData,
+            &distributionData_size,
+            sizeof(distributionData),
+            big_endian_file_buffer,
+            sizeof(big_endian_file_buffer),
+            4,
+            8);
+        append_bytes(
+            distributionData,
+            &distributionData_size,
+            sizeof(distributionData),
+            big_endian_file_buffer,
+            sizeof(big_endian_file_buffer),
+            0,
+            3);
+        append_bytes(
+            usageA,
+            &usageA_size,
+            sizeof(usageA),
+            big_endian_file_buffer,
+            sizeof(big_endian_file_buffer),
+            12,
+            8);
+        append_bytes(
+            reloading1,
+            &reloading1_size,
+            sizeof(reloading1),
+            big_endian_file_buffer,
+            sizeof(big_endian_file_buffer),
+            20,
+            1);
+        append_bytes(
+            counter1,
+            &counter1_size,
+            sizeof(counter1),
+            big_endian_file_buffer,
+            sizeof(big_endian_file_buffer),
+            21,
+            3);
+        append_bytes(
+            SWAP,
+            &SWAP_size,
+            sizeof(SWAP),
+            big_endian_file_buffer,
+            sizeof(big_endian_file_buffer),
+            24,
+            4);
+        append_bytes(
+            usageA,
+            &usageA_size,
+            sizeof(usageA),
+            big_endian_file_buffer,
+            sizeof(big_endian_file_buffer),
+            28,
+            12);
+        append_bytes(
+            usageB,
+            &usageB_size,
+            sizeof(usageB),
+            big_endian_file_buffer,
+            sizeof(big_endian_file_buffer),
+            40,
+            20);
+        break;
+    case 0x11 | 0x19:
+        FURI_LOG_I(TAG, "PID 0x11|0x19");
+        append_bytes(
+            distributionData,
+            &distributionData_size,
+            sizeof(distributionData),
+            big_endian_file_buffer,
+            sizeof(big_endian_file_buffer),
+            4,
+            16);
+        append_bytes(
+            distributionData,
+            &distributionData_size,
+            sizeof(distributionData),
+            big_endian_file_buffer,
+            sizeof(big_endian_file_buffer),
+            0,
+            3);
+        append_bytes(
+            reloading1,
+            &reloading1_size,
+            sizeof(reloading1),
+            big_endian_file_buffer,
+            sizeof(big_endian_file_buffer),
+            20,
+            1);
+        append_bytes(
+            counter1,
+            &counter1_size,
+            sizeof(counter1),
+            big_endian_file_buffer,
+            sizeof(big_endian_file_buffer),
+            21,
+            3);
+        append_bytes(
+            SWAP,
+            &SWAP_size,
+            sizeof(SWAP),
+            big_endian_file_buffer,
+            sizeof(big_endian_file_buffer),
+            24,
+            4);
+        append_bytes(
+            usageA,
+            &usageA_size,
+            sizeof(usageA),
+            big_endian_file_buffer,
+            sizeof(big_endian_file_buffer),
+            28,
+            16);
+        append_bytes(
+            usageB,
+            &usageB_size,
+            sizeof(usageB),
+            big_endian_file_buffer,
+            sizeof(big_endian_file_buffer),
+            44,
+            16);
+        break;
+    default: {
+        FURI_LOG_I(TAG, "Unknown PID");
+        /* Main still displayed the UID and the raw PID for unknown
                product types - keep that information visible */
-            View* view = metroflip_card_view_alloc(app);
-            metroflip_card_view_set_title(view, "Intertic");
+        View* view = metroflip_card_view_alloc(app);
+        metroflip_card_view_set_title(view, "Intertic");
 
-            char val[METROFLIP_CARD_VIEW_VALUE_LEN];
-            uint8_t p = metroflip_card_view_add_page(view, "Card Info");
+        char val[METROFLIP_CARD_VIEW_VALUE_LEN];
+        uint8_t p = metroflip_card_view_add_page(view, "Card Info");
 
-            intertic_format_uid(data, val, sizeof(val));
-            metroflip_card_view_add_field(view, p, "UID", val, false);
+        intertic_format_uid(data, val, sizeof(val));
+        metroflip_card_view_add_field(view, p, "UID", val, false);
 
-            snprintf(val, sizeof(val), "0x%02llX", PID);
-            metroflip_card_view_add_field(view, p, "Unknown PID", val, false);
+        snprintf(val, sizeof(val), "0x%02llX", PID);
+        metroflip_card_view_add_field(view, p, "Unknown PID", val, false);
 
-            if(from_file) {
-                metroflip_card_view_set_delete(view, true);
-            } else {
-                metroflip_card_view_set_save(view, true);
-            }
-
-            metroflip_card_view_show(app);
-            return true;
+        if(from_file) {
+            metroflip_card_view_set_delete(view, true);
+        } else {
+            metroflip_card_view_set_save(view, true);
         }
+
+        metroflip_card_view_show(app);
+        return true;
+    }
     }
 
-    uint64_t countryISOCode = extract_bits(distributionData, DISTRIBUTION_DATA_START, sizeof(distributionData), 0, 12);
+    uint64_t countryISOCode =
+        extract_bits(distributionData, DISTRIBUTION_DATA_START, sizeof(distributionData), 0, 12);
     if(countryISOCode != 0x250) return false; // FRANCE
 
-    uint64_t organizationalAuthority = extract_bits(distributionData, DISTRIBUTION_DATA_START, sizeof(distributionData), 12, 12);
-    uint64_t contractApplicationVersionNumber = extract_bits(distributionData, DISTRIBUTION_DATA_START, sizeof(distributionData), 24, 6);
-    uint64_t contractProvider = extract_bits(distributionData, DISTRIBUTION_DATA_START, sizeof(distributionData), 30, 8);
-    uint64_t ContractMediumEndDate = extract_bits(distributionData, DISTRIBUTION_DATA_START, sizeof(distributionData), 54, 14);
+    uint64_t organizationalAuthority =
+        extract_bits(distributionData, DISTRIBUTION_DATA_START, sizeof(distributionData), 12, 12);
+    uint64_t contractApplicationVersionNumber =
+        extract_bits(distributionData, DISTRIBUTION_DATA_START, sizeof(distributionData), 24, 6);
+    uint64_t contractProvider =
+        extract_bits(distributionData, DISTRIBUTION_DATA_START, sizeof(distributionData), 30, 8);
+    uint64_t ContractMediumEndDate =
+        extract_bits(distributionData, DISTRIBUTION_DATA_START, sizeof(distributionData), 54, 14);
 
     InterticEntry* entry = find_entry(organizationalAuthority, contractProvider);
 
@@ -458,8 +607,7 @@ static bool intertic_display_card_view(const St25tbData* data, Metroflip* app, b
                 metroflip_card_view_add_field(view, p2, "Direction", val, false);
                 snprintf(val, sizeof(val), "%llu", passengers);
                 metroflip_card_view_add_field(view, p2, "Passengers", val, false);
-                snprintf(
-                    val, sizeof(val), "%02llu:%02llu", validity / 60, validity % 60);
+                snprintf(val, sizeof(val), "%02llu:%02llu", validity / 60, validity % 60);
                 metroflip_card_view_add_field(view, p2, "Valid From", val, false);
 
             } else if(strcmp(usage_variant, "_1_2") == 0) {
@@ -476,8 +624,10 @@ static bool intertic_display_card_view(const St25tbData* data, Metroflip* app, b
                 metroflip_card_view_add_field(view, p, "Count", val, false);
 
                 const char* nature_str = "?";
-                if(nature == 0x4) nature_str = "Urban Bus";
-                else if(nature == 0x1) nature_str = "Tramway";
+                if(nature == 0x4)
+                    nature_str = "Urban Bus";
+                else if(nature == 0x1)
+                    nature_str = "Tramway";
                 snprintf(val, sizeof(val), "0x%llx (%s)", nature, nature_str);
                 metroflip_card_view_add_field(view, p, "Mode", val, false);
 
@@ -495,8 +645,7 @@ static bool intertic_display_card_view(const St25tbData* data, Metroflip* app, b
                 metroflip_card_view_add_field(view, p2, "Direction", val, false);
                 snprintf(val, sizeof(val), "%llu", passengers);
                 metroflip_card_view_add_field(view, p2, "Passengers", val, false);
-                snprintf(
-                    val, sizeof(val), "%02llu:%02llu", validity / 60, validity % 60);
+                snprintf(val, sizeof(val), "%02llu:%02llu", validity / 60, validity % 60);
                 metroflip_card_view_add_field(view, p2, "Valid From", val, false);
 
             } else if(strcmp(usage_variant, "_2") == 0) {
@@ -519,27 +668,23 @@ static bool intertic_display_card_view(const St25tbData* data, Metroflip* app, b
                 metroflip_card_view_add_field(view, p2, "Direction", val, false);
                 snprintf(val, sizeof(val), "%llu", passengers);
                 metroflip_card_view_add_field(view, p2, "Passengers", val, false);
-                snprintf(
-                    val, sizeof(val), "%02llu:%02llu", validity / 60, validity % 60);
+                snprintf(val, sizeof(val), "%02llu:%02llu", validity / 60, validity % 60);
                 metroflip_card_view_add_field(view, p2, "Valid From", val, false);
 
             } else if(strcmp(usage_variant, "_3") == 0) {
                 uint64_t validity = extract_bits(usage_buf, 0, 20, 48, 11);
-                snprintf(
-                    val, sizeof(val), "%02llu:%02llu", validity / 60, validity % 60);
+                snprintf(val, sizeof(val), "%02llu:%02llu", validity / 60, validity % 60);
                 metroflip_card_view_add_field(view, p, "Valid From", val, false);
 
             } else if(strcmp(usage_variant, "_4") == 0) {
                 uint64_t validity = extract_bits(usage_buf, 0, 20, 84, 11);
-                snprintf(
-                    val, sizeof(val), "%02llu:%02llu", validity / 60, validity % 60);
+                snprintf(val, sizeof(val), "%02llu:%02llu", validity / 60, validity % 60);
                 metroflip_card_view_add_field(view, p, "Valid From", val, false);
 
             } else {
                 /* "_1" and unknown variants - main's Describe_Usage_1 fallback */
                 uint64_t validity = extract_bits(usage_buf, 0, 20, 86, 11);
-                snprintf(
-                    val, sizeof(val), "%02llu:%02llu", validity / 60, validity % 60);
+                snprintf(val, sizeof(val), "%02llu:%02llu", validity / 60, validity % 60);
                 metroflip_card_view_add_field(view, p, "Valid From", val, false);
             }
         }
@@ -556,7 +701,6 @@ static bool intertic_display_card_view(const St25tbData* data, Metroflip* app, b
     return true;
 }
 
-
 static NfcCommand intertic_poller_callback(NfcGenericEvent event, void* context) {
     furi_assert(context);
     furi_assert(event.event_data);
@@ -568,8 +712,7 @@ static NfcCommand intertic_poller_callback(NfcGenericEvent event, void* context)
     if(st25tb_event->type == St25tbPollerEventTypeRequestMode) {
         st25tb_event->data->mode_request.mode = St25tbPollerModeRead;
     } else if(st25tb_event->type == St25tbPollerEventTypeSuccess) {
-        nfc_device_set_data(
-            app->nfc_device, NfcProtocolSt25tb, nfc_poller_get_data(app->poller));
+        nfc_device_set_data(app->nfc_device, NfcProtocolSt25tb, nfc_poller_get_data(app->poller));
         view_dispatcher_send_custom_event(app->view_dispatcher, MetroflipCustomEventPollerSuccess);
         return NfcCommandStop;
     }
@@ -615,7 +758,8 @@ static void intertic_on_enter(Metroflip* app) {
         FURI_LOG_I(TAG, "Star not loaded");
         // Setup view
         Popup* popup = app->popup;
-        popup_set_header(popup, "Scanning...\nApply card\nto the back", 68, 30, AlignLeft, AlignTop);
+        popup_set_header(
+            popup, "Scanning...\nApply card\nto the back", 68, 30, AlignLeft, AlignTop);
         popup_set_icon(popup, 0, 3, &I_RFIDDolphinReceive_97x61);
 
         // Start worker
@@ -636,7 +780,8 @@ static bool intertic_on_event(Metroflip* app, SceneManagerEvent event) {
             popup_set_header(popup, "Card found!\nDon't move...", 68, 30, AlignLeft, AlignTop);
             consumed = true;
         } else if(event.event == MetroflipCustomEventPollerSuccess) {
-            const St25tbData* st25tb_data = nfc_device_get_data(app->nfc_device, NfcProtocolSt25tb);
+            const St25tbData* st25tb_data =
+                nfc_device_get_data(app->nfc_device, NfcProtocolSt25tb);
 
             if(!intertic_display_card_view(st25tb_data, app, false)) {
                 FURI_LOG_I(TAG, "Unknown card type");
@@ -673,7 +818,6 @@ static bool intertic_on_event(Metroflip* app, SceneManagerEvent event) {
 }
 
 static void intertic_on_exit(Metroflip* app) {
-
     widget_reset(app->widget);
     popup_reset(app->popup);
     metroflip_app_blink_stop(app);

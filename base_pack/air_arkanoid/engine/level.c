@@ -7,7 +7,7 @@
 LIST_DEF(EntityList, Entity*, M_POD_OPLIST);
 #define M_OPL_EntityList_t() LIST_OPLIST(EntityList)
 #define FOREACH(name, list) for \
-    M_EACH(name, list, EntityList_t)
+        M_EACH(name, list, EntityList_t)
 
 #define LEVEL_DEBUG(...) FURI_LOG_D("Level", __VA_ARGS__)
 #define LEVEL_ERROR(...) FURI_LOG_E("Level", __VA_ARGS__)

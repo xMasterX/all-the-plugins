@@ -8,8 +8,8 @@ typedef enum {
 
 static void nearby_files_scene_gps_source_show_result(DialogsApp* dialogs, GpsProtocol protocol) {
     DialogMessage* message = dialog_message_alloc();
-    const char* text =
-        (protocol == GpsProtocolRpc) ? "Using companion\nGPS (USB/BLE)" : "Using UART\nGPS module";
+    const char* text = (protocol == GpsProtocolRpc) ? "Using companion\nGPS (USB/BLE)" :
+                                                      "Using UART\nGPS module";
 
     dialog_message_set_header(message, "GPS Source", 64, 4, AlignCenter, AlignTop);
     dialog_message_set_text(message, text, 64, 30, AlignCenter, AlignCenter);
@@ -24,10 +24,12 @@ static void nearby_files_scene_gps_source_submenu_callback(void* context, uint32
 
     switch(index) {
     case NearbyFilesGpsSourceMenuItemNmea:
-        view_dispatcher_send_custom_event(app->view_dispatcher, NearbyFilesCustomEventSetSourceNmea);
+        view_dispatcher_send_custom_event(
+            app->view_dispatcher, NearbyFilesCustomEventSetSourceNmea);
         break;
     case NearbyFilesGpsSourceMenuItemRpc:
-        view_dispatcher_send_custom_event(app->view_dispatcher, NearbyFilesCustomEventSetSourceRpc);
+        view_dispatcher_send_custom_event(
+            app->view_dispatcher, NearbyFilesCustomEventSetSourceRpc);
         break;
     }
 }

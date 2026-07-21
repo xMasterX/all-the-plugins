@@ -42,17 +42,20 @@ bool fsd_profile_id_blocked(uint32_t can_id) {
     return can_id == FSD_BLOCKED_RIGHT_STALK;
 }
 
-FsdProfileLineKind fsd_profile_parse_line(const char* line, FsdProfileStep* step,
-                                          char* name_out, int name_cap) {
-    while(*line == ' ' || *line == '\t') line++;
+FsdProfileLineKind
+    fsd_profile_parse_line(const char* line, FsdProfileStep* step, char* name_out, int name_cap) {
+    while(*line == ' ' || *line == '\t')
+        line++;
     if(*line == '\0' || *line == '\r' || *line == '\n') return FSD_PLINE_EMPTY;
 
     if(*line == '#') {
         const char* p = line + 1;
-        while(*p == ' ' || *p == '\t') p++;
+        while(*p == ' ' || *p == '\t')
+            p++;
         if(starts_ci(p, "name:")) {
             p += 5;
-            while(*p == ' ' || *p == '\t') p++;
+            while(*p == ' ' || *p == '\t')
+                p++;
             if(name_out && name_cap > 0) {
                 int i = 0;
                 while(p[i] && p[i] != '\r' && p[i] != '\n' && i < name_cap - 1) {
@@ -72,7 +75,8 @@ FsdProfileLineKind fsd_profile_parse_line(const char* line, FsdProfileStep* step
     if(!hash) return FSD_PLINE_ERROR;
 
     const char* idstart = hash;
-    while(idstart > line && hexval(idstart[-1]) >= 0) idstart--;
+    while(idstart > line && hexval(idstart[-1]) >= 0)
+        idstart--;
     if(idstart == hash) return FSD_PLINE_ERROR; // no id digits before '#'
 
     int ndig = 0;
@@ -122,10 +126,10 @@ FsdProfileLineKind fsd_profile_parse_line(const char* line, FsdProfileStep* step
 }
 
 bool fsd_profile_tx_allowed(const FSDState* state, uint32_t now_ms) {
-    if(state->op_mode == OpMode_ListenOnly) return false;      // never TX in listen
-    if(!state->speed_seen) return false;                       // fail-closed: no speed proof
+    if(state->op_mode == OpMode_ListenOnly) return false; // never TX in listen
+    if(!state->speed_seen) return false; // fail-closed: no speed proof
     if((now_ms - state->last_speed_tick_ms) > FSD_PROFILE_SPEED_FRESH_MS)
-        return false;                                          // speed frame is stale
-    if(state->vehicle_speed_kph > 0.5f) return false;          // must be stationary
+        return false; // speed frame is stale
+    if(state->vehicle_speed_kph > 0.5f) return false; // must be stationary
     return true;
 }

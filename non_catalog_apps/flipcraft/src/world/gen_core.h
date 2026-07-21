@@ -20,15 +20,26 @@ namespace fcgen {
 
 constexpr int CHUNK = 8, HEIGHT = 16;
 constexpr int TILE_CHUNKS = 16, TILE_W = TILE_CHUNKS * CHUNK; // 128 blocks
-constexpr int MAX_CHUNKS = 128;                               // 1024 blocks
-constexpr int CHUNK_BYTES = CHUNK * HEIGHT * CHUNK;           // 1024
+constexpr int MAX_CHUNKS = 128; // 1024 blocks
+constexpr int CHUNK_BYTES = CHUNK * HEIGHT * CHUNK; // 1024
 constexpr int BLOCKSIZE = 16;
 constexpr uint32_t HEADER_SIZE = 64;
 
 enum : uint8_t {
-    AIR = 0, GRASS = 1, DIRT = 2, STONE = 3, COBBLE = 4, LOG = 5, LEAVES = 6,
-    PLANK = 7, COALORE = 8, IRONORE = 9, SAND = 10,
-    TABLE = 13, FURNACE = 14, CHEST = 15, // engine Block ids (flipcraft.h)
+    AIR = 0,
+    GRASS = 1,
+    DIRT = 2,
+    STONE = 3,
+    COBBLE = 4,
+    LOG = 5,
+    LEAVES = 6,
+    PLANK = 7,
+    COALORE = 8,
+    IRONORE = 9,
+    SAND = 10,
+    TABLE = 13,
+    FURNACE = 14,
+    CHEST = 15, // engine Block ids (flipcraft.h)
 };
 
 // v3 tile-entity region layout, must match world.cpp/game.cpp packStorage()
@@ -46,7 +57,7 @@ typedef void (*Progress)(void* ctx, uint8_t percent);
 // world-hash / noise: hashes match worldgen.py bit-for-bit.
 
 static uint32_t g_seed;
-static int g_worldW;         // world size in blocks
+static int g_worldW; // world size in blocks
 static int g_tileX0, g_tileZ0, g_tileW; // current tile origin/size in blocks
 
 static uint32_t whash(int32_t x, int32_t z, uint32_t salt) {
@@ -73,9 +84,15 @@ static void gradInit() {
     g_gradReady = true;
 }
 
-static float fadef(float t) { return t * t * t * (t * (t * 6 - 15) + 10); }
-static float lerpf(float a, float b, float t) { return a + (b - a) * t; }
-static float clampf(float v, float lo, float hi) { return v < lo ? lo : (v > hi ? hi : v); }
+static float fadef(float t) {
+    return t * t * t * (t * (t * 6 - 15) + 10);
+}
+static float lerpf(float a, float b, float t) {
+    return a + (b - a) * t;
+}
+static float clampf(float v, float lo, float hi) {
+    return v < lo ? lo : (v > hi ? hi : v);
+}
 
 static float smoothstepf(float e0, float e1, float x) {
     x = clampf((x - e0) / (e1 - e0), 0.0f, 1.0f);
@@ -128,9 +145,15 @@ constexpr uint8_t COL_TOP = 0x0F, COL_DESERT = 0x10, COL_RAVINE = 0x20, COL_FORE
 
 static uint8_t g_col[TILE_W * TILE_W];
 
-static uint8_t colAt(int x, int z) { return g_col[(z - g_tileZ0) * g_tileW + (x - g_tileX0)]; }
-static int topAt(int x, int z) { return colAt(x, z) & COL_TOP; }
-static bool sandColumn(uint8_t c) { return (c & (COL_DESERT | COL_RAVINE)) || (c & COL_TOP) <= 2; }
+static uint8_t colAt(int x, int z) {
+    return g_col[(z - g_tileZ0) * g_tileW + (x - g_tileX0)];
+}
+static int topAt(int x, int z) {
+    return colAt(x, z) & COL_TOP;
+}
+static bool sandColumn(uint8_t c) {
+    return (c & (COL_DESERT | COL_RAVINE)) || (c & COL_TOP) <= 2;
+}
 
 static uint8_t computeColumn(int x, int z) {
     constexpr float S = 1.0f / (float)TILE_W; // fixed landscape scale
@@ -190,7 +213,10 @@ static int localSlope(int x, int z) {
 // so cell maxima are the columns a global sort would visit first) and run the
 // same greedy spacing pass over those. Coordinates are tile-local (0..127).
 
-struct Cand { float score; uint8_t x, z; };
+struct Cand {
+    float score;
+    uint8_t x, z;
+};
 constexpr int MAX_CANDS = 1024; // 4x4 cells on a 128x128 tile
 static Cand g_cand[MAX_CANDS];
 
@@ -203,7 +229,8 @@ static int collectCellMaxima(
     float (*score)(int x, int z)) {
     int cells = g_tileW / cellSize;
     int n = cells * cells;
-    for(int i = 0; i < n; i++) g_cand[i].score = -1e30f;
+    for(int i = 0; i < n; i++)
+        g_cand[i].score = -1e30f;
     for(int lz = lo; lz <= hi; lz++)
         for(int lx = lo; lx <= hi; lx++) {
             int x = g_tileX0 + lx, z = g_tileZ0 + lz;
@@ -229,7 +256,9 @@ static int collectCellMaxima(
     return m;
 }
 
-struct Placed { uint8_t x, z, aux; }; // tile-local
+struct Placed {
+    uint8_t x, z, aux;
+}; // tile-local
 
 static int greedyPlace(
     int candCount,
@@ -515,9 +544,15 @@ static bool writeHouseSlots(const Writer& out, uint32_t slot0, int& used, int hx
     return true;
 }
 
-static void putU16(uint8_t* p, uint16_t v) { p[0] = (uint8_t)v; p[1] = (uint8_t)(v >> 8); }
+static void putU16(uint8_t* p, uint16_t v) {
+    p[0] = (uint8_t)v;
+    p[1] = (uint8_t)(v >> 8);
+}
 static void putU32(uint8_t* p, uint32_t v) {
-    p[0] = (uint8_t)v; p[1] = (uint8_t)(v >> 8); p[2] = (uint8_t)(v >> 16); p[3] = (uint8_t)(v >> 24);
+    p[0] = (uint8_t)v;
+    p[1] = (uint8_t)(v >> 8);
+    p[2] = (uint8_t)(v >> 16);
+    p[3] = (uint8_t)(v >> 24);
 }
 
 static bool generate(int chunks, uint32_t seed, Writer out, Progress progress, void* pctx) {
@@ -532,7 +567,7 @@ static bool generate(int chunks, uint32_t seed, Writer out, Progress progress, v
     uint8_t hdr[HEADER_SIZE];
     memset(hdr, 0, sizeof(hdr));
     putU32(hdr + 0, 0x31574346); // 'FCW1'
-    putU16(hdr + 4, 3);          // v3: the tile-entity region is written below
+    putU16(hdr + 4, 3); // v3: the tile-entity region is written below
     putU16(hdr + 6, (uint16_t)chunks);
     putU16(hdr + 8, (uint16_t)chunks);
     hdr[10] = CHUNK;
@@ -579,7 +614,11 @@ static bool generate(int chunks, uint32_t seed, Writer out, Progress progress, v
             for(int x = 0; x + 4 < g_worldW; x += 8) {
                 if(computeColumn(x + 2, z + 2) & (COL_DESERT | COL_RAVINE)) continue;
                 float s = houseScore(x, z);
-                if(s > best) { best = s; houseTx = x / TILE_W; houseTz = z / TILE_W; }
+                if(s > best) {
+                    best = s;
+                    houseTx = x / TILE_W;
+                    houseTz = z / TILE_W;
+                }
             }
     }
 
@@ -593,8 +632,7 @@ static bool generate(int chunks, uint32_t seed, Writer out, Progress progress, v
             for(int lz = 0; lz < g_tileW; lz++) {
                 for(int lx = 0; lx < g_tileW; lx++)
                     g_col[lz * g_tileW + lx] = computeColumn(g_tileX0 + lx, g_tileZ0 + lz);
-                if(progress)
-                    progress(pctx, (uint8_t)((base + lz * 60 / g_tileW) / tileTotal));
+                if(progress) progress(pctx, (uint8_t)((base + lz * 60 / g_tileW) / tileTotal));
             }
 
             placeFeatures(tx == houseTx && tz == houseTz);
@@ -620,8 +658,7 @@ static bool generate(int chunks, uint32_t seed, Writer out, Progress progress, v
                 }
                 if(progress)
                     progress(
-                        pctx,
-                        (uint8_t)((base + 60 + (lcz + 1) * 40 / tileChunks) / tileTotal));
+                        pctx, (uint8_t)((base + 60 + (lcz + 1) * 40 / tileChunks) / tileTotal));
             }
         }
     if(progress) progress(pctx, 100);

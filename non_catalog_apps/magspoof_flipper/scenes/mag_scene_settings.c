@@ -73,17 +73,17 @@ static void mag_scene_settings_set_gpio(VariableItem* item, MagPin* pin_out) {
 static void mag_scene_settings_set_gpio_input(VariableItem* item) {
     Mag* mag = variable_item_get_context(item);
     mag_scene_settings_set_gpio(item, &mag->state.pin_input);
-};
+}
 
 static void mag_scene_settings_set_gpio_output(VariableItem* item) {
     Mag* mag = variable_item_get_context(item);
     mag_scene_settings_set_gpio(item, &mag->state.pin_output);
-};
+}
 
 static void mag_scene_settings_set_gpio_enable(VariableItem* item) {
     Mag* mag = variable_item_get_context(item);
     mag_scene_settings_set_gpio(item, &mag->state.pin_enable);
-};
+}
 
 static void mag_scene_settings_set_n_repeats(VariableItem* item) {
     Mag* mag = variable_item_get_context(item);

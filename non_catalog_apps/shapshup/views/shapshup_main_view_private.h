@@ -7,17 +7,17 @@
 #include <gui/icon.h>
 #include <m-array.h>
 
-#define STATUS_BAR_Y_SHIFT 11
-#define STATUS_BAR_INFO_SHIFT 9
-#define SCALE_STEP 0.2f
-#define SHAPSHUP_DEFAULT_SCALE_STEP 1.00f
-#define SHAPSHUP_TOP_SCALE 13
-#define SHAPSHUP_BOTTOM_SCALE 42
-#define SHAPSHUP_CHART_LOWEST_POINT 40
+#define STATUS_BAR_Y_SHIFT           11
+#define STATUS_BAR_INFO_SHIFT        9
+#define SCALE_STEP                   0.2f
+#define SHAPSHUP_DEFAULT_SCALE_STEP  1.00f
+#define SHAPSHUP_TOP_SCALE           13
+#define SHAPSHUP_BOTTOM_SCALE        42
+#define SHAPSHUP_CHART_LOWEST_POINT  40
 #define SHAPSHUP_CHART_HIGHEST_POINT 20
-#define SCREEN_WIDTH 128
-#define SHAPSHUP_ALERT_DEFAULT_TTL 150
-#define SHAPSHUP_SCALE_MIN_VALUE 0.1
+#define SCREEN_WIDTH                 128
+#define SHAPSHUP_ALERT_DEFAULT_TTL   150
+#define SHAPSHUP_SCALE_MIN_VALUE     0.1
 
 /**
  * @brief ShapShupShapeItem

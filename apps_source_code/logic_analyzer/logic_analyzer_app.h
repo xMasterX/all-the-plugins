@@ -21,13 +21,23 @@
 
 #define TAG "LogicAnalyzer"
 
-#define TIMER_HZ 50
-#define TIMEOUT 3
+#define TIMER_HZ   50
+#define TIMEOUT    3
 #define QUEUE_SIZE 32
 
-typedef enum { KeyNone, KeyUp, KeyRight, KeyDown, KeyLeft, KeyOK } KeyCode;
+typedef enum {
+    KeyNone,
+    KeyUp,
+    KeyRight,
+    KeyDown,
+    KeyLeft,
+    KeyOK
+} KeyCode;
 
-typedef enum { EventKeyPress, EventBufferFilled } EventType;
+typedef enum {
+    EventKeyPress,
+    EventBufferFilled
+} EventType;
 
 typedef struct {
     EventType type;

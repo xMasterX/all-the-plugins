@@ -27,8 +27,7 @@ void mfp_scene_delete_confirm_on_enter(void* ctx) {
     /* Header — bold, centered */
     furi_string_printf(temp, "\e#Delete %s?\e#", fname);
     widget_add_text_box_element(
-        app->widget, 0, 0, 128, 23,
-        AlignCenter, AlignCenter, furi_string_get_cstr(temp), false);
+        app->widget, 0, 0, 128, 23, AlignCenter, AlignCenter, furi_string_get_cstr(temp), false);
 
     widget_add_button_element(
         app->widget, GuiButtonTypeLeft, "Cancel", delete_confirm_widget_cb, app);
@@ -41,17 +40,13 @@ void mfp_scene_delete_confirm_on_enter(void* ctx) {
         furi_string_cat_printf(temp, " %02X", app->version.uid[i]);
     }
     widget_add_string_element(
-        app->widget, 64, 28, AlignCenter, AlignTop,
-        FontSecondary, furi_string_get_cstr(temp));
+        app->widget, 64, 28, AlignCenter, AlignTop, FontSecondary, furi_string_get_cstr(temp));
 
     /* Card type line */
     furi_string_printf(
-        temp, "MFP SL%d %s",
-        (int)app->version.sl,
-        app->version.size == MfpSize4K ? "4K" : "2K");
+        temp, "MFP SL%d %s", (int)app->version.sl, app->version.size == MfpSize4K ? "4K" : "2K");
     widget_add_string_element(
-        app->widget, 64, 38, AlignCenter, AlignTop,
-        FontSecondary, furi_string_get_cstr(temp));
+        app->widget, 64, 38, AlignCenter, AlignTop, FontSecondary, furi_string_get_cstr(temp));
 
     furi_string_free(temp);
 

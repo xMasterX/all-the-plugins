@@ -14,40 +14,80 @@
 #include <string.h>
 
 // ─── Layout ─────────────────────────────────────────────────────────────────
-#define SCREEN_W 64
-#define SCREEN_H 128
-#define ROAD_LEFT   10
-#define ROAD_RIGHT  53
-#define ROAD_WIDTH  (ROAD_RIGHT - ROAD_LEFT)
-#define LANE_COUNT  3
-#define LANE_WIDTH  (ROAD_WIDTH / LANE_COUNT)
-#define CAR_W 10
-#define CAR_H 13
-#define PLAYER_Y 105
-#define MAX_OBS 5
-#define MAX_COINS 3
-#define MAX_POWERUPS 2
-#define MAX_SCENERY 6
-#define MAX_PARTICLES 12
-#define INITIAL_LIVES 3
-#define MAX_LIVES 5
-#define DASH_LEN 8
-#define DASH_GAP 8
-#define DASH_TOTAL (DASH_LEN + DASH_GAP)
+#define SCREEN_W       64
+#define SCREEN_H       128
+#define ROAD_LEFT      10
+#define ROAD_RIGHT     53
+#define ROAD_WIDTH     (ROAD_RIGHT - ROAD_LEFT)
+#define LANE_COUNT     3
+#define LANE_WIDTH     (ROAD_WIDTH / LANE_COUNT)
+#define CAR_W          10
+#define CAR_H          13
+#define PLAYER_Y       105
+#define MAX_OBS        5
+#define MAX_COINS      3
+#define MAX_POWERUPS   2
+#define MAX_SCENERY    6
+#define MAX_PARTICLES  12
+#define INITIAL_LIVES  3
+#define MAX_LIVES      5
+#define DASH_LEN       8
+#define DASH_GAP       8
+#define DASH_TOTAL     (DASH_LEN + DASH_GAP)
 #define HIGHSCORE_PATH APP_DATA_PATH("highscore.dat")
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-typedef enum { StateMenu, StatePlaying, StateGameOver } GameState;
-typedef enum { ObsMoto, ObsSedan, ObsTruck } ObsType; // 0=narrow/fast, 1=normal, 2=boss(2 lanes)
-typedef enum { PwShield, PwMagnet, PwFuel } PowerUpType;
-typedef enum { DiffEasy, DiffNormal, DiffHard } Difficulty;
+typedef enum {
+    StateMenu,
+    StatePlaying,
+    StateGameOver
+} GameState;
+typedef enum {
+    ObsMoto,
+    ObsSedan,
+    ObsTruck
+} ObsType; // 0=narrow/fast, 1=normal, 2=boss(2 lanes)
+typedef enum {
+    PwShield,
+    PwMagnet,
+    PwFuel
+} PowerUpType;
+typedef enum {
+    DiffEasy,
+    DiffNormal,
+    DiffHard
+} Difficulty;
 
-typedef struct { int8_t lane; int16_t y; bool alive; ObsType type; } Obstacle;
-typedef struct { int8_t lane; int16_t y; bool alive; } Coin;
-typedef struct { int8_t lane; int16_t y; bool alive; PowerUpType type; } PowerUp;
-typedef struct { int16_t y; int8_t side; int8_t type; } Scenery;
-typedef struct { int16_t x; int16_t y; int8_t dx; int8_t dy; uint8_t life; } Particle;
+typedef struct {
+    int8_t lane;
+    int16_t y;
+    bool alive;
+    ObsType type;
+} Obstacle;
+typedef struct {
+    int8_t lane;
+    int16_t y;
+    bool alive;
+} Coin;
+typedef struct {
+    int8_t lane;
+    int16_t y;
+    bool alive;
+    PowerUpType type;
+} PowerUp;
+typedef struct {
+    int16_t y;
+    int8_t side;
+    int8_t type;
+} Scenery;
+typedef struct {
+    int16_t x;
+    int16_t y;
+    int8_t dx;
+    int8_t dy;
+    uint8_t life;
+} Particle;
 
 typedef struct {
     GameState state;
@@ -76,8 +116,14 @@ typedef struct {
     FuriTimer* timer;
 } RaceGameState;
 
-typedef enum { EventTypeTick, EventTypeKey } EventType;
-typedef struct { EventType type; InputEvent input; } GameEvent;
+typedef enum {
+    EventTypeTick,
+    EventTypeKey
+} EventType;
+typedef struct {
+    EventType type;
+    InputEvent input;
+} GameEvent;
 
 // ─── Difficulty Settings ────────────────────────────────────────────────────
 static const uint16_t diff_speed[] = {140, 120, 90};
@@ -206,7 +252,7 @@ static void draw_moto(Canvas* canvas, int16_t x, int16_t y, bool night) {
     uint8_t fg = night ? ColorWhite : ColorBlack;
     canvas_set_color(canvas, fg);
     // Narrow bike shape
-    canvas_draw_box(canvas, x + 4, y, 2, 10);  // Body
+    canvas_draw_box(canvas, x + 4, y, 2, 10); // Body
     canvas_draw_box(canvas, x + 3, y + 1, 4, 2); // Handlebars
     canvas_draw_box(canvas, x + 3, y + 7, 4, 2); // Rear
     canvas_draw_dot(canvas, x + 4, y + 3); // Rider head
@@ -239,7 +285,7 @@ static void draw_boss_truck(Canvas* canvas, int16_t x, int16_t y, bool night) {
     canvas_set_color(canvas, bg);
     canvas_draw_box(canvas, x + 2, y + 10, 7, 3); // Left window
     canvas_draw_box(canvas, x + 11, y + 10, 7, 3); // Right window
-    canvas_draw_box(canvas, x + 3, y + 2, 14, 6);  // Cargo
+    canvas_draw_box(canvas, x + 3, y + 2, 14, 6); // Cargo
 
     canvas_set_color(canvas, fg);
     // Wheels
@@ -411,13 +457,36 @@ static void draw_menu(Canvas* canvas, RaceGameState* s) {
     for(int i = 0; i < 4; i++) {
         char buf[24];
         if(i == 0)
-            snprintf(buf, sizeof(buf), "%sSTART%s", i == s->menu_idx ? "> " : "", i == s->menu_idx ? " <" : "");
+            snprintf(
+                buf,
+                sizeof(buf),
+                "%sSTART%s",
+                i == s->menu_idx ? "> " : "",
+                i == s->menu_idx ? " <" : "");
         else if(i == 1)
-            snprintf(buf, sizeof(buf), "%sSOUND:%s%s", i == s->menu_idx ? ">" : "", s->sound_on ? "ON" : "OFF", i == s->menu_idx ? "<" : "");
+            snprintf(
+                buf,
+                sizeof(buf),
+                "%sSOUND:%s%s",
+                i == s->menu_idx ? ">" : "",
+                s->sound_on ? "ON" : "OFF",
+                i == s->menu_idx ? "<" : "");
         else if(i == 2)
-            snprintf(buf, sizeof(buf), "%sNIGHT:%s%s", i == s->menu_idx ? ">" : "", s->night_mode ? "ON" : "OFF", i == s->menu_idx ? "<" : "");
+            snprintf(
+                buf,
+                sizeof(buf),
+                "%sNIGHT:%s%s",
+                i == s->menu_idx ? ">" : "",
+                s->night_mode ? "ON" : "OFF",
+                i == s->menu_idx ? "<" : "");
         else
-            snprintf(buf, sizeof(buf), "%s%s%s", i == s->menu_idx ? ">" : "", diff_names[s->difficulty], i == s->menu_idx ? "<" : "");
+            snprintf(
+                buf,
+                sizeof(buf),
+                "%s%s%s",
+                i == s->menu_idx ? ">" : "",
+                diff_names[s->difficulty],
+                i == s->menu_idx ? "<" : "");
 
         UNUSED(labels);
         canvas_draw_str_aligned(canvas, SCREEN_W / 2, 52 + i * 11, AlignCenter, AlignBottom, buf);
@@ -487,18 +556,24 @@ static void draw_callback(Canvas* canvas, void* ctx) {
 
         for(int i = 0; i < MAX_COINS; i++)
             if(s->coins[i].alive)
-                draw_coin(canvas, car_lx(s->coins[i].lane), s->coins[i].y, s->night_mode, s->tick_count);
+                draw_coin(
+                    canvas, car_lx(s->coins[i].lane), s->coins[i].y, s->night_mode, s->tick_count);
 
         for(int i = 0; i < MAX_POWERUPS; i++)
             if(s->powerups[i].alive)
-                draw_powerup(canvas, car_lx(s->powerups[i].lane), s->powerups[i].y, s->powerups[i].type, s->night_mode);
+                draw_powerup(
+                    canvas,
+                    car_lx(s->powerups[i].lane),
+                    s->powerups[i].y,
+                    s->powerups[i].type,
+                    s->night_mode);
 
         for(int i = 0; i < MAX_OBS; i++)
-            if(s->obstacles[i].alive)
-                draw_obstacle(canvas, &s->obstacles[i], s->night_mode);
+            if(s->obstacles[i].alive) draw_obstacle(canvas, &s->obstacles[i], s->night_mode);
 
         if(s->invincible_ticks == 0 || (s->tick_count % 4 < 2))
-            draw_player_car(canvas, car_lx(s->player_lane), PLAYER_Y, s->night_mode, s->shield_ticks > 0);
+            draw_player_car(
+                canvas, car_lx(s->player_lane), PLAYER_Y, s->night_mode, s->shield_ticks > 0);
 
         draw_particles(canvas, s);
         draw_hud(canvas, s);
@@ -507,8 +582,7 @@ static void draw_callback(Canvas* canvas, void* ctx) {
     case StateGameOver:
         draw_road(canvas, s);
         for(int i = 0; i < MAX_OBS; i++)
-            if(s->obstacles[i].alive)
-                draw_obstacle(canvas, &s->obstacles[i], s->night_mode);
+            if(s->obstacles[i].alive) draw_obstacle(canvas, &s->obstacles[i], s->night_mode);
         draw_player_car(canvas, car_lx(s->player_lane), PLAYER_Y, s->night_mode, false);
         draw_particles(canvas, s);
         draw_hud(canvas, s);
@@ -558,10 +632,14 @@ static void game_init(RaceGameState* s) {
     s->combo = 0;
     s->combo_display = 0;
 
-    for(int i = 0; i < MAX_OBS; i++) s->obstacles[i].alive = false;
-    for(int i = 0; i < MAX_COINS; i++) s->coins[i].alive = false;
-    for(int i = 0; i < MAX_POWERUPS; i++) s->powerups[i].alive = false;
-    for(int i = 0; i < MAX_PARTICLES; i++) s->particles[i].life = 0;
+    for(int i = 0; i < MAX_OBS; i++)
+        s->obstacles[i].alive = false;
+    for(int i = 0; i < MAX_COINS; i++)
+        s->coins[i].alive = false;
+    for(int i = 0; i < MAX_POWERUPS; i++)
+        s->powerups[i].alive = false;
+    for(int i = 0; i < MAX_PARTICLES; i++)
+        s->particles[i].life = 0;
 
     init_scenery(s);
     furi_timer_start(s->timer, s->speed);
@@ -584,9 +662,10 @@ static bool check_collision(RaceGameState* s) {
             ox = car_lx(s->obstacles[i].lane);
             ow = CAR_W;
         }
-        int16_t oh = (s->obstacles[i].type == ObsTruck) ? 16 : (s->obstacles[i].type == ObsMoto ? 10 : 12);
-        if((px < ox + ow) && (px + CAR_W > ox) &&
-           (PLAYER_Y < s->obstacles[i].y + oh) && (PLAYER_Y + CAR_H > s->obstacles[i].y))
+        int16_t oh =
+            (s->obstacles[i].type == ObsTruck) ? 16 : (s->obstacles[i].type == ObsMoto ? 10 : 12);
+        if((px < ox + ow) && (px + CAR_W > ox) && (PLAYER_Y < s->obstacles[i].y + oh) &&
+           (PLAYER_Y + CAR_H > s->obstacles[i].y))
             return true;
     }
     return false;
@@ -602,14 +681,16 @@ static void check_collections(RaceGameState* s) {
         if(!s->coins[i].alive) continue;
         int16_t cx = car_lx(s->coins[i].lane);
         bool magnet_pull = s->magnet_ticks > 0 && abs(s->coins[i].y - PLAYER_Y) < 30;
-        bool touch = (px < cx + 8) && (px + CAR_W > cx) &&
-                     (PLAYER_Y < s->coins[i].y + 8) && (PLAYER_Y + CAR_H > s->coins[i].y);
+        bool touch = (px < cx + 8) && (px + CAR_W > cx) && (PLAYER_Y < s->coins[i].y + 8) &&
+                     (PLAYER_Y + CAR_H > s->coins[i].y);
         if(touch || magnet_pull) {
             if(magnet_pull && !touch) {
                 // Pull toward player
                 s->coins[i].y += (s->coins[i].y < PLAYER_Y) ? 4 : -4;
-                if(s->coins[i].lane < s->player_lane) s->coins[i].lane++;
-                else if(s->coins[i].lane > s->player_lane) s->coins[i].lane--;
+                if(s->coins[i].lane < s->player_lane)
+                    s->coins[i].lane++;
+                else if(s->coins[i].lane > s->player_lane)
+                    s->coins[i].lane--;
                 continue; // Don't collect yet, just pull
             }
             s->coins[i].alive = false;
@@ -625,8 +706,8 @@ static void check_collections(RaceGameState* s) {
     for(int i = 0; i < MAX_POWERUPS; i++) {
         if(!s->powerups[i].alive) continue;
         int16_t ppx = car_lx(s->powerups[i].lane);
-        if((px < ppx + 8) && (px + CAR_W > ppx) &&
-           (PLAYER_Y < s->powerups[i].y + 8) && (PLAYER_Y + CAR_H > s->powerups[i].y)) {
+        if((px < ppx + 8) && (px + CAR_W > ppx) && (PLAYER_Y < s->powerups[i].y + 8) &&
+           (PLAYER_Y + CAR_H > s->powerups[i].y)) {
             s->powerups[i].alive = false;
             play_sound(s, 660, 0.8f, 40);
             switch(s->powerups[i].type) {
@@ -836,10 +917,14 @@ int32_t race_game_app(void* p) {
 
                 case InputKeyOk:
                     if(s->state == StateMenu) {
-                        if(s->menu_idx == 0) game_init(s);
-                        else if(s->menu_idx == 1) s->sound_on = !s->sound_on;
-                        else if(s->menu_idx == 2) s->night_mode = !s->night_mode;
-                        else if(s->menu_idx == 3) s->difficulty = (s->difficulty + 1) % 3;
+                        if(s->menu_idx == 0)
+                            game_init(s);
+                        else if(s->menu_idx == 1)
+                            s->sound_on = !s->sound_on;
+                        else if(s->menu_idx == 2)
+                            s->night_mode = !s->night_mode;
+                        else if(s->menu_idx == 3)
+                            s->difficulty = (s->difficulty + 1) % 3;
                     } else if(s->state == StateGameOver) {
                         s->state = StateMenu;
                     }

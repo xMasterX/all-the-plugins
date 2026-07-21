@@ -59,7 +59,17 @@ static const char* const dcf77_subghz_tx_timeout_text[] = {
 };
 
 static const uint32_t dcf77_subghz_tx_timeout_seconds_values[] = {
-    1U, 5U, 10U, 15U, 30U, 60U, 90U, 120U, 300U, 600U, 1800U,
+    1U,
+    5U,
+    10U,
+    15U,
+    30U,
+    60U,
+    90U,
+    120U,
+    300U,
+    600U,
+    1800U,
 };
 
 size_t dcf77_subghz_note_count(void) {
@@ -123,10 +133,7 @@ const char* dcf77_subghz_tx_timeout_label(size_t index) {
 
 void dcf77_subghz_format_note_text(char* buffer, size_t buffer_size, size_t index) {
     snprintf(
-        buffer,
-        buffer_size,
-        "%lu",
-        (unsigned long)(dcf77_subghz_note_freq_millihz(index) / 1000U));
+        buffer, buffer_size, "%lu", (unsigned long)(dcf77_subghz_note_freq_millihz(index) / 1000U));
 }
 
 void dcf77_subghz_format_band_text(char* buffer, size_t buffer_size, uint32_t band_start_hz) {
@@ -155,7 +162,8 @@ uint32_t dcf77_subghz_clamp_frequency(uint32_t freq_hz, const Dcf77SubGhzBand* b
     return freq_hz;
 }
 
-uint32_t dcf77_subghz_step_frequency(uint32_t freq_hz, const Dcf77SubGhzBand* band, int8_t direction) {
+uint32_t
+    dcf77_subghz_step_frequency(uint32_t freq_hz, const Dcf77SubGhzBand* band, int8_t direction) {
     uint32_t next;
 
     freq_hz = dcf77_subghz_clamp_frequency(freq_hz, band);
@@ -165,7 +173,8 @@ uint32_t dcf77_subghz_step_frequency(uint32_t freq_hz, const Dcf77SubGhzBand* ba
             return band->end_hz;
         }
 
-        next = ((freq_hz + DCF77_SUBGHZ_STEP_HZ - 1U) / DCF77_SUBGHZ_STEP_HZ) * DCF77_SUBGHZ_STEP_HZ;
+        next =
+            ((freq_hz + DCF77_SUBGHZ_STEP_HZ - 1U) / DCF77_SUBGHZ_STEP_HZ) * DCF77_SUBGHZ_STEP_HZ;
         if(next <= freq_hz) {
             next += DCF77_SUBGHZ_STEP_HZ;
         }

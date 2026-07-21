@@ -22,8 +22,8 @@ void mfp_scene_start_on_enter(void* ctx) {
     MfpApp* app = ctx;
     submenu_reset(app->submenu);
     submenu_set_header(app->submenu, "MFP Reader");
-    submenu_add_item(app->submenu, "Read card",    StartMenuRead,  start_submenu_cb, app);
-    submenu_add_item(app->submenu, "Saved cards",  StartMenuSaved, start_submenu_cb, app);
+    submenu_add_item(app->submenu, "Read card", StartMenuRead, start_submenu_cb, app);
+    submenu_add_item(app->submenu, "Saved cards", StartMenuSaved, start_submenu_cb, app);
     view_dispatcher_switch_to_view(app->view_dispatcher, MfpViewSubmenu);
 }
 

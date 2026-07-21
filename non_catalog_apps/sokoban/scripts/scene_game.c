@@ -21,13 +21,13 @@ static struct {
 } game;
 
 // Victory Popup component
-void victory_popup_render_callback(Canvas* const canvas, AppContext* app)
-{
+void victory_popup_render_callback(Canvas* const canvas, AppContext* app) {
     const int ICON_SIDE = 9;
 
     AppGameplayState* gameplayState = app->gameplay;
     LevelsDatabase* database = app->database;
-    LevelItem* levelItem = &database->collections[gameplayState->selectedCollection].levels[gameplayState->selectedLevel];
+    LevelItem* levelItem = &database->collections[gameplayState->selectedCollection]
+                                .levels[gameplayState->selectedLevel];
 
     GameState* state = game.state;
 
@@ -53,36 +53,30 @@ void victory_popup_render_callback(Canvas* const canvas, AppContext* app)
     const int START_CENTER_X = 100, START_CENTER_Y = 59;
     canvas_draw_circle(canvas, START_CENTER_X, START_CENTER_Y, 4);
     canvas_draw_disc(canvas, START_CENTER_X, START_CENTER_Y, 2);
-    canvas_draw_str_aligned(canvas, START_CENTER_X + 8, START_CENTER_Y + 4, AlignLeft, AlignBottom, "Next");
+    canvas_draw_str_aligned(
+        canvas, START_CENTER_X + 8, START_CENTER_Y + 4, AlignLeft, AlignBottom, "Next");
 }
 
-void victory_popup_handle_input(InputKey key, InputType type, AppContext* app)
-{
+void victory_popup_handle_input(InputKey key, InputType type, AppContext* app) {
     AppGameplayState* gameplayState = app->gameplay;
 
-    if (key == InputKeyOk && type == InputTypePress)
-    {
-        if (gameplayState->selectedLevel + 1 < app->database->collections[gameplayState->selectedCollection].levelsCount)
-        {
+    if(key == InputKeyOk && type == InputTypePress) {
+        if(gameplayState->selectedLevel + 1 <
+           app->database->collections[gameplayState->selectedCollection].levelsCount) {
             gameplayState->selectedLevel += 1;
             scene_manager_set_scene(app->sceneManager, SceneType_Game);
             return;
-        }
-        else
-        {
+        } else {
             scene_manager_set_scene(app->sceneManager, SceneType_Menu);
             return;
         }
     }
 }
 
-const Icon* findIcon(CellType cellType, int size)
-{
-    switch (cellType)
-    {
+const Icon* findIcon(CellType cellType, int size) {
+    switch(cellType) {
     case CellHasWall:
-        switch (size)
-        {
+        switch(size) {
         case 5:
             return &I_cell_wall_5;
         case 7:
@@ -93,8 +87,7 @@ const Icon* findIcon(CellType cellType, int size)
         break;
 
     case CellHasBox:
-        switch (size)
-        {
+        switch(size) {
         case 5:
             return &I_cell_box_5;
         case 7:
@@ -105,8 +98,7 @@ const Icon* findIcon(CellType cellType, int size)
         break;
 
     case CellHasTarget:
-        switch (size)
-        {
+        switch(size) {
         case 5:
             return &I_cell_target_5;
         case 7:
@@ -117,8 +109,7 @@ const Icon* findIcon(CellType cellType, int size)
         break;
 
     case CellHasPlayer:
-        switch (size)
-        {
+        switch(size) {
         case 5:
             return &I_cell_player_5;
         case 7:
@@ -129,8 +120,7 @@ const Icon* findIcon(CellType cellType, int size)
         break;
 
     case CellHasBox | CellHasTarget:
-        switch (size)
-        {
+        switch(size) {
         case 5:
             return &I_cell_box_target_5;
         case 7:
@@ -141,8 +131,7 @@ const Icon* findIcon(CellType cellType, int size)
         break;
 
     case CellHasPlayer | CellHasTarget:
-        switch (size)
-        {
+        switch(size) {
         case 5:
             return &I_cell_player_target_5;
         case 7:
@@ -159,10 +148,9 @@ const Icon* findIcon(CellType cellType, int size)
     return NULL;
 }
 
-void draw_game(Canvas* const canvas)
-{
+void draw_game(Canvas* const canvas) {
     GameState* state = game.state;
-    Level *level = game.level;
+    Level* level = game.level;
 
     int cellSize = level->cell_size;
     int levelWidth = level->level_width * cellSize;
@@ -178,58 +166,50 @@ void draw_game(Canvas* const canvas)
     int minScrollingHeight = screenHeight + (cellSize - 1) * 2;
 
     int cameraX = levelWidth / 2;
-    if (levelWidth > minScrollingWidth)
+    if(levelWidth > minScrollingWidth)
         cameraX = MAX(screenWidth / 2, MIN(playerX, levelWidth - screenWidth / 2));
 
     int cameraY = levelHeight / 2;
-    if (levelHeight > minScrollingHeight)
+    if(levelHeight > minScrollingHeight)
         cameraY = MAX(screenHeight / 2, MIN(playerY, levelHeight - screenHeight / 2));
 
-    for (int row = 0; row < level->level_height; row++)
-    {
-        for (int column = 0; column < level->level_width; column++)
-        {
+    for(int row = 0; row < level->level_height; row++) {
+        for(int column = 0; column < level->level_width; column++) {
             int x = column * cellSize - cameraX + screenWidth / 2;
             int y = row * cellSize - cameraY + screenHeight / 2;
             const Icon* icon = findIcon(state->board[row][column], cellSize);
-            if (icon)
-                canvas_draw_icon(canvas, x, y, icon);
+            if(icon) canvas_draw_icon(canvas, x, y, icon);
         }
     }
 }
 
-void game_render_callback(Canvas* const canvas, void* context)
-{
+void game_render_callback(Canvas* const canvas, void* context) {
     AppContext* app = (AppContext*)context;
 
     canvas_clear(canvas);
     GameState* state = game.state;
     Level* level = game.level;
 
-    if (state == NULL || level == NULL)
-        return;
+    if(state == NULL || level == NULL) return;
 
-    if (game.state->isCompleted)
+    if(game.state->isCompleted)
         victory_popup_render_callback(canvas, app);
     else
         draw_game(canvas);
 }
 
-void game_transition_callback(int from, int to, void* context)
-{
+void game_transition_callback(int from, int to, void* context) {
     AppContext* app = (AppContext*)context;
     AppGameplayState* gameplayState = app->gameplay;
     LevelsDatabase* database = app->database;
 
-    if (from == SceneType_Game)
-    {
+    if(from == SceneType_Game) {
         game_state_free(game.state);
         free(game.level);
     }
 
-    if (to == SceneType_Game)
-    {
-        const char *collectionName = database->collections[gameplayState->selectedCollection].name;
+    if(to == SceneType_Game) {
+        const char* collectionName = database->collections[gameplayState->selectedCollection].name;
         int levelIndex = gameplayState->selectedLevel;
 
         game.level = malloc(sizeof(Level));
@@ -239,20 +219,16 @@ void game_transition_callback(int from, int to, void* context)
     }
 }
 
-void game_handle_player_input(InputKey key, InputType type)
-{
-    if (type != InputTypePress && type != InputTypeRepeat)
-        return;
+void game_handle_player_input(InputKey key, InputType type) {
+    if(type != InputTypePress && type != InputTypeRepeat) return;
 
-    if (key == InputKeyOk)
-    {
+    if(key == InputKeyOk) {
         game_state_undo_move(game.state);
         return;
     }
 
     int dx = 0, dy = 0;
-    switch (key)
-    {
+    switch(key) {
     case InputKeyLeft:
         dx = -1;
         break;
@@ -272,44 +248,39 @@ void game_handle_player_input(InputKey key, InputType type)
     game_state_apply_move(game.state, dx, dy);
 }
 
-void game_handle_input(InputKey key, InputType type, void* context)
-{
+void game_handle_input(InputKey key, InputType type, void* context) {
     AppContext* app = (AppContext*)context;
     GameState* gameState = game.state;
 
-    if (key == InputKeyBack && type == InputTypePress)
-    {
+    if(key == InputKeyBack && type == InputTypePress) {
         scene_manager_set_scene(app->sceneManager, SceneType_Menu);
         return;
     }
 
-    if (game.state->isCompleted)
-    {
+    if(game.state->isCompleted) {
         victory_popup_handle_input(key, type, app);
         return;
     }
 
     game_handle_player_input(key, type);
 
-    if (game.state->isCompleted)
-    {
+    if(game.state->isCompleted) {
         FURI_LOG_D("GAME", "Level completed in %d pushes", gameState->pushesCount);
 
         dolphin_deed(DolphinDeedPluginGameWin);
         AppGameplayState* gameplayState = app->gameplay;
         LevelsDatabase* database = app->database;
 
-        LevelItem* levelItem = &database->collections[gameplayState->selectedCollection].levels[gameplayState->selectedLevel];
-        if (levelItem->playerBest == 0 || gameState->pushesCount < levelItem->playerBest)
-        {
+        LevelItem* levelItem = &database->collections[gameplayState->selectedCollection]
+                                    .levels[gameplayState->selectedLevel];
+        if(levelItem->playerBest == 0 || gameState->pushesCount < levelItem->playerBest) {
             levelItem->playerBest = gameState->pushesCount;
             levels_database_save_player_progress(database);
         }
     }
 }
 
-void game_tick_callback(void* context)
-{
+void game_tick_callback(void* context) {
     AppContext* app = (AppContext*)context;
     UNUSED(app);
 }

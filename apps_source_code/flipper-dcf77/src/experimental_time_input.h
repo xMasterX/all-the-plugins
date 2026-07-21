@@ -17,8 +17,6 @@ void dcf77_experimental_time_input_set_previous_callback(
 void dcf77_experimental_time_input_set(
     Dcf77ExperimentalTimeInput* instance,
     const DateTime* datetime);
-bool dcf77_experimental_time_input_get(
-    Dcf77ExperimentalTimeInput* instance,
-    DateTime* datetime);
+bool dcf77_experimental_time_input_get(Dcf77ExperimentalTimeInput* instance, DateTime* datetime);
 
 #endif

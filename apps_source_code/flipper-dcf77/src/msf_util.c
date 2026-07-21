@@ -81,7 +81,11 @@ void set_msf_timecode(
     msf_set_dut1_bits(bits_b, dut1_tenths);
 
     msf_write_weighted_bits(
-        bits_a, year, year_positions, year_weights, sizeof(year_positions) / sizeof(year_positions[0]));
+        bits_a,
+        year,
+        year_positions,
+        year_weights,
+        sizeof(year_positions) / sizeof(year_positions[0]));
     msf_write_weighted_bits(
         bits_a,
         month,
@@ -97,7 +101,11 @@ void set_msf_timecode(
         weekday_weights,
         sizeof(weekday_positions) / sizeof(weekday_positions[0]));
     msf_write_weighted_bits(
-        bits_a, hour, hour_positions, hour_weights, sizeof(hour_positions) / sizeof(hour_positions[0]));
+        bits_a,
+        hour,
+        hour_positions,
+        hour_weights,
+        sizeof(hour_positions) / sizeof(hour_positions[0]));
     msf_write_weighted_bits(
         bits_a,
         minute,

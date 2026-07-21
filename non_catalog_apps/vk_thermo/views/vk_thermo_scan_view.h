@@ -27,7 +27,10 @@ void vk_thermo_scan_view_set_callback(
 
 // State updates
 void vk_thermo_scan_view_set_state(VkThermoScanView* instance, VkThermoScanState state);
-void vk_thermo_scan_view_set_temperature(VkThermoScanView* instance, float celsius, const uint8_t* uid);
+void vk_thermo_scan_view_set_temperature(
+    VkThermoScanView* instance,
+    float celsius,
+    const uint8_t* uid);
 void vk_thermo_scan_view_set_temp_unit(VkThermoScanView* instance, uint32_t temp_unit);
 
 // Animation tick (call from scene tick handler)

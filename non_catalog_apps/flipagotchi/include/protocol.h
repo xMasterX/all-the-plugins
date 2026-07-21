@@ -11,7 +11,7 @@
 /// Start byte at beginning of transmission
 #define PWNAGOTCHI_PROTOCOL_START 0x02
 /// End byte at the end of transmission
-#define PWNAGOTCHI_PROTOCOL_END 0x03
+#define PWNAGOTCHI_PROTOCOL_END   0x03
 
 typedef struct {
     /// Parameter to operate on

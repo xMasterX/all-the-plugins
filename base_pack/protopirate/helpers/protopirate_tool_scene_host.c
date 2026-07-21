@@ -12,8 +12,7 @@
 #define TIMING_TUNER_PLUGIN_PATH APP_ASSETS_PATH("plugins/protopirate_timing_tuner_plugin.fal")
 #endif
 
-static const char*
-    protopirate_tool_scene_plugin_path(ProtoPirateToolScenePluginKind kind) {
+static const char* protopirate_tool_scene_plugin_path(ProtoPirateToolScenePluginKind kind) {
     switch(kind) {
     case ProtoPirateToolScenePluginKindSubDecode:
         return SUB_DECODE_PLUGIN_PATH;
@@ -67,12 +66,7 @@ static bool host_apply_protocol_registry_for_context(
     size_t preset_data_size,
     const char* protocol_name) {
     return protopirate_apply_protocol_registry_for_context(
-        (ProtoPirateApp*)app,
-        preset_name,
-        frequency,
-        preset_data,
-        preset_data_size,
-        protocol_name);
+        (ProtoPirateApp*)app, preset_name, frequency, preset_data, preset_data_size, protocol_name);
 }
 
 static void host_begin(void* app, uint8_t* preset_data) {

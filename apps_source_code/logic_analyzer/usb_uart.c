@@ -9,7 +9,7 @@
 #include <toolbox/api_lock.h>
 #include <toolbox/cli/cli_command.h>
 
-#define USB_CDC_PKT_LEN CDC_DATA_SZ
+#define USB_CDC_PKT_LEN      CDC_DATA_SZ
 #define USB_UART_RX_BUF_SIZE (USB_CDC_PKT_LEN * 5)
 
 #define USB_CDC_BIT_DTR (1 << 0)

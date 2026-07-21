@@ -62,7 +62,7 @@ static bool renfe_decode_time(const uint8_t* data, uint16_t start, int* h, int* 
 // ---------------------------------------------------------------------------
 
 #define MAX_STATION_NAME_LENGTH 28
-#define MAX_CACHED_STATIONS 50
+#define MAX_CACHED_STATIONS     50
 
 typedef struct {
     uint16_t code;
@@ -126,8 +126,8 @@ static bool renfe_regular_load_station_file(const char* region) {
                         station_cache.stations[station_cache.count].name,
                         comma + 1,
                         MAX_STATION_NAME_LENGTH - 1);
-                    station_cache.stations[station_cache.count]
-                        .name[MAX_STATION_NAME_LENGTH - 1] = '\0';
+                    station_cache.stations[station_cache.count].name[MAX_STATION_NAME_LENGTH - 1] =
+                        '\0';
                     station_cache.count++;
                 }
             }
@@ -265,8 +265,7 @@ static void renfe_get_trip_status(const MfClassicData* data, char* out, size_t o
             snprintf(out, out_len, "%d/10", c);
         else
             snprintf(out, out_len, "?/10");
-    } else if(
-        (b12[0] == 0xE4 && b12[1] == 0x02) || (b12[0] == 0x04 && b12[1] == 0x01)) {
+    } else if((b12[0] == 0xE4 && b12[1] == 0x02) || (b12[0] == 0x04 && b12[1] == 0x01)) {
         if(b12[2] == 0x02)
             snprintf(out, out_len, "Used");
         else if(b12[2] == 0x00)
@@ -482,8 +481,7 @@ static bool
                 if(renfe_decode_date(b61, 86, &y, &m, &d)) {
                     int th, tm;
                     if(renfe_decode_time(b61, 101, &th, &tm)) {
-                        snprintf(
-                            val, sizeof(val), "%04d-%02d-%02d %02d:%02d", y, m, d, th, tm);
+                        snprintf(val, sizeof(val), "%04d-%02d-%02d %02d:%02d", y, m, d, th, tm);
                     } else {
                         snprintf(val, sizeof(val), "%04d-%02d-%02d", y, m, d);
                     }
@@ -629,8 +627,7 @@ static bool
                 metroflip_card_view_add_field(
                     view, rp, "", "History format not yet decoded", false);
                 char lbl[METROFLIP_CARD_VIEW_LABEL_LEN];
-                for(size_t i = 0; i < sizeof(bono_raw_blocks) / sizeof(bono_raw_blocks[0]);
-                    i++) {
+                for(size_t i = 0; i < sizeof(bono_raw_blocks) / sizeof(bono_raw_blocks[0]); i++) {
                     int bn = bono_raw_blocks[i];
                     if(bn >= max_block || !mf_classic_is_block_read(data, bn)) continue;
                     const uint8_t* bd = data->block[bn].data;
@@ -696,8 +693,7 @@ static void renfe_regular_on_enter(Metroflip* app) {
             if(!renfe_regular_display_card_view(mfc_data, app, true)) {
                 Widget* widget = app->widget;
                 FuriString* s = furi_string_alloc_set("\e#Unknown card\n");
-                widget_add_text_scroll_element(
-                    widget, 0, 0, 128, 64, furi_string_get_cstr(s));
+                widget_add_text_scroll_element(widget, 0, 0, 128, 64, furi_string_get_cstr(s));
                 widget_add_button_element(
                     widget, GuiButtonTypeRight, "Exit", metroflip_exit_widget_callback, app);
                 furi_string_free(s);
@@ -731,8 +727,7 @@ static void renfe_regular_on_enter(Metroflip* app) {
         furi_string_cat_printf(message, " Use Proxmark3 or similar\n");
         furi_string_cat_printf(message, "   to dump the card first.");
 
-        widget_add_text_scroll_element(
-            widget, 0, 0, 128, 52, furi_string_get_cstr(message));
+        widget_add_text_scroll_element(widget, 0, 0, 128, 52, furi_string_get_cstr(message));
         widget_add_button_element(
             widget, GuiButtonTypeRight, "Exit", metroflip_exit_widget_callback, app);
 
@@ -763,8 +758,7 @@ static bool renfe_regular_on_event(Metroflip* app, SceneManagerEvent event) {
             consumed = true;
         }
     } else if(event.type == SceneManagerEventTypeBack) {
-        scene_manager_search_and_switch_to_previous_scene(
-            app->scene_manager, MetroflipSceneStart);
+        scene_manager_search_and_switch_to_previous_scene(app->scene_manager, MetroflipSceneStart);
         consumed = true;
     }
 

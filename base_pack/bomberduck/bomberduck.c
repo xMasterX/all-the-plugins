@@ -18,7 +18,7 @@ int min(int a, int b) {
 
 #define WorldSizeX 12
 #define WorldSizeY 6
-#define BombRange 1
+#define BombRange  1
 
 typedef struct {
     FuriMutex* mutex;

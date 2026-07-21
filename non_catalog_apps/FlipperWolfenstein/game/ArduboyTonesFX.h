@@ -21,8 +21,7 @@ public:
 
     static void tone(uint16_t freq, uint16_t dur = 0);
     static void tone(uint16_t f1, uint16_t d1, uint16_t f2, uint16_t d2);
-    static void tone(uint16_t f1, uint16_t d1, uint16_t f2, uint16_t d2,
-                     uint16_t f3, uint16_t d3);
+    static void tone(uint16_t f1, uint16_t d1, uint16_t f2, uint16_t d2, uint16_t f3, uint16_t d3);
 
     static void tones(const uint16_t* pattern);
     static void tonesInRAM(uint16_t* pattern);
@@ -34,7 +33,7 @@ public:
 
 private:
     static ArduboyTones* tonesBackend;
-    static ArduboyTones  tonesBackendInternal;
+    static ArduboyTones tonesBackendInternal;
 
     static uint16_t toneSequence[MAX_TONES * 2 + 1];
     static uint16_t seqBuffer[ARDUBOY_TONESFX_MAX_WORDS];

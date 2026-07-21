@@ -26,17 +26,9 @@ void cancommander_scene_bus_cfg_menu_on_enter(void* context) {
     submenu_reset(app->submenu);
 
     submenu_add_item(
-        app->submenu,
-        "CAN0 Settings",
-        BusCfgCan0,
-        cancommander_scene_bus_cfg_menu_callback,
-        app);
+        app->submenu, "CAN0 Settings", BusCfgCan0, cancommander_scene_bus_cfg_menu_callback, app);
     submenu_add_item(
-        app->submenu,
-        "CAN1 Settings",
-        BusCfgCan1,
-        cancommander_scene_bus_cfg_menu_callback,
-        app);
+        app->submenu, "CAN1 Settings", BusCfgCan1, cancommander_scene_bus_cfg_menu_callback, app);
     submenu_add_item(
         app->submenu,
         "Get CAN0 Config",
@@ -51,7 +43,8 @@ void cancommander_scene_bus_cfg_menu_on_enter(void* context) {
         app);
 
     submenu_set_selected_item(
-        app->submenu, scene_manager_get_scene_state(app->scene_manager, cancommander_scene_bus_cfg_menu));
+        app->submenu,
+        scene_manager_get_scene_state(app->scene_manager, cancommander_scene_bus_cfg_menu));
 
     view_dispatcher_switch_to_view(app->view_dispatcher, AppViewSubmenu);
 }
@@ -63,7 +56,8 @@ bool cancommander_scene_bus_cfg_menu_on_event(void* context, SceneManagerEvent e
         return false;
     }
 
-    scene_manager_set_scene_state(app->scene_manager, cancommander_scene_bus_cfg_menu, event.event);
+    scene_manager_set_scene_state(
+        app->scene_manager, cancommander_scene_bus_cfg_menu, event.event);
 
     switch(event.event) {
     case BusCfgCan0:

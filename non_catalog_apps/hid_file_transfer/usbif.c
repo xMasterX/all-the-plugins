@@ -14,12 +14,12 @@
 
 static const struct usb_string_descriptor dev_manuf_desc = USB_STRING_DESC("Flipper Devices Inc.");
 static const struct usb_string_descriptor dev_prod_desc = USB_STRING_DESC("U2F Token");
-#define HID_PAGE_FIDO 0xF1D0
-#define HID_FIDO_U2F 0x01
-#define HID_FIDO_INPUT 0x20
+#define HID_PAGE_FIDO   0xF1D0
+#define HID_FIDO_U2F    0x01
+#define HID_FIDO_INPUT  0x20
 #define HID_FIDO_OUTPUT 0x21
 
-#define HID_EP_IN 0x81
+#define HID_EP_IN  0x81
 #define HID_EP_OUT 0x01
 
 static const uint8_t endpoint_type = USB_EPTYPE_INTERRUPT;

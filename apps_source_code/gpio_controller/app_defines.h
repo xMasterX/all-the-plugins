@@ -1,9 +1,9 @@
 #ifndef APP_DEFINES_H
 #define APP_DEFINES_H
 
-#define GPIO_PIN_COUNT 8
+#define GPIO_PIN_COUNT        8
 #define ANIMATE_FRAME_TIME_MS 133
-#define FRAME_TIME 66.666666 
+#define FRAME_TIME            66.666666
 
 typedef void (*DrawView)(Canvas* canvas, void* ctx);
 typedef void (*HandleInput)(InputEvent* event, void* ctx);
@@ -11,27 +11,27 @@ typedef void (*HandleInput)(InputEvent* event, void* ctx);
 typedef enum {
     MAIN_VIEW,
     CONFIG_MENU_VIEW
-}enum_view;
+} enum_view;
 
 typedef enum {
     GPIO_MODE_INPUT,
     GPIO_MODE_INPUT_PULLUP,
     GPIO_MODE_OUTPUT,
     GPIO_MODE_UNSET
-}GpioUserMode;
+} GpioUserMode;
 
 typedef enum {
     GPIO_VALUE_TRUE,
     GPIO_VALUE_FALSE,
     GPIO_VALUE_INPUT,
     GPIO_VALUE_NONE
-}GpioUserValue;
+} GpioUserValue;
 
 typedef enum {
     CONFIG_MENU_MODE,
     CONFIG_MENU_VALUE,
     CONFIG_MENU_INPUT
-}ConfigMenuOptions;
+} ConfigMenuOptions;
 
 typedef struct {
     GpioUserMode mode;
@@ -39,7 +39,7 @@ typedef struct {
     int gp_idx_input;
     bool changed;
     GpioUserMode prev_mode;
-}GPIOPinUserSelection;
+} GPIOPinUserSelection;
 
 typedef struct {
     int selected;
@@ -79,7 +79,7 @@ typedef enum {
     PIN_GND_11,
     PIN_GND_18,
     NONE
-}enum_view_element;
+} enum_view_element;
 
 typedef struct {
     enum_view_element element;
@@ -94,7 +94,7 @@ typedef struct {
     const char* name;
     Icon* icon;
     Icon* selected_icon;
-}ViewElement;
+} ViewElement;
 
 typedef struct {
     uint8_t element_idx;
@@ -108,7 +108,7 @@ typedef struct {
     bool found;
     bool input;
     GPIOPinUserSelection user;
-}GPIOPin;
+} GPIOPin;
 
 // GPIO enums from firmware/targets/f7/furi_hal/furi_hal_gpio.h
 
@@ -139,5 +139,4 @@ typedef struct {
 //     GpioPullDown,
 // } GpioPull;
 
-
-#endif 
+#endif

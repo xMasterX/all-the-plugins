@@ -49,8 +49,8 @@ static const NotificationSequence sequence_minesweeper_lose = {
 
 void mine_sweeper_play_ok_sound(void* context) {
     MineSweeperApp* app = context;
-    
-    if (!app->feedback_enabled) {
+
+    if(!app->feedback_enabled) {
         return;
     }
     notification_message(app->notification, &sequence_minesweeper_ok);
@@ -59,7 +59,7 @@ void mine_sweeper_play_ok_sound(void* context) {
 void mine_sweeper_play_flag_sound(void* context) {
     MineSweeperApp* app = context;
 
-    if (!app->feedback_enabled) {
+    if(!app->feedback_enabled) {
         return;
     }
     notification_message(app->notification, &sequence_minesweeper_flag);
@@ -68,7 +68,7 @@ void mine_sweeper_play_flag_sound(void* context) {
 void mine_sweeper_play_oob_sound(void* context) {
     MineSweeperApp* app = context;
 
-    if (!app->feedback_enabled) {
+    if(!app->feedback_enabled) {
         return;
     }
     notification_message(app->notification, &sequence_minesweeper_oob);
@@ -77,7 +77,7 @@ void mine_sweeper_play_oob_sound(void* context) {
 void mine_sweeper_play_wrap_sound(void* context) {
     MineSweeperApp* app = context;
 
-    if (!app->feedback_enabled) {
+    if(!app->feedback_enabled) {
         return;
     }
     notification_message(app->notification, &sequence_minesweeper_wrap);
@@ -86,7 +86,7 @@ void mine_sweeper_play_wrap_sound(void* context) {
 void mine_sweeper_play_win_sound(void* context) {
     MineSweeperApp* app = context;
 
-    if (!app->feedback_enabled) {
+    if(!app->feedback_enabled) {
         return;
     }
     notification_message(app->notification, &sequence_minesweeper_win);
@@ -95,7 +95,7 @@ void mine_sweeper_play_win_sound(void* context) {
 void mine_sweeper_play_lose_sound(void* context) {
     MineSweeperApp* app = context;
 
-    if (!app->feedback_enabled) {
+    if(!app->feedback_enabled) {
         return;
     }
     notification_message(app->notification, &sequence_minesweeper_lose);
@@ -104,7 +104,7 @@ void mine_sweeper_play_lose_sound(void* context) {
 void mine_sweeper_stop_all_sound(void* context) {
     MineSweeperApp* app = context;
 
-    if (!app->feedback_enabled) {
+    if(!app->feedback_enabled) {
         return;
     }
     notification_message(app->notification, &sequence_reset_sound);

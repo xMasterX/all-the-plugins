@@ -1,6 +1,6 @@
 #pragma once
 
-#include <lib/Arduboy2.h>   
+#include <lib/Arduboy2.h>
 #include "../utils/Constants.h"
 #include "../utils/Stack.h"
 
@@ -9,8 +9,8 @@
 struct Invader_General {
     uint8_t y;
     Direction direction;
-    uint8_t left;               // Enemy formation visible
-    uint8_t right;              // Enemy formation visible
+    uint8_t left; // Enemy formation visible
+    uint8_t right; // Enemy formation visible
     uint8_t lives;
     uint16_t score;
 };
@@ -107,7 +107,7 @@ struct ExitDoor_Button {
     uint8_t junk1;
     uint8_t junk2;
     uint8_t junk3;
-    uint8_t frame;              
+    uint8_t frame;
 };
 
 struct Blade {
@@ -116,7 +116,7 @@ struct Blade {
     int8_t position;
 };
 
-struct Gate {                   // 0, x, x, 255, 0
+struct Gate { // 0, x, x, 255, 0
     uint8_t x;
     uint8_t y;
     uint8_t position;
@@ -125,7 +125,7 @@ struct Gate {                   // 0, x, x, 255, 0
     uint8_t closingDelayMax;
     GateMovement movement;
 };
- 
+
 struct Sword {
     uint8_t x;
     uint8_t y;
@@ -143,29 +143,30 @@ struct Spikes {
     uint8_t position;
     uint8_t openningDelay;
     uint8_t closingDelay;
-    uint8_t byte5;    
+    uint8_t byte5;
 };
- 
+
 struct CollapsingFloor {
     uint8_t x;
     uint8_t y;
     uint8_t distToFall;
-    uint8_t defaultTimeToFall;    
-    uint8_t distanceFallen;     // 255 not falling. Or 0 to distToFall when falling.  Turns into a CollapsedFloor when fallen.
-    uint8_t timeToFall;         // 255 if not counting down.
+    uint8_t defaultTimeToFall;
+    uint8_t
+        distanceFallen; // 255 not falling. Or 0 to distToFall when falling.  Turns into a CollapsedFloor when fallen.
+    uint8_t timeToFall; // 255 if not counting down.
     uint8_t frame;
 };
- 
+
 struct FloorButton {
     uint8_t x;
     uint8_t y;
     uint8_t gate1;
-    uint8_t gate2;              
-    uint8_t gate3;              
-    uint8_t frame;              
-    uint8_t timeToFall;         // How long does gate remain open for.
+    uint8_t gate2;
+    uint8_t gate3;
+    uint8_t frame;
+    uint8_t timeToFall; // How long does gate remain open for.
 };
- 
+
 struct Potion {
     uint8_t x;
     uint8_t y;
@@ -185,7 +186,6 @@ struct Mirror {
 };
 
 struct Item {
-
     ItemType itemType;
 
     union {
@@ -210,8 +210,7 @@ struct Item {
         struct Invader_Player invader_Player;
         struct Invader_Bullet invader_Bullet;
         struct Invader_Barrier invader_Barrier;
-    } data; 
- 
+    } data;
 };
 
 #pragma pack(pop)

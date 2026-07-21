@@ -6,7 +6,7 @@
 #include "../../cli_shared_methods.h"
 #include "../../cli_plugin_interface.h"
 
-#define TOTP_CLI_COMMAND_NOTIFICATION_METHOD_NONE "none"
+#define TOTP_CLI_COMMAND_NOTIFICATION_METHOD_NONE  "none"
 #define TOTP_CLI_COMMAND_NOTIFICATION_METHOD_SOUND "sound"
 #define TOTP_CLI_COMMAND_NOTIFICATION_METHOD_VIBRO "vibro"
 

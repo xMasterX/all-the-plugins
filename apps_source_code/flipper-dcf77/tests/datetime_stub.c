@@ -4,8 +4,8 @@
 #include <stddef.h>
 
 #define SECONDS_PER_MINUTE 60U
-#define SECONDS_PER_HOUR (SECONDS_PER_MINUTE * 60U)
-#define SECONDS_PER_DAY (SECONDS_PER_HOUR * 24U)
+#define SECONDS_PER_HOUR   (SECONDS_PER_MINUTE * 60U)
+#define SECONDS_PER_DAY    (SECONDS_PER_HOUR * 24U)
 
 static const uint8_t datetime_days_per_month[2][12] = {
     {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31},
@@ -68,8 +68,10 @@ void datetime_timestamp_to_datetime(uint32_t timestamp, DateTime* datetime) {
     }
 
     datetime->month = 1U;
-    while(days >= datetime_get_days_per_month(datetime_is_leap_year(datetime->year), datetime->month)) {
-        days -= datetime_get_days_per_month(datetime_is_leap_year(datetime->year), datetime->month);
+    while(days >=
+          datetime_get_days_per_month(datetime_is_leap_year(datetime->year), datetime->month)) {
+        days -=
+            datetime_get_days_per_month(datetime_is_leap_year(datetime->year), datetime->month);
         datetime->month++;
     }
 

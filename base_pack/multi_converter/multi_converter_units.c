@@ -1,6 +1,6 @@
 #include "multi_converter_units.h"
 
-#define MULTI_CONVERTER_CHAR_OVERFLOW '#'
+#define MULTI_CONVERTER_CHAR_OVERFLOW    '#'
 #define MULTI_CONVERTER_MAX_SUPORTED_INT 999999999
 
 #define multi_converter_unit_set_overflow(b)                  \
@@ -352,8 +352,7 @@ void multi_converter_unit_data_convert(MultiConverterState* const multi_converte
     uint8_t overflow = 0;
 
     // convert origin -> bits -> destination
-    double bits =
-        a * multi_converter_unit_data_bits_per(multi_converter_state->unit_type_orig);
+    double bits = a * multi_converter_unit_data_bits_per(multi_converter_state->unit_type_orig);
     a = bits / multi_converter_unit_data_bits_per(multi_converter_state->unit_type_dest);
 
     if(overflow) {

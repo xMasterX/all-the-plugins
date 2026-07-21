@@ -38,9 +38,8 @@ static void dcf77_logic_set_tx_fields(AppFSM* app_fsm, const DateTime* dt) {
     app_fsm->tx_day_of_year = radio_clock_protocol_day_of_year(dt->year, dt->month, dt->day);
 }
 
-static void dcf77_logic_build_protocol_time(
-    const DateTime* dt,
-    RadioClockProtocolTime* protocol_time) {
+static void
+    dcf77_logic_build_protocol_time(const DateTime* dt, RadioClockProtocolTime* protocol_time) {
     protocol_time->year = dt->year;
     protocol_time->day_of_year = radio_clock_protocol_day_of_year(dt->year, dt->month, dt->day);
     protocol_time->month = dt->month;
@@ -149,11 +148,15 @@ void dcf77_logic_activate_next_minute(AppFSM* app_fsm) {
     memcpy(app_fsm->waveform_frame, app_fsm->next_waveform_frame, sizeof(app_fsm->waveform_frame));
     app_fsm->current_minute_dt = app_fsm->next_minute_dt;
     DateTime protocol_dt;
-    dcf77_logic_get_protocol_datetime(app_fsm->current_signal, &app_fsm->current_minute_dt, &protocol_dt);
+    dcf77_logic_get_protocol_datetime(
+        app_fsm->current_signal, &app_fsm->current_minute_dt, &protocol_dt);
     dcf77_logic_set_tx_fields(app_fsm, &protocol_dt);
 }
 
-void dcf77_logic_sync_start(AppFSM* app_fsm, uint8_t start_second, bool startup_marker_wrap_pending) {
+void dcf77_logic_sync_start(
+    AppFSM* app_fsm,
+    uint8_t start_second,
+    bool startup_marker_wrap_pending) {
     app_fsm->scheduler_second = start_second;
     app_fsm->scheduler_segment = 0;
     dcf77_logic_set_current_pulse(app_fsm, start_second);

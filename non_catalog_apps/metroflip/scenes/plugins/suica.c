@@ -479,8 +479,7 @@ static NfcCommand suica_poller_callback(NfcGenericEvent event, void* context) {
             if(err == FelicaErrorNone && resp && resp->SF1 == 0 && resp->block_count > 0) {
                 furi_string_reset(parsed_data);
                 const uint8_t* data = resp->data;
-                uint16_t unsigned_balance =
-                    ((uint16_t)data[2] << 8) | (uint16_t)data[3];
+                uint16_t unsigned_balance = ((uint16_t)data[2] << 8) | (uint16_t)data[3];
 
                 // Balance is stored in units of HK$0.10, offset by the HK$50
                 // refundable deposit on cards issued from 2017-10-01.

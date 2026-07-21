@@ -51,7 +51,8 @@ void cancommander_scene_bus_filter_menu_on_enter(void* context) {
         app);
 
     submenu_set_selected_item(
-        app->submenu, scene_manager_get_scene_state(app->scene_manager, cancommander_scene_bus_filter_menu));
+        app->submenu,
+        scene_manager_get_scene_state(app->scene_manager, cancommander_scene_bus_filter_menu));
 
     view_dispatcher_switch_to_view(app->view_dispatcher, AppViewSubmenu);
 }
@@ -63,7 +64,8 @@ bool cancommander_scene_bus_filter_menu_on_event(void* context, SceneManagerEven
         return false;
     }
 
-    scene_manager_set_scene_state(app->scene_manager, cancommander_scene_bus_filter_menu, event.event);
+    scene_manager_set_scene_state(
+        app->scene_manager, cancommander_scene_bus_filter_menu, event.event);
 
     switch(event.event) {
     case BusFilterCan0:

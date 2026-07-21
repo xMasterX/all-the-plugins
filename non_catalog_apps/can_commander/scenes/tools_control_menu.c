@@ -114,12 +114,7 @@ bool cancommander_scene_tools_control_menu_on_event(void* context, SceneManagerE
 
     case ToolsControlReplay:
         cancommander_scene_tools_control_open_tool_args(
-            app,
-            CcToolReplay,
-            "replay",
-            app->args_replay,
-            sizeof(app->args_replay),
-            "Replay Tool");
+            app, CcToolReplay, "replay", app->args_replay, sizeof(app->args_replay), "Replay Tool");
         return true;
 
     case ToolsControlStopActive:
@@ -136,4 +131,3 @@ void cancommander_scene_tools_control_menu_on_exit(void* context) {
     App* app = context;
     submenu_reset(app->submenu);
 }
-

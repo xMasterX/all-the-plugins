@@ -5,18 +5,18 @@
 #include <furi/core/string.h>
 #include "crypto_settings.h"
 
-#define TOKEN_HASH_ALGO_SHA1_NAME "sha1"
-#define TOKEN_HASH_ALGO_STEAM_NAME "steam"
-#define TOKEN_HASH_ALGO_SHA256_NAME "sha256"
-#define TOKEN_HASH_ALGO_SHA512_NAME "sha512"
-#define PLAIN_TOKEN_ENCODING_BASE32_NAME "base32"
-#define PLAIN_TOKEN_ENCODING_BASE64_NAME "base64"
-#define TOKEN_AUTOMATION_FEATURE_NONE_NAME "none"
+#define TOKEN_HASH_ALGO_SHA1_NAME                      "sha1"
+#define TOKEN_HASH_ALGO_STEAM_NAME                     "steam"
+#define TOKEN_HASH_ALGO_SHA256_NAME                    "sha256"
+#define TOKEN_HASH_ALGO_SHA512_NAME                    "sha512"
+#define PLAIN_TOKEN_ENCODING_BASE32_NAME               "base32"
+#define PLAIN_TOKEN_ENCODING_BASE64_NAME               "base64"
+#define TOKEN_AUTOMATION_FEATURE_NONE_NAME             "none"
 #define TOKEN_AUTOMATION_FEATURE_ENTER_AT_THE_END_NAME "enter"
-#define TOKEN_AUTOMATION_FEATURE_TAB_AT_THE_END_NAME "tab"
-#define TOKEN_AUTOMATION_FEATURE_TYPE_SLOWER_NAME "slower"
-#define TOKEN_TYPE_TOTP_NAME "totp"
-#define TOKEN_TYPE_HOTP_NAME "hotp"
+#define TOKEN_AUTOMATION_FEATURE_TAB_AT_THE_END_NAME   "tab"
+#define TOKEN_AUTOMATION_FEATURE_TYPE_SLOWER_NAME      "slower"
+#define TOKEN_TYPE_TOTP_NAME                           "totp"
+#define TOKEN_TYPE_HOTP_NAME                           "hotp"
 
 #ifdef __cplusplus
 extern "C" {
@@ -138,7 +138,6 @@ enum TokenAutomationFeatures {
  * @brief Plain token secret encodings.
  */
 enum PlainTokenSecretEncodings {
-
     /**
      * @brief Base32 encoding
      */
@@ -154,7 +153,6 @@ enum PlainTokenSecretEncodings {
  * @brief Token types
  */
 enum TokenTypes {
-
     /**
      * @brief Time-based One-time Password token type
      */

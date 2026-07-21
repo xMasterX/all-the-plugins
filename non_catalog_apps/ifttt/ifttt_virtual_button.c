@@ -1,12 +1,14 @@
 #include "ifttt_virtual_button.h"
 #include <expansion/expansion.h>
 
-#define IFTTT_FOLDER "/ext/apps_data/ifttt"
+#define IFTTT_FOLDER        "/ext/apps_data/ifttt"
 #define IFTTT_CONFIG_FOLDER "/ext/apps_data/ifttt/config"
 const char* CONFIG_FILE_PATH = "/ext/apps_data/ifttt/config/config.settings";
 
 #define FLIPPERZERO_SERIAL_BAUD 115200
-typedef enum ESerialCommand { ESerialCommand_Config } ESerialCommand;
+typedef enum ESerialCommand {
+    ESerialCommand_Config
+} ESerialCommand;
 
 Settings save_settings(Settings settings) {
     Storage* storage = furi_record_open(RECORD_STORAGE);
@@ -166,7 +168,7 @@ VirtualButtonApp* ifttt_virtual_button_app_alloc(uint32_t first_scene) {
     // View dispatcher
     app->view_dispatcher = view_dispatcher_alloc();
     app->scene_manager = scene_manager_alloc(&virtual_button_scene_handlers, app);
-    
+
     view_dispatcher_set_event_callback_context(app->view_dispatcher, app);
     view_dispatcher_set_custom_event_callback(
         app->view_dispatcher, ifttt_virtual_button_custom_event_callback);

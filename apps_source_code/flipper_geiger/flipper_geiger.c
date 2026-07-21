@@ -192,7 +192,8 @@ int32_t flipper_geiger_app() {
     mutexStruct mutexVal;
     mutexVal.cps = 0;
     mutexVal.cpm = 0;
-    for(int i = 0; i < SCREEN_SIZE_X; i++) mutexVal.line[i] = 0;
+    for(int i = 0; i < SCREEN_SIZE_X; i++)
+        mutexVal.line[i] = 0;
     mutexVal.coef = 1;
     mutexVal.data = 0;
     mutexVal.zoom = 2;
@@ -256,7 +257,8 @@ int32_t flipper_geiger_app() {
 
                     mutexVal.cps = 0;
                     mutexVal.cpm = 0;
-                    for(uint8_t i = 0; i < SCREEN_SIZE_X; i++) mutexVal.line[i] = 0;
+                    for(uint8_t i = 0; i < SCREEN_SIZE_X; i++)
+                        mutexVal.line[i] = 0;
                     mutexVal.newLinePosition = 0;
 
                     screenRefresh = 1;

@@ -33,9 +33,7 @@ void flipper_wedge_startscreen_set_connected_status(
     bool usb_connected,
     bool bt_connected);
 
-void flipper_wedge_startscreen_set_mode(
-    FlipperWedgeStartscreen* instance,
-    uint8_t mode);
+void flipper_wedge_startscreen_set_mode(FlipperWedgeStartscreen* instance, uint8_t mode);
 
 uint8_t flipper_wedge_startscreen_get_mode(FlipperWedgeStartscreen* instance);
 
@@ -43,10 +41,6 @@ void flipper_wedge_startscreen_set_display_state(
     FlipperWedgeStartscreen* instance,
     FlipperWedgeDisplayState state);
 
-void flipper_wedge_startscreen_set_status_text(
-    FlipperWedgeStartscreen* instance,
-    const char* text);
+void flipper_wedge_startscreen_set_status_text(FlipperWedgeStartscreen* instance, const char* text);
 
-void flipper_wedge_startscreen_set_uid_text(
-    FlipperWedgeStartscreen* instance,
-    const char* text);
+void flipper_wedge_startscreen_set_uid_text(FlipperWedgeStartscreen* instance, const char* text);

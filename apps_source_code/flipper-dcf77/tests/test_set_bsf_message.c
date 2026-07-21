@@ -54,7 +54,11 @@ static bool pulse_low_bit(RadioClockPulse pulse) {
     return (pulse_to_digit(pulse) & 0x01U) != 0U;
 }
 
-static uint16_t weighted_pair_value(const RadioClockPulse* frame, uint8_t second, uint16_t high_weight, uint16_t low_weight) {
+static uint16_t weighted_pair_value(
+    const RadioClockPulse* frame,
+    uint8_t second,
+    uint16_t high_weight,
+    uint16_t low_weight) {
     uint16_t value = 0U;
 
     if(pulse_high_bit(frame[second])) {
@@ -101,7 +105,8 @@ static void test_time_and_date_fields_decode_back(void) {
             (pulse_high_bit(frame[49U]) ? 1U : 0U) ==
         31U);
     assert((pulse_low_bit(frame[49U]) ? 4U : 0U) + weighted_pair_value(frame, 50U, 2U, 1U) == 6U);
-    assert(weighted_pair_value(frame, 51U, 8U, 4U) + weighted_pair_value(frame, 52U, 2U, 1U) == 12U);
+    assert(
+        weighted_pair_value(frame, 51U, 8U, 4U) + weighted_pair_value(frame, 52U, 2U, 1U) == 12U);
     assert(
         weighted_pair_value(frame, 53U, 64U, 32U) + weighted_pair_value(frame, 54U, 16U, 8U) +
             weighted_pair_value(frame, 55U, 4U, 2U) + (pulse_high_bit(frame[56U]) ? 1U : 0U) ==

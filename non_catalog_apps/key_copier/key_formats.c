@@ -254,7 +254,7 @@ const KeyFormat all_formats[] = {
      .max_depth_ind = 6,
      .macs = 5,
      .clearance = 3},
-     
+
     {.manufacturer = "Weiser",
      .format_name = "WR3",
      .format_link = "https://www.lockwiki.com/index.php/Weiser_Classic",

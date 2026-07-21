@@ -2,22 +2,23 @@
 #include "core/check.h"
 #include "core/log.h"
 
-#define EM41XX_LINES (10)
+#define EM41XX_LINES   (10)
 #define EM41XX_COLUMNS (4)
 
-#define EM41XX_CONFIG_1_KEY (0b00000000000101001000000001000000)
+#define EM41XX_CONFIG_1_KEY  (0b00000000000101001000000001000000)
 #define EM41XX_CONFIG_2_KEYS (0b00000000000101001000000010000000)
 #define EM41XX_CONFIG_3_KEYS (0b00000000000101001000000011000000)
-#define EM41XX_CONFIG_BLANK (0b00000000000101001000000000000000)
+#define EM41XX_CONFIG_BLANK  (0b00000000000101001000000000000000)
 
 #define EM41XX_HEADER (0b111111111)
 
 #define T5577_MAX_BLOCKS (8)
-#define EM41XX_BLOCKS (2)
+#define EM41XX_BLOCKS    (2)
 
 bool get_parity(uint16_t data) {
     bool result = 0;
-    for(int i = 0; i < 16; i++) result ^= ((data >> i) & 1);
+    for(int i = 0; i < 16; i++)
+        result ^= ((data >> i) & 1);
     return result;
 }
 

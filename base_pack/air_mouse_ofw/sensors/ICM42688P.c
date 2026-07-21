@@ -61,8 +61,11 @@ static bool icm42688p_read_reg(const FuriHalSpiBusHandle* spi_bus, uint8_t addr,
     return res;
 }
 
-static bool
-    icm42688p_read_mem(const FuriHalSpiBusHandle* spi_bus, uint8_t addr, uint8_t* data, uint8_t len) {
+static bool icm42688p_read_mem(
+    const FuriHalSpiBusHandle* spi_bus,
+    uint8_t addr,
+    uint8_t* data,
+    uint8_t len) {
     bool res = false;
     furi_hal_spi_acquire(spi_bus);
     do {

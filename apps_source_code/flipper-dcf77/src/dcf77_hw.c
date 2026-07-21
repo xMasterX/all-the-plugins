@@ -7,8 +7,8 @@
 #include <stm32wbxx_ll_bus.h>
 #include <stm32wbxx_ll_rcc.h>
 
-#define DCF77_SCHEDULER LPTIM2
-#define DCF77_TEST_PULSE_MS 100U
+#define DCF77_SCHEDULER          LPTIM2
+#define DCF77_TEST_PULSE_MS      100U
 #define DCF77_TEST_PERIOD_SLICES 5U
 
 static const GpioPinRecord* dcf77_gpio_pin_record(uint8_t pin_number) {
@@ -27,11 +27,8 @@ static const GpioPinRecord* dcf77_gpio_rf_record(const AppFSM* app_fsm) {
     return dcf77_gpio_pin_record(app_fsm->gpio_rf_pin_number);
 }
 
-static void dcf77_hw_led_color_levels(
-    const AppFSM* app_fsm,
-    uint8_t* red,
-    uint8_t* green,
-    uint8_t* blue) {
+static void
+    dcf77_hw_led_color_levels(const AppFSM* app_fsm, uint8_t* red, uint8_t* green, uint8_t* blue) {
     *red = 0U;
     *green = 0U;
     *blue = 0U;
@@ -164,7 +161,8 @@ static void dcf77_scheduler_disable_compare(void) {
 }
 
 static void dcf77_apply_output(AppFSM* app_fsm, bool output) {
-    if(app_fsm->tx_active && app_fsm->current_signal != RadioClockSignalTest && !app_fsm->tx_frame_enabled) {
+    if(app_fsm->tx_active && app_fsm->current_signal != RadioClockSignalTest &&
+       !app_fsm->tx_frame_enabled) {
         output = false;
     }
 
@@ -331,10 +329,7 @@ static void dcf77_scheduler_init(AppFSM* app_fsm) {
     LL_RCC_SetLPTIMClockSource(LL_RCC_LPTIM2_CLKSOURCE_LSE);
     LL_APB1_GRP2_EnableClockSleep(LL_APB1_GRP2_PERIPH_LPTIM2);
     furi_hal_interrupt_set_isr_ex(
-        FuriHalInterruptIdLpTim2,
-        FuriHalInterruptPriorityKamiSama,
-        dcf77_timing_isr,
-        app_fsm);
+        FuriHalInterruptIdLpTim2, FuriHalInterruptPriorityKamiSama, dcf77_timing_isr, app_fsm);
     dcf77_scheduler_reset();
 }
 
@@ -360,7 +355,8 @@ void dcf77_timing_start(AppFSM* app_fsm) {
     if(app_fsm->current_signal == RadioClockSignalTest) {
         app_fsm->test_phase = 0;
         dcf77_apply_output_force(app_fsm, true);
-        app_fsm->test_timer = furi_timer_alloc(dcf77_test_timer_callback, FuriTimerTypePeriodic, app_fsm);
+        app_fsm->test_timer =
+            furi_timer_alloc(dcf77_test_timer_callback, FuriTimerTypePeriodic, app_fsm);
         furi_timer_start(app_fsm->test_timer, furi_ms_to_ticks(DCF77_TEST_PULSE_MS));
         return;
     }
@@ -400,8 +396,8 @@ void dcf77_prepare_pending_minute(AppFSM* app_fsm) {
     NVIC_DisableIRQ(LPTIM2_IRQn);
     if(app_fsm->tx_active && app_fsm->next_minute_prepare_pending) {
         dcf77_logic_commit_scratch_as_next(app_fsm, &next_minute);
-        app_fsm->next_tx_frame_enabled =
-            dcf77_app_should_send_frame(app_fsm, app_fsm->experimental_time_runtime.frame_index + 1U);
+        app_fsm->next_tx_frame_enabled = dcf77_app_should_send_frame(
+            app_fsm, app_fsm->experimental_time_runtime.frame_index + 1U);
         app_fsm->next_minute_ready = true;
         app_fsm->next_minute_prepare_pending = false;
     }
@@ -567,7 +563,8 @@ void dcf77_gpio_rf_sync_output(AppFSM* app_fsm) {
 
     if(app_fsm->output_state) {
         if(furi_hal_pwm_is_running(record->pwm_output)) {
-            furi_hal_pwm_set_params(record->pwm_output, app_fsm->lf_freq, app_fsm->gpio_rf_duty_cycle);
+            furi_hal_pwm_set_params(
+                record->pwm_output, app_fsm->lf_freq, app_fsm->gpio_rf_duty_cycle);
         } else {
             furi_hal_pwm_start(record->pwm_output, app_fsm->lf_freq, app_fsm->gpio_rf_duty_cycle);
         }
@@ -630,8 +627,7 @@ void dcf77_subghz_sync_output(AppFSM* app_fsm) {
     if(!dcf77_app_subghz_runtime_enabled(app_fsm) ||
        (app_fsm->subghz_signal_mode != SubGhzSignalModeFsk &&
         app_fsm->subghz_signal_mode != SubGhzSignalModeFskFull) ||
-       dcf77_app_gpio_rf_enabled(app_fsm) ||
-       !app_fsm->subghz_ready) {
+       dcf77_app_gpio_rf_enabled(app_fsm) || !app_fsm->subghz_ready) {
         return;
     }
 

@@ -5,7 +5,7 @@
 #include <lib/toolbox/path.h>
 #include <expansion/expansion.h>
 
-#define TAG "BarCodeScanner"
+#define TAG        "BarCodeScanner"
 #define WORKER_TAG TAG "App"
 
 static bool bc_scanner_app_custom_event_callback(void* context, uint32_t event) {
@@ -42,7 +42,6 @@ BarCodeApp* bc_scanner_app_alloc(char* arg) {
     app->dialogs = furi_record_open(RECORD_DIALOGS);
 
     app->view_dispatcher = view_dispatcher_alloc();
-    
 
     app->scene_manager = scene_manager_alloc(&bc_scanner_scene_handlers, app);
 

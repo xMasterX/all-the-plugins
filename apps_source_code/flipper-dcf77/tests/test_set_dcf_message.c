@@ -30,7 +30,8 @@ static uint8_t parity_range(const uint8_t* frame, uint8_t start, uint8_t end_inc
     return parity;
 }
 
-static void assert_bytes_eq(const uint8_t* actual, const uint8_t* expected, size_t len, const char* label) {
+static void
+    assert_bytes_eq(const uint8_t* actual, const uint8_t* expected, size_t len, const char* label) {
     if(memcmp(actual, expected, len) == 0) {
         return;
     }

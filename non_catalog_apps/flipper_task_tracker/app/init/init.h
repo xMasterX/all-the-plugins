@@ -3,6 +3,6 @@
 
 #include "../app.h"
 
-App *init();
+App* init();
 
 #endif

@@ -70,11 +70,7 @@ static NfcCommand mfp_read_poller_cb(NfcGenericEvent event, void* ctx) {
     }
 
     app->last_error = mfp_poller_read_version(
-        event.instance,
-        &app->version,
-        &app->last_iso_error,
-        app->dbg_resp,
-        &app->dbg_resp_len);
+        event.instance, &app->version, &app->last_iso_error, app->dbg_resp, &app->dbg_resp_len);
 
     if(app->last_error != MfpOk) {
         if(mfp_read_detect_from_ats(app, app->ats_bytes, app->ats_len)) {
@@ -116,9 +112,9 @@ void mfp_scene_read_on_enter(void* ctx) {
     MfpApp* app = ctx;
 
     app->card_identified = false;
-    app->last_iso_error  = -1;
+    app->last_iso_error = -1;
     memset(&app->version, 0, sizeof(app->version));
-    app->sak     = 0;
+    app->sak = 0;
     app->atqa[0] = 0;
     app->atqa[1] = 0;
     app->ats_len = 0;
@@ -136,10 +132,7 @@ void mfp_scene_read_on_enter(void* ctx) {
 
     popup_reset(app->popup);
     popup_set_header(app->popup, "Reading", 97, 15, AlignCenter, AlignTop);
-    popup_set_text(
-        app->popup,
-        "Hold card next\nto Flipper's back",
-        94, 27, AlignCenter, AlignTop);
+    popup_set_text(app->popup, "Hold card next\nto Flipper's back", 94, 27, AlignCenter, AlignTop);
     popup_set_icon(app->popup, 0, 8, &I_nfc_manual_60x50);
     view_dispatcher_switch_to_view(app->view_dispatcher, MfpViewPopup);
 
@@ -170,12 +163,7 @@ bool mfp_scene_read_on_event(void* ctx, SceneManagerEvent event) {
         popup_set_header(app->popup, "Read Failed", 90, 3, AlignCenter, AlignTop);
         if(app->last_error == MfpErrorComm) {
             popup_set_text(
-                app->popup,
-                "ISO14443-4A link\nfailed.\nTap again",
-                90,
-                20,
-                AlignCenter,
-                AlignTop);
+                app->popup, "ISO14443-4A link\nfailed.\nTap again", 90, 20, AlignCenter, AlignTop);
         } else {
             popup_set_text(
                 app->popup,

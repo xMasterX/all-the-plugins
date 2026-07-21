@@ -6,11 +6,10 @@
 // Thanks for the permission, MMX!
 #include "../helpers/sound.h"
 
-
 #pragma once
 // Likelyhood for special rounds to force a stratagem to match the theme, out of 10.
 #define SPECIAL_ROUND_SELECTION_CHANCE 75
-#define MENU_OPTION_COUNT 3
+#define MENU_OPTION_COUNT              3
 #define SOUND
 typedef enum {
     EventTypeTick,
@@ -55,7 +54,8 @@ typedef struct {
 
     // QUEUE
     int queue_spot; // Current place in the stratgaem queue
-    int stratagem_queue[20]; // 20 long even though there will only be a max of 16 stratagems. I honstly don't know why i did this lol
+    int stratagem_queue
+        [20]; // 20 long even though there will only be a max of 16 stratagems. I honstly don't know why i did this lol
     SpecialRound special_round;
 
     char name_buf[32]; // Buffer for stratagem name
@@ -69,7 +69,6 @@ typedef struct {
     // MENU HANDLING
     int menu_spot;
     Config* config;
-
 
     // MARQUEE
     bool init_marquee;
@@ -102,8 +101,6 @@ typedef struct {
     int mus_timer;
 #endif
 } PluginState;
-
-
 
 typedef enum {
     ArrowDirectionUp,

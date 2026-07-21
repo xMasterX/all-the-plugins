@@ -25,8 +25,8 @@
 
 #define TAG "MFCEditor"
 
-#define NFC_APP_FOLDER ANY_PATH("nfc")
-#define NFC_APP_EXTENSION ".nfc"
+#define NFC_APP_FOLDER           ANY_PATH("nfc")
+#define NFC_APP_EXTENSION        ".nfc"
 #define NFC_APP_SHADOW_EXTENSION ".shd"
 
 enum MfcEditorCustomEvent {
@@ -38,7 +38,7 @@ enum MfcEditorCustomEvent {
 };
 
 typedef struct {
-    uint8_t bits : 3;
+    uint8_t bits       : 3;
     uint8_t check_bits : 3;
 } MfcEditorAccessBits;
 

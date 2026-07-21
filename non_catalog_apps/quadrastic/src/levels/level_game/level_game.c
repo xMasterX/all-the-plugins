@@ -30,33 +30,25 @@
 #include "player_entity.h"
 #include "target_entity.h"
 
-static void
-on_resume_clicked(void* context, uint32_t index)
-{
+static void on_resume_clicked(void* context, uint32_t index) {
     UNUSED(index);
     resume_game(context);
 }
 
-static void
-on_menu_clicked(void* context, uint32_t index)
-{
+static void on_menu_clicked(void* context, uint32_t index) {
     UNUSED(index);
     GameManager* manager = context;
     GameContext* game_context = game_manager_game_context_get(manager);
     game_manager_next_level_set(manager, game_context->levels.menu);
 }
 
-static void
-on_quit_clicked(void* context, uint32_t index)
-{
+static void on_quit_clicked(void* context, uint32_t index) {
     UNUSED(index);
     GameManager* manager = context;
     game_manager_game_stop(manager);
 }
 
-static void
-level_game_alloc(Level* level, GameManager* manager, void* _level_context)
-{
+static void level_game_alloc(Level* level, GameManager* manager, void* _level_context) {
     GameLevelContext* level_context = _level_context;
 
     // Add entities to the level
@@ -66,23 +58,17 @@ level_game_alloc(Level* level, GameManager* manager, void* _level_context)
 
     // Pause menu initialization
     level_context->is_paused = false;
-    level_context->pause_menu =
-      level_add_entity(level, &context_menu_description);
+    level_context->pause_menu = level_add_entity(level, &context_menu_description);
 
-    context_menu_add_item(
-      level_context->pause_menu, "Resume", 0, on_resume_clicked, level);
-    context_menu_add_item(
-      level_context->pause_menu, "Menu", 1, on_menu_clicked, manager);
-    context_menu_add_item(
-      level_context->pause_menu, "Quit", 2, on_quit_clicked, manager);
+    context_menu_add_item(level_context->pause_menu, "Resume", 0, on_resume_clicked, level);
+    context_menu_add_item(level_context->pause_menu, "Menu", 1, on_menu_clicked, manager);
+    context_menu_add_item(level_context->pause_menu, "Quit", 2, on_quit_clicked, manager);
 
     context_menu_back_callback_set(
-      level_context->pause_menu, (ContextMenuBackCallback)resume_game, level);
+        level_context->pause_menu, (ContextMenuBackCallback)resume_game, level);
 }
 
-static void
-level_game_start(Level* level, GameManager* manager, void* context)
-{
+static void level_game_start(Level* level, GameManager* manager, void* context) {
     UNUSED(level);
 
     dolphin_deed(DolphinDeedPluginGameStart);
@@ -97,17 +83,14 @@ level_game_start(Level* level, GameManager* manager, void* context)
     FURI_LOG_D(GAME_NAME, "Game level started");
 }
 
-static void
-level_game_stop(Level* level, GameManager* manager, void* _level_context)
-{
+static void level_game_stop(Level* level, GameManager* manager, void* _level_context) {
     UNUSED(manager);
 
     GameLevelContext* level_context = _level_context;
 
     // Clear enemies
     for
-        M_EACH(item, level_context->enemies, EntityList_t)
-        {
+        M_EACH(item, level_context->enemies, EntityList_t) {
             level_remove_entity(level, *item);
         }
     EntityList_clear(level_context->enemies);
@@ -115,11 +98,9 @@ level_game_stop(Level* level, GameManager* manager, void* _level_context)
     resume_game(level);
 }
 
-void
-pause_game(Level* level)
-{
+void pause_game(Level* level) {
     GameLevelContext* level_context = level_context_get(level);
-    if (level_context->is_paused) {
+    if(level_context->is_paused) {
         return;
     }
 
@@ -127,9 +108,7 @@ pause_game(Level* level)
     context_menu_reset_state(level_context->pause_menu);
 }
 
-void
-resume_game(Level* level)
-{
+void resume_game(Level* level) {
     GameLevelContext* level_context = level_context_get(level);
     level_context->is_paused = false;
 }

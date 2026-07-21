@@ -15,9 +15,9 @@
 #define RENAULT_V0_ROLLING_REPEAT     1U
 #define RENAULT_V0_REPLAY_REPEAT      10U
 
-#define RENAULT_V0_KEY2_FIELD    "Key2"
+#define RENAULT_V0_KEY2_FIELD     "Key2"
 #define RENAULT_V0_PREAMBLE_FIELD "Preamble"
-#define RENAULT_V0_ROLLING_FIELD "Rolling"
+#define RENAULT_V0_ROLLING_FIELD  "Rolling"
 
 _Static_assert(
     RENAULT_V0_UPLOAD_CAPACITY <= PP_SHARED_UPLOAD_CAPACITY,
@@ -29,48 +29,20 @@ typedef struct {
 } RenaultV0MatrixRow;
 
 static const RenaultV0MatrixRow renault_v0_matrix[42] = {
-    {0x00000001, 0x00000000},
-    {0x04000029, 0x00000000},
-    {0x0000001B, 0x00000000},
-    {0x00000000, 0x00000000},
-    {0x00000001, 0x00000000},
-    {0x05220124, 0x00000000},
-    {0x00000001, 0x00000000},
-    {0x00088410, 0x00000000},
-    {0x60132D1D, 0x00000000},
-    {0x60170F87, 0x00001004},
-    {0x00000000, 0x00000000},
-    {0x002000A9, 0x00000000},
-    {0x20863E01, 0x0000100C},
-    {0x24BB3755, 0x00000004},
-    {0x640199A4, 0x00000004},
-    {0x24225C43, 0x00001004},
-    {0x607886F1, 0x0000100C},
-    {0x6007A101, 0x0000000C},
-    {0x66672A10, 0x00000004},
-    {0x4651623F, 0x00001008},
-    {0x43380BBF, 0x00001008},
-    {0x20237F84, 0x00001000},
-    {0x4245755E, 0x00001008},
-    {0x60AAF581, 0x00000004},
-    {0x22722DAD, 0x0000000C},
-    {0x27C617F7, 0x00000000},
-    {0x46DE8F1B, 0x0000000C},
-    {0x231DEC51, 0x00000000},
-    {0x03ACAA0B, 0x00000008},
-    {0x22D2BF81, 0x00000004},
-    {0x626EF6AE, 0x0000100C},
-    {0x40441F95, 0x0000000C},
-    {0x00000001, 0x00000000},
-    {0x00000000, 0x00000000},
-    {0x20B9A590, 0x00000008},
-    {0x656C8E86, 0x00001008},
-    {0x60129F96, 0x0000000C},
-    {0x2368F667, 0x00001000},
-    {0x442A1A5C, 0x00000000},
-    {0x04C43242, 0x0000100C},
-    {0x22198640, 0x00001000},
-    {0x23D6B958, 0x00001008},
+    {0x00000001, 0x00000000}, {0x04000029, 0x00000000}, {0x0000001B, 0x00000000},
+    {0x00000000, 0x00000000}, {0x00000001, 0x00000000}, {0x05220124, 0x00000000},
+    {0x00000001, 0x00000000}, {0x00088410, 0x00000000}, {0x60132D1D, 0x00000000},
+    {0x60170F87, 0x00001004}, {0x00000000, 0x00000000}, {0x002000A9, 0x00000000},
+    {0x20863E01, 0x0000100C}, {0x24BB3755, 0x00000004}, {0x640199A4, 0x00000004},
+    {0x24225C43, 0x00001004}, {0x607886F1, 0x0000100C}, {0x6007A101, 0x0000000C},
+    {0x66672A10, 0x00000004}, {0x4651623F, 0x00001008}, {0x43380BBF, 0x00001008},
+    {0x20237F84, 0x00001000}, {0x4245755E, 0x00001008}, {0x60AAF581, 0x00000004},
+    {0x22722DAD, 0x0000000C}, {0x27C617F7, 0x00000000}, {0x46DE8F1B, 0x0000000C},
+    {0x231DEC51, 0x00000000}, {0x03ACAA0B, 0x00000008}, {0x22D2BF81, 0x00000004},
+    {0x626EF6AE, 0x0000100C}, {0x40441F95, 0x0000000C}, {0x00000001, 0x00000000},
+    {0x00000000, 0x00000000}, {0x20B9A590, 0x00000008}, {0x656C8E86, 0x00001008},
+    {0x60129F96, 0x0000000C}, {0x2368F667, 0x00001000}, {0x442A1A5C, 0x00000000},
+    {0x04C43242, 0x0000100C}, {0x22198640, 0x00001000}, {0x23D6B958, 0x00001008},
 };
 
 static const uint8_t renault_v0_decoder_state_table[4] = {0x01, 0x91, 0x9B, 0xFB};
@@ -186,18 +158,16 @@ typedef struct {
 static void renault_v0_set_split_bit(uint32_t* low, uint32_t* high, uint8_t bit);
 static uint8_t renault_v0_parity32(uint32_t value);
 static bool renault_v0_type_button_valid(RenaultV0TypeId type_id, uint8_t button);
-static const RenaultV0TypeEntry* renault_v0_find_type_by_checks(
-    uint8_t checksum,
-    uint32_t key2,
-    bool* c1_ok,
-    bool* c2_ok);
+static const RenaultV0TypeEntry*
+    renault_v0_find_type_by_checks(uint8_t checksum, uint32_t key2, bool* c1_ok, bool* c2_ok);
 static bool renault_v0_checksum_hi2xor_valid(uint8_t hi2xor);
 static bool renault_v0_button_valid_generic(uint8_t button);
 static bool renault_v0_preamble_bits_valid(uint8_t preamble_bits);
 static uint8_t renault_v0_default_preamble_bits(RenaultV0TypeId type_id);
 static bool renault_v0_type_preamble_bits_valid(RenaultV0TypeId type_id, uint8_t preamble_bits);
 static const char* renault_v0_get_button_name(RenaultV0TypeId type_id, uint8_t button);
-static void renault_v0_parse_fields(uint64_t data, uint32_t* serial, uint8_t* button, uint8_t* counter);
+static void
+    renault_v0_parse_fields(uint64_t data, uint32_t* serial, uint8_t* button, uint8_t* counter);
 static void renault_v0_build_key(
     uint32_t serial,
     uint8_t button,
@@ -214,7 +184,8 @@ static bool renault_v0_is_end_burst(bool level, uint32_t duration, uint8_t bit_c
 #if PROTOPIRATE_WITH_ENCODER
 static RenaultV0TypeId renault_v0_detect_type(uint8_t checksum, uint32_t key2, uint8_t button);
 #endif
-static bool renault_v0_classify_frame(uint64_t data, uint32_t key2, RenaultV0DecodeAttempt* attempt);
+static bool
+    renault_v0_classify_frame(uint64_t data, uint32_t key2, RenaultV0DecodeAttempt* attempt);
 static uint8_t renault_v0_checksum(uint64_t data, uint32_t key2);
 static bool renault_v0_model_matches(
     uint64_t data,
@@ -299,16 +270,16 @@ const SubGhzProtocol renault_v0_protocol = {
             SubGhzProtocolFlag_868 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Save |
             SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Send,
 
-    #if PROTOPIRATE_WITH_ENCODER
+#if PROTOPIRATE_WITH_ENCODER
     .encoder = &subghz_protocol_renault_v0_encoder,
-    #else
+#else
     .encoder = NULL,
-    #endif
-    #if PROTOPIRATE_WITH_DECODER
+#endif
+#if PROTOPIRATE_WITH_DECODER
     .decoder = &subghz_protocol_renault_v0_decoder,
-    #else
+#else
     .decoder = NULL,
-    #endif
+#endif
 };
 
 static void renault_v0_set_split_bit(uint32_t* low, uint32_t* high, uint8_t bit) {
@@ -348,14 +319,10 @@ static bool renault_v0_type_button_valid(RenaultV0TypeId type_id, uint8_t button
     }
 }
 
-static const RenaultV0TypeEntry* renault_v0_find_type_by_checks(
-    uint8_t checksum,
-    uint32_t key2,
-    bool* c1_ok,
-    bool* c2_ok) {
+static const RenaultV0TypeEntry*
+    renault_v0_find_type_by_checks(uint8_t checksum, uint32_t key2, bool* c1_ok, bool* c2_ok) {
     const uint8_t checksum_low6 = checksum & 0x3FU;
-    const uint8_t checksum_high2_xor =
-        (uint8_t)(((checksum >> 6U) & 0x03U) ^ (key2 & 0x03U));
+    const uint8_t checksum_high2_xor = (uint8_t)(((checksum >> 6U) & 0x03U) ^ (key2 & 0x03U));
 
     if(c1_ok) {
         *c1_ok = false;
@@ -465,7 +432,8 @@ static const char* renault_v0_get_button_name(RenaultV0TypeId type_id, uint8_t b
     return "??";
 }
 
-static void renault_v0_parse_fields(uint64_t data, uint32_t* serial, uint8_t* button, uint8_t* counter) {
+static void
+    renault_v0_parse_fields(uint64_t data, uint32_t* serial, uint8_t* button, uint8_t* counter) {
     if(serial) {
         *serial = (uint32_t)(data >> 40U);
     }
@@ -607,7 +575,8 @@ static bool renault_v0_classify_event_profile(
 
 static bool renault_v0_classify_event(uint32_t duration, bool level, uint8_t* event_code) {
     for(size_t i = 0; i < COUNT_OF(renault_v0_te_profiles); i++) {
-        if(renault_v0_classify_event_profile(&renault_v0_te_profiles[i], duration, level, event_code)) {
+        if(renault_v0_classify_event_profile(
+               &renault_v0_te_profiles[i], duration, level, event_code)) {
             return true;
         }
     }
@@ -621,8 +590,7 @@ static bool renault_v0_is_end_burst(bool level, uint32_t duration, uint8_t bit_c
 
 #if PROTOPIRATE_WITH_ENCODER
 static RenaultV0TypeId renault_v0_detect_type(uint8_t checksum, uint32_t key2, uint8_t button) {
-    const RenaultV0TypeEntry* type =
-        renault_v0_find_type_by_checks(checksum, key2, NULL, NULL);
+    const RenaultV0TypeEntry* type = renault_v0_find_type_by_checks(checksum, key2, NULL, NULL);
     if(type && renault_v0_type_button_valid(type->id, button)) {
         return type->id;
     }
@@ -631,7 +599,8 @@ static RenaultV0TypeId renault_v0_detect_type(uint8_t checksum, uint32_t key2, u
 }
 #endif
 
-static bool renault_v0_classify_frame(uint64_t data, uint32_t key2, RenaultV0DecodeAttempt* attempt) {
+static bool
+    renault_v0_classify_frame(uint64_t data, uint32_t key2, RenaultV0DecodeAttempt* attempt) {
     furi_check(attempt);
 
     uint32_t serial = 0U;
@@ -641,8 +610,7 @@ static bool renault_v0_classify_frame(uint64_t data, uint32_t key2, RenaultV0Dec
 
     const uint8_t checksum = renault_v0_checksum(data, key2);
     const uint8_t checksum_low6 = checksum & 0x3FU;
-    const uint8_t checksum_high2_xor =
-        (uint8_t)(((checksum >> 6U) & 0x03U) ^ (key2 & 0x03U));
+    const uint8_t checksum_high2_xor = (uint8_t)(((checksum >> 6U) & 0x03U) ^ (key2 & 0x03U));
     bool c1_ok = false;
     bool c2_ok = false;
     const RenaultV0TypeEntry* type =
@@ -664,8 +632,8 @@ static bool renault_v0_classify_frame(uint64_t data, uint32_t key2, RenaultV0Dec
         return true;
     }
 
-    const bool dynamic_c1_ok =
-        renault_v0_button_valid_generic(button) && (serial != 0U) && (serial <= 0xFFFFFFU);
+    const bool dynamic_c1_ok = renault_v0_button_valid_generic(button) && (serial != 0U) &&
+                               (serial <= 0xFFFFFFU);
     const bool dynamic_c2_ok = renault_v0_checksum_hi2xor_valid(checksum_high2_xor);
     attempt->c1_ok = dynamic_c1_ok;
     attempt->c2_ok = dynamic_c2_ok;
@@ -839,7 +807,8 @@ static SubGhzProtocolStatus renault_v0_write_display(
 
 #if PROTOPIRATE_WITH_ENCODER
 
-static bool renault_v0_upload_shape_for_type(RenaultV0TypeId type_id, RenaultV0UploadShape* shape) {
+static bool
+    renault_v0_upload_shape_for_type(RenaultV0TypeId type_id, RenaultV0UploadShape* shape) {
     furi_check(shape);
 
     switch(type_id) {
@@ -862,7 +831,8 @@ static bool renault_v0_upload_shape_for_type(RenaultV0TypeId type_id, RenaultV0U
     }
 }
 
-static bool renault_v0_upload_shape_for_preamble(uint8_t preamble_bits, RenaultV0UploadShape* shape) {
+static bool
+    renault_v0_upload_shape_for_preamble(uint8_t preamble_bits, RenaultV0UploadShape* shape) {
     furi_check(shape);
 
     if(!renault_v0_preamble_bits_valid(preamble_bits)) {
@@ -893,7 +863,8 @@ static bool renault_v0_emit(
     furi_check(index);
 
     const size_t prev = *index;
-    *index = pp_emit_merge(instance->encoder.upload, prev, RENAULT_V0_UPLOAD_CAPACITY, level, duration);
+    *index =
+        pp_emit_merge(instance->encoder.upload, prev, RENAULT_V0_UPLOAD_CAPACITY, level, duration);
     if(*index > prev) {
         return true;
     }
@@ -961,8 +932,7 @@ static bool renault_v0_build_upload(
 
         uint8_t state = 1U;
         for(uint8_t pair = 0U; pair < shape.preamble_pairs; pair++) {
-            if(!renault_v0_emit_decoded_bit(
-                   instance, &write_index, &state, shape.te_short, true)) {
+            if(!renault_v0_emit_decoded_bit(instance, &write_index, &state, shape.te_short, true)) {
                 return false;
             }
         }
@@ -970,8 +940,7 @@ static bool renault_v0_build_upload(
         for(uint8_t bit_index = 0U; bit_index < RENAULT_V0_MIN_BITS; bit_index++) {
             const bool bit =
                 renault_v0_get_bit_msb82(instance->generic.data, instance->key2, bit_index);
-            if(!renault_v0_emit_decoded_bit(
-                   instance, &write_index, &state, shape.te_short, bit)) {
+            if(!renault_v0_emit_decoded_bit(instance, &write_index, &state, shape.te_short, bit)) {
                 return false;
             }
         }
@@ -982,8 +951,8 @@ static bool renault_v0_build_upload(
             }
         }
 
-        const uint32_t trailing_low =
-            (burst + 1U < shape.burst_count) ? shape.inter_burst_low : shape.final_low;
+        const uint32_t trailing_low = (burst + 1U < shape.burst_count) ? shape.inter_burst_low :
+                                                                         shape.final_low;
         if(!renault_v0_emit(instance, &write_index, false, trailing_low)) {
             return false;
         }
@@ -1076,7 +1045,8 @@ SubGhzProtocolStatus
            !renault_v0_preamble_bits_valid(instance->preamble_bits)) {
             break;
         }
-        const bool rolling_supported = (captured_type == RenaultV0Type13) && captured_attempt.ic_ok;
+        const bool rolling_supported = (captured_type == RenaultV0Type13) &&
+                                       captured_attempt.ic_ok;
 
         if(rolling_supported) {
             uint32_t serial_u32 = serial;
@@ -1095,8 +1065,8 @@ SubGhzProtocolStatus
                 serial, instance->tx_button, counter, &instance->generic.data, &instance->key2);
             const uint8_t generated_checksum =
                 renault_v0_checksum(instance->generic.data, instance->key2);
-            if(renault_v0_detect_type(
-                   generated_checksum, instance->key2, instance->tx_button) != RenaultV0Type13) {
+            if(renault_v0_detect_type(generated_checksum, instance->key2, instance->tx_button) !=
+               RenaultV0Type13) {
                 break;
             }
         } else {
@@ -1113,8 +1083,8 @@ SubGhzProtocolStatus
         instance->generic.btn = instance->tx_button;
         instance->generic.cnt = counter;
 
-        const uint32_t default_repeat =
-            rolling_supported ? RENAULT_V0_ROLLING_REPEAT : RENAULT_V0_REPLAY_REPEAT;
+        const uint32_t default_repeat = rolling_supported ? RENAULT_V0_ROLLING_REPEAT :
+                                                            RENAULT_V0_REPLAY_REPEAT;
         uint32_t tx_repeat = pp_encoder_read_repeat(flipper_format, default_repeat);
         if(tx_repeat == 0U) {
             tx_repeat = default_repeat;
@@ -1367,10 +1337,7 @@ SubGhzProtocolStatus subghz_protocol_decoder_renault_v0_serialize(
     }
 
     status = renault_v0_write_display(
-        flipper_format,
-        instance->generic.protocol_name,
-        instance->type_id,
-        instance->generic.btn);
+        flipper_format, instance->generic.protocol_name, instance->type_id, instance->generic.btn);
     if(status != SubGhzProtocolStatusOk) {
         return status;
     }
@@ -1380,8 +1347,7 @@ SubGhzProtocolStatus subghz_protocol_decoder_renault_v0_serialize(
     }
 
     const uint32_t preamble_bits = instance->preamble_bits;
-    if(!flipper_format_write_uint32(
-           flipper_format, RENAULT_V0_PREAMBLE_FIELD, &preamble_bits, 1)) {
+    if(!flipper_format_write_uint32(flipper_format, RENAULT_V0_PREAMBLE_FIELD, &preamble_bits, 1)) {
         return SubGhzProtocolStatusErrorParserOthers;
     }
 
@@ -1396,8 +1362,8 @@ SubGhzProtocolStatus subghz_protocol_decoder_renault_v0_serialize(
         return status;
     }
 
-    const uint32_t rolling =
-        ((instance->type_id == RenaultV0Type13) && !instance->check_ic) ? 1U : 0U;
+    const uint32_t rolling = ((instance->type_id == RenaultV0Type13) && !instance->check_ic) ? 1U :
+                                                                                               0U;
     if(!flipper_format_write_uint32(flipper_format, RENAULT_V0_ROLLING_FIELD, &rolling, 1)) {
         return SubGhzProtocolStatusErrorParserOthers;
     }
@@ -1424,8 +1390,7 @@ SubGhzProtocolStatus
     instance->key2 = key2;
     uint32_t preamble_bits = 0U;
     flipper_format_rewind(flipper_format);
-    if(flipper_format_read_uint32(
-           flipper_format, RENAULT_V0_PREAMBLE_FIELD, &preamble_bits, 1) &&
+    if(flipper_format_read_uint32(flipper_format, RENAULT_V0_PREAMBLE_FIELD, &preamble_bits, 1) &&
        renault_v0_preamble_bits_valid((uint8_t)preamble_bits)) {
         instance->preamble_bits = (uint8_t)preamble_bits;
     } else {

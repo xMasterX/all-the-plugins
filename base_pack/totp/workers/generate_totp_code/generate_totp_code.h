@@ -15,7 +15,6 @@ typedef struct TotpGenerateCodeWorkerContext TotpGenerateCodeWorkerContext;
  * @brief Generate token worker events
  */
 enum TotGenerateCodeWorkerEvents {
-
     /**
      * @brief Reserved, should not be used anywhere
      */

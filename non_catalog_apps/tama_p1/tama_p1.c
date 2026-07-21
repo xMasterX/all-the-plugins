@@ -694,7 +694,8 @@ static void tama_p1_save_state() {
 static int32_t tama_p1_worker(void* context) {
     bool running = true;
     FuriMutex* mutex = context;
-    while(furi_mutex_acquire(mutex, FuriWaitForever) != FuriStatusOk) furi_delay_tick(1);
+    while(furi_mutex_acquire(mutex, FuriWaitForever) != FuriStatusOk)
+        furi_delay_tick(1);
 
     cpu_sync_ref_timestamp();
     LL_TIM_EnableCounter(TIM2);

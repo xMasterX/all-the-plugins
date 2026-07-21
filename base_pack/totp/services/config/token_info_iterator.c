@@ -7,7 +7,7 @@
 #include "../../types/crypto_settings.h"
 
 #define CONFIG_FILE_PART_FILE_PATH CONFIG_FILE_DIRECTORY_PATH "/totp.conf.part"
-#define STREAM_COPY_BUFFER_SIZE (128)
+#define STREAM_COPY_BUFFER_SIZE    (128)
 
 struct TokenInfoIteratorContext {
     size_t total_count;

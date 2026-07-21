@@ -181,12 +181,7 @@ bool cancommander_scene_tools_monitor_menu_on_event(void* context, SceneManagerE
 
     case ToolsMonitorSpeed:
         cancommander_scene_tools_monitor_open_tool_args(
-            app,
-            CcToolSpeed,
-            "speed",
-            app->args_speed,
-            sizeof(app->args_speed),
-            "CAN Speed Test");
+            app, CcToolSpeed, "speed", app->args_speed, sizeof(app->args_speed), "CAN Speed Test");
         return true;
 
     default:
@@ -198,4 +193,3 @@ void cancommander_scene_tools_monitor_menu_on_exit(void* context) {
     App* app = context;
     submenu_reset(app->submenu);
 }
-

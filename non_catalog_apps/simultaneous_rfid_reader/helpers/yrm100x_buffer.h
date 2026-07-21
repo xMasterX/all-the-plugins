@@ -8,7 +8,6 @@
  * @author frux-c
 */
 
-
 #define MAX_BUFFER_SIZE 200
 
 typedef struct {

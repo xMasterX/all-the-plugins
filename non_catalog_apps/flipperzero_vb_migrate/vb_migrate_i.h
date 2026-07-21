@@ -45,8 +45,8 @@
 
 #include "vb_migrate_icons.h"
 
-#define NFC_APP_EXTENSION ".nfc"
-#define VB_MIGRATE_TEMPLATE_NAME "template" NFC_APP_EXTENSION
+#define NFC_APP_EXTENSION         ".nfc"
+#define VB_MIGRATE_TEMPLATE_NAME  "template" NFC_APP_EXTENSION
 #define VB_MIGRATE_CAPTURE_FORMAT "%03d%s"
 
 #define VB_MIGRATE_MAX_DEV_NAME_LENGTH (30)

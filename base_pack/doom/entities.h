@@ -7,22 +7,22 @@
 // Shortcuts
 //#define create_player(x, y)   {create_coords((double) x + (double)0.5, (double) y + (double)0.5), create_coords(1, 0), create_coords(0, -0.66), 0, 100}
 
-#define create_enemy(x, y) create_entity(E_ENEMY, x, y, S_STAND, 50)
-#define create_medikit(x, y) create_entity(E_MEDIKIT, x, y, S_STAND, 0)
-#define create_key(x, y) create_entity(E_KEY, x, y, S_STAND, 0)
+#define create_enemy(x, y)         create_entity(E_ENEMY, x, y, S_STAND, 50)
+#define create_medikit(x, y)       create_entity(E_MEDIKIT, x, y, S_STAND, 0)
+#define create_key(x, y)           create_entity(E_KEY, x, y, S_STAND, 0)
 #define create_fireball(x, y, dir) create_entity(E_FIREBALL, x, y, S_STAND, dir)
-#define create_door(x, y) create_entity(E_DOOR, x, y, S_STAND, 0)
+#define create_door(x, y)          create_entity(E_DOOR, x, y, S_STAND, 0)
 
 // entity statuses
-#define S_STAND 0
-#define S_ALERT 1
+#define S_STAND  0
+#define S_ALERT  1
 #define S_FIRING 2
-#define S_MELEE 3
-#define S_HIT 4
-#define S_DEAD 5
+#define S_MELEE  3
+#define S_HIT    4
+#define S_DEAD   5
 #define S_HIDDEN 6
-#define S_OPEN 7
-#define S_CLOSE 8
+#define S_OPEN   7
+#define S_CLOSE  8
 
 typedef struct Player {
     Coords pos;

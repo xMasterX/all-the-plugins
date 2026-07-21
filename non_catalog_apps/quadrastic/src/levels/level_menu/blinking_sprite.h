@@ -21,8 +21,7 @@
 
 typedef struct Sprite Sprite;
 
-typedef struct
-{
+typedef struct {
     Sprite* sprite;
     float delay;
     float show_duration;
@@ -30,13 +29,13 @@ typedef struct
     float time;
 } BlinkingSpriteContext;
 
-Entity*
-blinking_sprite_add_to_level(Level* level,
-                             GameManager* manager,
-                             Vector pos,
-                             float delay,
-                             float show_duration,
-                             float hide_duration,
-                             const char* sprite_name);
+Entity* blinking_sprite_add_to_level(
+    Level* level,
+    GameManager* manager,
+    Vector pos,
+    float delay,
+    float show_duration,
+    float hide_duration,
+    const char* sprite_name);
 
 extern const EntityDescription blinking_sprite_description;

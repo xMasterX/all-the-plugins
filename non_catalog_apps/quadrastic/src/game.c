@@ -31,32 +31,23 @@
 #include "levels/level_menu/level_menu.h"
 #include "levels/level_settings/level_settings.h"
 
-static void
-game_start(GameManager* game_manager, void* _game_context)
-{
+static void game_start(GameManager* game_manager, void* _game_context) {
     GameContext* game_context = _game_context;
 
     game_read_settings(game_context);
 
     game_context->notification = furi_record_open(RECORD_NOTIFICATION);
 
-    game_context->levels.menu =
-      game_manager_add_level(game_manager, &level_menu);
-    game_context->levels.about =
-      game_manager_add_level(game_manager, &level_about);
-    game_context->levels.game =
-      game_manager_add_level(game_manager, &level_game);
-    game_context->levels.game_over =
-      game_manager_add_level(game_manager, &level_game_over);
-    game_context->levels.settings =
-      game_manager_add_level(game_manager, &level_settings);
+    game_context->levels.menu = game_manager_add_level(game_manager, &level_menu);
+    game_context->levels.about = game_manager_add_level(game_manager, &level_about);
+    game_context->levels.game = game_manager_add_level(game_manager, &level_game);
+    game_context->levels.game_over = game_manager_add_level(game_manager, &level_game_over);
+    game_context->levels.settings = game_manager_add_level(game_manager, &level_settings);
 
     FURI_LOG_I(GAME_NAME, "Game has started");
 }
 
-static void
-game_stop(void* _game_context)
-{
+static void game_stop(void* _game_context) {
     UNUSED(_game_context);
     furi_record_close(RECORD_NOTIFICATION);
     FURI_LOG_I(GAME_NAME, "Game over");

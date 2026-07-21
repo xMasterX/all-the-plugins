@@ -745,8 +745,8 @@ void nearby_files_process_gps_coordinates(NearbyFilesApp* app) {
                furi_string_get_cstr(item->path), &latitude, &longitude)) {
             // Check if coordinates are valid (not zero and not NaN). A NaN
             // value means the file has no real GPS fix, so skip it.
-            if((float)latitude != 0.0f && (float)longitude != 0.0f &&
-               !isnan(latitude) && !isnan(longitude)) {
+            if((float)latitude != 0.0f && (float)longitude != 0.0f && !isnan(latitude) &&
+               !isnan(longitude)) {
                 // File has valid GPS coordinates
                 item->latitude = latitude;
                 item->longitude = longitude;

@@ -16,10 +16,7 @@ void nfc_maker_scene_https_on_enter(void* context) {
 
     text_input_set_header_text(text_input, "Enter Https Link:");
 
-    strlcpy(
-        app->big_buf,
-        "flipperzero.one",
-        sizeof(app->big_buf));
+    strlcpy(app->big_buf, "flipperzero.one", sizeof(app->big_buf));
 
     text_input_set_result_callback(
         text_input,

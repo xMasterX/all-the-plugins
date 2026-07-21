@@ -3,7 +3,7 @@
 
 #include "Spi_lib.h"
 #include "log_user.h"
-#include "../fsd_logic/fsd_types.h"  // MAX_LEN + CANFRAME (hardware-free, shared with protocol core)
+#include "../fsd_logic/fsd_types.h" // MAX_LEN + CANFRAME (hardware-free, shared with protocol core)
 
 #ifdef __LOG_USER_H_
 // for debugging errors

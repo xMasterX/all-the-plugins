@@ -189,8 +189,8 @@ static void can_capture_changed(VariableItem* item) {
 }
 
 // Helper macro to reduce boilerplate
-#define ADD_TOGGLE(label, callback, field) \
-    item = variable_item_list_add(list, label, 2, callback, app); \
+#define ADD_TOGGLE(label, callback, field)                           \
+    item = variable_item_list_add(list, label, 2, callback, app);    \
     variable_item_set_current_value_index(item, app->field ? 1 : 0); \
     variable_item_set_current_value_text(item, toggle_text[app->field ? 1 : 0]);
 
@@ -207,33 +207,33 @@ void tesla_fsd_scene_settings_on_enter(void* context) {
     variable_item_set_current_value_text(item, op_mode_text[(uint8_t)app->op_mode]);
 
     // ── Stable features (car-tested) ──
-    ADD_TOGGLE("Nag Killer",       nag_killer_changed,       nag_killer)
-    ADD_TOGGLE("Force FSD",        force_fsd_changed,        force_fsd)
-    ADD_TOGGLE("TLSSC Restore",    tlssc_restore_changed,    tlssc_restore)
-    ADD_TOGGLE("AP-First (14.x)",  ap_first_changed,         ap_first)
+    ADD_TOGGLE("Nag Killer", nag_killer_changed, nag_killer)
+    ADD_TOGGLE("Force FSD", force_fsd_changed, force_fsd)
+    ADD_TOGGLE("TLSSC Restore", tlssc_restore_changed, tlssc_restore)
+    ADD_TOGGLE("AP-First (14.x)", ap_first_changed, ap_first)
     ADD_TOGGLE("Instant Engage (exp.)", ap_first_edge_changed, ap_first_edge)
     ADD_TOGGLE("Minimal Inject (exp.)", ap_first_minimal_changed, ap_first_minimal)
-    ADD_TOGGLE("Soft Engage",      soft_engage_changed,      soft_engage)
-    ADD_TOGGLE("Nag Burst (14.x)", nag_burst_changed,        nag_burst)
-    ADD_TOGGLE("On 14.x?",         warning_14x_changed,      firmware_14x_warning)
-    ADD_TOGGLE("GTW Cfg Replay",   shield_changed,           gtw_shield)
-    ADD_TOGGLE("Suppress Chime",   chime_changed,            suppress_speed_chime)
-    ADD_TOGGLE("Emerg. Vehicle",   emerg_changed,            emergency_vehicle_detect)
-    ADD_TOGGLE("Precondition",     precondition_changed,     precondition)
-    ADD_TOGGLE("CAN Capture",      can_capture_changed,      can_capture)
+    ADD_TOGGLE("Soft Engage", soft_engage_changed, soft_engage)
+    ADD_TOGGLE("Nag Burst (14.x)", nag_burst_changed, nag_burst)
+    ADD_TOGGLE("On 14.x?", warning_14x_changed, firmware_14x_warning)
+    ADD_TOGGLE("GTW Cfg Replay", shield_changed, gtw_shield)
+    ADD_TOGGLE("Suppress Chime", chime_changed, suppress_speed_chime)
+    ADD_TOGGLE("Emerg. Vehicle", emerg_changed, emergency_vehicle_detect)
+    ADD_TOGGLE("Precondition", precondition_changed, precondition)
+    ADD_TOGGLE("CAN Capture", can_capture_changed, can_capture)
 
     // ── Beta features (report results in GitHub issues) ──
     variable_item_list_add(list, "-- Beta (report!) --", 0, NULL, NULL);
-    ADD_TOGGLE("Nag EPAS-faithful", nag_faithful_changed,    nag_epas_faithful)
-    ADD_TOGGLE("ScrollPress AP",  scroll_press_changed,      scroll_press_ap)
-    ADD_TOGGLE("Nav FSD Route",  nav_enable_changed,       assist_nav_enable)
-    ADD_TOGGLE("TLSSC bit38",   tlssc_bit38_changed,      assist_tlssc_bit38)
-    ADD_TOGGLE("Lane Graph",    lane_graph_changed,        assist_show_lane_graph)
-    ADD_TOGGLE("Tier Override",  tier_override_changed,     gtw_tier_override)
-    ADD_TOGGLE("Dev Mode",       dev_mode_changed,          assist_dev_mode)
-    ADD_TOGGLE("Force LHD",      lhd_override_changed,      assist_lhd_override)
-    ADD_TOGGLE("Hands-Off",      hands_off_changed,         assist_hands_off)
-    ADD_TOGGLE("Telemetry Off",  telemetry_off_changed,     assist_telemetry_off)
+    ADD_TOGGLE("Nag EPAS-faithful", nag_faithful_changed, nag_epas_faithful)
+    ADD_TOGGLE("ScrollPress AP", scroll_press_changed, scroll_press_ap)
+    ADD_TOGGLE("Nav FSD Route", nav_enable_changed, assist_nav_enable)
+    ADD_TOGGLE("TLSSC bit38", tlssc_bit38_changed, assist_tlssc_bit38)
+    ADD_TOGGLE("Lane Graph", lane_graph_changed, assist_show_lane_graph)
+    ADD_TOGGLE("Tier Override", tier_override_changed, gtw_tier_override)
+    ADD_TOGGLE("Dev Mode", dev_mode_changed, assist_dev_mode)
+    ADD_TOGGLE("Force LHD", lhd_override_changed, assist_lhd_override)
+    ADD_TOGGLE("Hands-Off", hands_off_changed, assist_hands_off)
+    ADD_TOGGLE("Telemetry Off", telemetry_off_changed, assist_telemetry_off)
 
     // ── Hardware ──
     item = variable_item_list_add(list, "MCP Crystal", 3, clock_changed, app);

@@ -25,7 +25,7 @@
         a = b;              \
         b = temp;           \
     } while(0)
-#define sign(a, b) (double)(a > b ? 1 : (b > a ? -1 : 0))
+#define sign(a, b)          (double)(a > b ? 1 : (b > a ? -1 : 0))
 #define pgm_read_byte(addr) (*(const unsigned char*)(addr))
 
 typedef enum {

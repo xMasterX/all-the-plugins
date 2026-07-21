@@ -1,8 +1,21 @@
 #include "tx_ratio.h"
 
 static const uint8_t dcf77_tx_ratio_y_values[] = {
-    1U, 2U,  3U,  4U,  5U,  6U,  7U,  8U,
-    9U, 10U, 12U, 15U, 16U, 20U, 24U,
+    1U,
+    2U,
+    3U,
+    4U,
+    5U,
+    6U,
+    7U,
+    8U,
+    9U,
+    10U,
+    12U,
+    15U,
+    16U,
+    20U,
+    24U,
 };
 
 size_t dcf77_tx_ratio_y_count(void) {
@@ -45,7 +58,7 @@ uint8_t dcf77_tx_ratio_x_clamp(uint8_t x, uint8_t y) {
 
 bool dcf77_tx_ratio_should_send(uint32_t frame_index, uint8_t x, uint8_t y) {
     x = dcf77_tx_ratio_x_clamp(x, y);
-    y = dcf77_tx_ratio_x_clamp(y,  y);
+    y = dcf77_tx_ratio_x_clamp(y, y);
 
-      return (((frame_index + 1U) * x + y - 1U) / y) != ((frame_index * x + y - 1U) / y);
+    return (((frame_index + 1U) * x + y - 1U) / y) != ((frame_index * x + y - 1U) / y);
 }

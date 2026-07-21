@@ -51,7 +51,6 @@
 #include "api/calypso/calypso_i.h"
 #include "api/suica/suica_structs.h"
 
-
 #define KEY_MASK_BIT_CHECK(key_mask_1, key_mask_2) (((key_mask_1) & (key_mask_2)) == (key_mask_1))
 #define METROFLIP_FILE_EXTENSION                   ".nfc"
 typedef struct Metroflip {
@@ -102,7 +101,6 @@ typedef struct Metroflip {
     bool is_desfire;
     uint8_t hist_bytes[32];
     uint32_t hist_bytes_count;
-
 
     // Calypso specific context
     CalypsoContext* calypso_context;
@@ -168,7 +166,7 @@ typedef enum {
     MetroflipViewTextBox,
     MetroflipViewWidget,
     MetroflipViewUart,
-    MetroflipViewCanvas,   /* Used by plugins (e.g. Suica) for custom views */
+    MetroflipViewCanvas, /* Used by plugins (e.g. Suica) for custom views */
     MetroflipViewCardView, /* Persistent card view - never conflicts with plugin views */
 } MetroflipView;
 

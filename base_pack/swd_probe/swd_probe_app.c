@@ -2209,7 +2209,7 @@ static bool swd_execute_script(AppFSM* const ctx, const char* filename) {
 
 /************************** UI functions **************************/
 
-#define CANVAS_WIDTH 128
+#define CANVAS_WIDTH  128
 #define CANVAS_HEIGHT 64
 
 #define COERCE(d, min, max) \

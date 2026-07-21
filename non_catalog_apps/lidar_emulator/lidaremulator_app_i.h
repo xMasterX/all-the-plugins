@@ -57,4 +57,3 @@ typedef enum {
     LidarEmulatorViewSubmenu,
     LidarEmulatorViewVariableList,
 } LidarEmulatorView;
-

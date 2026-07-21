@@ -97,11 +97,7 @@ void set_jjy_timecode(
     }
 
     jjy_set_weighted_decimal(
-        dest,
-        minute,
-        minute_bits,
-        minute_weights,
-        sizeof(minute_bits) / sizeof(minute_bits[0]));
+        dest, minute, minute_bits, minute_weights, sizeof(minute_bits) / sizeof(minute_bits[0]));
     jjy_set_weighted_decimal(
         dest, hour, hour_bits, hour_weights, sizeof(hour_bits) / sizeof(hour_bits[0]));
     jjy_set_weighted_decimal(
@@ -118,8 +114,9 @@ void set_jjy_timecode(
     jjy_set_symbol(
         dest,
         36,
-        jjy_parity(dest, hour_bits, sizeof(hour_bits) / sizeof(hour_bits[0])) ? RadioClockPulseOne :
-                                                                                  RadioClockPulseZero);
+        jjy_parity(dest, hour_bits, sizeof(hour_bits) / sizeof(hour_bits[0])) ?
+            RadioClockPulseOne :
+            RadioClockPulseZero);
     jjy_set_symbol(
         dest,
         37,

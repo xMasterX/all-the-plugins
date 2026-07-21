@@ -10,9 +10,8 @@
 #include <gui/view.h>
 #include <gui/view_dispatcher.h>
 
-void scene_on_enter_task_description_input(void *context);
-bool scene_on_event_task_description_input(void *context,
-                                           SceneManagerEvent event);
-void scene_on_exit_task_description_input(void *context);
+void scene_on_enter_task_description_input(void* context);
+bool scene_on_event_task_description_input(void* context, SceneManagerEvent event);
+void scene_on_exit_task_description_input(void* context);
 
 #endif // EDIT_DESCRIPTION_H

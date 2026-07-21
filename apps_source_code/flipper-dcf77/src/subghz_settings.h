@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #define DCF77_SUBGHZ_MAX_BANDS 8U
-#define DCF77_SUBGHZ_STEP_HZ 10000U
+#define DCF77_SUBGHZ_STEP_HZ   10000U
 
 typedef struct {
     uint32_t start_hz;

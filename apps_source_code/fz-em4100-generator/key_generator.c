@@ -12,7 +12,7 @@
 
 #include "key_generator_icons.h"
 
-#define DIR_PATH "/ext/rfidfuzzer"
+#define DIR_PATH  "/ext/rfidfuzzer"
 #define FILE_PATH "/ext/rfidfuzzer/generated.txt"
 
 FuriString* file_path;

@@ -21,13 +21,12 @@
 
 #include "src/game.h"
 
-Entity*
-delayed_sprite_add_to_level(Level* level,
-                            GameManager* manager,
-                            Vector pos,
-                            float delay,
-                            const char* sprite_name)
-{
+Entity* delayed_sprite_add_to_level(
+    Level* level,
+    GameManager* manager,
+    Vector pos,
+    float delay,
+    const char* sprite_name) {
     Entity* entity = level_add_entity(level, &delayed_sprite_description);
     DelayedSpriteContext* entity_context = entity_context_get(entity);
     entity_pos_set(entity, pos);
@@ -37,44 +36,40 @@ delayed_sprite_add_to_level(Level* level,
     return entity;
 }
 
-static void
-delayed_sprite_update(Entity* self, GameManager* manager, void* _entity_context)
-{
+static void delayed_sprite_update(Entity* self, GameManager* manager, void* _entity_context) {
     UNUSED(self);
     UNUSED(manager);
     DelayedSpriteContext* entity_context = _entity_context;
 
-    if (entity_context->time < entity_context->delay) {
+    if(entity_context->time < entity_context->delay) {
         entity_context->time += 1.0f;
     }
 }
 
-static void
-delayed_sprite_render(Entity* self,
-                      GameManager* manager,
-                      Canvas* canvas,
-                      void* _entity_context)
-{
+static void delayed_sprite_render(
+    Entity* self,
+    GameManager* manager,
+    Canvas* canvas,
+    void* _entity_context) {
     UNUSED(manager);
     DelayedSpriteContext* entity_context = _entity_context;
 
-    if (entity_context->time >= entity_context->delay) {
+    if(entity_context->time >= entity_context->delay) {
         Vector pos = entity_pos_get(self);
         canvas_draw_sprite(canvas, entity_context->sprite, pos.x, pos.y);
     }
 }
 
-static void
-delayed_sprite_event(Entity* self,
-                     GameManager* manager,
-                     EntityEvent event,
-                     void* _entity_context)
-{
+static void delayed_sprite_event(
+    Entity* self,
+    GameManager* manager,
+    EntityEvent event,
+    void* _entity_context) {
     UNUSED(self);
     UNUSED(manager);
 
     DelayedSpriteContext* entity_context = _entity_context;
-    if (event.type == GameEventSkipAnimation) {
+    if(event.type == GameEventSkipAnimation) {
         entity_context->time = entity_context->delay;
     }
 }

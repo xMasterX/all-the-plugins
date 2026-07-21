@@ -5,10 +5,10 @@
 #include <furi.h>
 
 #define FREQUENCY 261.63f
-#define SLEEP 10
-#define DOT "."
-#define LINE "-"
-#define SPACE " "
+#define SLEEP     10
+#define DOT       "."
+#define LINE      "-"
+#define SPACE     " "
 
 typedef void (*MorseCodeWorkerCallback)(FuriString* buffer, void* context);
 

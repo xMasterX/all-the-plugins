@@ -9,7 +9,8 @@ typedef enum {
 
 static char cancommander_custom_inject_save_name_item[48];
 
-static void cancommander_scene_custom_inject_save_slots_menu_callback(void* context, uint32_t index) {
+static void
+    cancommander_scene_custom_inject_save_slots_menu_callback(void* context, uint32_t index) {
     App* app = context;
     view_dispatcher_send_custom_event(app->view_dispatcher, index);
 }
@@ -18,10 +19,7 @@ void cancommander_scene_custom_inject_save_slots_menu_on_enter(void* context) {
     App* app = context;
 
     if(app->custom_inject_set_name[0] == '\0') {
-        snprintf(
-            app->custom_inject_set_name,
-            sizeof(app->custom_inject_set_name),
-            "inj_profile");
+        snprintf(app->custom_inject_set_name, sizeof(app->custom_inject_set_name), "inj_profile");
     }
 
     submenu_reset(app->submenu);
@@ -53,7 +51,9 @@ void cancommander_scene_custom_inject_save_slots_menu_on_enter(void* context) {
     view_dispatcher_switch_to_view(app->view_dispatcher, AppViewSubmenu);
 }
 
-bool cancommander_scene_custom_inject_save_slots_menu_on_event(void* context, SceneManagerEvent event) {
+bool cancommander_scene_custom_inject_save_slots_menu_on_event(
+    void* context,
+    SceneManagerEvent event) {
     App* app = context;
 
     if(event.type != SceneManagerEventTypeCustom) {
@@ -66,10 +66,7 @@ bool cancommander_scene_custom_inject_save_slots_menu_on_event(void* context, Sc
     switch(event.event) {
     case CustomInjectSaveSlotsSetName:
         app_begin_edit(
-            app,
-            app->custom_inject_set_name,
-            sizeof(app->custom_inject_set_name),
-            "Set Name");
+            app, app->custom_inject_set_name, sizeof(app->custom_inject_set_name), "Set Name");
         scene_manager_next_scene(app->scene_manager, cancommander_scene_text_input);
         return true;
 

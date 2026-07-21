@@ -1020,7 +1020,8 @@ static void charlie_location_to_str(Transaction* t, char* out, size_t len) {
 // **********************************************************
 
 /* Parse MfClassic data and populate card view */
-static bool charliecard_display_card_view(const MfClassicData* data, Metroflip* app, bool from_file) {
+static bool
+    charliecard_display_card_view(const MfClassicData* data, Metroflip* app, bool from_file) {
     bool parsed = false;
 
     do {
@@ -1239,7 +1240,8 @@ static void charliecard_on_enter(Metroflip* app) {
         furi_record_close(RECORD_STORAGE);
     } else {
         Popup* popup = app->popup;
-        popup_set_header(popup, "Scanning...\nApply card\nto the back", 68, 30, AlignLeft, AlignTop);
+        popup_set_header(
+            popup, "Scanning...\nApply card\nto the back", 68, 30, AlignLeft, AlignTop);
         popup_set_icon(popup, 0, 3, &I_RFIDDolphinReceive_97x61);
 
         view_dispatcher_switch_to_view(app->view_dispatcher, MetroflipViewPopup);
@@ -1296,7 +1298,6 @@ static bool charliecard_on_event(Metroflip* app, SceneManagerEvent event) {
 }
 
 static void charliecard_on_exit(Metroflip* app) {
-
     widget_reset(app->widget);
     popup_reset(app->popup);
     metroflip_app_blink_stop(app);

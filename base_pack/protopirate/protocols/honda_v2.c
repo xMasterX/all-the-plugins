@@ -156,16 +156,16 @@ const SubGhzProtocol honda_v2_protocol = {
     .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_FM |
             SubGhzProtocolFlag_Decodable | SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save |
             SubGhzProtocolFlag_Send,
-    #if PROTOPIRATE_WITH_DECODER
+#if PROTOPIRATE_WITH_DECODER
     .decoder = &subghz_protocol_honda_v2_decoder,
-    #else
+#else
     .decoder = NULL,
-    #endif
-    #if PROTOPIRATE_WITH_ENCODER
+#endif
+#if PROTOPIRATE_WITH_ENCODER
     .encoder = &subghz_protocol_honda_v2_encoder,
-    #else
+#else
     .encoder = NULL,
-    #endif
+#endif
 };
 
 static bool honda_v2_is_short(uint32_t duration) {
@@ -463,8 +463,7 @@ static bool honda_v2_build_upload(SubGhzProtocolEncoderHondaV2* instance) {
 
 void* subghz_protocol_decoder_honda_v2_alloc(SubGhzEnvironment* environment) {
     UNUSED(environment);
-    SubGhzProtocolDecoderHondaV2* instance =
-        calloc(1, sizeof(SubGhzProtocolDecoderHondaV2));
+    SubGhzProtocolDecoderHondaV2* instance = calloc(1, sizeof(SubGhzProtocolDecoderHondaV2));
     furi_check(instance);
 
     instance->base.protocol = &honda_v2_protocol;
@@ -604,9 +603,8 @@ SubGhzProtocolStatus subghz_protocol_decoder_honda_v2_serialize(
     return ret;
 }
 
-SubGhzProtocolStatus subghz_protocol_decoder_honda_v2_deserialize(
-    void* context,
-    FlipperFormat* flipper_format) {
+SubGhzProtocolStatus
+    subghz_protocol_decoder_honda_v2_deserialize(void* context, FlipperFormat* flipper_format) {
     furi_check(context);
     SubGhzProtocolDecoderHondaV2* instance = context;
 
@@ -661,8 +659,7 @@ SubGhzProtocolStatus subghz_protocol_decoder_honda_v2_deserialize(
             &instance->check);
 
         instance->generic.data = instance->key;
-        instance->generic.data_count_bit =
-            subghz_protocol_honda_v2_const.min_count_bit_for_found;
+        instance->generic.data_count_bit = subghz_protocol_honda_v2_const.min_count_bit_for_found;
         instance->generic.serial = instance->serial;
         instance->generic.btn = instance->button;
         instance->generic.cnt = instance->count;
@@ -728,8 +725,7 @@ static uint64_t honda_v2_build_key(uint32_t signature, uint32_t serial, uint32_t
 
 void* subghz_protocol_encoder_honda_v2_alloc(SubGhzEnvironment* environment) {
     UNUSED(environment);
-    SubGhzProtocolEncoderHondaV2* instance =
-        calloc(1, sizeof(SubGhzProtocolEncoderHondaV2));
+    SubGhzProtocolEncoderHondaV2* instance = calloc(1, sizeof(SubGhzProtocolEncoderHondaV2));
     furi_check(instance);
 
     instance->base.protocol = &honda_v2_protocol;
@@ -748,9 +744,8 @@ void subghz_protocol_encoder_honda_v2_free(void* context) {
     pp_encoder_free(context);
 }
 
-SubGhzProtocolStatus subghz_protocol_encoder_honda_v2_deserialize(
-    void* context,
-    FlipperFormat* flipper_format) {
+SubGhzProtocolStatus
+    subghz_protocol_encoder_honda_v2_deserialize(void* context, FlipperFormat* flipper_format) {
     furi_check(context);
     SubGhzProtocolEncoderHondaV2* instance = context;
     SubGhzProtocolStatus ret = SubGhzProtocolStatusError;
@@ -830,8 +825,8 @@ SubGhzProtocolStatus subghz_protocol_encoder_honda_v2_deserialize(
             break;
         }
 
-        instance->key = honda_v2_build_key(
-            instance->command_signature, instance->serial, instance->count);
+        instance->key =
+            honda_v2_build_key(instance->command_signature, instance->serial, instance->count);
 
         pp_u64_to_bytes_be(instance->key, key_bytes);
         instance->tail = honda_v2_calculate_tail(instance->count);
@@ -845,8 +840,7 @@ SubGhzProtocolStatus subghz_protocol_encoder_honda_v2_deserialize(
             &instance->check);
 
         instance->generic.data = instance->key;
-        instance->generic.data_count_bit =
-            subghz_protocol_honda_v2_const.min_count_bit_for_found;
+        instance->generic.data_count_bit = subghz_protocol_honda_v2_const.min_count_bit_for_found;
         instance->generic.serial = instance->serial;
         instance->generic.btn = instance->button;
         instance->generic.cnt = instance->count;

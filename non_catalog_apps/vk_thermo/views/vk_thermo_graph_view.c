@@ -7,10 +7,10 @@
 #include <math.h>
 
 // Graph area dimensions
-#define GRAPH_LEFT 28
-#define GRAPH_TOP 12
-#define GRAPH_WIDTH 92
-#define GRAPH_HEIGHT 36
+#define GRAPH_LEFT      28
+#define GRAPH_TOP       12
+#define GRAPH_WIDTH     92
+#define GRAPH_HEIGHT    36
 #define MAX_UNIQUE_UIDS 10
 
 typedef enum {
@@ -525,10 +525,7 @@ void vk_thermo_graph_view_set_log(VkThermoGraphView* instance, VkThermoLog* log)
 void vk_thermo_graph_view_set_temp_unit(VkThermoGraphView* instance, uint32_t temp_unit) {
     furi_assert(instance);
     with_view_model(
-        instance->view,
-        VkThermoGraphViewModel * model,
-        { model->temp_unit = temp_unit; },
-        true);
+        instance->view, VkThermoGraphViewModel * model, { model->temp_unit = temp_unit; }, true);
 }
 
 void vk_thermo_graph_view_cycle_thermo(VkThermoGraphView* instance, bool forward) {

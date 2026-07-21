@@ -51,9 +51,9 @@ static const ProtoPirateToolSceneHostApi* g_tool_scene_host_api = NULL;
     g_tool_scene_host_api->preset_init(app, preset_name, frequency, preset_data, preset_data_size)
 #define protopirate_refresh_protocol_registry(app, ensure_receiver_ready) \
     g_tool_scene_host_api->refresh_protocol_registry(app, ensure_receiver_ready)
-#define protopirate_apply_protocol_registry_for_context(                 \
+#define protopirate_apply_protocol_registry_for_context(                       \
     app, preset_name, frequency, preset_data, preset_data_size, protocol_name) \
-    g_tool_scene_host_api->apply_protocol_registry_for_context(          \
+    g_tool_scene_host_api->apply_protocol_registry_for_context(                \
         app, preset_name, frequency, preset_data, preset_data_size, protocol_name)
 #define protopirate_get_frequency_modulation_str(                \
     app, frequency, frequency_size, modulation, modulation_size) \
@@ -87,7 +87,7 @@ static const ProtoPirateToolSceneHostApi* g_tool_scene_host_api = NULL;
 
 #define SAMPLES_TO_READ_PER_TICK 2048
 
-#define SUB_DECODE_MAX_FILE_SIZE (2U * 1024U * 1024U)
+#define SUB_DECODE_MAX_FILE_SIZE     (2U * 1024U * 1024U)
 #define SUB_DECODE_PRESET_NAME_MAX   48U
 #define SUB_DECODE_CUSTOM_PRESET_MAX 1024U
 
@@ -946,7 +946,8 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                     }
 
                     preset_data = subghz_setting_get_preset_data(app->setting, preset_index);
-                    preset_data_size = subghz_setting_get_preset_data_size(app->setting, preset_index);
+                    preset_data_size =
+                        subghz_setting_get_preset_data_size(app->setting, preset_index);
                 }
 
                 if(!preset_data || preset_data_size == 0U) {
@@ -960,12 +961,7 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                     app, preset_name_short, ctx->frequency, preset_data, preset_data_size);
 
                 if(!protopirate_apply_protocol_registry_for_context(
-                       app,
-                       preset_name_short,
-                       ctx->frequency,
-                       preset_data,
-                       preset_data_size,
-                       NULL) ||
+                       app, preset_name_short, ctx->frequency, preset_data, preset_data_size, NULL) ||
                    !app->txrx->receiver) {
                     FURI_LOG_E(TAG, "Failed to rebuild receiver for preset %s", preset_name_short);
                     break;
@@ -1010,11 +1006,10 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
             {
                 Storage* size_storage = furi_record_open(RECORD_STORAGE);
                 FileInfo file_info = {0};
-                bool stat_ok =
-                    size_storage &&
-                    (storage_common_stat(
-                         size_storage, furi_string_get_cstr(ctx->file_path), &file_info) ==
-                     FSE_OK);
+                bool stat_ok = size_storage && (storage_common_stat(
+                                                    size_storage,
+                                                    furi_string_get_cstr(ctx->file_path),
+                                                    &file_info) == FSE_OK);
                 uint64_t file_size = stat_ok ? file_info.size : 0;
                 if(size_storage) {
                     furi_record_close(RECORD_STORAGE);
@@ -1304,7 +1299,6 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
 
 void protopirate_scene_sub_decode_on_exit(void* context) {
     ProtoPirateApp* app = context;
-
 
     if(app && app->txrx && app->txrx->receiver) {
         subghz_receiver_reset(app->txrx->receiver);

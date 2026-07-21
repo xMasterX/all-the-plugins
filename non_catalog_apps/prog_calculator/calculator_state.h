@@ -4,7 +4,7 @@
 #include <furi.h>
 #include <stdbool.h>
 
-#define MAX_TEXT_LENGTH_INPUT 17
+#define MAX_TEXT_LENGTH_INPUT  17
 #define MAX_TEXT_LENGTH_RESULT 36
 
 typedef enum {

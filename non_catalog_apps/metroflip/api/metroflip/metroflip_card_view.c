@@ -25,14 +25,14 @@ extern const Icon I_CardGeneric3_10x10;
 
 #define TAG "Metroflip:CardView"
 
-#define CARD_VIEW_HEADER_H      13
-#define CARD_VIEW_CONTENT_Y     14
-#define CARD_VIEW_FOOTER_Y      53
-#define CARD_VIEW_LINE_H        10
-#define CARD_VIEW_VIS_LINES     3
-#define CARD_VIEW_MAX_WIDTH     120
-#define CARD_VIEW_INIT_PAGES    4
-#define CARD_VIEW_INIT_FIELDS   4
+#define CARD_VIEW_HEADER_H    13
+#define CARD_VIEW_CONTENT_Y   14
+#define CARD_VIEW_FOOTER_Y    53
+#define CARD_VIEW_LINE_H      10
+#define CARD_VIEW_VIS_LINES   3
+#define CARD_VIEW_MAX_WIDTH   120
+#define CARD_VIEW_INIT_PAGES  4
+#define CARD_VIEW_INIT_FIELDS 4
 
 static uint32_t metroflip_card_view_previous_callback(void* context) {
     UNUSED(context);
@@ -58,8 +58,10 @@ static void card_view_draw_line(
     int16_t vis = (int16_t)line_idx - scroll;
     if(vis >= 0 && vis < CARD_VIEW_VIS_LINES) {
         uint8_t y = CARD_VIEW_CONTENT_Y + 8 + vis * CARD_VIEW_LINE_H;
-        if(bold) canvas_set_font(canvas, FontPrimary);
-        else canvas_set_font(canvas, FontSecondary);
+        if(bold)
+            canvas_set_font(canvas, FontPrimary);
+        else
+            canvas_set_font(canvas, FontSecondary);
         canvas_draw_str(canvas, 3, y, text);
         canvas_set_font(canvas, FontSecondary);
     }
@@ -121,11 +123,7 @@ static void metroflip_card_view_draw(Canvas* canvas, void* model) {
         char combined[METROFLIP_CARD_VIEW_LABEL_LEN + METROFLIP_CARD_VIEW_VALUE_LEN + 2];
         if(page->fields[i].label[0] != '\0') {
             snprintf(
-                combined,
-                sizeof(combined),
-                "%s: %s",
-                page->fields[i].label,
-                page->fields[i].value);
+                combined, sizeof(combined), "%s: %s", page->fields[i].label, page->fields[i].value);
         } else {
             snprintf(combined, sizeof(combined), "%s", page->fields[i].value);
         }
@@ -360,8 +358,7 @@ void metroflip_card_view_set_title(View* view, const char* title) {
 }
 
 void metroflip_card_view_set_icon(View* view, const Icon* icon) {
-    with_view_model(
-        view, MetroflipCardViewModel * m, { m->icon = icon; }, true);
+    with_view_model(view, MetroflipCardViewModel * m, { m->icon = icon; }, true);
 }
 
 void metroflip_card_view_set_icon_animation(
@@ -389,8 +386,8 @@ uint8_t metroflip_card_view_add_page(View* view, const char* header) {
         {
             if(m->page_count < METROFLIP_CARD_VIEW_MAX_PAGES) {
                 if(m->page_count == m->page_capacity) {
-                    uint16_t new_cap =
-                        m->page_capacity ? (uint16_t)m->page_capacity * 2 : CARD_VIEW_INIT_PAGES;
+                    uint16_t new_cap = m->page_capacity ? (uint16_t)m->page_capacity * 2 :
+                                                          CARD_VIEW_INIT_PAGES;
                     if(new_cap > METROFLIP_CARD_VIEW_MAX_PAGES) {
                         new_cap = METROFLIP_CARD_VIEW_MAX_PAGES;
                     }
@@ -463,13 +460,11 @@ void metroflip_card_view_add_field(
 }
 
 void metroflip_card_view_set_save(View* view, bool show) {
-    with_view_model(
-        view, MetroflipCardViewModel * m, { m->show_save = show; }, true);
+    with_view_model(view, MetroflipCardViewModel * m, { m->show_save = show; }, true);
 }
 
 void metroflip_card_view_set_delete(View* view, bool show) {
-    with_view_model(
-        view, MetroflipCardViewModel * m, { m->show_delete = show; }, true);
+    with_view_model(view, MetroflipCardViewModel * m, { m->show_delete = show; }, true);
 }
 
 void metroflip_card_view_show(Metroflip* app) {
@@ -481,10 +476,7 @@ void metroflip_card_view_free(Metroflip* app) {
        alive and registered. */
     if(app->card_view) {
         with_view_model(
-            app->card_view,
-            MetroflipCardViewModel * m,
-            { card_view_model_clear(m); },
-            false);
+            app->card_view, MetroflipCardViewModel * m, { card_view_model_clear(m); }, false);
     }
 }
 
@@ -495,10 +487,7 @@ void metroflip_card_view_destroy(Metroflip* app) {
         view_set_previous_callback(app->card_view, NULL);
         view_dispatcher_remove_view(app->view_dispatcher, MetroflipViewCardView);
         with_view_model(
-            app->card_view,
-            MetroflipCardViewModel * m,
-            { card_view_model_clear(m); },
-            false);
+            app->card_view, MetroflipCardViewModel * m, { card_view_model_clear(m); }, false);
         view_free_model(app->card_view);
         view_free(app->card_view);
         app->card_view = NULL;

@@ -4,7 +4,7 @@
 
 #define TAG "FlipperWedgeKeyboardLayout"
 
-#define LAYOUT_FILE_TYPE "Flipper Wedge Keyboard Layout"
+#define LAYOUT_FILE_TYPE    "Flipper Wedge Keyboard Layout"
 #define LAYOUT_FILE_VERSION 1
 
 // NumPad keycodes from hid_usage_keyboard.h
@@ -24,12 +24,12 @@
 #define HID_KEYPAD_7       0x5F
 #define HID_KEYPAD_8       0x60
 #define HID_KEYPAD_9       0x61
-#define HID_KEYPAD_A       0xBC  // Non-standard
-#define HID_KEYPAD_B       0xBD  // Non-standard
-#define HID_KEYPAD_C       0xBE  // Non-standard
-#define HID_KEYPAD_D       0xBF  // Non-standard
-#define HID_KEYPAD_E       0xC0  // Non-standard
-#define HID_KEYPAD_F       0xC1  // Non-standard
+#define HID_KEYPAD_A       0xBC // Non-standard
+#define HID_KEYPAD_B       0xBD // Non-standard
+#define HID_KEYPAD_C       0xBE // Non-standard
+#define HID_KEYPAD_D       0xBF // Non-standard
+#define HID_KEYPAD_E       0xC0 // Non-standard
+#define HID_KEYPAD_F       0xC1 // Non-standard
 
 static const char* layout_type_names[] = {
     [FlipperWedgeLayoutDefault] = "Default (QWERTY)",
@@ -168,7 +168,8 @@ bool flipper_wedge_keyboard_layout_load(FlipperWedgeKeyboardLayout* layout, cons
             // Use filename as fallback name
             FuriString* filename = furi_string_alloc();
             path_extract_filename_no_ext(path, filename);
-            strncpy(layout->name, furi_string_get_cstr(filename), FLIPPER_WEDGE_LAYOUT_NAME_MAX - 1);
+            strncpy(
+                layout->name, furi_string_get_cstr(filename), FLIPPER_WEDGE_LAYOUT_NAME_MAX - 1);
             furi_string_free(filename);
             // Rewind to continue reading mappings
             flipper_format_rewind(file);
@@ -339,7 +340,7 @@ size_t flipper_wedge_keyboard_layout_list(
         // Use filename without extension as fallback name
         if(!got_name) {
             furi_string_set_str(layout_name, filename);
-            furi_string_left(layout_name, len - 4);  // Remove .txt
+            furi_string_left(layout_name, len - 4); // Remove .txt
         }
 
         // Store name and path
@@ -347,7 +348,9 @@ size_t flipper_wedge_keyboard_layout_list(
         paths[count] = full_path;
         count++;
 
-        FURI_LOG_D(TAG, "Found layout: %s at %s",
+        FURI_LOG_D(
+            TAG,
+            "Found layout: %s at %s",
             furi_string_get_cstr(layout_name),
             furi_string_get_cstr(full_path));
     }

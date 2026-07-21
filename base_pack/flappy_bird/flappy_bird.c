@@ -6,22 +6,22 @@
 #include <input/input.h>
 #include <dolphin/dolphin.h>
 
-#define TAG "Flappy"
+#define TAG   "Flappy"
 #define DEBUG false
 
 #define FLAPPY_BIRD_HEIGHT 15
-#define FLAPPY_BIRD_WIDTH 10
+#define FLAPPY_BIRD_WIDTH  10
 
-#define FLAPPY_PILAR_MAX 6
+#define FLAPPY_PILAR_MAX  6
 #define FLAPPY_PILAR_DIST 35
 
 #define FLAPPY_GAB_HEIGHT 25
-#define FLAPPY_GAB_WIDTH 10
+#define FLAPPY_GAB_WIDTH  10
 
 #define FLAPPY_GRAVITY_JUMP -1.1
 #define FLAPPY_GRAVITY_TICK 0.15
 
-#define FLIPPER_LCD_WIDTH 128
+#define FLIPPER_LCD_WIDTH  128
 #define FLIPPER_LCD_HEIGHT 64
 
 typedef enum {
@@ -29,7 +29,12 @@ typedef enum {
     EventTypeKey,
 } EventType;
 
-typedef enum { BirdState0 = 0, BirdState1, BirdState2, BirdStateMAX } BirdState;
+typedef enum {
+    BirdState0 = 0,
+    BirdState1,
+    BirdState2,
+    BirdStateMAX
+} BirdState;
 
 const Icon* bird_states[BirdStateMAX] = {
     &I_bird_01,

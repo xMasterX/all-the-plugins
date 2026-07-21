@@ -31,17 +31,17 @@
 /* log message*/
 #define LOG(...) furi_log_print_format(FuriLogLevelDefault, TAG, __VA_ARGS__)
 
-#define COUNT(x) ((size_t)(sizeof(x) / sizeof((x)[0])))
+#define COUNT(x)      ((size_t)(sizeof(x) / sizeof((x)[0])))
 #define ARRAY_SIZE(x) COUNT(x)
 
 #define SWD_DELAY_US 0
-#define TIMER_HZ 25
-#define TIMEOUT 3
-#define QUEUE_SIZE 8
-#define IDLE_BITS 8
-#define CLOCK_DELAY 0
+#define TIMER_HZ     25
+#define TIMEOUT      3
+#define QUEUE_SIZE   8
+#define IDLE_BITS    8
+#define CLOCK_DELAY  0
 
-#define MAX_FILE_LENGTH 128
+#define MAX_FILE_LENGTH  128
 #define SCRIPT_MAX_LINES 1000
 
 typedef enum {
@@ -56,24 +56,24 @@ typedef enum {
     ModePageCoresight = 0x102,
 } ModePages;
 
-#define CDBGPWRUPREQ (1 << 28)
-#define CDBGPWRUPACK (1 << 29)
-#define CSYSPWRUPREQ (1 << 30)
-#define CSYSPWRUPACK (1 << 31)
-#define WDATAERR (1 << 7)
-#define STICKYERR (1 << 5)
+#define CDBGPWRUPREQ     (1 << 28)
+#define CDBGPWRUPACK     (1 << 29)
+#define CSYSPWRUPREQ     (1 << 30)
+#define CSYSPWRUPACK     (1 << 31)
+#define WDATAERR         (1 << 7)
+#define STICKYERR        (1 << 5)
 #define STAT_ERROR_FLAGS (WDATAERR | STICKYERR)
 
-#define REG_IDCODE 0x00
-#define REG_CTRLSTAT 0x01
-#define REG_CTRLSTAT_BANK 0x00
-#define REG_DLCR 0x01
-#define REG_DLCR_BANK 0x01
-#define REG_TARGETID 0x01
-#define REG_TARGETID_BANK 0x02
-#define REG_DLPIDR 0x01
-#define REG_DLPIDR_BANK 0x03
-#define REG_EVENTSTAT 0x01
+#define REG_IDCODE         0x00
+#define REG_CTRLSTAT       0x01
+#define REG_CTRLSTAT_BANK  0x00
+#define REG_DLCR           0x01
+#define REG_DLCR_BANK      0x01
+#define REG_TARGETID       0x01
+#define REG_TARGETID_BANK  0x02
+#define REG_DLPIDR         0x01
+#define REG_DLPIDR_BANK    0x03
+#define REG_EVENTSTAT      0x01
 #define REG_EVENTSTAT_BANK 0x04
 
 #define REG_SELECT 0x02
@@ -81,25 +81,32 @@ typedef enum {
 #define MEMAP_CSW 0x00
 #define MEMAP_TAR 0x04
 #define MEMAP_DRW 0x0C
-#define AP_IDR 0xFC
-#define AP_BASE 0xF8
+#define AP_IDR    0xFC
+#define AP_BASE   0xF8
 
-#define SCS_CPUID 0xE000ED00u
-#define SCS_CPACR 0xE000ED88u
-#define SCS_DHCSR 0xE000EDF0u
-#define SCS_DHCSR_S_HALT (1u << 17)
+#define SCS_CPUID            0xE000ED00u
+#define SCS_CPACR            0xE000ED88u
+#define SCS_DHCSR            0xE000EDF0u
+#define SCS_DHCSR_S_HALT     (1u << 17)
 #define SCS_DHCSR_C_MASKINTS (1u << 3)
-#define SCS_DHCSR_C_STEP (1u << 2)
-#define SCS_DHCSR_C_HALT (1u << 1)
-#define SCS_DHCSR_C_DEBUGEN (1u << 0)
-#define SCS_DHCSR_KEY 0xA05F0000u
-#define SCS_DCRSR 0xE000EDF4u
-#define SCS_DCRSR_RD 0x00000000u
-#define SCS_DCRSR_WR 0x00010000u
-#define SCS_DCRDR 0xE000EDF8u
-#define SCS_DEMCR 0xE000EDFCu
+#define SCS_DHCSR_C_STEP     (1u << 2)
+#define SCS_DHCSR_C_HALT     (1u << 1)
+#define SCS_DHCSR_C_DEBUGEN  (1u << 0)
+#define SCS_DHCSR_KEY        0xA05F0000u
+#define SCS_DCRSR            0xE000EDF4u
+#define SCS_DCRSR_RD         0x00000000u
+#define SCS_DCRSR_WR         0x00010000u
+#define SCS_DCRDR            0xE000EDF8u
+#define SCS_DEMCR            0xE000EDFCu
 
-typedef enum { KeyNone, KeyUp, KeyRight, KeyDown, KeyLeft, KeyOK } KeyCode;
+typedef enum {
+    KeyNone,
+    KeyUp,
+    KeyRight,
+    KeyDown,
+    KeyLeft,
+    KeyOK
+} KeyCode;
 
 typedef enum {
     EventTimerTick,

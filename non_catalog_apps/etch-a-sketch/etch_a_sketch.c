@@ -11,7 +11,7 @@
 #include <string.h>
 #include "etch_icons.h"
 
-#define WIDTH 64
+#define WIDTH  64
 #define HEIGHT 32
 
 const int brush_size = 2;

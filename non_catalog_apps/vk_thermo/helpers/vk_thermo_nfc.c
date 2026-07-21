@@ -6,10 +6,10 @@
 
 // ISO15693 flags
 #define ISO15693_FLAG_HIGH_DATA_RATE 0x02
-#define ISO15693_FLAG_ADDRESSED 0x20
+#define ISO15693_FLAG_ADDRESSED      0x20
 
 // Timing
-#define VK_THERMO_EH_DELAY_MS 50
+#define VK_THERMO_EH_DELAY_MS  50
 #define VK_THERMO_I2C_DELAY_MS 10
 
 typedef enum {
@@ -45,16 +45,20 @@ struct VkThermoNfc {
 
 // EH status for distinguishing "waiting" from "tag lost"
 typedef enum {
-    VkThermoEhStatusLoadOk,   // LOAD_OK is set, proceed with read
-    VkThermoEhStatusWaiting,  // Tag present but LOAD_OK not yet set
-    VkThermoEhStatusTagLost,  // NFC communication failed, tag likely gone
+    VkThermoEhStatusLoadOk, // LOAD_OK is set, proceed with read
+    VkThermoEhStatusWaiting, // Tag present but LOAD_OK not yet set
+    VkThermoEhStatusTagLost, // NFC communication failed, tag likely gone
 } VkThermoEhStatus;
 
 // Forward declarations
 static void vk_thermo_nfc_scanner_callback(NfcScannerEvent event, void* context);
 static NfcCommand vk_thermo_nfc_poller_callback(NfcGenericEvent event, void* context);
 static VkThermoEhStatus vk_thermo_nfc_check_eh_ready(Iso15693_3Poller* poller, const uint8_t* uid);
-static bool vk_thermo_nfc_write_config(Iso15693_3Poller* poller, const uint8_t* uid, uint8_t address, const uint8_t* block_data);
+static bool vk_thermo_nfc_write_config(
+    Iso15693_3Poller* poller,
+    const uint8_t* uid,
+    uint8_t address,
+    const uint8_t* block_data);
 
 // Sensor detection result
 typedef struct {
@@ -154,7 +158,6 @@ static bool vk_thermo_nfc_send_custom_cmd(
     size_t params_len,
     uint8_t* response,
     size_t* response_len) {
-
     BitBuffer* tx_buffer = bit_buffer_alloc(32);
     BitBuffer* rx_buffer = bit_buffer_alloc(32);
     bool success = false;
@@ -184,8 +187,8 @@ static bool vk_thermo_nfc_send_custom_cmd(
     }
 
     // Send command
-    Iso15693_3Error error = iso15693_3_poller_send_frame(
-        poller, tx_buffer, rx_buffer, ISO15693_3_FDT_POLL_FC);
+    Iso15693_3Error error =
+        iso15693_3_poller_send_frame(poller, tx_buffer, rx_buffer, ISO15693_3_FDT_POLL_FC);
 
     FURI_LOG_D(TAG, "Send result: error=%d", error);
 
@@ -216,17 +219,24 @@ static bool vk_thermo_nfc_send_custom_cmd(
                 // Error response - decode error code
                 if(rx_len > 1) {
                     uint8_t error_code = bit_buffer_get_byte(rx_buffer, 1);
-                    FURI_LOG_E(TAG, "Command 0x%02X error: %s (code=0x%02X, flag=0x%02X)",
-                               cmd, vk_thermo_nfc_iso_error_str(error_code), error_code, resp_flag);
+                    FURI_LOG_E(
+                        TAG,
+                        "Command 0x%02X error: %s (code=0x%02X, flag=0x%02X)",
+                        cmd,
+                        vk_thermo_nfc_iso_error_str(error_code),
+                        error_code,
+                        resp_flag);
                 } else {
-                    FURI_LOG_E(TAG, "Command 0x%02X error: flag=0x%02X (no error code)", cmd, resp_flag);
+                    FURI_LOG_E(
+                        TAG, "Command 0x%02X error: flag=0x%02X (no error code)", cmd, resp_flag);
                 }
             }
         } else {
             FURI_LOG_W(TAG, "Command 0x%02X: empty response (0 bytes)", cmd);
         }
     } else {
-        FURI_LOG_E(TAG, "Command 0x%02X send error: %s (%d)", cmd, vk_thermo_nfc_error_str(error), error);
+        FURI_LOG_E(
+            TAG, "Command 0x%02X send error: %s (%d)", cmd, vk_thermo_nfc_error_str(error), error);
     }
 
     bit_buffer_free(tx_buffer);
@@ -244,15 +254,15 @@ static bool vk_thermo_nfc_test_get_system_info(Iso15693_3Poller* poller, const u
 
     // Standard ISO15693 GET_SYSTEM_INFO: [FLAGS][0x2B][UID if addressed]
     bit_buffer_append_byte(tx_buffer, ISO15693_FLAG_HIGH_DATA_RATE | ISO15693_FLAG_ADDRESSED);
-    bit_buffer_append_byte(tx_buffer, 0x2B);  // GET_SYSTEM_INFO
+    bit_buffer_append_byte(tx_buffer, 0x2B); // GET_SYSTEM_INFO
 
     // UID LSB-first
     for(int i = ISO15693_3_UID_SIZE - 1; i >= 0; i--) {
         bit_buffer_append_byte(tx_buffer, uid[i]);
     }
 
-    Iso15693_3Error error = iso15693_3_poller_send_frame(
-        poller, tx_buffer, rx_buffer, ISO15693_3_FDT_POLL_FC);
+    Iso15693_3Error error =
+        iso15693_3_poller_send_frame(poller, tx_buffer, rx_buffer, ISO15693_3_FDT_POLL_FC);
 
     if(error == Iso15693_3ErrorNone) {
         size_t rx_len = bit_buffer_get_size_bytes(rx_buffer);
@@ -288,19 +298,19 @@ static bool vk_thermo_nfc_test_read_config(Iso15693_3Poller* poller, const uint8
 
     // NXP READ_CONFIG: [FLAGS][0xC0][MANUF][UID if addressed][address][num_blocks-1]
     bit_buffer_append_byte(tx_buffer, ISO15693_FLAG_HIGH_DATA_RATE | ISO15693_FLAG_ADDRESSED);
-    bit_buffer_append_byte(tx_buffer, NXP_CMD_READ_CONFIG);  // 0xC0
-    bit_buffer_append_byte(tx_buffer, NXP_MANUF_CODE);  // 0x04
+    bit_buffer_append_byte(tx_buffer, NXP_CMD_READ_CONFIG); // 0xC0
+    bit_buffer_append_byte(tx_buffer, NXP_MANUF_CODE); // 0x04
 
     // UID LSB-first
     for(int i = ISO15693_3_UID_SIZE - 1; i >= 0; i--) {
         bit_buffer_append_byte(tx_buffer, uid[i]);
     }
 
-    bit_buffer_append_byte(tx_buffer, 0x37);  // CONFIG block address
-    bit_buffer_append_byte(tx_buffer, 0x00);  // Read 1 block
+    bit_buffer_append_byte(tx_buffer, 0x37); // CONFIG block address
+    bit_buffer_append_byte(tx_buffer, 0x00); // Read 1 block
 
-    Iso15693_3Error error = iso15693_3_poller_send_frame(
-        poller, tx_buffer, rx_buffer, ISO15693_3_FDT_POLL_FC);
+    Iso15693_3Error error =
+        iso15693_3_poller_send_frame(poller, tx_buffer, rx_buffer, ISO15693_3_FDT_POLL_FC);
 
     if(error == Iso15693_3ErrorNone) {
         size_t rx_len = bit_buffer_get_size_bytes(rx_buffer);
@@ -320,7 +330,8 @@ static bool vk_thermo_nfc_test_read_config(Iso15693_3Poller* poller, const uint8
         }
         success = true;
     } else {
-        FURI_LOG_E(TAG, "READ_CONFIG(0x37) failed: %s (%d)", vk_thermo_nfc_error_str(error), error);
+        FURI_LOG_E(
+            TAG, "READ_CONFIG(0x37) failed: %s (%d)", vk_thermo_nfc_error_str(error), error);
     }
 
     bit_buffer_free(tx_buffer);
@@ -338,29 +349,34 @@ static bool vk_thermo_nfc_test_nxp_command(Iso15693_3Poller* poller, const uint8
 
     // NXP custom command format: [FLAGS][CMD][MANUF_CODE][UID if addressed]
     // Try NON-addressed mode first (like Python reference)
-    bit_buffer_append_byte(tx_buffer, ISO15693_FLAG_HIGH_DATA_RATE);  // 0x02 - non-addressed
-    bit_buffer_append_byte(tx_buffer, 0xAB);  // NXP_CMD_SYSTEM_INFO
-    bit_buffer_append_byte(tx_buffer, NXP_MANUF_CODE);  // 0x04
+    bit_buffer_append_byte(tx_buffer, ISO15693_FLAG_HIGH_DATA_RATE); // 0x02 - non-addressed
+    bit_buffer_append_byte(tx_buffer, 0xAB); // NXP_CMD_SYSTEM_INFO
+    bit_buffer_append_byte(tx_buffer, NXP_MANUF_CODE); // 0x04
 
     FURI_LOG_D(TAG, "TX NXP_SYSTEM_INFO: flags=0x02 (non-addressed), cmd=0xAB, manuf=0x04");
 
-    Iso15693_3Error error = iso15693_3_poller_send_frame(
-        poller, tx_buffer, rx_buffer, ISO15693_3_FDT_POLL_FC);
+    Iso15693_3Error error =
+        iso15693_3_poller_send_frame(poller, tx_buffer, rx_buffer, ISO15693_3_FDT_POLL_FC);
 
     if(error == Iso15693_3ErrorNone) {
         size_t rx_len = bit_buffer_get_size_bytes(rx_buffer);
         FURI_LOG_I(TAG, "NXP_SYSTEM_INFO (non-addressed) success! rx_len=%zu", rx_len);
         success = true;
     } else {
-        FURI_LOG_W(TAG, "NXP_SYSTEM_INFO (non-addressed) failed: %s (%d)", vk_thermo_nfc_error_str(error), error);
+        FURI_LOG_W(
+            TAG,
+            "NXP_SYSTEM_INFO (non-addressed) failed: %s (%d)",
+            vk_thermo_nfc_error_str(error),
+            error);
 
         // Try addressed mode
         bit_buffer_reset(tx_buffer);
         bit_buffer_reset(rx_buffer);
 
-        bit_buffer_append_byte(tx_buffer, ISO15693_FLAG_HIGH_DATA_RATE | ISO15693_FLAG_ADDRESSED);  // 0x22
-        bit_buffer_append_byte(tx_buffer, 0xAB);  // NXP_CMD_SYSTEM_INFO
-        bit_buffer_append_byte(tx_buffer, NXP_MANUF_CODE);  // 0x04
+        bit_buffer_append_byte(
+            tx_buffer, ISO15693_FLAG_HIGH_DATA_RATE | ISO15693_FLAG_ADDRESSED); // 0x22
+        bit_buffer_append_byte(tx_buffer, 0xAB); // NXP_CMD_SYSTEM_INFO
+        bit_buffer_append_byte(tx_buffer, NXP_MANUF_CODE); // 0x04
 
         // UID LSB-first
         for(int i = ISO15693_3_UID_SIZE - 1; i >= 0; i--) {
@@ -369,15 +385,18 @@ static bool vk_thermo_nfc_test_nxp_command(Iso15693_3Poller* poller, const uint8
 
         FURI_LOG_D(TAG, "TX NXP_SYSTEM_INFO: flags=0x22 (addressed), cmd=0xAB, manuf=0x04");
 
-        error = iso15693_3_poller_send_frame(
-            poller, tx_buffer, rx_buffer, ISO15693_3_FDT_POLL_FC);
+        error = iso15693_3_poller_send_frame(poller, tx_buffer, rx_buffer, ISO15693_3_FDT_POLL_FC);
 
         if(error == Iso15693_3ErrorNone) {
             size_t rx_len = bit_buffer_get_size_bytes(rx_buffer);
             FURI_LOG_I(TAG, "NXP_SYSTEM_INFO (addressed) success! rx_len=%zu", rx_len);
             success = true;
         } else {
-            FURI_LOG_E(TAG, "NXP_SYSTEM_INFO (addressed) also failed: %s (%d)", vk_thermo_nfc_error_str(error), error);
+            FURI_LOG_E(
+                TAG,
+                "NXP_SYSTEM_INFO (addressed) also failed: %s (%d)",
+                vk_thermo_nfc_error_str(error),
+                error);
         }
     }
 
@@ -398,20 +417,20 @@ static bool vk_thermo_nfc_test_addressed_mode(Iso15693_3Poller* poller, const ui
     // Standard ISO15693 READ_SINGLE_BLOCK: [FLAGS][0x20][UID 8 bytes][block_num]
     // No manufacturer code for standard commands
     bit_buffer_append_byte(tx_buffer, ISO15693_FLAG_HIGH_DATA_RATE | ISO15693_FLAG_ADDRESSED);
-    bit_buffer_append_byte(tx_buffer, 0x20);  // READ_SINGLE_BLOCK
+    bit_buffer_append_byte(tx_buffer, 0x20); // READ_SINGLE_BLOCK
 
     // UID LSB-first (reversed from Flipper storage)
     for(int i = ISO15693_3_UID_SIZE - 1; i >= 0; i--) {
         bit_buffer_append_byte(tx_buffer, uid[i]);
     }
 
-    bit_buffer_append_byte(tx_buffer, 0x00);  // Block 0
+    bit_buffer_append_byte(tx_buffer, 0x00); // Block 0
 
     // Log what we're sending
     FURI_LOG_D(TAG, "TX READ_SINGLE_BLOCK: flags=0x22, cmd=0x20, block=0");
 
-    Iso15693_3Error error = iso15693_3_poller_send_frame(
-        poller, tx_buffer, rx_buffer, ISO15693_3_FDT_POLL_FC);
+    Iso15693_3Error error =
+        iso15693_3_poller_send_frame(poller, tx_buffer, rx_buffer, ISO15693_3_FDT_POLL_FC);
 
     if(error == Iso15693_3ErrorNone) {
         size_t rx_len = bit_buffer_get_size_bytes(rx_buffer);
@@ -425,7 +444,8 @@ static bool vk_thermo_nfc_test_addressed_mode(Iso15693_3Poller* poller, const ui
         }
         success = true;
     } else {
-        FURI_LOG_E(TAG, "READ_SINGLE_BLOCK failed: %s (%d)", vk_thermo_nfc_error_str(error), error);
+        FURI_LOG_E(
+            TAG, "READ_SINGLE_BLOCK failed: %s (%d)", vk_thermo_nfc_error_str(error), error);
     }
 
     bit_buffer_free(tx_buffer);
@@ -439,7 +459,7 @@ static bool vk_thermo_nfc_write_config(
     Iso15693_3Poller* poller,
     const uint8_t* uid,
     uint8_t address,
-    const uint8_t* block_data) {  // 4 bytes
+    const uint8_t* block_data) { // 4 bytes
 
     BitBuffer* tx_buffer = bit_buffer_alloc(20);
     BitBuffer* rx_buffer = bit_buffer_alloc(16);
@@ -457,11 +477,17 @@ static bool vk_thermo_nfc_write_config(
     bit_buffer_append_byte(tx_buffer, address);
     bit_buffer_append_bytes(tx_buffer, block_data, 4);
 
-    FURI_LOG_I(TAG, "WRITE_CONFIG addr=0x%02X data=[0x%02X,0x%02X,0x%02X,0x%02X]",
-               address, block_data[0], block_data[1], block_data[2], block_data[3]);
+    FURI_LOG_I(
+        TAG,
+        "WRITE_CONFIG addr=0x%02X data=[0x%02X,0x%02X,0x%02X,0x%02X]",
+        address,
+        block_data[0],
+        block_data[1],
+        block_data[2],
+        block_data[3]);
 
-    Iso15693_3Error error = iso15693_3_poller_send_frame(
-        poller, tx_buffer, rx_buffer, ISO15693_3_FDT_POLL_FC);
+    Iso15693_3Error error =
+        iso15693_3_poller_send_frame(poller, tx_buffer, rx_buffer, ISO15693_3_FDT_POLL_FC);
 
     bit_buffer_free(tx_buffer);
     bit_buffer_free(rx_buffer);
@@ -472,9 +498,11 @@ static bool vk_thermo_nfc_write_config(
     } else if(error == Iso15693_3ErrorTimeout || error == Iso15693_3ErrorNotPresent) {
         // IMPORTANT: Timeout/NotPresent is expected for writes! The write may have succeeded anyway.
         // ntag5sensor says "These write commands work despite the reader claiming they timed out"
-        FURI_LOG_W(TAG, "WRITE_CONFIG %s - this may be NORMAL, write may have succeeded",
-                   error == Iso15693_3ErrorTimeout ? "timeout" : "tag not present");
-        return true;  // Assume success, caller should verify by reading back
+        FURI_LOG_W(
+            TAG,
+            "WRITE_CONFIG %s - this may be NORMAL, write may have succeeded",
+            error == Iso15693_3ErrorTimeout ? "timeout" : "tag not present");
+        return true; // Assume success, caller should verify by reading back
     } else {
         FURI_LOG_E(TAG, "WRITE_CONFIG error: %s (%d)", vk_thermo_nfc_error_str(error), error);
         return false;
@@ -485,13 +513,18 @@ static bool vk_thermo_nfc_write_config(
 // Step 1: TRIGGER only, wait for LOAD_OK (capacitor charges)
 // Step 2: TRIGGER + ENABLE (activates voltage output)
 // Returns false if LOAD_OK never sets or stop was requested - caller should NOT attempt sensor read
-static bool vk_thermo_nfc_enable_eh(VkThermoNfc* instance, Iso15693_3Poller* poller, const uint8_t* uid, uint32_t timeout_seconds) {
+static bool vk_thermo_nfc_enable_eh(
+    VkThermoNfc* instance,
+    Iso15693_3Poller* poller,
+    const uint8_t* uid,
+    uint32_t timeout_seconds) {
     // Step 1: Write TRIGGER only (no ENABLE yet)
     FURI_LOG_I(TAG, "EH Step 1: Triggering (charging capacitor)");
     uint8_t trigger_data[4] = {
-        NXP_EH_TRIGGER,  // bit3=trigger, enable=0
-        0x00, 0x00, 0x00
-    };
+        NXP_EH_TRIGGER, // bit3=trigger, enable=0
+        0x00,
+        0x00,
+        0x00};
 
     if(!vk_thermo_nfc_write_config(poller, uid, NXP_CONFIG_ADDR_EH_CONFIG_REG, trigger_data)) {
         FURI_LOG_E(TAG, "EH trigger write failed");
@@ -501,9 +534,8 @@ static bool vk_thermo_nfc_enable_eh(VkThermoNfc* instance, Iso15693_3Poller* pol
     // Poll for LOAD_OK (capacitor charged)
     // timeout_seconds == 0 means indefinite (poll forever)
     bool indefinite = (timeout_seconds == 0);
-    uint32_t poll_count = indefinite ? UINT32_MAX : (timeout_seconds * 10);  // 100ms intervals
-    FURI_LOG_I(TAG, "Waiting for EH LOAD_OK (timeout: %s)...",
-               indefinite ? "indefinite" : "");
+    uint32_t poll_count = indefinite ? UINT32_MAX : (timeout_seconds * 10); // 100ms intervals
+    FURI_LOG_I(TAG, "Waiting for EH LOAD_OK (timeout: %s)...", indefinite ? "indefinite" : "");
     if(!indefinite) {
         FURI_LOG_I(TAG, "  timeout: %lus", (unsigned long)timeout_seconds);
     }
@@ -534,9 +566,10 @@ static bool vk_thermo_nfc_enable_eh(VkThermoNfc* instance, Iso15693_3Poller* pol
     // Step 2: Write TRIGGER + ENABLE (activate output)
     FURI_LOG_I(TAG, "EH Step 2: Enabling output");
     uint8_t enable_data[4] = {
-        NXP_EH_TRIGGER | NXP_EH_ENABLE,  // bit3=trigger, bit0=enable
-        0x00, 0x00, 0x00
-    };
+        NXP_EH_TRIGGER | NXP_EH_ENABLE, // bit3=trigger, bit0=enable
+        0x00,
+        0x00,
+        0x00};
 
     if(!vk_thermo_nfc_write_config(poller, uid, NXP_CONFIG_ADDR_EH_CONFIG_REG, enable_data)) {
         FURI_LOG_E(TAG, "EH enable write failed");
@@ -552,17 +585,20 @@ static bool vk_thermo_nfc_enable_eh(VkThermoNfc* instance, Iso15693_3Poller* pol
 // Check if energy harvesting load is OK
 // Sends READ_CONFIG (0xC0) to EH_CONFIG_REG (0xA7) and checks LOAD_OK bit
 // Returns VkThermoEhStatusLoadOk, VkThermoEhStatusWaiting, or VkThermoEhStatusTagLost
-static VkThermoEhStatus vk_thermo_nfc_check_eh_ready(Iso15693_3Poller* poller, const uint8_t* uid) {
+static VkThermoEhStatus
+    vk_thermo_nfc_check_eh_ready(Iso15693_3Poller* poller, const uint8_t* uid) {
     // NTAG5Link READ_CONFIG format: [address][num_blocks-1]
     uint8_t params[2] = {
-        NXP_CONFIG_ADDR_EH_CONFIG_REG,  // Config block address (0xA7)
-        0x00                             // Read 1 block (num_blocks - 1)
+        NXP_CONFIG_ADDR_EH_CONFIG_REG, // Config block address (0xA7)
+        0x00 // Read 1 block (num_blocks - 1)
     };
     uint8_t response[8];
     size_t response_len = 0;
 
-    FURI_LOG_D(TAG, "Checking EH status: READ_CONFIG(0xC0) from addr 0x%02X",
-               NXP_CONFIG_ADDR_EH_CONFIG_REG);
+    FURI_LOG_D(
+        TAG,
+        "Checking EH status: READ_CONFIG(0xC0) from addr 0x%02X",
+        NXP_CONFIG_ADDR_EH_CONFIG_REG);
 
     if(vk_thermo_nfc_send_custom_cmd(
            poller, uid, NXP_CMD_READ_CONFIG, params, sizeof(params), response, &response_len)) {
@@ -582,8 +618,9 @@ static bool vk_thermo_nfc_i2c_is_busy(Iso15693_3Poller* poller, const uint8_t* u
     uint8_t resp[8];
     size_t resp_len = 0;
 
-    if(!vk_thermo_nfc_send_custom_cmd(poller, uid, NXP_CMD_READ_CONFIG, params, 2, resp, &resp_len)) {
-        return false;  // Can't read status, assume not busy
+    if(!vk_thermo_nfc_send_custom_cmd(
+           poller, uid, NXP_CMD_READ_CONFIG, params, 2, resp, &resp_len)) {
+        return false; // Can't read status, assume not busy
     }
 
     if(resp_len > 0) {
@@ -600,7 +637,8 @@ static bool vk_thermo_nfc_i2c_check_result(Iso15693_3Poller* poller, const uint8
     uint8_t resp[8];
     size_t resp_len = 0;
 
-    if(!vk_thermo_nfc_send_custom_cmd(poller, uid, NXP_CMD_READ_CONFIG, params, 2, resp, &resp_len)) {
+    if(!vk_thermo_nfc_send_custom_cmd(
+           poller, uid, NXP_CMD_READ_CONFIG, params, 2, resp, &resp_len)) {
         FURI_LOG_E(TAG, "Failed to read I2C status");
         return false;
     }
@@ -618,7 +656,8 @@ static bool vk_thermo_nfc_i2c_check_result(Iso15693_3Poller* poller, const uint8
         return true;
     }
 
-    FURI_LOG_E(TAG, "I2C transaction failed (status: 0x%02X, trans: 0x%02X)", status, trans_status);
+    FURI_LOG_E(
+        TAG, "I2C transaction failed (status: 0x%02X, trans: 0x%02X)", status, trans_status);
     return false;
 }
 
@@ -639,12 +678,11 @@ static bool vk_thermo_nfc_i2c_write(
     uint8_t i2c_addr,
     const uint8_t* data,
     size_t data_len) {
-
     if(data_len < 1 || data_len > 8) return false;
 
     uint8_t params[10];
-    params[0] = i2c_addr & 0x7F;  // Address with stop condition (bit7=0)
-    params[1] = data_len - 1;     // Number of bytes - 1
+    params[0] = i2c_addr & 0x7F; // Address with stop condition (bit7=0)
+    params[1] = data_len - 1; // Number of bytes - 1
     memcpy(&params[2], data, data_len);
 
     if(!vk_thermo_nfc_send_custom_cmd(
@@ -666,11 +704,10 @@ static bool vk_thermo_nfc_i2c_read(
     uint8_t num_bytes,
     uint8_t* response,
     size_t* response_len) {
-
     // Step 1: Send READ_I2C to tell NTAG5Link to read from I2C slave
     uint8_t params[2] = {
-        i2c_addr & 0x7F,  // Address with stop condition (bit7=0)
-        num_bytes - 1     // Number of bytes - 1
+        i2c_addr & 0x7F, // Address with stop condition (bit7=0)
+        num_bytes - 1 // Number of bytes - 1
     };
 
     if(!vk_thermo_nfc_send_custom_cmd(
@@ -681,10 +718,10 @@ static bool vk_thermo_nfc_i2c_read(
 
     // Step 2: Read data from SRAM where NTAG5Link stored the I2C response
     // SRAM is organized in 4-byte blocks
-    uint8_t num_blocks = (num_bytes + 3) / 4;  // ceil(num_bytes / 4)
+    uint8_t num_blocks = (num_bytes + 3) / 4; // ceil(num_bytes / 4)
     uint8_t sram_params[2] = {
-        0x00,              // SRAM start address
-        num_blocks - 1     // Number of blocks - 1
+        0x00, // SRAM start address
+        num_blocks - 1 // Number of blocks - 1
     };
 
     uint8_t sram_data[16];
@@ -718,7 +755,6 @@ static VkThermoSensorType vk_thermo_nfc_identify_sensor_at_address(
     Iso15693_3Poller* poller,
     const uint8_t* uid,
     uint8_t i2c_addr) {
-
     // Set register pointer to Device ID (0x0F)
     uint8_t reg_ptr[1] = {TMP117_REG_DEVICE_ID};
     if(!vk_thermo_nfc_i2c_write(poller, uid, i2c_addr, reg_ptr, 1)) {
@@ -754,13 +790,10 @@ static VkThermoSensorType vk_thermo_nfc_identify_sensor_at_address(
 
 // Configure TMP112 for one-shot conversion and poll until complete
 // Returns true if conversion successful, false on error or timeout
-static bool vk_thermo_nfc_oneshot_tmp112(
-    Iso15693_3Poller* poller,
-    const uint8_t* uid,
-    uint8_t i2c_addr) {
-
+static bool
+    vk_thermo_nfc_oneshot_tmp112(Iso15693_3Poller* poller, const uint8_t* uid, uint8_t i2c_addr) {
     // Step 1: Write config register with SD=1, OS=1
-    uint8_t config_write[3] = {TMP112_CONFIG_REG, 0x81, 0x00};  // SD=1, OS=1
+    uint8_t config_write[3] = {TMP112_CONFIG_REG, 0x81, 0x00}; // SD=1, OS=1
     if(!vk_thermo_nfc_i2c_write(poller, uid, i2c_addr, config_write, 3)) {
         FURI_LOG_E(TAG, "TMP112 one-shot config write failed");
         return false;
@@ -771,7 +804,7 @@ static bool vk_thermo_nfc_oneshot_tmp112(
     uint8_t config_read[4];
     size_t config_len = 0;
 
-    for(uint8_t i = 0; i < 50; i++) {  // Max 50 attempts (500ms timeout)
+    for(uint8_t i = 0; i < 50; i++) { // Max 50 attempts (500ms timeout)
         furi_delay_ms(10);
 
         // Set register pointer
@@ -795,13 +828,10 @@ static bool vk_thermo_nfc_oneshot_tmp112(
 
 // Configure TMP117/119 for one-shot conversion and poll until complete
 // Returns true if conversion successful, false on error or timeout
-static bool vk_thermo_nfc_oneshot_tmp117(
-    Iso15693_3Poller* poller,
-    const uint8_t* uid,
-    uint8_t i2c_addr) {
-
+static bool
+    vk_thermo_nfc_oneshot_tmp117(Iso15693_3Poller* poller, const uint8_t* uid, uint8_t i2c_addr) {
     // Step 1: Write config register with MOD[1:0]=11 (one-shot)
-    uint8_t config_write[3] = {TMP117_CONFIG_REG, 0x0C, 0x00};  // 0xC00
+    uint8_t config_write[3] = {TMP117_CONFIG_REG, 0x0C, 0x00}; // 0xC00
     if(!vk_thermo_nfc_i2c_write(poller, uid, i2c_addr, config_write, 3)) {
         FURI_LOG_E(TAG, "TMP117/119 one-shot config write failed");
         return false;
@@ -812,7 +842,7 @@ static bool vk_thermo_nfc_oneshot_tmp117(
     uint8_t config_read[4];
     size_t config_len = 0;
 
-    for(uint8_t i = 0; i < 50; i++) {  // Max 50 attempts (500ms timeout)
+    for(uint8_t i = 0; i < 50; i++) { // Max 50 attempts (500ms timeout)
         furi_delay_ms(10);
 
         // Set register pointer
@@ -842,14 +872,14 @@ static void vk_thermo_nfc_detect_sensors(
     const uint8_t* uid,
     DeviceType* device_type,
     VkThermoSensorType* sensor_type) {
-
     // Probe all three addresses
     SensorDetection detections[3];
     uint8_t addresses[] = {0x48, 0x49, 0x4A};
 
     for(uint8_t i = 0; i < 3; i++) {
         detections[i].address = addresses[i];
-        detections[i].sensor_type = vk_thermo_nfc_identify_sensor_at_address(poller, uid, addresses[i]);
+        detections[i].sensor_type =
+            vk_thermo_nfc_identify_sensor_at_address(poller, uid, addresses[i]);
         detections[i].detected = (detections[i].sensor_type != VkThermoSensorUnknown);
     }
 
@@ -861,15 +891,18 @@ static void vk_thermo_nfc_detect_sensors(
     if(sensor_at_0x49 && sensor_at_0x4A) {
         // Temptress: dual TMP117 at 0x49 and 0x4A
         *device_type = DeviceTypeTemptress;
-        *sensor_type = VkThermoSensorTmp117;  // Both are TMP117
+        *sensor_type = VkThermoSensorTmp117; // Both are TMP117
         FURI_LOG_I(TAG, "Device detected: Temptress (dual TMP117)");
     } else if(sensor_at_0x48) {
         // VK Thermo: single sensor at 0x48
         *device_type = DeviceTypeVkThermo;
         *sensor_type = detections[0].sensor_type;
-        FURI_LOG_I(TAG, "Device detected: VK Thermo (%s)",
+        FURI_LOG_I(
+            TAG,
+            "Device detected: VK Thermo (%s)",
             *sensor_type == VkThermoSensorTmp112 ? "TMP112" :
-            *sensor_type == VkThermoSensorTmp117 ? "TMP117" : "TMP119");
+            *sensor_type == VkThermoSensorTmp117 ? "TMP117" :
+                                                   "TMP119");
     } else {
         // No compatible sensor found
         *device_type = DeviceTypeVkThermo;
@@ -887,7 +920,6 @@ static bool vk_thermo_nfc_read_temperature_single(
     uint8_t i2c_addr,
     VkThermoSensorType sensor_type,
     float* temperature) {
-
     // Wait for I2C bus to be free
     if(!vk_thermo_nfc_i2c_wait_ready(poller, uid)) {
         FURI_LOG_W(TAG, "I2C bus busy, trying anyway");
@@ -952,7 +984,6 @@ static bool vk_thermo_nfc_read_temperature_dual(
     const uint8_t* uid,
     float* temperature1,
     float* temperature2) {
-
     // Wait for I2C bus to be free
     if(!vk_thermo_nfc_i2c_wait_ready(poller, uid)) {
         FURI_LOG_W(TAG, "I2C bus busy, trying anyway");
@@ -976,7 +1007,7 @@ static bool vk_thermo_nfc_read_temperature_dual(
     bool sensor1_ready = false;
     bool sensor2_ready = false;
 
-    for(uint8_t i = 0; i < 50; i++) {  // Max 500ms timeout
+    for(uint8_t i = 0; i < 50; i++) { // Max 500ms timeout
         furi_delay_ms(10);
 
         // Check sensor 1 (0x49)
@@ -1015,7 +1046,9 @@ static bool vk_thermo_nfc_read_temperature_dual(
     }
 
     if(!sensor1_ready || !sensor2_ready) {
-        FURI_LOG_E(TAG, "Temptress timeout: sensor1=%s sensor2=%s",
+        FURI_LOG_E(
+            TAG,
+            "Temptress timeout: sensor1=%s sensor2=%s",
             sensor1_ready ? "ready" : "not ready",
             sensor2_ready ? "ready" : "not ready");
         return false;
@@ -1028,16 +1061,14 @@ static bool vk_thermo_nfc_read_temperature_dual(
 
     // Read sensor 1
     if(!vk_thermo_nfc_i2c_write(poller, uid, 0x49, temp_ptr, 1) ||
-       !vk_thermo_nfc_i2c_read(poller, uid, 0x49, 2, temp1_data, &temp1_len) ||
-       temp1_len < 2) {
+       !vk_thermo_nfc_i2c_read(poller, uid, 0x49, 2, temp1_data, &temp1_len) || temp1_len < 2) {
         FURI_LOG_E(TAG, "Failed to read Temptress sensor 1");
         return false;
     }
 
     // Read sensor 2
     if(!vk_thermo_nfc_i2c_write(poller, uid, 0x4A, temp_ptr, 1) ||
-       !vk_thermo_nfc_i2c_read(poller, uid, 0x4A, 2, temp2_data, &temp2_len) ||
-       temp2_len < 2) {
+       !vk_thermo_nfc_i2c_read(poller, uid, 0x4A, 2, temp2_data, &temp2_len) || temp2_len < 2) {
         FURI_LOG_E(TAG, "Failed to read Temptress sensor 2");
         return false;
     }
@@ -1049,8 +1080,11 @@ static bool vk_thermo_nfc_read_temperature_dual(
     *temperature1 = vk_thermo_tmp117_raw_to_celsius(raw1);
     *temperature2 = vk_thermo_tmp117_raw_to_celsius(raw2);
 
-    FURI_LOG_I(TAG, "Temptress: Sensor1=%.2f°C, Sensor2=%.2f°C",
-        (double)*temperature1, (double)*temperature2);
+    FURI_LOG_I(
+        TAG,
+        "Temptress: Sensor1=%.2f°C, Sensor2=%.2f°C",
+        (double)*temperature1,
+        (double)*temperature2);
 
     return true;
 }
@@ -1085,8 +1119,7 @@ static NfcCommand vk_thermo_nfc_poller_callback(NfcGenericEvent event, void* con
 
     // Once we have valid temperature data OR a terminal state, ignore all further poller events.
     // last_data.valid is the authoritative indicator — if we have a temperature, we're done.
-    if(instance->last_data.valid ||
-       instance->state == VkThermoNfcStateSuccess ||
+    if(instance->last_data.valid || instance->state == VkThermoNfcStateSuccess ||
        instance->state == VkThermoNfcStateError) {
         return NfcCommandStop;
     }
@@ -1110,9 +1143,17 @@ static NfcCommand vk_thermo_nfc_poller_callback(NfcGenericEvent event, void* con
         // Store UID
         memcpy(instance->last_data.uid, iso_data->uid, VK_THERMO_NFC_UID_LEN);
 
-        FURI_LOG_I(TAG, "UID: %02X%02X%02X%02X%02X%02X%02X%02X",
-                   iso_data->uid[0], iso_data->uid[1], iso_data->uid[2], iso_data->uid[3],
-                   iso_data->uid[4], iso_data->uid[5], iso_data->uid[6], iso_data->uid[7]);
+        FURI_LOG_I(
+            TAG,
+            "UID: %02X%02X%02X%02X%02X%02X%02X%02X",
+            iso_data->uid[0],
+            iso_data->uid[1],
+            iso_data->uid[2],
+            iso_data->uid[3],
+            iso_data->uid[4],
+            iso_data->uid[5],
+            iso_data->uid[6],
+            iso_data->uid[7]);
 
         // === DIAGNOSTIC TESTS (debug mode only) ===
         if(instance->debug_mode) {
@@ -1134,7 +1175,9 @@ static NfcCommand vk_thermo_nfc_poller_callback(NfcGenericEvent event, void* con
 
             // Test 3: NXP SYSTEM_INFO (0xAB)
             if(!vk_thermo_nfc_test_nxp_command(poller, iso_data->uid)) {
-                FURI_LOG_E(TAG, "Test 3 FAILED: NXP_SYSTEM_INFO - tag may not support NXP custom commands");
+                FURI_LOG_E(
+                    TAG,
+                    "Test 3 FAILED: NXP_SYSTEM_INFO - tag may not support NXP custom commands");
             } else {
                 FURI_LOG_I(TAG, "Test 3 PASSED: NXP_SYSTEM_INFO");
             }
@@ -1152,7 +1195,8 @@ static NfcCommand vk_thermo_nfc_poller_callback(NfcGenericEvent event, void* con
 
         // Enable energy harvesting (handles LOAD_OK polling internally)
         FURI_LOG_I(TAG, "Enabling energy harvesting...");
-        if(!vk_thermo_nfc_enable_eh(instance, poller, iso_data->uid, instance->eh_timeout_seconds)) {
+        if(!vk_thermo_nfc_enable_eh(
+               instance, poller, iso_data->uid, instance->eh_timeout_seconds)) {
             FURI_LOG_E(TAG, "EH failed - sensor not powered, aborting read");
             instance->state = VkThermoNfcStateError;
             return NfcCommandStop;
@@ -1176,7 +1220,8 @@ static NfcCommand vk_thermo_nfc_poller_callback(NfcGenericEvent event, void* con
 
         if(device_type == DeviceTypeTemptress) {
             // Dual-sensor device
-            read_success = vk_thermo_nfc_read_temperature_dual(poller, iso_data->uid, &temp1, &temp2);
+            read_success =
+                vk_thermo_nfc_read_temperature_dual(poller, iso_data->uid, &temp1, &temp2);
             if(read_success) {
                 // Store average in primary field, second reading in secondary
                 instance->last_data.temperature_celsius = (temp1 + temp2) / 2.0f;
@@ -1186,9 +1231,12 @@ static NfcCommand vk_thermo_nfc_poller_callback(NfcGenericEvent event, void* con
                 instance->last_data.sensor_type = VkThermoSensorTmp117;
                 instance->last_data.valid = true;
                 instance->state = VkThermoNfcStateSuccess;
-                FURI_LOG_I(TAG, "Temptress read success: avg=%.2f°C (%.2f°C, %.2f°C)",
+                FURI_LOG_I(
+                    TAG,
+                    "Temptress read success: avg=%.2f°C (%.2f°C, %.2f°C)",
                     (double)instance->last_data.temperature_celsius,
-                    (double)temp1, (double)temp2);
+                    (double)temp1,
+                    (double)temp2);
             }
         } else {
             // Single-sensor device (VK Thermo)
@@ -1211,7 +1259,8 @@ static NfcCommand vk_thermo_nfc_poller_callback(NfcGenericEvent event, void* con
             furi_delay_ms(VK_THERMO_EH_DELAY_MS * 2);
 
             if(device_type == DeviceTypeTemptress) {
-                read_success = vk_thermo_nfc_read_temperature_dual(poller, iso_data->uid, &temp1, &temp2);
+                read_success =
+                    vk_thermo_nfc_read_temperature_dual(poller, iso_data->uid, &temp1, &temp2);
                 if(read_success) {
                     instance->last_data.temperature_celsius = (temp1 + temp2) / 2.0f;
                     instance->last_data.temperature2_celsius = temp2;
@@ -1220,7 +1269,9 @@ static NfcCommand vk_thermo_nfc_poller_callback(NfcGenericEvent event, void* con
                     instance->last_data.sensor_type = VkThermoSensorTmp117;
                     instance->last_data.valid = true;
                     instance->state = VkThermoNfcStateSuccess;
-                    FURI_LOG_I(TAG, "Temptress read success (retry): avg=%.2f°C",
+                    FURI_LOG_I(
+                        TAG,
+                        "Temptress read success (retry): avg=%.2f°C",
                         (double)instance->last_data.temperature_celsius);
                 }
             } else {
@@ -1290,7 +1341,7 @@ VkThermoNfc* vk_thermo_nfc_alloc(void) {
     instance->callback = NULL;
     instance->callback_context = NULL;
     instance->retry_count = 0;
-    instance->eh_timeout_seconds = 5;  // Default 5 seconds
+    instance->eh_timeout_seconds = 5; // Default 5 seconds
     instance->debug_mode = false;
     instance->stop_requested = false;
 
@@ -1409,7 +1460,8 @@ bool vk_thermo_nfc_tick(VkThermoNfc* instance) {
 
         // Notify callback that tag was detected (for user feedback)
         if(instance->callback) {
-            instance->callback(VkThermoNfcEventTagDetected, &instance->last_data, instance->callback_context);
+            instance->callback(
+                VkThermoNfcEventTagDetected, &instance->last_data, instance->callback_context);
         }
 
         vk_thermo_nfc_start_poller(instance);
@@ -1431,9 +1483,12 @@ bool vk_thermo_nfc_tick(VkThermoNfc* instance) {
         // If we have valid temperature data, this is ALWAYS a success — regardless of
         // whether the NFC state ended up as Error (e.g., tag lost after temp was read).
         bool have_temperature = instance->last_data.valid;
-        VkThermoNfcEvent result = have_temperature ? VkThermoNfcEventSuccess : VkThermoNfcEventError;
+        VkThermoNfcEvent result = have_temperature ? VkThermoNfcEventSuccess :
+                                                     VkThermoNfcEventError;
 
-        FURI_LOG_I(TAG, "Tick: nfc_state=%s, data_valid=%s -> reporting %s",
+        FURI_LOG_I(
+            TAG,
+            "Tick: nfc_state=%s, data_valid=%s -> reporting %s",
             instance->state == VkThermoNfcStateSuccess ? "Success" : "Error",
             have_temperature ? "yes" : "no",
             have_temperature ? "SUCCESS" : "ERROR");

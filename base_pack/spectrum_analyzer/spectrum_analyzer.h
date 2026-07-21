@@ -1,12 +1,12 @@
 #define NUM_CHANNELS 132
-#define NUM_CHUNKS 6
-#define CHUNK_SIZE (NUM_CHANNELS / NUM_CHUNKS)
+#define NUM_CHUNKS   6
+#define CHUNK_SIZE   (NUM_CHANNELS / NUM_CHUNKS)
 
 // Screen coordinates
-#define FREQ_BOTTOM_Y 50
-#define FREQ_START_X 14
+#define FREQ_BOTTOM_Y  50
+#define FREQ_START_X   14
 // How many channels displayed on the scale (On screen still 218)
-#define FREQ_LENGTH_X 102
+#define FREQ_LENGTH_X  102
 // dBm threshold to show peak value
 #define PEAK_THRESHOLD -85
 
@@ -17,39 +17,39 @@
  * ultranarrow mode: 2 MHz on screen, 19 kHz per channel
  * precise mode: 400 KHz on screen, 3.92 kHz per channel
  */
-#define WIDE 0
-#define NARROW 1
-#define ULTRAWIDE 2
+#define WIDE        0
+#define NARROW      1
+#define ULTRAWIDE   2
 #define ULTRANARROW 3
-#define PRECISE 4
+#define PRECISE     4
 
 /* channel spacing in Hz */
-#define WIDE_SPACING 196078
-#define NARROW_SPACING 39215
-#define ULTRAWIDE_SPACING 784313
+#define WIDE_SPACING        196078
+#define NARROW_SPACING      39215
+#define ULTRAWIDE_SPACING   784313
 #define ULTRANARROW_SPACING 19607
-#define PRECISE_SPACING 3921
+#define PRECISE_SPACING     3921
 
 /* vertical scrolling */
 #define VERTICAL_SHORT_STEP 16
-#define MAX_VSCROLL 120
-#define MIN_VSCROLL 0
-#define DEFAULT_VSCROLL 48
+#define MAX_VSCROLL         120
+#define MIN_VSCROLL         0
+#define DEFAULT_VSCROLL     48
 
 /* frequencies in KHz */
-#define DEFAULT_FREQ 440000
-#define WIDE_STEP 5000
-#define NARROW_STEP 1000
-#define ULTRAWIDE_STEP 20000
+#define DEFAULT_FREQ     440000
+#define WIDE_STEP        5000
+#define NARROW_STEP      1000
+#define ULTRAWIDE_STEP   20000
 #define ULTRANARROW_STEP 500
-#define PRECISE_STEP 100
+#define PRECISE_STEP     100
 
 /* margin in KHz */
-#define WIDE_MARGIN 13000
-#define NARROW_MARGIN 3000
-#define ULTRAWIDE_MARGIN 42000
+#define WIDE_MARGIN        13000
+#define NARROW_MARGIN      3000
+#define ULTRAWIDE_MARGIN   42000
 #define ULTRANARROW_MARGIN 1000
-#define PRECISE_MARGIN 200
+#define PRECISE_MARGIN     200
 
 /* frequency bands supported by device */
 #define BAND_300 0
@@ -81,4 +81,4 @@
 
 /* Modulation references */
 #define DEFAULT_MODULATION 0
-#define NARROW_MODULATION 1
+#define NARROW_MODULATION  1

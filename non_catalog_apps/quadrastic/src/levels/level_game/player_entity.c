@@ -22,19 +22,17 @@
 
 #include "level_game.h"
 
-#define PLAYER_SIZE 6
-#define PLAYER_SPEED 1
-#define PLAYER_INITIAL_X 64
-#define PLAYER_INITIAL_Y 32
+#define PLAYER_SIZE               6
+#define PLAYER_SPEED              1
+#define PLAYER_INITIAL_X          64
+#define PLAYER_INITIAL_Y          32
 #define PLAYER_ANIMATION_DURATION 15.0f
 
-Entity*
-player_spawn(Level* level, GameManager* manager)
-{
+Entity* player_spawn(Level* level, GameManager* manager) {
     Entity* player = level_add_entity(level, &player_description);
 
     // Set position and collider rect
-    entity_pos_set(player, (Vector){ PLAYER_INITIAL_X, PLAYER_INITIAL_Y });
+    entity_pos_set(player, (Vector){PLAYER_INITIAL_X, PLAYER_INITIAL_Y});
     entity_collider_add_rect(player, PLAYER_SIZE, PLAYER_SIZE);
 
     // Load player sprite
@@ -44,30 +42,26 @@ player_spawn(Level* level, GameManager* manager)
     return player;
 }
 
-void
-player_respawn(Entity* player)
-{
+void player_respawn(Entity* player) {
     // Set player position.
-    entity_pos_set(player, (Vector){ PLAYER_INITIAL_X, PLAYER_INITIAL_Y });
+    entity_pos_set(player, (Vector){PLAYER_INITIAL_X, PLAYER_INITIAL_Y});
 
     // Reset animation
     PlayerContext* player_context = entity_context_get(player);
     player_context->time = 0.0f;
 }
 
-static void
-player_update(Entity* self, GameManager* manager, void* _entity_context)
-{
+static void player_update(Entity* self, GameManager* manager, void* _entity_context) {
     // Check pause
     Level* level = game_manager_current_level_get(manager);
     GameLevelContext* level_context = level_context_get(level);
-    if (level_context->is_paused) {
+    if(level_context->is_paused) {
         return;
     }
 
     // Start level animation
     PlayerContext* player = _entity_context;
-    if (player->time < PLAYER_ANIMATION_DURATION) {
+    if(player->time < PLAYER_ANIMATION_DURATION) {
         player->time += 1.0f;
         return;
     }
@@ -76,14 +70,10 @@ player_update(Entity* self, GameManager* manager, void* _entity_context)
     Vector pos = entity_pos_get(self);
 
     // Control player movement
-    if (input.held & GameKeyUp)
-        pos.y -= PLAYER_SPEED;
-    if (input.held & GameKeyDown)
-        pos.y += PLAYER_SPEED;
-    if (input.held & GameKeyLeft)
-        pos.x -= PLAYER_SPEED;
-    if (input.held & GameKeyRight)
-        pos.x += PLAYER_SPEED;
+    if(input.held & GameKeyUp) pos.y -= PLAYER_SPEED;
+    if(input.held & GameKeyDown) pos.y += PLAYER_SPEED;
+    if(input.held & GameKeyLeft) pos.x -= PLAYER_SPEED;
+    if(input.held & GameKeyRight) pos.x += PLAYER_SPEED;
 
     // Clamp player position to screen bounds, and set it
     pos.x = CLAMP(pos.x, 125, 3);
@@ -91,21 +81,17 @@ player_update(Entity* self, GameManager* manager, void* _entity_context)
     entity_pos_set(self, pos);
 
     // Control game pause
-    if (input.pressed & GameKeyBack) {
+    if(input.pressed & GameKeyBack) {
         pause_game(level);
     }
 }
 
 static void
-player_render(Entity* self,
-              GameManager* manager,
-              Canvas* canvas,
-              void* _entity_context)
-{
+    player_render(Entity* self, GameManager* manager, Canvas* canvas, void* _entity_context) {
     PlayerContext* player = _entity_context;
 
     // Draw initial animation
-    if (player->time < PLAYER_ANIMATION_DURATION) {
+    if(player->time < PLAYER_ANIMATION_DURATION) {
         float step = 61 / PLAYER_ANIMATION_DURATION;
         float left_x = player->time * step;
         float right_x = 122 - left_x;
@@ -124,8 +110,7 @@ player_render(Entity* self,
 
     // Draw score
     GameContext* game_context = game_manager_game_context_get(manager);
-    canvas_printf_aligned(
-      canvas, 64, 0, AlignCenter, AlignTop, "%lu", game_context->score);
+    canvas_printf_aligned(canvas, 64, 0, AlignCenter, AlignTop, "%lu", game_context->score);
 }
 
 const EntityDescription player_description = {

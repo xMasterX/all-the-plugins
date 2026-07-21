@@ -13,7 +13,7 @@
 #include "../include/constants.h"
 #include "../include/message_queue.h"
 
-#define LINES_ON_SCREEN 6
+#define LINES_ON_SCREEN   6
 #define COLUMNS_ON_SCREEN 21
 
 typedef struct PwnDumpModel PwnDumpModel;
@@ -275,7 +275,7 @@ static FlipagotchiApp* flipagotchi_app_alloc() {
 
     // View dispatcher
     app->view_dispatcher = view_dispatcher_alloc();
-    
+
     view_dispatcher_attach_to_gui(app->view_dispatcher, app->gui, ViewDispatcherTypeFullscreen);
 
     // Views

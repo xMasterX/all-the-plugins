@@ -51,21 +51,25 @@ private:
     uint32_t fromFilePagersCount = 0;
 
 public:
-    ScanStationsScreen(AppConfig* config) : ScanStationsScreen(config, true, NotSelected, NULL) {
+    ScanStationsScreen(AppConfig* config)
+        : ScanStationsScreen(config, true, NotSelected, NULL) {
     }
 
-    ScanStationsScreen(AppConfig* config, CategoryType categoryType, const char* category) :
-            ScanStationsScreen(config, false, categoryType, category) {
+    ScanStationsScreen(AppConfig* config, CategoryType categoryType, const char* category)
+        : ScanStationsScreen(config, false, categoryType, category) {
     }
 
-    ScanStationsScreen(AppConfig* config, bool receiveNew, CategoryType categoryType, const char* category) {
+    ScanStationsScreen(
+        AppConfig* config,
+        bool receiveNew,
+        CategoryType categoryType,
+        const char* category) {
         this->config = config;
 
         menuView = new ColumnOrientedListUiView(
             stationScreenColumnOffsets,
             sizeof(stationScreenColumnOffsets),
-            HANDLER_3ARG(&ScanStationsScreen::getElementColumnName)
-        );
+            HANDLER_3ARG(&ScanStationsScreen::getElementColumnName));
         menuView->SetOnDestroyHandler(HANDLER(&ScanStationsScreen::destroy));
         menuView->SetOnReturnToViewHandler([this]() { this->menuView->Refresh(); });
         menuView->SetGoBackHandler(HANDLER(&ScanStationsScreen::goBack));
@@ -88,7 +92,8 @@ public:
             updateUserCategory = false;
 
             if(category != NULL) {
-                menuView->SetRightButton("Delete category", HANDLER_1ARG(&ScanStationsScreen::deleteCategory));
+                menuView->SetRightButton(
+                    "Delete category", HANDLER_1ARG(&ScanStationsScreen::deleteCategory));
             }
         } else {
             pagerReceiver->ReloadKnownStations();
@@ -105,7 +110,8 @@ public:
         }
 
         if(!receiveNew) {
-            pagerReceiver->LoadStationsFromDirectory(categoryType, category, HANDLER_1ARG(&ScanStationsScreen::pagerAdded));
+            pagerReceiver->LoadStationsFromDirectory(
+                categoryType, category, HANDLER_1ARG(&ScanStationsScreen::pagerAdded));
 
             if(categoryType == User && menuView->GetElementsCount() > 0) {
                 scanForMoreButtonIndex = menuView->GetElementsCount();
@@ -134,9 +140,12 @@ private:
                     Notification::Play(&NOTIFICATION_PAGER_RECEIVE);
                 }
 
-                if(pagerData->GetIndex() == 0) { // add buttons after capturing the first transmission
-                    menuView->SetCenterButton("Actions", HANDLER_1ARG(&ScanStationsScreen::showActions));
-                    menuView->SetRightButton("Edit", HANDLER_1ARG(&ScanStationsScreen::editPagerMessage));
+                if(pagerData->GetIndex() ==
+                   0) { // add buttons after capturing the first transmission
+                    menuView->SetCenterButton(
+                        "Actions", HANDLER_1ARG(&ScanStationsScreen::showActions));
+                    menuView->SetRightButton(
+                        "Edit", HANDLER_1ARG(&ScanStationsScreen::editPagerMessage));
                 }
 
                 if(!receiveMode || scanForMoreButtonIndex == -1) {
@@ -217,7 +226,8 @@ private:
     }
 
     void showConfig(uint32_t) {
-        SettingsScreen* screen = new SettingsScreen(config, pagerReceiver, subghz, updateUserCategory);
+        SettingsScreen* screen =
+            new SettingsScreen(config, pagerReceiver, subghz, updateUserCategory);
         UiManager::GetInstance()->PushView(screen->GetView());
     }
 
@@ -227,7 +237,8 @@ private:
         }
 
         PagerDataGetter getPager = pagerReceiver->PagerGetter(index);
-        EditPagerScreen* screen = new EditPagerScreen(config, subghz, pagerReceiver, getPager, index < fromFilePagersCount);
+        EditPagerScreen* screen = new EditPagerScreen(
+            config, subghz, pagerReceiver, getPager, index < fromFilePagersCount);
         UiManager::GetInstance()->PushView(screen->GetView());
     }
 
@@ -247,16 +258,19 @@ private:
         PagerDecoder* decoder = pagerReceiver->decoders[pagerData->decoder];
         PagerProtocol* protocol = pagerReceiver->protocols[pagerData->protocol];
 
-        PagerActionsScreen* screen = new PagerActionsScreen(config, getPager, decoder, protocol, subghz);
+        PagerActionsScreen* screen =
+            new PagerActionsScreen(config, getPager, decoder, protocol, subghz);
         UiManager::GetInstance()->PushView(screen->GetView());
     }
 
     bool goBack() {
         if(receiveMode && menuView->GetElementsCount() > 0) {
-            DialogUiView* confirmGoBack = new DialogUiView("Really stop scan?", "You may loose captured signals");
+            DialogUiView* confirmGoBack =
+                new DialogUiView("Really stop scan?", "You may loose captured signals");
             confirmGoBack->AddLeftButton("No");
             confirmGoBack->AddRightButton("Yes");
-            confirmGoBack->SetResultHandler(HANDLER_1ARG(&ScanStationsScreen::goBackConfirmationHandler));
+            confirmGoBack->SetResultHandler(
+                HANDLER_1ARG(&ScanStationsScreen::goBackConfirmationHandler));
             UiManager::GetInstance()->PushView(confirmGoBack);
             return false;
         }

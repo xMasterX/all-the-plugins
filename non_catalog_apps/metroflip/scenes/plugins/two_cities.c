@@ -40,7 +40,8 @@ static const MfClassicKeyPair two_cities_4k_keys[] = {
     {.a = 0xb27addfb64b0, .b = 0x152fd0c420a7}, {.a = 0x7259fa0197c6, .b = 0x5583698df085},
 };
 
-static bool two_cities_display_card_view(const MfClassicData* data, Metroflip* app, bool from_file) {
+static bool
+    two_cities_display_card_view(const MfClassicData* data, Metroflip* app, bool from_file) {
     // Verify key
     MfClassicSectorTrailer* sec_tr = mf_classic_get_sector_trailer_by_sector(data, 4);
     uint64_t key = bit_lib_bytes_to_num_be(sec_tr->key_a.data, 6);
@@ -210,7 +211,8 @@ static void two_cities_on_enter(Metroflip* app) {
         FURI_LOG_I(TAG, "TwoCities not loaded");
         // Setup view
         Popup* popup = app->popup;
-        popup_set_header(popup, "Scanning...\nApply card\nto the back", 68, 30, AlignLeft, AlignTop);
+        popup_set_header(
+            popup, "Scanning...\nApply card\nto the back", 68, 30, AlignLeft, AlignTop);
         popup_set_icon(popup, 0, 3, &I_RFIDDolphinReceive_97x61);
 
         // Start worker
@@ -268,7 +270,6 @@ static bool two_cities_on_event(Metroflip* app, SceneManagerEvent event) {
 }
 
 static void two_cities_on_exit(Metroflip* app) {
-
     widget_reset(app->widget);
     popup_reset(app->popup);
     metroflip_app_blink_stop(app);

@@ -14,8 +14,8 @@
 #define PROTOPIRATE_CC1101_MOD_FORMAT_ASK_OOK 0x30U
 #define PROTOPIRATE_CC1101_MOD_FORMAT_4FSK    0x40U
 #define PROTOPIRATE_CC1101_MOD_FORMAT_MSK     0x70U
-#define PROTOPIRATE_VAG_FREQUENCY_MIN 434190000UL
-#define PROTOPIRATE_VAG_FREQUENCY_MAX 434450000UL
+#define PROTOPIRATE_VAG_FREQUENCY_MIN         434190000UL
+#define PROTOPIRATE_VAG_FREQUENCY_MAX         434450000UL
 
 #define PROTOPIRATE_COUNT_OF(array) (sizeof(array) / sizeof((array)[0]))
 
@@ -153,7 +153,8 @@ const ProtoPirateProtocolCatalogEntry*
 }
 
 const char* protopirate_protocol_catalog_canonical_name(const char* protocol_name) {
-    const ProtoPirateProtocolCatalogEntry* entry = protopirate_protocol_catalog_find(protocol_name);
+    const ProtoPirateProtocolCatalogEntry* entry =
+        protopirate_protocol_catalog_find(protocol_name);
     return entry ? entry->canonical_name : protocol_name;
 }
 
@@ -162,7 +163,8 @@ bool protopirate_protocol_catalog_can_tx(const char* protocol_name) {
 }
 
 const char* protopirate_protocol_catalog_tx_key(const char* protocol_name) {
-    const ProtoPirateProtocolCatalogEntry* entry = protopirate_protocol_catalog_find(protocol_name);
+    const ProtoPirateProtocolCatalogEntry* entry =
+        protopirate_protocol_catalog_find(protocol_name);
     return entry ? entry->tx_key : NULL;
 }
 
@@ -322,8 +324,7 @@ ProtoPirateProtocolRegistryRoute protopirate_get_protocol_registry_route(
         preset_name, frequency, preset_data, preset_data_size, protocol_name);
 }
 
-const char*
-    protopirate_get_protocol_registry_route_name(ProtoPirateProtocolRegistryRoute route) {
+const char* protopirate_get_protocol_registry_route_name(ProtoPirateProtocolRegistryRoute route) {
     switch(route) {
     case ProtoPirateProtocolRegistryRouteAMVag:
         return "AM_VAG";

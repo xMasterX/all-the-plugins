@@ -10,16 +10,16 @@
 #include "../helpers/flipchess_voice.h"
 #include "../helpers/flipchess_haptic.h"
 
-#define SCL_960_CASTLING 0 // setting to 1 compiles a 960 version of smolchess
-#define XBOARD_DEBUG 0 // will create files with xboard communication
+#define SCL_960_CASTLING        0 // setting to 1 compiles a 960 version of smolchess
+#define XBOARD_DEBUG            0 // will create files with xboard communication
 #define SCL_EVALUATION_FUNCTION SCL_boardEvaluateStatic
-#define SCL_DEBUG_AI 0
+#define SCL_DEBUG_AI            0
 
 #include "../chess/smallchesslib.h"
 
-#define ENABLE_960 0 // setting to 1 enables 960 chess
-#define MAX_TEXT_LEN 15 // 15 = max length of text
-#define MAX_TEXT_BUF (MAX_TEXT_LEN + 1) // max length of text + null terminator
+#define ENABLE_960       0 // setting to 1 enables 960 chess
+#define MAX_TEXT_LEN     15 // 15 = max length of text
+#define MAX_TEXT_BUF     (MAX_TEXT_LEN + 1) // max length of text + null terminator
 #define THREAD_WAIT_TIME 20 // time to wait for draw thread to finish
 
 struct FlipChessScene1 {
@@ -652,8 +652,7 @@ void flipchess_scene_1_exit(void* context) {
     furi_assert(context);
     FlipChessScene1* instance = (FlipChessScene1*)context;
 
-    with_view_model(
-        instance->view, FlipChessScene1Model * model, { model->paramExit = 0; }, true);
+    with_view_model(instance->view, FlipChessScene1Model * model, { model->paramExit = 0; }, true);
 }
 
 void flipchess_scene_1_enter(void* context) {
@@ -714,8 +713,7 @@ FlipChessScene1* flipchess_scene_1_alloc() {
 void flipchess_scene_1_free(FlipChessScene1* instance) {
     furi_assert(instance);
 
-    with_view_model(
-        instance->view, FlipChessScene1Model * model, { UNUSED(model); }, true);
+    with_view_model(instance->view, FlipChessScene1Model * model, { UNUSED(model); }, true);
 
     view_free(instance->view);
     free(instance);

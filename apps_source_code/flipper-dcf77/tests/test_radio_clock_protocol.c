@@ -130,10 +130,7 @@ static void test_wwvb_protocol_generates_safe_aux_frame(void) {
     radio_clock_protocol_prepare_frame(RadioClockSignalWwvb, &frame, &time);
     frame_to_string(frame.pulses, actual);
 
-    assert(
-        strcmp(
-            actual,
-            "M10000010M000101000M001000101M100000000M000000000M000100000M") == 0);
+    assert(strcmp(actual, "M10000010M000101000M001000101M100000000M000000000M000100000M") == 0);
 }
 
 static void test_protocol_pulse_timing_and_phase_rules(void) {

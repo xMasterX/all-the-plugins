@@ -35,7 +35,8 @@ static bool decode(uint8_t* bits, uint32_t numbytes, uint32_t numbits, ProtoView
 
     /* CRC is just the sum of the first 7 bytes MOD 256. */
     uint8_t crc = 0;
-    for(int j = 0; j < 7; j++) crc += raw[j];
+    for(int j = 0; j < 7; j++)
+        crc += raw[j];
     if(crc != raw[7]) return false; /* Require sane CRC. */
 
     info->pulses_count = (off + 8 * 8 * 2) - info->start_off;

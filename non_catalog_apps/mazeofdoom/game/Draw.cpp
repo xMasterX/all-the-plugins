@@ -10,7 +10,7 @@
 #include "game/Enemy.h"
 #include "game/Font.h"
 #include "game/LUT.h"
-#include "game/Generated/SpriteData.inc.h"
+#include "game/Generated/SpriteData_inc.h"
 #if WITH_VECTOR_TEXTURES
 #include "game/Textures.h"
 #endif
@@ -112,11 +112,10 @@ void DrawNightSkyStars(int16_t topY, int16_t bottomY) {
     const uint8_t skyHeight = (uint8_t)(bottomY - topY);
     for(uint8_t i = 0; i < kNightStarCount; i++) {
         noise = AdvanceNoise(noise);
-        const uint8_t starX = (uint8_t)(
-            GAME_VIEW_X +
-            WrapSpriteColumn(
-                (int16_t)(noise % GAME_VIEW_WIDTH) + g_backgroundParallax.skySampleX,
-                GAME_VIEW_WIDTH));
+        const uint8_t starX = (uint8_t)(GAME_VIEW_X + WrapSpriteColumn(
+                                                          (int16_t)(noise % GAME_VIEW_WIDTH) +
+                                                              g_backgroundParallax.skySampleX,
+                                                          GAME_VIEW_WIDTH));
         noise = AdvanceNoise(noise);
         const uint8_t y = (uint8_t)(topY + (noise % skyHeight));
         noise = AdvanceNoise(noise);
@@ -174,11 +173,9 @@ void DrawPerspectiveFloorBand(const uint8_t* spriteData, int16_t y) {
             const int32_t viewX =
                 ((int32_t)(dx - Renderer::viewCenterX) * viewZ) / Renderer::nearPlane;
             const int32_t worldX =
-                Renderer::camera.x +
-                (((int32_t)forwardX * viewZ + (int32_t)rightX * viewX) >> 8);
+                Renderer::camera.x + (((int32_t)forwardX * viewZ + (int32_t)rightX * viewX) >> 8);
             const int32_t worldY =
-                Renderer::camera.y +
-                (((int32_t)forwardY * viewZ + (int32_t)rightY * viewX) >> 8);
+                Renderer::camera.y + (((int32_t)forwardY * viewZ + (int32_t)rightY * viewX) >> 8);
 
             const uint8_t sx = WrapSpriteColumn((int16_t)((worldX * tileWidth) >> 8), tileWidth);
             const uint8_t sy = WrapSpriteRow((int16_t)((worldY * tileHeight) >> 8), tileHeight);
@@ -227,8 +224,7 @@ void DrawTiltedSprite(int16_t x, int16_t y, const uint8_t* bmp, int8_t skew, boo
             if((mask & bit) == 0) continue;
             const uint8_t src = pgm_read_byte(&data[srcIndex]);
             const uint8_t colour = (uint8_t)(((src & bit) != 0) ^ invert);
-            Platform::PutPixel(
-                (uint8_t)(x + sx + rowOffset), (uint8_t)(y + sy), colour);
+            Platform::PutPixel((uint8_t)(x + sx + rowOffset), (uint8_t)(y + sy), colour);
         }
     }
 }
@@ -422,10 +418,11 @@ void DrawSidebarMinimap() {
             const uint8_t cellY = startCellY + outY;
             const bool isPlayer = (cellX == playerCellX) && (cellY == playerCellY);
             const uint8_t colour =
-                isPlayer ? ((Game::globalTickFrame & 3) ? COLOUR_BLACK : COLOUR_WHITE) :
-                           (cellX < Map::width && cellY < Map::height && Map::IsSolid(cellX, cellY) ?
-                                COLOUR_BLACK :
-                                COLOUR_WHITE);
+                isPlayer ?
+                    ((Game::globalTickFrame & 3) ? COLOUR_BLACK : COLOUR_WHITE) :
+                    (cellX < Map::width && cellY < Map::height && Map::IsSolid(cellX, cellY) ?
+                         COLOUR_BLACK :
+                         COLOUR_WHITE);
             Platform::PutPixel(
                 (uint8_t)(kSidebarMapX + outX), (uint8_t)(kSidebarMapY + outY), colour);
         }
@@ -620,7 +617,8 @@ void Renderer::DrawWallSegment(
             {
                 // Clip vertical extents (already safe here)
                 uint8_t y1s = (w > horizon) ? 0 : (uint8_t)(horizon - w);
-                uint8_t y2s = (horizon + w > DISPLAY_HEIGHT) ? DISPLAY_HEIGHT : (uint8_t)(horizon + w);
+                uint8_t y2s = (horizon + w > DISPLAY_HEIGHT) ? DISPLAY_HEIGHT :
+                                                               (uint8_t)(horizon + w);
                 DrawVLine(x, y1s, y2s, sliceMask);
                 uint16_t textureData = pgm_read_word(&texture[u % 16]);
                 const uint16_t wallSize = (uint16_t)(w * 2);
@@ -674,8 +672,10 @@ void Renderer::DrawWallSegment(
             if(drawSlice && werror < 0 && w <= DISPLAY_HEIGHT / 2) {
                 int16_t yA = horizon + w - 1;
                 int16_t yB = horizon - w;
-                if((uint16_t)yA < DISPLAY_HEIGHT) Platform::PutPixel((uint8_t)x, (uint8_t)yA, edgeColour);
-                if((uint16_t)yB < DISPLAY_HEIGHT) Platform::PutPixel((uint8_t)x, (uint8_t)yB, edgeColour);
+                if((uint16_t)yA < DISPLAY_HEIGHT)
+                    Platform::PutPixel((uint8_t)x, (uint8_t)yA, edgeColour);
+                if((uint16_t)yB < DISPLAY_HEIGHT)
+                    Platform::PutPixel((uint8_t)x, (uint8_t)yB, edgeColour);
             }
         }
 #if WITH_IMAGE_TEXTURES
@@ -1006,15 +1006,7 @@ void Renderer::DrawCell(uint8_t x, uint8_t y) {
         const bool topEdge = !topContinues;
         const bool bottomEdge = !bottomContinues;
 #if WITH_TEXTURES
-        DrawWall(
-            texture,
-            x1,
-            y1,
-            x1,
-            y2,
-            topEdge,
-            bottomEdge,
-            true);
+        DrawWall(texture, x1, y1, x1, y2, topEdge, bottomEdge, true);
 #else
         DrawWall(x1, y1, x1, y2, topEdge, bottomEdge, true);
 #endif
@@ -1025,15 +1017,7 @@ void Renderer::DrawCell(uint8_t x, uint8_t y) {
         const bool leftEdge = !blockedLeft && camera.x >= x1 && !leftContinues;
         const bool rightEdge = !blockedRight && camera.x <= x2 && !rightContinues;
 #if WITH_TEXTURES
-        DrawWall(
-            texture,
-            x1,
-            y2,
-            x2,
-            y2,
-            leftEdge,
-            rightEdge,
-            false);
+        DrawWall(texture, x1, y2, x2, y2, leftEdge, rightEdge, false);
 #else
         DrawWall(x1, y2, x2, y2, leftEdge, rightEdge, false);
 #endif
@@ -1044,15 +1028,7 @@ void Renderer::DrawCell(uint8_t x, uint8_t y) {
         const bool bottomEdge = !bottomContinues;
         const bool topEdge = !topContinues;
 #if WITH_TEXTURES
-        DrawWall(
-            texture,
-            x2,
-            y2,
-            x2,
-            y1,
-            bottomEdge,
-            topEdge,
-            true);
+        DrawWall(texture, x2, y2, x2, y1, bottomEdge, topEdge, true);
 #else
         DrawWall(x2, y2, x2, y1, bottomEdge, topEdge, true);
 #endif
@@ -1063,15 +1039,7 @@ void Renderer::DrawCell(uint8_t x, uint8_t y) {
         const bool rightEdge = !blockedRight && camera.x <= x2 && !rightContinues;
         const bool leftEdge = !blockedLeft && camera.x >= x1 && !leftContinues;
 #if WITH_TEXTURES
-        DrawWall(
-            texture,
-            x2,
-            y1,
-            x1,
-            y1,
-            rightEdge,
-            leftEdge,
-            false);
+        DrawWall(texture, x2, y1, x1, y1, rightEdge, leftEdge, false);
 #else
         DrawWall(x2, y1, x1, y1, rightEdge, leftEdge, false);
 #endif
@@ -1485,28 +1453,29 @@ void Renderer::DrawBackground() {
     UpdateBackgroundParallax();
 
 #if !LEVEL_THEME_DAY
-        const uint8_t bottomTileH = pgm_read_byte(&backgroundBottomDarkSpriteData[1]);
-        const int16_t bottomY = DISPLAY_HEIGHT - bottomTileH - centerOffset;
-        Platform::FillScreen(COLOUR_WHITE);
+    const uint8_t bottomTileH = pgm_read_byte(&backgroundBottomDarkSpriteData[1]);
+    const int16_t bottomY = DISPLAY_HEIGHT - bottomTileH - centerOffset;
+    Platform::FillScreen(COLOUR_WHITE);
 
-        for(int16_t x = viewX; x < viewRight; x++) {
-            int16_t skyBottom = horizonBuffer[x] + kNightSkyFloorGap;
-            if(skyBottom < centerOffset) {
-                skyBottom = centerOffset;
-            }
-            if(skyBottom >= bottomY) {
-                skyBottom = bottomY - 1;
-            }
-            FillColumn(x, centerOffset, skyBottom, COLOUR_BLACK);
+    for(int16_t x = viewX; x < viewRight; x++) {
+        int16_t skyBottom = horizonBuffer[x] + kNightSkyFloorGap;
+        if(skyBottom < centerOffset) {
+            skyBottom = centerOffset;
         }
+        if(skyBottom >= bottomY) {
+            skyBottom = bottomY - 1;
+        }
+        FillColumn(x, centerOffset, skyBottom, COLOUR_BLACK);
+    }
 
-        DrawNightSkyStars(centerOffset, bottomY - 1);
-        DrawPerspectiveFloorBand(backgroundBottomDarkSpriteData, bottomY);
-        return;
+    DrawNightSkyStars(centerOffset, bottomY - 1);
+    DrawPerspectiveFloorBand(backgroundBottomDarkSpriteData, bottomY);
+    return;
 #else
     const uint8_t bottomTileH = pgm_read_byte(&backgroundTopSpriteData[1]);
     Platform::FillScreen(COLOUR_WHITE);
-    DrawTiledSpriteSampled(backgroundBottomSpriteData, centerOffset, g_backgroundParallax.skySampleX, 0);
+    DrawTiledSpriteSampled(
+        backgroundBottomSpriteData, centerOffset, g_backgroundParallax.skySampleX, 0);
     DrawPerspectiveFloorBand(backgroundTopSpriteData, DISPLAY_HEIGHT - bottomTileH - centerOffset);
 #endif
 }

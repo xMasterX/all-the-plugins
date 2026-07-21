@@ -6,13 +6,13 @@
 
 #define TAG "tracker_app"
 
-App *init() {
-  FURI_LOG_T(TAG, "init");
-  App *app = malloc(sizeof(App));
-  current_task_init(app);
-  tasks_init(app);
-  storage_init(app);
-  scene_manager_init(app);
-  view_dispatcher_init(app);
-  return app;
+App* init() {
+    FURI_LOG_T(TAG, "init");
+    App* app = malloc(sizeof(App));
+    current_task_init(app);
+    tasks_init(app);
+    storage_init(app);
+    scene_manager_init(app);
+    view_dispatcher_init(app);
+    return app;
 }

@@ -10,7 +10,7 @@
 #include <gui/view_port.h>
 #include "../view_hijacker.h"
 
-#define ARRAY_SIZE(x)  ((int)(sizeof(x) / sizeof(0[x])))
+#define ARRAY_SIZE(x) ((int)(sizeof(x) / sizeof(0 [x])))
 
 typedef struct {
     const GpioPin* pin_led;
@@ -74,31 +74,31 @@ typedef struct {
 } GunDef;
 
 const GunDef guns[] = {
-    { "   67.6 - Zurad Rapid Laser", 14800 },
-    { "   68.1 - Laser Atlanta Stealth", 4194 },              
-    { "   75.0 - Traffic Observer LMS291/221", 13333 },
-    { "   99.9 - Vitronic PoliScan Speed", 10020 },
-    { "  100.0 - Ultralyte Rev.1", 10000 },
-    { "  100.0 - Jenoptik LaserPL", 10000 },
-    { "  125.0 - Ultralyte Rev.2", 8000 },
-    { "  130.0 - Stalker LZ-1", 7693 },
-    { "  190.0 - Dragon Eye", 6667 },
-    { "  200.0 - Kustom PL3", 5000 },
-    { "  200.0 - Kustom PL4", 5000 },
-    { "  200.0 - Kustom PLite", 5000 },
-    { "  200.0 - VHT Fama III", 5000 },
-    { "  200.3 - LTI Truspeed US", 4993 }, 
-    { "  238.4 - Kustom PL2", 4194 },
-    { "  238.4 - VHT Fama II", 4194 },
-    { "  238.4 - Laser Atlanta", 4194 },
-    { "  380.0 - Kustom PL1", 2631 },
-    { "  384.0 - TSS Laser 500", 2603 },
-    { "  400.0 - Elite 1500", 2500 },
-    { "  600.0 - Jenoptik Laveg", 1666 },
-    { " 3205.0 - NJL SCS-102", 312 },
-    { " 3205.0 - NJL SCS-103", 312 },
-    { " 4000.0 - LTI Truspeed S", 250 },
-    { " 4673.0 - Riegl FG21-P", 214 },
+    {"   67.6 - Zurad Rapid Laser", 14800},
+    {"   68.1 - Laser Atlanta Stealth", 4194},
+    {"   75.0 - Traffic Observer LMS291/221", 13333},
+    {"   99.9 - Vitronic PoliScan Speed", 10020},
+    {"  100.0 - Ultralyte Rev.1", 10000},
+    {"  100.0 - Jenoptik LaserPL", 10000},
+    {"  125.0 - Ultralyte Rev.2", 8000},
+    {"  130.0 - Stalker LZ-1", 7693},
+    {"  190.0 - Dragon Eye", 6667},
+    {"  200.0 - Kustom PL3", 5000},
+    {"  200.0 - Kustom PL4", 5000},
+    {"  200.0 - Kustom PLite", 5000},
+    {"  200.0 - VHT Fama III", 5000},
+    {"  200.3 - LTI Truspeed US", 4993},
+    {"  238.4 - Kustom PL2", 4194},
+    {"  238.4 - VHT Fama II", 4194},
+    {"  238.4 - Laser Atlanta", 4194},
+    {"  380.0 - Kustom PL1", 2631},
+    {"  384.0 - TSS Laser 500", 2603},
+    {"  400.0 - Elite 1500", 2500},
+    {"  600.0 - Jenoptik Laveg", 1666},
+    {" 3205.0 - NJL SCS-102", 312},
+    {" 3205.0 - NJL SCS-103", 312},
+    {" 4000.0 - LTI Truspeed S", 250},
+    {" 4673.0 - Riegl FG21-P", 214},
 };
 
 static void lidaremulator_scene_predefined_guns_submenu_callback(void* context, uint32_t index) {
@@ -109,7 +109,7 @@ static void lidaremulator_scene_predefined_guns_submenu_callback(void* context, 
 
 bool lidaremulator_scene_predefined_guns_view_on_event(InputEvent* event, void* context) {
     bool consumed = false;
-    
+
     ViewHijacker* view_hijacker = context;
     furi_check(context);
 
@@ -119,11 +119,11 @@ bool lidaremulator_scene_predefined_guns_view_on_event(InputEvent* event, void* 
     Submenu* submenu = lidaremulator->submenu;
     furi_check(submenu);
 
-    if (event->type == InputTypeShort && event->key == InputKeyOk) {
+    if(event->type == InputTypeShort && event->key == InputKeyOk) {
         consumed = true;
     }
 
-    if (event->type == InputTypePress && event->key == InputKeyOk) {
+    if(event->type == InputTypePress && event->key == InputKeyOk) {
         uint32_t idx = submenu_get_selected_item(submenu);
         furi_check(idx < (uint32_t)ARRAY_SIZE(guns));
 
@@ -134,14 +134,15 @@ bool lidaremulator_scene_predefined_guns_view_on_event(InputEvent* event, void* 
         }
 
         TransmitContext* ctx = malloc(sizeof(TransmitContext));
-        ctx->pin_led = (lidaremulator->ir_output == LidarEmulatorIrOutputExternal)
-                           ? &gpio_ext_pa7
-                           : &gpio_infrared_tx;
+        ctx->pin_led = (lidaremulator->ir_output == LidarEmulatorIrOutputExternal) ?
+                           &gpio_ext_pa7 :
+                           &gpio_infrared_tx;
         ctx->pin_ok = &gpio_button_ok;
         ctx->timing = guns[idx].timing - 1;
         ctx->idx = idx;
-        ctx->use_external_5v = (lidaremulator->ir_output == LidarEmulatorIrOutputExternal &&
-                                lidaremulator->ir_ext_5v_enabled);
+        ctx->use_external_5v =
+            (lidaremulator->ir_output == LidarEmulatorIrOutputExternal &&
+             lidaremulator->ir_ext_5v_enabled);
 
         if(ctx->use_external_5v) {
             Power* power = furi_record_open(RECORD_POWER);
@@ -173,12 +174,11 @@ bool lidaremulator_scene_predefined_guns_view_on_event(InputEvent* event, void* 
         consumed = true;
     }
 
-    if ( ( ! consumed ) && (view_hijacker->orig_input_callback) )
-            consumed = view_hijacker->orig_input_callback(event, view_hijacker->orig_context);
+    if((!consumed) && (view_hijacker->orig_input_callback))
+        consumed = view_hijacker->orig_input_callback(event, view_hijacker->orig_context);
 
     return consumed;
 }
-
 
 void lidaremulator_scene_predefined_guns_on_enter(void* context) {
     LidarEmulatorApp* lidaremulator = context;
@@ -190,19 +190,28 @@ void lidaremulator_scene_predefined_guns_on_enter(void* context) {
     SceneManager* scene_manager = lidaremulator->scene_manager;
     furi_check(scene_manager);
 
-    for(unsigned i=0; i<ARRAY_SIZE(guns); i++) 
-        submenu_add_item(submenu, guns[i].name, i, lidaremulator_scene_predefined_guns_submenu_callback, lidaremulator);
+    for(unsigned i = 0; i < ARRAY_SIZE(guns); i++)
+        submenu_add_item(
+            submenu,
+            guns[i].name,
+            i,
+            lidaremulator_scene_predefined_guns_submenu_callback,
+            lidaremulator);
 
-    const uint32_t submenu_index = scene_manager_get_scene_state(scene_manager, LidarEmulatorScenePredefinedGUNs);
+    const uint32_t submenu_index =
+        scene_manager_get_scene_state(scene_manager, LidarEmulatorScenePredefinedGUNs);
     submenu_set_selected_item(submenu, submenu_index);
     scene_manager_set_scene_state(scene_manager, LidarEmulatorScenePredefinedGUNs, 0);
 
     view_dispatcher_switch_to_view(lidaremulator->view_dispatcher, LidarEmulatorViewSubmenu);
 
-    view_hijacker_attach_to_view_dispacher_current(lidaremulator->view_hijacker, lidaremulator->view_dispatcher);
+    view_hijacker_attach_to_view_dispacher_current(
+        lidaremulator->view_hijacker, lidaremulator->view_dispatcher);
 
-    view_hijacker_hijack_input_callback(lidaremulator->view_hijacker, lidaremulator_scene_predefined_guns_view_on_event, lidaremulator);
-
+    view_hijacker_hijack_input_callback(
+        lidaremulator->view_hijacker,
+        lidaremulator_scene_predefined_guns_view_on_event,
+        lidaremulator);
 }
 
 bool lidaremulator_scene_predefined_guns_on_event(void* context, SceneManagerEvent event) {
@@ -214,15 +223,16 @@ bool lidaremulator_scene_predefined_guns_on_event(void* context, SceneManagerEve
 
     bool consumed = false;
 
-    if (event.type == SceneManagerEventTypeCustom) {
+    if(event.type == SceneManagerEventTypeCustom) {
         const uint32_t submenu_index = event.event;
-        scene_manager_set_scene_state(scene_manager, LidarEmulatorScenePredefinedGUNs, submenu_index);
+        scene_manager_set_scene_state(
+            scene_manager, LidarEmulatorScenePredefinedGUNs, submenu_index);
 
-        if (submenu_index == 0) {
-            furi_hal_light_set(LightRed,255);
-            furi_hal_light_set(LightGreen,0);
-            furi_hal_light_set(LightBlue,0);
-        } 
+        if(submenu_index == 0) {
+            furi_hal_light_set(LightRed, 255);
+            furi_hal_light_set(LightGreen, 0);
+            furi_hal_light_set(LightBlue, 0);
+        }
 
         consumed = true;
     }

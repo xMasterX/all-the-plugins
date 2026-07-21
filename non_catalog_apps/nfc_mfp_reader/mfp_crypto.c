@@ -49,9 +49,8 @@ void mfp_crypto_cbc_decrypt(
 
 /* ---- CMAC (RFC 4493) ---- */
 
-static void cmac_shift_left(
-    const uint8_t in[MFP_AES_BLOCK_SIZE],
-    uint8_t out[MFP_AES_BLOCK_SIZE]) {
+static void
+    cmac_shift_left(const uint8_t in[MFP_AES_BLOCK_SIZE], uint8_t out[MFP_AES_BLOCK_SIZE]) {
     uint8_t carry = 0;
     for(int i = MFP_AES_BLOCK_SIZE - 1; i >= 0; i--) {
         out[i] = (uint8_t)((in[i] << 1) | carry);
@@ -142,14 +141,16 @@ void mfp_crypto_derive_session_keys(
     /* Kenc = AES(key, RndA[11..15] || RndB[11..15] || (RndA[4..8] XOR RndB[4..8]) || 0x11) */
     memcpy(&sv[0], &rnd_a[11], 5);
     memcpy(&sv[5], &rnd_b[11], 5);
-    for(int i = 0; i < 5; i++) sv[10 + i] = rnd_a[4 + i] ^ rnd_b[4 + i];
+    for(int i = 0; i < 5; i++)
+        sv[10 + i] = rnd_a[4 + i] ^ rnd_b[4 + i];
     sv[15] = 0x11;
     mfp_crypto_ecb_encrypt(key, sv, k_enc);
 
     /* Kmac = AES(key, RndA[7..11] || RndB[7..11] || (RndA[0..4] XOR RndB[0..4]) || 0x22) */
     memcpy(&sv[0], &rnd_a[7], 5);
     memcpy(&sv[5], &rnd_b[7], 5);
-    for(int i = 0; i < 5; i++) sv[10 + i] = rnd_a[i] ^ rnd_b[i];
+    for(int i = 0; i < 5; i++)
+        sv[10 + i] = rnd_a[i] ^ rnd_b[i];
     sv[15] = 0x22;
     mfp_crypto_ecb_encrypt(key, sv, k_mac);
 }
@@ -167,7 +168,8 @@ void mfp_crypto_calculate_mac(
     buf[n++] = cmd;
     buf[n++] = (uint8_t)(counter & 0xFF);
     buf[n++] = (uint8_t)((counter >> 8) & 0xFF);
-    memcpy(&buf[n], ti, 4); n += 4;
+    memcpy(&buf[n], ti, 4);
+    n += 4;
     if(data && data_length > 0) {
         size_t copy = data_length > 256 ? 256 : data_length;
         memcpy(&buf[n], data, copy);

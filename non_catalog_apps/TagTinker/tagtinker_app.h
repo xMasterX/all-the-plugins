@@ -32,18 +32,18 @@
 #include "ir/tagtinker_ir.h"
 #include "nfc/tagtinker_nfc.h"
 
-#define TAGTINKER_TAG          "TagTinker"
-#define TAGTINKER_DISPLAY_NAME "TagTinker"
-#define TAGTINKER_VERSION      "2.1"
-#define TAGTINKER_BC_LEN   17
-#define TAGTINKER_HEX_LEN  64
-#define TAGTINKER_MAX_TARGETS 16
-#define TAGTINKER_TARGET_NAME_LEN 16
-#define TAGTINKER_MAX_PRESETS 6
+#define TAGTINKER_TAG               "TagTinker"
+#define TAGTINKER_DISPLAY_NAME      "TagTinker"
+#define TAGTINKER_VERSION           "2.1"
+#define TAGTINKER_BC_LEN            17
+#define TAGTINKER_HEX_LEN           64
+#define TAGTINKER_MAX_TARGETS       16
+#define TAGTINKER_TARGET_NAME_LEN   16
+#define TAGTINKER_MAX_PRESETS       6
 #define TAGTINKER_MAX_SYNCED_IMAGES 24
-#define TAGTINKER_PRESET_TEXT_LEN 32
-#define TAGTINKER_IMAGE_PATH_LEN 255
-#define TAGTINKER_SYNC_JOB_ID_LEN 32
+#define TAGTINKER_PRESET_TEXT_LEN   32
+#define TAGTINKER_IMAGE_PATH_LEN    255
+#define TAGTINKER_SYNC_JOB_ID_LEN   32
 
 typedef enum {
     TagTinkerTxModeNone = 0,
@@ -182,12 +182,12 @@ struct TagTinkerApp {
     struct {
         uint16_t width;
         uint16_t height;
-        uint8_t  page;
-        bool     invert;
-        bool     color_clear;
-        uint8_t  padding;
-        uint8_t  signal_mode;
-        char     text[TAGTINKER_PRESET_TEXT_LEN];
+        uint8_t page;
+        bool invert;
+        bool color_clear;
+        uint8_t padding;
+        uint8_t signal_mode;
+        char text[TAGTINKER_PRESET_TEXT_LEN];
     } recents[TAGTINKER_MAX_PRESETS];
     uint8_t recent_count;
 
@@ -247,27 +247,27 @@ struct TagTinkerApp {
      * deps for unrelated translation units. */
     void* wifi;
     /* WiFi link state mirrored from the ESP. */
-    uint8_t  wifi_link_state;     /* TT_WIFI_* */
-    int8_t   wifi_rssi;
-    char     wifi_ssid[33];
-    char     wifi_ip[20];
-    char     wifi_creds_ssid[33]; /* used by setup scene before sending */
-    char     wifi_creds_pwd[65];
+    uint8_t wifi_link_state; /* TT_WIFI_* */
+    int8_t wifi_rssi;
+    char wifi_ssid[33];
+    char wifi_ip[20];
+    char wifi_creds_ssid[33]; /* used by setup scene before sending */
+    char wifi_creds_pwd[65];
     /* Plugin discovery cache. Up to TT_WIFI_MAX_FAP_PLUGINS slots. */
-    void*    wifi_plugins;        /* TagTinkerWifiPlugin[TT_WIFI_MAX_FAP_PLUGINS], heap-alloced */
-    uint8_t  wifi_plugin_count;
-    bool     wifi_plugins_loading;
-    int8_t   wifi_selected_plugin;
+    void* wifi_plugins; /* TagTinkerWifiPlugin[TT_WIFI_MAX_FAP_PLUGINS], heap-alloced */
+    uint8_t wifi_plugin_count;
+    bool wifi_plugins_loading;
+    int8_t wifi_selected_plugin;
     /* Per-run state. */
-    char     wifi_progress_msg[64];
-    uint8_t  wifi_progress_pct;
-    char     wifi_last_error[80];
-    bool     wifi_run_in_flight;
-    bool     wifi_result_ready;
+    char wifi_progress_msg[64];
+    uint8_t wifi_progress_pct;
+    char wifi_last_error[80];
+    bool wifi_run_in_flight;
+    bool wifi_result_ready;
     /* Param values being collected by the run scene; one slot per plugin
      * param, holding the textual value the user picked (string for STRING,
      * stringified int for INT, option name for ENUM, "0"/"1" for BOOL). */
-    char     wifi_param_values[6][64];
+    char wifi_param_values[6][64];
 };
 
 /* Main menu items */

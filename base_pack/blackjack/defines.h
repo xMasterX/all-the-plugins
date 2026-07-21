@@ -12,10 +12,10 @@
 #define APP_NAME "Blackjack"
 
 #define CONF_ANIMATION_DURATION "AnimationDuration"
-#define CONF_MESSAGE_DURATION "MessageDuration"
-#define CONF_STARTING_MONEY "StartingMoney"
-#define CONF_ROUND_PRICE "RoundPrice"
-#define CONF_SOUND_EFFECTS "SoundEffects"
+#define CONF_MESSAGE_DURATION   "MessageDuration"
+#define CONF_STARTING_MONEY     "StartingMoney"
+#define CONF_ROUND_PRICE        "RoundPrice"
+#define CONF_SOUND_EFFECTS      "SoundEffects"
 
 typedef enum {
     EventTypeTick,

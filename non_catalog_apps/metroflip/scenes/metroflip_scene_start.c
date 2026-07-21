@@ -35,8 +35,8 @@ extern const Icon I_Check3_10x10;
 
 typedef struct {
     const char* label;
-    const Icon* icon;                          /* static icon */
-    const Icon* anim[MENU_ANIM_FRAMES];        /* animation frames */
+    const Icon* icon; /* static icon */
+    const Icon* anim[MENU_ANIM_FRAMES]; /* animation frames */
     uint32_t scene_id;
 } StartMenuItem;
 
@@ -45,18 +45,12 @@ static const StartMenuItem start_menu_items[MENU_ITEM_COUNT] = {
      &I_NfcScan_10x10,
      {&I_NfcScan1_10x10, &I_NfcScan2_10x10, &I_NfcScan3_10x10},
      MetroflipSceneAuto},
-    {"Saved",
-     &I_Save_10x10,
-     {&I_Save1_10x10, &I_Save2_10x10, &I_Save3_10x10},
-     MetroflipSceneLoad},
+    {"Saved", &I_Save_10x10, {&I_Save1_10x10, &I_Save2_10x10, &I_Save3_10x10}, MetroflipSceneLoad},
     {"Supported Cards",
      &I_Ticket_10x10,
      {&I_Ticket1_10x10, &I_Ticket2_10x10, &I_Ticket3_10x10},
      MetroflipSceneSupported},
-    {"About",
-     &I_Info_10x10,
-     {&I_Info1_10x10, &I_Info2_10x10, &I_Info3_10x10},
-     MetroflipSceneAbout},
+    {"About", &I_Info_10x10, {&I_Info1_10x10, &I_Info2_10x10, &I_Info3_10x10}, MetroflipSceneAbout},
     {"Credits",
      &I_Check_10x10,
      {&I_Check1_10x10, &I_Check2_10x10, &I_Check3_10x10},
@@ -184,8 +178,7 @@ static bool start_menu_input(InputEvent* event, void* context) {
         }
         case InputKeyOk: {
             uint8_t sel = 0;
-            with_view_model(
-                app->main_menu, StartMenuModel * m, { sel = m->selected; }, false);
+            with_view_model(app->main_menu, StartMenuModel * m, { sel = m->selected; }, false);
             if(sel < MENU_ITEM_COUNT) {
                 view_dispatcher_send_custom_event(
                     app->view_dispatcher, start_menu_items[sel].scene_id);
@@ -266,8 +259,7 @@ bool metroflip_scene_start_on_event(void* context, SceneManagerEvent event) {
                 true);
             consumed = true;
         } else {
-            scene_manager_set_scene_state(
-                app->scene_manager, MetroflipSceneStart, event.event);
+            scene_manager_set_scene_state(app->scene_manager, MetroflipSceneStart, event.event);
             scene_manager_next_scene(app->scene_manager, event.event);
             consumed = true;
         }

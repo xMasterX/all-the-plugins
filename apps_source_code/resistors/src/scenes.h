@@ -6,10 +6,17 @@
 #include "scene_edit.h"
 
 /** The current scene */
-typedef enum { ResistorsMainMenuScene, ResistorsEditScene, ResistorsSceneCount } ResistorsScene;
+typedef enum {
+    ResistorsMainMenuScene,
+    ResistorsEditScene,
+    ResistorsSceneCount
+} ResistorsScene;
 
 /** The current view */
-typedef enum { ResistorsSubmenuView, ResistorsEditView } ResistorsView;
+typedef enum {
+    ResistorsSubmenuView,
+    ResistorsEditView
+} ResistorsView;
 
 extern void (*const resistors_scene_on_enter_handlers[])(void*);
 extern bool (*const resistors_scene_on_event_handlers[])(void*, SceneManagerEvent);

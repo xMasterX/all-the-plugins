@@ -52,27 +52,27 @@ void rx_thread_state_callback(FuriThread* thread, FuriThreadState state, void* c
     UNUSED(thread);
     Nrf24Tool* app = (Nrf24Tool*)context;
 
-    with_view_model(app->rx_run, RxStatus* status, status->thread_state = state;, true);
+    with_view_model(app->rx_run, RxStatus * status, status->thread_state = state;, true);
 }
 
 void tx_thread_state_callback(FuriThread* thread, FuriThreadState state, void* context) {
     UNUSED(thread);
     Nrf24Tool* app = (Nrf24Tool*)context;
 
-    with_view_model(app->tx_run, TxStatus* status, status->thread_state = state;, true);
+    with_view_model(app->tx_run, TxStatus * status, status->thread_state = state;, true);
 }
 
 void sniff_thread_state_callback(FuriThread* thread, FuriThreadState state, void* context) {
     UNUSED(thread);
     Nrf24Tool* app = (Nrf24Tool*)context;
 
-    with_view_model(app->sniff_run, SniffStatus* status, status->thread_state = state;, true);
+    with_view_model(app->sniff_run, SniffStatus * status, status->thread_state = state;, true);
 }
 
 void bm_thread_state_callback(FuriThread* thread, FuriThreadState state, void* context) {
     UNUSED(thread);
     Nrf24Tool* app = (Nrf24Tool*)context;
 
-    with_view_model(app->badmouse_run, BadMouseStatus* status, status->thread_state = state;
+    with_view_model(app->badmouse_run, BadMouseStatus * status, status->thread_state = state;
                     , true);
 }

@@ -13,13 +13,13 @@
 #include <nrf24.h>
 #include <u8g2.h>
 
-#define TAG "nrf24scan"
-#define VERSION "2.2"
+#define TAG         "nrf24scan"
+#define VERSION     "2.2"
 #define MAX_CHANNEL 125
-#define MAX_ADDR 6
+#define MAX_ADDR    6
 
 #define SCAN_APP_PATH_FOLDER "/ext/nrf24scan"
-#define SETTINGS_FILENAME "addresses.txt" // Settings file format (1 parameter per line):
+#define SETTINGS_FILENAME    "addresses.txt" // Settings file format (1 parameter per line):
 // SNIFF - if present then sniff mode
 // Rate: 0/1/2 - rate in Mbps (=0.25/1/2)
 // Ch: 0..125 - default channel
@@ -37,14 +37,14 @@
 //		first byte = { RAW packet flag (0x80/0x00) } + { channel number }
 //		second byte = { Payload len 5 bits, 0 = 32 } + {{ RAW packet: ESB flag 0x04/0x00 + address size-2 if RAW packet } or { pipe #(0..5) }},
 // ... up to MAX_LOG_RECORDS-1
-#define SNIFF_FILENAME "sniff.txt" // settings for sniff mode
-#define LOG_FILENAME "log"
-#define LOG_FILEEXT ".txt"
-#define MAX_LOG_RECORDS 200
-#define MAX_FOUND_RECORDS 70
-#define LOG_REC_SIZE 34 // max packet size
-#define VIEW_LOG_MAX_X 22
-#define VIEW_LOG_WIDTH_B 10 // bytes
+#define SNIFF_FILENAME       "sniff.txt" // settings for sniff mode
+#define LOG_FILENAME         "log"
+#define LOG_FILEEXT          ".txt"
+#define MAX_LOG_RECORDS      200
+#define MAX_FOUND_RECORDS    70
+#define LOG_REC_SIZE         34 // max packet size
+#define VIEW_LOG_MAX_X       22
+#define VIEW_LOG_WIDTH_B     10 // bytes
 
 const char SettingsFld_Rate[] = "Rate:";
 const char SettingsFld_Ch[] = "Ch:";
@@ -863,7 +863,8 @@ bool nrf24_read_newpacket() {
                 while(shifted++ <
                       shift_max) { // Shift packet left by one bit if minimum payload fits
                     uint8_t i = 0;
-                    for(; i < packetsize - 1; i++) ptr[i] = (ptr[i] << 1) | (ptr[i + 1] >> 7);
+                    for(; i < packetsize - 1; i++)
+                        ptr[i] = (ptr[i] << 1) | (ptr[i + 1] >> 7);
                     ptr[i] <<= 1;
                     if(check_packet(ptr, packetsize - (shifted >> 3) - 1)) goto x_valid;
                 }
@@ -1108,7 +1109,8 @@ static void render_callback(Canvas* const canvas, void* ctx) {
                         }
                         if(view_log_arr_x == 0) {
                             add_to_str_hex_bytes(screen_buf, (char*)ptr, adrsize);
-                            for(int8_t j = 5 - adrsize; j > 0; j--) strcat(screen_buf, "  ");
+                            for(int8_t j = 5 - adrsize; j > 0; j--)
+                                strcat(screen_buf, "  ");
                             strcat(screen_buf, "-");
                             pre += 5 * 2 + 1;
                         } else {

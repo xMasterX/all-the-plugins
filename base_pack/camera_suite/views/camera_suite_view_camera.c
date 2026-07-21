@@ -637,8 +637,7 @@ void camera_suite_view_camera_free(CameraSuiteViewCamera* instance) {
     // Free the allocated stream buffer.
     furi_stream_buffer_free(instance->camera_rx_stream);
 
-    with_view_model(
-        instance->view, UartDumpModel * model, { UNUSED(model); }, true);
+    with_view_model(instance->view, UartDumpModel * model, { UNUSED(model); }, true);
     view_free(instance->view);
     free(instance);
 }

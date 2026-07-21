@@ -34,8 +34,7 @@ public:
         StoredPagerData* pager,
         PagerDecoder* decoder,
         PagerProtocol* protocol,
-        uint32_t frequency
-    ) {
+        uint32_t frequency) {
         String* fileName = GetFilename(pager);
         FlipperFile* stationFile = fileManager->OpenWrite(dir, fileName->cstr());
 
@@ -50,7 +49,8 @@ public:
         delete fileName;
     }
 
-    String* LoadOnlyStationName(FileManager* fileManager, const char* dir, StoredPagerData* pager) {
+    String*
+        LoadOnlyStationName(FileManager* fileManager, const char* dir, StoredPagerData* pager) {
         String* filename = GetFilename(pager);
         FlipperFile* stationFile = fileManager->OpenRead(dir, filename->cstr());
         delete filename;
@@ -69,8 +69,7 @@ public:
         String* stationName,
         const char* dir,
         const char* fileName,
-        ProtocolAndDecoderProvider* pdProvider
-    ) {
+        ProtocolAndDecoderProvider* pdProvider) {
         FlipperFile* stationFile = fileManager->OpenRead(dir, fileName);
 
         uint32_t te = 0;

@@ -25,17 +25,26 @@
 // Same size and layout as before, so this is behavior-preserving for the
 // existing Flipper build.
 typedef struct {
-    union { uint32_t canId; uint32_t id; };
+    union {
+        uint32_t canId;
+        uint32_t id;
+    };
     uint8_t ext;
     uint8_t req;
-    union { uint8_t data_lenght; uint8_t dlc; };
-    union { uint8_t buffer[MAX_LEN]; uint8_t data[MAX_LEN]; };
+    union {
+        uint8_t data_lenght;
+        uint8_t dlc;
+    };
+    union {
+        uint8_t buffer[MAX_LEN];
+        uint8_t data[MAX_LEN];
+    };
 } CANFRAME;
 
 // ── Hardware version (shared by both platforms) ───────────────────────────────
 typedef enum {
     TeslaHW_Unknown = 0,
-    TeslaHW_Legacy,   // HW1 / HW2 / EAP retrofit — uses 0x3EE / 0x045
+    TeslaHW_Legacy, // HW1 / HW2 / EAP retrofit — uses 0x3EE / 0x045
     TeslaHW_HW3,
     TeslaHW_HW4,
 } TeslaHWVersion;
@@ -46,7 +55,7 @@ typedef enum {
 // check also stays valid. Service is Flipper-only (already 2 there). ListenOnly
 // is the safe boot default — no TX.
 typedef enum {
-    OpMode_ListenOnly = 0,  // pure passive sniff, no TX at all
-    OpMode_Active,          // RX + TX, normal operation
-    OpMode_Service,         // unrestricted, gates aggressive features (Flipper)
+    OpMode_ListenOnly = 0, // pure passive sniff, no TX at all
+    OpMode_Active, // RX + TX, normal operation
+    OpMode_Service, // unrestricted, gates aggressive features (Flipper)
 } OpMode;

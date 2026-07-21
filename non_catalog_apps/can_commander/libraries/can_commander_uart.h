@@ -6,11 +6,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define CC_UART_BAUD         921600U
-#define CC_PROTOCOL_VERSION  1U
-#define CC_MAX_PAYLOAD       220U
+#define CC_UART_BAUD          921600U
+#define CC_PROTOCOL_VERSION   1U
+#define CC_MAX_PAYLOAD        220U
 #define CC_STATUS_PAYLOAD_MAX 96U
-#define CC_UNIT_TEXT_LEN     12U
+#define CC_UNIT_TEXT_LEN      12U
 
 typedef enum {
     CcStatusOk = 0,

@@ -15,7 +15,10 @@ struct FlipperWedgeRfid {
     FlipperWedgeRfidData last_data;
 };
 
-static void flipper_wedge_rfid_worker_callback(LFRFIDWorkerReadResult result, ProtocolId protocol, void* context) {
+static void flipper_wedge_rfid_worker_callback(
+    LFRFIDWorkerReadResult result,
+    ProtocolId protocol,
+    void* context) {
     furi_assert(context);
     FlipperWedgeRfid* instance = context;
 
@@ -27,7 +30,8 @@ static void flipper_wedge_rfid_worker_callback(LFRFIDWorkerReadResult result, Pr
         }
 
         uint8_t* data = malloc(protocol_dict_get_data_size(instance->dict, protocol));
-        protocol_dict_get_data(instance->dict, protocol, data, protocol_dict_get_data_size(instance->dict, protocol));
+        protocol_dict_get_data(
+            instance->dict, protocol, data, protocol_dict_get_data_size(instance->dict, protocol));
 
         // Copy to our data structure
         instance->last_data.uid_len = data_size;
@@ -36,14 +40,22 @@ static void flipper_wedge_rfid_worker_callback(LFRFIDWorkerReadResult result, Pr
         // Get protocol name
         const char* name = protocol_dict_get_name(instance->dict, protocol);
         if(name) {
-            snprintf(instance->last_data.protocol_name, sizeof(instance->last_data.protocol_name), "%s", name);
+            snprintf(
+                instance->last_data.protocol_name,
+                sizeof(instance->last_data.protocol_name),
+                "%s",
+                name);
         } else {
             instance->last_data.protocol_name[0] = '\0';
         }
 
         free(data);
 
-        FURI_LOG_I(TAG, "RFID tag read: %s, len: %d", instance->last_data.protocol_name, instance->last_data.uid_len);
+        FURI_LOG_I(
+            TAG,
+            "RFID tag read: %s, len: %d",
+            instance->last_data.protocol_name,
+            instance->last_data.uid_len);
 
         // Notify callback
         if(instance->callback) {
@@ -106,7 +118,8 @@ void flipper_wedge_rfid_start(FlipperWedgeRfid* instance) {
     }
 
     lfrfid_worker_start_thread(instance->worker);
-    lfrfid_worker_read_start(instance->worker, LFRFIDWorkerReadTypeAuto, flipper_wedge_rfid_worker_callback, instance);
+    lfrfid_worker_read_start(
+        instance->worker, LFRFIDWorkerReadTypeAuto, flipper_wedge_rfid_worker_callback, instance);
 
     instance->scanning = true;
     FURI_LOG_I(TAG, "RFID scanning started");

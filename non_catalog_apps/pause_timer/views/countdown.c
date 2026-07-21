@@ -39,7 +39,7 @@ static void transmit_ir_signal(PauseTimerApp* app) {
     FuriHalInfraredTxPin output_pin = furi_hal_infrared_detect_tx_output();
     bool using_external = (output_pin == FuriHalInfraredTxPinExtPA7);
 
-    if (using_external) {
+    if(using_external) {
         furi_hal_power_enable_otg();
     }
 
@@ -55,7 +55,7 @@ static void transmit_ir_signal(PauseTimerApp* app) {
     furi_delay_ms(100);
 
     // Cleanup: Reset to internal and disable power if external
-    if (using_external) {
+    if(using_external) {
         furi_hal_power_disable_otg();
     }
     furi_hal_infrared_set_tx_output(FuriHalInfraredTxPinInternal);

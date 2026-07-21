@@ -56,7 +56,6 @@ typedef struct SubGhzPlaylistCreator {
     ReturnScene return_scene; // Add this field
 } SubGhzPlaylistCreator;
 
-
 typedef enum {
     SubGhzPlaylistCreatorViewSubmenu,
     SubGhzPlaylistCreatorViewPopup,

@@ -10,56 +10,64 @@ const uint8_t* texturePacked(int texId) {
 }
 
 static const int QUADS[][4][3] = {
-    {{0,0,16},{0,16,16},{0,16,0},{0,0,0}},
-    {{16,0,0},{16,16,0},{16,16,16},{16,0,16}},
-    {{0,0,0},{0,16,0},{16,16,0},{16,0,0}},
-    {{16,0,16},{16,16,16},{0,16,16},{0,0,16}},
-    {{0,0,16},{0,0,0},{16,0,0},{16,0,16}},
-    {{0,16,0},{0,16,16},{16,16,16},{16,16,0}},
-    {{2,0,2},{2,16,2},{14,16,14},{14,0,14}},
-    {{2,0,14},{2,16,14},{14,16,2},{14,0,2}},
-    {{1,0,15},{1,14,15},{1,14,1},{1,0,1}},
-    {{15,0,1},{15,14,1},{15,14,15},{15,0,15}},
-    {{1,0,1},{1,14,1},{15,14,1},{15,0,1}},
-    {{15,0,15},{15,14,15},{1,14,15},{1,0,15}},
-    {{1,0,15},{1,0,1},{15,0,1},{15,0,15}},
-    {{1,14,1},{1,14,15},{15,14,15},{15,14,1}},
-    {{0,0,0},{0,0,8},{8,0,8},{8,0,0}},
-    {{1,1,7},{1,7,7},{1,7,1},{1,1,1}},
-    {{7,1,1},{7,7,1},{7,7,7},{7,1,7}},
-    {{1,1,1},{1,7,1},{7,7,1},{7,1,1}},
-    {{7,1,7},{7,7,7},{1,7,7},{1,1,7}},
-    {{1,1,7},{1,1,1},{7,1,1},{7,1,7}},
-    {{1,7,1},{1,7,7},{7,7,7},{7,7,1}},
-    {{2,1,2},{2,6,2},{6,6,6},{6,1,6}},
-    {{2,1,6},{2,6,6},{6,6,2},{6,1,2}},
-    {{6,1,2},{6,6,2},{2,6,6},{2,1,6}},
-    {{6,1,6},{6,6,6},{2,6,2},{2,1,2}},
-    {{0,0,0},{0,0,16},{16,0,16},{16,0,0}},
+    {{0, 0, 16}, {0, 16, 16}, {0, 16, 0}, {0, 0, 0}},
+    {{16, 0, 0}, {16, 16, 0}, {16, 16, 16}, {16, 0, 16}},
+    {{0, 0, 0}, {0, 16, 0}, {16, 16, 0}, {16, 0, 0}},
+    {{16, 0, 16}, {16, 16, 16}, {0, 16, 16}, {0, 0, 16}},
+    {{0, 0, 16}, {0, 0, 0}, {16, 0, 0}, {16, 0, 16}},
+    {{0, 16, 0}, {0, 16, 16}, {16, 16, 16}, {16, 16, 0}},
+    {{2, 0, 2}, {2, 16, 2}, {14, 16, 14}, {14, 0, 14}},
+    {{2, 0, 14}, {2, 16, 14}, {14, 16, 2}, {14, 0, 2}},
+    {{1, 0, 15}, {1, 14, 15}, {1, 14, 1}, {1, 0, 1}},
+    {{15, 0, 1}, {15, 14, 1}, {15, 14, 15}, {15, 0, 15}},
+    {{1, 0, 1}, {1, 14, 1}, {15, 14, 1}, {15, 0, 1}},
+    {{15, 0, 15}, {15, 14, 15}, {1, 14, 15}, {1, 0, 15}},
+    {{1, 0, 15}, {1, 0, 1}, {15, 0, 1}, {15, 0, 15}},
+    {{1, 14, 1}, {1, 14, 15}, {15, 14, 15}, {15, 14, 1}},
+    {{0, 0, 0}, {0, 0, 8}, {8, 0, 8}, {8, 0, 0}},
+    {{1, 1, 7}, {1, 7, 7}, {1, 7, 1}, {1, 1, 1}},
+    {{7, 1, 1}, {7, 7, 1}, {7, 7, 7}, {7, 1, 7}},
+    {{1, 1, 1}, {1, 7, 1}, {7, 7, 1}, {7, 1, 1}},
+    {{7, 1, 7}, {7, 7, 7}, {1, 7, 7}, {1, 1, 7}},
+    {{1, 1, 7}, {1, 1, 1}, {7, 1, 1}, {7, 1, 7}},
+    {{1, 7, 1}, {1, 7, 7}, {7, 7, 7}, {7, 7, 1}},
+    {{2, 1, 2}, {2, 6, 2}, {6, 6, 6}, {6, 1, 6}},
+    {{2, 1, 6}, {2, 6, 6}, {6, 6, 2}, {6, 1, 2}},
+    {{6, 1, 2}, {6, 6, 2}, {2, 6, 6}, {2, 1, 6}},
+    {{6, 1, 6}, {6, 6, 6}, {2, 6, 2}, {2, 1, 2}},
+    {{0, 0, 0}, {0, 0, 16}, {16, 0, 16}, {16, 0, 0}},
 };
 
 const int (*quadTemplate(int quadId))[3] {
-    if (quadId >= 0 && quadId < QUAD_COUNT) return QUADS[quadId];
+    if(quadId >= 0 && quadId < QUAD_COUNT) return QUADS[quadId];
     return QUADS[0];
 }
 
 static void setTextures(MeshEntry& e, std::initializer_list<MeshTex> list) {
     e.texCount = 0;
-    for (const MeshTex& t : list)
-        if (e.texCount < 4) e.textures[e.texCount++] = t;
+    for(const MeshTex& t : list)
+        if(e.texCount < 4) e.textures[e.texCount++] = t;
 }
 static void setQuads(MeshEntry& e, std::initializer_list<MeshQuadRef> list) {
     e.quadCount = 0;
-    for (const MeshQuadRef& q : list)
-        if (e.quadCount < 8) e.quads[e.quadCount++] = q;
+    for(const MeshQuadRef& q : list)
+        if(e.quadCount < 8) e.quads[e.quadCount++] = q;
 }
 
-static MeshEntry makeCube(uint8_t top, uint8_t topS, uint8_t bot, uint8_t botS,
-                          uint8_t side, uint8_t sideS, bool withFront,
-                          uint8_t front = 0, uint8_t frontS = 0) {
-    MeshEntry e; e.exists = true;
+static MeshEntry makeCube(
+    uint8_t top,
+    uint8_t topS,
+    uint8_t bot,
+    uint8_t botS,
+    uint8_t side,
+    uint8_t sideS,
+    bool withFront,
+    uint8_t front = 0,
+    uint8_t frontS = 0) {
+    MeshEntry e;
+    e.exists = true;
     setTextures(e, {{top, topS}, {bot, botS}, {side, sideS}});
-    if (withFront) e.textures[e.texCount++] = {front, frontS};
+    if(withFront) e.textures[e.texCount++] = {front, frontS};
     return e;
 }
 
@@ -69,119 +77,234 @@ static const MeshEntry g_emptyMesh{};
 static bool g_meshReady = false;
 
 static void initMesh() {
-    if (g_meshReady) return;
+    if(g_meshReady) return;
     g_meshReady = true;
 
-    { MeshEntry e; e.exists = true;
-      setTextures(e, {{TEX_EMPTY,0b1010},{TEX_DIRT,0b1000},{TEX_GRASSSIDE,0b1000}});
-      g_blockMesh[BLOCK_GRASS] = e; }
+    {
+        MeshEntry e;
+        e.exists = true;
+        setTextures(e, {{TEX_EMPTY, 0b1010}, {TEX_DIRT, 0b1000}, {TEX_GRASSSIDE, 0b1000}});
+        g_blockMesh[BLOCK_GRASS] = e;
+    }
 
-    g_blockMesh[BLOCK_DIRT] = makeCube(TEX_DIRT,0b1000,TEX_DIRT,0b1000,TEX_DIRT,0b1000,true,TEX_DIRT,0b1000);
-    g_itemMesh[BLOCK_DIRT]  = g_blockMesh[BLOCK_DIRT];
+    g_blockMesh[BLOCK_DIRT] =
+        makeCube(TEX_DIRT, 0b1000, TEX_DIRT, 0b1000, TEX_DIRT, 0b1000, true, TEX_DIRT, 0b1000);
+    g_itemMesh[BLOCK_DIRT] = g_blockMesh[BLOCK_DIRT];
 
-    { MeshEntry e; e.exists = true;
-      setTextures(e, {{TEX_STICKITEMLIGHT,0b1100},{TEX_STICKITEMDARK,0b1110}});
-      setQuads(e, {{QUAD_CROSSITEM1,0},{QUAD_CROSSITEM1,1},{QUAD_CROSSITEM2,0},{QUAD_CROSSITEM2,1},
-                   {QUAD_CROSSITEM3,0},{QUAD_CROSSITEM3,1},{QUAD_CROSSITEM4,0},{QUAD_CROSSITEM4,1}});
-      g_itemMesh[ENTITY_STICK] = e; }
+    {
+        MeshEntry e;
+        e.exists = true;
+        setTextures(e, {{TEX_STICKITEMLIGHT, 0b1100}, {TEX_STICKITEMDARK, 0b1110}});
+        setQuads(
+            e,
+            {{QUAD_CROSSITEM1, 0},
+             {QUAD_CROSSITEM1, 1},
+             {QUAD_CROSSITEM2, 0},
+             {QUAD_CROSSITEM2, 1},
+             {QUAD_CROSSITEM3, 0},
+             {QUAD_CROSSITEM3, 1},
+             {QUAD_CROSSITEM4, 0},
+             {QUAD_CROSSITEM4, 1}});
+        g_itemMesh[ENTITY_STICK] = e;
+    }
 
-    g_blockMesh[BLOCK_STONE] = makeCube(TEX_STONE,0b1000,TEX_STONE,0b1000,TEX_STONE,0b1000,false);
-    { MeshEntry e; e.exists = true;
-      setTextures(e, {{TEX_APPLEITEMLIGHT,0b1100},{TEX_APPLEITEMDARK,0b1110}});
-      setQuads(e, {{QUAD_CROSSITEM1,0},{QUAD_CROSSITEM1,1},{QUAD_CROSSITEM2,0},{QUAD_CROSSITEM2,1},
-                   {QUAD_CROSSITEM3,0},{QUAD_CROSSITEM3,1},{QUAD_CROSSITEM4,0},{QUAD_CROSSITEM4,1}});
-      g_itemMesh[ENTITY_APPLE] = e; }
+    g_blockMesh[BLOCK_STONE] =
+        makeCube(TEX_STONE, 0b1000, TEX_STONE, 0b1000, TEX_STONE, 0b1000, false);
+    {
+        MeshEntry e;
+        e.exists = true;
+        setTextures(e, {{TEX_APPLEITEMLIGHT, 0b1100}, {TEX_APPLEITEMDARK, 0b1110}});
+        setQuads(
+            e,
+            {{QUAD_CROSSITEM1, 0},
+             {QUAD_CROSSITEM1, 1},
+             {QUAD_CROSSITEM2, 0},
+             {QUAD_CROSSITEM2, 1},
+             {QUAD_CROSSITEM3, 0},
+             {QUAD_CROSSITEM3, 1},
+             {QUAD_CROSSITEM4, 0},
+             {QUAD_CROSSITEM4, 1}});
+        g_itemMesh[ENTITY_APPLE] = e;
+    }
 
-    g_blockMesh[BLOCK_COBBLE] = makeCube(TEX_COBBLE,0b1000,TEX_COBBLE,0b1000,TEX_COBBLE,0b1000,true,TEX_COBBLE,0b1000);
-    g_itemMesh[BLOCK_COBBLE]  = g_blockMesh[BLOCK_COBBLE];
+    g_blockMesh[BLOCK_COBBLE] = makeCube(
+        TEX_COBBLE, 0b1000, TEX_COBBLE, 0b1000, TEX_COBBLE, 0b1000, true, TEX_COBBLE, 0b1000);
+    g_itemMesh[BLOCK_COBBLE] = g_blockMesh[BLOCK_COBBLE];
 
-    g_blockMesh[BLOCK_LOG] = makeCube(TEX_LOGTOP,0b1000,TEX_LOGTOP,0b1000,TEX_LOGSIDE,0b1000,true,TEX_LOGSIDE,0b1000);
-    g_itemMesh[BLOCK_LOG]  = g_blockMesh[BLOCK_LOG];
+    g_blockMesh[BLOCK_LOG] = makeCube(
+        TEX_LOGTOP, 0b1000, TEX_LOGTOP, 0b1000, TEX_LOGSIDE, 0b1000, true, TEX_LOGSIDE, 0b1000);
+    g_itemMesh[BLOCK_LOG] = g_blockMesh[BLOCK_LOG];
 
-    g_blockMesh[BLOCK_LEAVES] = makeCube(TEX_LEAVES,0b1000,TEX_LEAVES,0b1000,TEX_LEAVES,0b1000,true,TEX_LEAVES,0b1000);
-    g_itemMesh[BLOCK_LEAVES]  = g_blockMesh[BLOCK_LEAVES];
+    g_blockMesh[BLOCK_LEAVES] = makeCube(
+        TEX_LEAVES, 0b1000, TEX_LEAVES, 0b1000, TEX_LEAVES, 0b1000, true, TEX_LEAVES, 0b1000);
+    g_itemMesh[BLOCK_LEAVES] = g_blockMesh[BLOCK_LEAVES];
 
-    g_blockMesh[BLOCK_PLANK] = makeCube(TEX_PLANK,0b1000,TEX_PLANK,0b1000,TEX_PLANK,0b1000,true,TEX_PLANK,0b1000);
-    g_itemMesh[BLOCK_PLANK]  = g_blockMesh[BLOCK_PLANK];
+    g_blockMesh[BLOCK_PLANK] =
+        makeCube(TEX_PLANK, 0b1000, TEX_PLANK, 0b1000, TEX_PLANK, 0b1000, true, TEX_PLANK, 0b1000);
+    g_itemMesh[BLOCK_PLANK] = g_blockMesh[BLOCK_PLANK];
 
-    g_blockMesh[BLOCK_COALORE] = makeCube(TEX_COALORE,0b1000,TEX_COALORE,0b1000,TEX_COALORE,0b1000,false);
+    g_blockMesh[BLOCK_COALORE] =
+        makeCube(TEX_COALORE, 0b1000, TEX_COALORE, 0b1000, TEX_COALORE, 0b1000, false);
 
-    { MeshEntry e; e.exists = true;
-      setTextures(e, {{TEX_COALITEMLIGHT,0b1100},{TEX_COALITEMDARK,0b1110}});
-      setQuads(e, {{QUAD_CROSSITEM1,0},{QUAD_CROSSITEM1,1},{QUAD_CROSSITEM2,0},{QUAD_CROSSITEM2,1},
-                   {QUAD_CROSSITEM3,0},{QUAD_CROSSITEM3,1},{QUAD_CROSSITEM4,0},{QUAD_CROSSITEM4,1}});
-      g_itemMesh[BLOCK_COALORE] = e; }
+    {
+        MeshEntry e;
+        e.exists = true;
+        setTextures(e, {{TEX_COALITEMLIGHT, 0b1100}, {TEX_COALITEMDARK, 0b1110}});
+        setQuads(
+            e,
+            {{QUAD_CROSSITEM1, 0},
+             {QUAD_CROSSITEM1, 1},
+             {QUAD_CROSSITEM2, 0},
+             {QUAD_CROSSITEM2, 1},
+             {QUAD_CROSSITEM3, 0},
+             {QUAD_CROSSITEM3, 1},
+             {QUAD_CROSSITEM4, 0},
+             {QUAD_CROSSITEM4, 1}});
+        g_itemMesh[BLOCK_COALORE] = e;
+    }
 
-    g_blockMesh[BLOCK_IRONORE] = makeCube(TEX_IRONORE,0b1000,TEX_IRONORE,0b1000,TEX_IRONORE,0b1000,true,TEX_IRONORE,0b1000);
-    g_itemMesh[BLOCK_IRONORE]  = g_blockMesh[BLOCK_IRONORE];
+    g_blockMesh[BLOCK_IRONORE] = makeCube(
+        TEX_IRONORE, 0b1000, TEX_IRONORE, 0b1000, TEX_IRONORE, 0b1000, true, TEX_IRONORE, 0b1000);
+    g_itemMesh[BLOCK_IRONORE] = g_blockMesh[BLOCK_IRONORE];
 
-    g_blockMesh[BLOCK_SAND] = makeCube(TEX_DIRT,0b1010,TEX_DIRT,0b1010,TEX_DIRT,0b1010,true,TEX_DIRT,0b1010);
-    g_itemMesh[BLOCK_SAND]  = g_blockMesh[BLOCK_SAND];
+    g_blockMesh[BLOCK_SAND] =
+        makeCube(TEX_DIRT, 0b1010, TEX_DIRT, 0b1010, TEX_DIRT, 0b1010, true, TEX_DIRT, 0b1010);
+    g_itemMesh[BLOCK_SAND] = g_blockMesh[BLOCK_SAND];
 
-    g_blockMesh[BLOCK_GLASS] = makeCube(TEX_GLASS,0b1100,TEX_GLASS,0b1100,TEX_GLASS,0b1100,false);
+    g_blockMesh[BLOCK_GLASS] =
+        makeCube(TEX_GLASS, 0b1100, TEX_GLASS, 0b1100, TEX_GLASS, 0b1100, false);
 
-    { MeshEntry e; e.exists = true;
-      setTextures(e, {{TEX_SAPLINGLIGHT,0b0100},{TEX_SAPLINGDARK,0b0110}});
-      setQuads(e, {{QUAD_CROSS1,0},{QUAD_CROSS1,1},{QUAD_CROSS2,0},{QUAD_CROSS2,1}});
-      g_blockMesh[BLOCK_SAPLING] = e;
-      MeshEntry it; it.exists = true;
-      setTextures(it, {{TEX_SAPLINGLIGHT,0b0100},{TEX_SAPLINGDARK,0b0110}});
-      setQuads(it, {{QUAD_CROSSITEM1,0},{QUAD_CROSSITEM1,1},{QUAD_CROSSITEM2,0},{QUAD_CROSSITEM2,1}});
-      g_itemMesh[BLOCK_SAPLING] = it; }
+    {
+        MeshEntry e;
+        e.exists = true;
+        setTextures(e, {{TEX_SAPLINGLIGHT, 0b0100}, {TEX_SAPLINGDARK, 0b0110}});
+        setQuads(e, {{QUAD_CROSS1, 0}, {QUAD_CROSS1, 1}, {QUAD_CROSS2, 0}, {QUAD_CROSS2, 1}});
+        g_blockMesh[BLOCK_SAPLING] = e;
+        MeshEntry it;
+        it.exists = true;
+        setTextures(it, {{TEX_SAPLINGLIGHT, 0b0100}, {TEX_SAPLINGDARK, 0b0110}});
+        setQuads(
+            it,
+            {{QUAD_CROSSITEM1, 0},
+             {QUAD_CROSSITEM1, 1},
+             {QUAD_CROSSITEM2, 0},
+             {QUAD_CROSSITEM2, 1}});
+        g_itemMesh[BLOCK_SAPLING] = it;
+    }
 
-    g_blockMesh[BLOCK_TABLE] = makeCube(TEX_TABLETOP,0b1000,TEX_PLANK,0b1000,TEX_TABLESIDE,0b1000,true,TEX_TABLESIDE,0b1000);
-    g_itemMesh[BLOCK_TABLE]  = g_blockMesh[BLOCK_TABLE];
+    g_blockMesh[BLOCK_TABLE] = makeCube(
+        TEX_TABLETOP, 0b1000, TEX_PLANK, 0b1000, TEX_TABLESIDE, 0b1000, true, TEX_TABLESIDE, 0b1000);
+    g_itemMesh[BLOCK_TABLE] = g_blockMesh[BLOCK_TABLE];
 
-    g_blockMesh[BLOCK_FURNACE] = makeCube(TEX_FURNACETOP,0b1000,TEX_FURNACETOP,0b1000,TEX_FURNACESIDE,0b1000,true,TEX_FURNACEFRONTOFF,0b1000);
-    g_itemMesh[BLOCK_FURNACE]  = g_blockMesh[BLOCK_FURNACE];
+    g_blockMesh[BLOCK_FURNACE] = makeCube(
+        TEX_FURNACETOP,
+        0b1000,
+        TEX_FURNACETOP,
+        0b1000,
+        TEX_FURNACESIDE,
+        0b1000,
+        true,
+        TEX_FURNACEFRONTOFF,
+        0b1000);
+    g_itemMesh[BLOCK_FURNACE] = g_blockMesh[BLOCK_FURNACE];
 
-    { MeshEntry e; e.exists = true;
-      setTextures(e, {{TEX_CHESTTOP,0b1000},{TEX_CHESTTOP,0b1000},{TEX_CHESTSIDE,0b1000},{TEX_CHESTFRONT,0b1000}});
-      setQuads(e, {{QUAD_SMALL_NEGX,2},{QUAD_SMALL_POSX,2},{QUAD_SMALL_NEGZ,2},{QUAD_SMALL_POSZ,2},
-                   {QUAD_SMALL_NEGY,0},{QUAD_SMALL_POSY,0}});
-      g_blockMesh[BLOCK_CHEST] = e; g_itemMesh[BLOCK_CHEST] = e; }
+    {
+        MeshEntry e;
+        e.exists = true;
+        setTextures(
+            e,
+            {{TEX_CHESTTOP, 0b1000},
+             {TEX_CHESTTOP, 0b1000},
+             {TEX_CHESTSIDE, 0b1000},
+             {TEX_CHESTFRONT, 0b1000}});
+        setQuads(
+            e,
+            {{QUAD_SMALL_NEGX, 2},
+             {QUAD_SMALL_POSX, 2},
+             {QUAD_SMALL_NEGZ, 2},
+             {QUAD_SMALL_POSZ, 2},
+             {QUAD_SMALL_NEGY, 0},
+             {QUAD_SMALL_POSY, 0}});
+        g_blockMesh[BLOCK_CHEST] = e;
+        g_itemMesh[BLOCK_CHEST] = e;
+    }
 
-    g_blockMesh[BLOCK_DYNAMITE] = makeCube(TEX_DYNAMITETOP,0b1000,TEX_DYNAMITETOP,0b1000,TEX_DYNAMITE,0b1000,true,TEX_DYNAMITE,0b1000);
+    g_blockMesh[BLOCK_DYNAMITE] = makeCube(
+        TEX_DYNAMITETOP,
+        0b1000,
+        TEX_DYNAMITETOP,
+        0b1000,
+        TEX_DYNAMITE,
+        0b1000,
+        true,
+        TEX_DYNAMITE,
+        0b1000);
     g_itemMesh[ENTITY_DYNAMITE] = g_blockMesh[BLOCK_DYNAMITE];
 
-    { MeshEntry e; e.exists = true;
-      setTextures(e, {{TEX_COALITEMLIGHT,0b1100},{TEX_COALITEMDARK,0b1110}});
-      setQuads(e, {{QUAD_CROSSITEM1,0},{QUAD_CROSSITEM1,1},{QUAD_CROSSITEM2,0},{QUAD_CROSSITEM2,1},
-                   {QUAD_CROSSITEM3,0},{QUAD_CROSSITEM3,1},{QUAD_CROSSITEM4,0},{QUAD_CROSSITEM4,1}});
-      g_itemMesh[ENTITY_GUNPOWDER] = e; }
+    {
+        MeshEntry e;
+        e.exists = true;
+        setTextures(e, {{TEX_COALITEMLIGHT, 0b1100}, {TEX_COALITEMDARK, 0b1110}});
+        setQuads(
+            e,
+            {{QUAD_CROSSITEM1, 0},
+             {QUAD_CROSSITEM1, 1},
+             {QUAD_CROSSITEM2, 0},
+             {QUAD_CROSSITEM2, 1},
+             {QUAD_CROSSITEM3, 0},
+             {QUAD_CROSSITEM3, 1},
+             {QUAD_CROSSITEM4, 0},
+             {QUAD_CROSSITEM4, 1}});
+        g_itemMesh[ENTITY_GUNPOWDER] = e;
+    }
 }
 
-const MeshEntry& meshBlock(uint8_t id) { initMesh(); return (id < 32) ? g_blockMesh[id] : g_emptyMesh; }
-const MeshEntry& meshItem(uint8_t hi)  { initMesh(); return (hi < 32) ? g_itemMesh[hi] : g_emptyMesh; }
+const MeshEntry& meshBlock(uint8_t id) {
+    initMesh();
+    return (id < 32) ? g_blockMesh[id] : g_emptyMesh;
+}
+const MeshEntry& meshItem(uint8_t hi) {
+    initMesh();
+    return (hi < 32) ? g_itemMesh[hi] : g_emptyMesh;
+}
 
 static constexpr MobSpec MOB_SPECS[MOB_SPECIES] = {
-    {TEX_SHEEPFRONT, TEX_SHEEPSIDE, TEX_SHEEPTOP,
-     0, TEMPER_PASSIVE << 1, 0x20, (9 << 4) | 3},
-    {TEX_WOLFFRONT, TEX_WOLFSIDE, TEX_WOLFTOP,
-     (1 << MOB_SHEEP) | (1 << MOB_CREEPER), TEMPER_NEUTRAL << 1,
-     0x21, (7 << 4) | 5},
-    {TEX_CREEPERFRONT, TEX_CREEPERSIDE, TEX_CREEPERTOP,
-     0, (TEMPER_HOSTILE << 1) | 1, 0x20, (13 << 4) | 4},
-    {TEX_BEEFRONT, TEX_BEESIDE, TEX_BEETOP,
-     0, (TEMPER_NEUTRAL << 1) | 8, 0x32, (4 << 4) | 6},
+    {TEX_SHEEPFRONT, TEX_SHEEPSIDE, TEX_SHEEPTOP, 0, TEMPER_PASSIVE << 1, 0x20, (9 << 4) | 3},
+    {TEX_WOLFFRONT,
+     TEX_WOLFSIDE,
+     TEX_WOLFTOP,
+     (1 << MOB_SHEEP) | (1 << MOB_CREEPER),
+     TEMPER_NEUTRAL << 1,
+     0x21,
+     (7 << 4) | 5},
+    {TEX_CREEPERFRONT,
+     TEX_CREEPERSIDE,
+     TEX_CREEPERTOP,
+     0,
+     (TEMPER_HOSTILE << 1) | 1,
+     0x20,
+     (13 << 4) | 4},
+    {TEX_BEEFRONT, TEX_BEESIDE, TEX_BEETOP, 0, (TEMPER_NEUTRAL << 1) | 8, 0x32, (4 << 4) | 6},
 };
-const MobSpec& mobSpec(uint8_t species) { return MOB_SPECS[species % MOB_SPECIES]; }
+const MobSpec& mobSpec(uint8_t species) {
+    return MOB_SPECS[species % MOB_SPECIES];
+}
 
 static constexpr MobBox SHEEP_BOXES[] = {
-    {-4, 0,  4, 8, 6, 3, 0},
+    {-4, 0, 4, 8, 6, 3, 0},
     {-4, 0, -7, 8, 6, 3, 0},
     {-6, 6, -10, 12, 11, 20, 0},
     {-3, 12, 9, 6, 7, 6, 1},
 };
 static constexpr MobBox WOLF_BOXES[] = {
-    {-3, 0,  5, 6, 5, 3, 0},
+    {-3, 0, 5, 6, 5, 3, 0},
     {-3, 0, -8, 6, 5, 3, 0},
     {-4, 4, -9, 8, 8, 17, 0},
-    {-3, 9,  8, 6, 6, 6, 1},
+    {-3, 9, 8, 6, 6, 6, 1},
     {-1, 10, -12, 2, 3, 4, 0},
 };
 static constexpr MobBox CREEPER_BOXES[] = {
-    {-4, 0,  2, 8, 5, 4, 0},
+    {-4, 0, 2, 8, 5, 4, 0},
     {-4, 0, -6, 8, 5, 4, 0},
     {-3, 5, -3, 6, 12, 6, 0},
     {-4, 17, -4, 8, 9, 8, 1},
@@ -189,10 +312,16 @@ static constexpr MobBox CREEPER_BOXES[] = {
 static constexpr MobBox BEE_BOXES[] = {
     {-3, 1, -4, 6, 5, 8, 1},
     {-5, 6, -2, 2, 1, 4, 0},
-    { 3, 6, -2, 2, 1, 4, 0},
+    {3, 6, -2, 2, 1, 4, 0},
 };
-static constexpr struct { const MobBox* b; uint8_t n; } MOB_PLANS[MOB_SPECIES] = {
-    {SHEEP_BOXES, 4}, {WOLF_BOXES, 5}, {CREEPER_BOXES, 4}, {BEE_BOXES, 3},
+static constexpr struct {
+    const MobBox* b;
+    uint8_t n;
+} MOB_PLANS[MOB_SPECIES] = {
+    {SHEEP_BOXES, 4},
+    {WOLF_BOXES, 5},
+    {CREEPER_BOXES, 4},
+    {BEE_BOXES, 3},
 };
 const MobBox* mobBoxes(uint8_t species, int& count) {
     const auto& p = MOB_PLANS[species % MOB_SPECIES];
@@ -210,7 +339,7 @@ constexpr uint64_t GRID_KEEP01 = 0x0FF0FF0FFull; // columns 0,1 of every row
 // ('0'-'9' and 'A'-'F' are item type nibbles).
 static constexpr uint64_t craftKey(const char* s) {
     uint64_t v = 0;
-    for (int i = 0; i < 9; i++) {
+    for(int i = 0; i < 9; i++) {
         uint64_t n = (s[i] >= 'A') ? (uint64_t)(s[i] - 'A' + 10) : (uint64_t)(s[i] - '0');
         v |= n << (4 * i);
     }
@@ -218,9 +347,14 @@ static constexpr uint64_t craftKey(const char* s) {
 }
 
 // Result packed as type << 8 | count.
-static constexpr uint16_t R(uint8_t type, uint8_t n) { return (uint16_t)((type << 8) | n); }
+static constexpr uint16_t R(uint8_t type, uint8_t n) {
+    return (uint16_t)((type << 8) | n);
+}
 
-struct CraftRecipe { uint64_t key; uint16_t result; };
+struct CraftRecipe {
+    uint64_t key;
+    uint16_t result;
+};
 static constexpr CraftRecipe CRAFT_RECIPES[] = {
     {craftKey("770770000"), R(ITEM_TABLE, 1)},
     {craftKey("500000000"), R(ITEM_PLANK, 4)},
@@ -248,31 +382,40 @@ static constexpr CraftRecipe CRAFT_RECIPES[] = {
 
 uint16_t craftTable(const ItemCell grid[9]) {
     uint64_t v = 0;
-    for (int i = 0; i < 9; i++) v |= (uint64_t)(grid[i].type >> 4) << (4 * i);
-    if (!v) return 0;
+    for(int i = 0; i < 9; i++)
+        v |= (uint64_t)(grid[i].type >> 4) << (4 * i);
+    if(!v) return 0;
     // Shift the pattern into the top-left corner: drop empty leading columns
     // (each row moves one nibble right, its last column cleared), then rows.
-    while (!(v & GRID_COL0)) v = (v >> 4) & GRID_KEEP01;
-    while (!(v & GRID_ROW0)) v >>= 12;
-    for (const CraftRecipe& r : CRAFT_RECIPES)
-        if (r.key == v) {
+    while(!(v & GRID_COL0))
+        v = (v >> 4) & GRID_KEEP01;
+    while(!(v & GRID_ROW0))
+        v >>= 12;
+    for(const CraftRecipe& r : CRAFT_RECIPES)
+        if(r.key == v) {
             // gunpowder shares the glass craft nibble; require the exact type
-            if (r.result == R(ITEM_DYNAMITE, 1)) {
+            if(r.result == R(ITEM_DYNAMITE, 1)) {
                 bool ok = false;
-                for (int i = 0; i < 9; i++) ok |= grid[i].type == ITEM_GUNPOWDER;
-                if (!ok) continue;
+                for(int i = 0; i < 9; i++)
+                    ok |= grid[i].type == ITEM_GUNPOWDER;
+                if(!ok) continue;
             }
             return r.result;
         }
     return 0;
 }
 uint16_t craftFurnace(uint8_t inputType) {
-    switch (inputType >> 4) {
-        case BLOCK_COBBLE: return R(ITEM_STONE, 1);
-        case BLOCK_LOG:    return R(ITEM_COAL, 1);
-        case BLOCK_IRONORE:return R(ITEM_IRONINGOT, 1);
-        case BLOCK_SAND:   return R(ITEM_GLASS, 1);
-        default: return 0;
+    switch(inputType >> 4) {
+    case BLOCK_COBBLE:
+        return R(ITEM_STONE, 1);
+    case BLOCK_LOG:
+        return R(ITEM_COAL, 1);
+    case BLOCK_IRONORE:
+        return R(ITEM_IRONINGOT, 1);
+    case BLOCK_SAND:
+        return R(ITEM_GLASS, 1);
+    default:
+        return 0;
     }
 }
 

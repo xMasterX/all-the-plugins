@@ -1,12 +1,12 @@
 #include "saves.h"
 #include <storage/storage.h>
 
-#define SAVING_DIRECTORY "/ext/apps/Games"
-#define LEVEL_FILENAME SAVING_DIRECTORY "/SpaceImpactIILevel.save"
+#define SAVING_DIRECTORY  "/ext/apps/Games"
+#define LEVEL_FILENAME    SAVING_DIRECTORY "/SpaceImpactIILevel.save"
 #define TOPSCORE_FILENAME SAVING_DIRECTORY "/SpaceImpactIIScore.save"
 
 /** Beolvassa a mentett szintet, ha az el lett mentve **/
-void ReadSavedLevel(Uint8 *Level) {
+void ReadSavedLevel(Uint8* Level) {
     Storage* storage = furi_record_open(RECORD_STORAGE);
     File* file = storage_file_alloc(storage);
     if(storage_file_open(file, LEVEL_FILENAME, FSAM_READ, FSOM_OPEN_EXISTING)) {
@@ -18,7 +18,7 @@ void ReadSavedLevel(Uint8 *Level) {
 }
 
 /** Beolvassa a mentett legjobb pontszámokat a paraméterben kapott tömbbe, ha el lettek mentve **/
-void ReadTopScore(unsigned int *Arr) {
+void ReadTopScore(unsigned int* Arr) {
     Storage* storage = furi_record_open(RECORD_STORAGE);
     File* file = storage_file_alloc(storage);
     if(storage_file_open(file, TOPSCORE_FILENAME, FSAM_READ, FSOM_OPEN_EXISTING)) {
@@ -51,12 +51,12 @@ void SaveLevel(Uint8 Level) {
 }
 
 /** A bemenetként kapott 10 elemû tömbbe úgy illeszti be a második paraméterben kapott elemet, hogy az csökkenõ sorrendû maradjon, majd kiírja fájlba **/
-void PlaceTopScore(unsigned int *Arr, Uint16 Entry) {
+void PlaceTopScore(unsigned int* Arr, Uint16 Entry) {
     unsigned int *Start = Arr, *End = Arr + SCORE_COUNT;
-    while (Arr != End) { /* A tömb elsõ olyan eleméntek keresése, ami az újnál kisebb */
-        if (*Arr < Entry) {
+    while(Arr != End) { /* A tömb elsõ olyan eleméntek keresése, ami az újnál kisebb */
+        if(*Arr < Entry) {
             int j;
-            for (j = 9; j >= Arr - Start; j--) /* A tömb hátralévõ részének továbbléptetése */
+            for(j = 9; j >= Arr - Start; j--) /* A tömb hátralévõ részének továbbléptetése */
                 Start[j] = Start[j - 1];
             *Arr = Entry; /* Az így keletkezett helyre mehet az új érték */
             Arr = End; /* Kilépés a ciklusból */
@@ -65,7 +65,7 @@ void PlaceTopScore(unsigned int *Arr, Uint16 Entry) {
     }
 
     Storage* storage = furi_record_open(RECORD_STORAGE);
-    if (storage_common_stat(storage, SAVING_DIRECTORY, NULL) == FSE_NOT_EXIST) {
+    if(storage_common_stat(storage, SAVING_DIRECTORY, NULL) == FSE_NOT_EXIST) {
         if(!storage_simply_mkdir(storage, SAVING_DIRECTORY)) {
             furi_record_close(RECORD_STORAGE);
             return;

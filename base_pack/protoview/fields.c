@@ -260,7 +260,8 @@ bool field_incr_value(ProtoViewField* f, int incr) {
 
 /* Free a field set and its contained fields. */
 void fieldset_free(ProtoViewFieldSet* fs) {
-    for(uint32_t j = 0; j < fs->numfields; j++) field_free(fs->fields[j]);
+    for(uint32_t j = 0; j < fs->numfields; j++)
+        field_free(fs->fields[j]);
     free(fs->fields);
     free(fs);
 }

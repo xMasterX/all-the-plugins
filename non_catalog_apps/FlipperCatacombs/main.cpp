@@ -26,7 +26,7 @@ static inline void wait_inflight_zero(volatile uint32_t* counter) {
     }
 }
 
-inline bool audio_enable(){
+inline bool audio_enable() {
     return !furi_hal_rtc_is_flag_set(FuriHalRtcFlagStealthMode);
 }
 

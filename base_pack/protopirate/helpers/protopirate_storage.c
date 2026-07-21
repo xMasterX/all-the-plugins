@@ -513,9 +513,8 @@ static bool protopirate_storage_copy_key_2(
            protopirate_storage_copy_u32_optional(save_file, flipper_format, "Key_2");
 }
 
-static bool protopirate_storage_copy_key2(
-    FlipperFormat* save_file,
-    FlipperFormat* flipper_format) {
+static bool
+    protopirate_storage_copy_key2(FlipperFormat* save_file, FlipperFormat* flipper_format) {
     bool copied = false;
     if(!protopirate_storage_copy_hex_fixed(save_file, flipper_format, "Key2", 8, &copied)) {
         return false;
@@ -575,7 +574,8 @@ static bool protopirate_storage_write_capture_data(
         if(!protopirate_storage_copy_u32_optional(save_file, flipper_format, "Check")) break;
         if(!protopirate_storage_copy_hex_fixed(save_file, flipper_format, "Hitag2 Key", 6, NULL))
             break;
-        if(!protopirate_storage_copy_u32_optional(save_file, flipper_format, "Hitag2 Epoch")) break;
+        if(!protopirate_storage_copy_u32_optional(save_file, flipper_format, "Hitag2 Epoch"))
+            break;
         if(!protopirate_storage_copy_u32_array_if_present(
                save_file, flipper_format, "RAW_Data", 4096))
             break;

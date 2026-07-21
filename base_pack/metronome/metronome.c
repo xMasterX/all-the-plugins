@@ -12,18 +12,18 @@
 
 #include "gui_extensions.h"
 
-#define BPM_STEP_SIZE_FINE 0.5d
+#define BPM_STEP_SIZE_FINE   0.5d
 #define BPM_STEP_SIZE_COARSE 10.0d
-#define BPM_BOUNDARY_LOW 10.0d
-#define BPM_BOUNDARY_HIGH 300.0d
-#define BEEP_DELAY_MS 50
+#define BPM_BOUNDARY_LOW     10.0d
+#define BPM_BOUNDARY_HIGH    300.0d
+#define BEEP_DELAY_MS        50
 
-#define wave_bitmap_left_width 4
+#define wave_bitmap_left_width  4
 #define wave_bitmap_left_height 14
 static uint8_t wave_bitmap_left_bits[] =
     {0x08, 0x0C, 0x06, 0x06, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x06, 0x06, 0x0C, 0x08};
 
-#define wave_bitmap_right_width 4
+#define wave_bitmap_right_width  4
 #define wave_bitmap_right_height 14
 static uint8_t wave_bitmap_right_bits[] =
     {0x01, 0x03, 0x06, 0x06, 0x0C, 0x0C, 0x0C, 0x0C, 0x0C, 0x0C, 0x06, 0x06, 0x03, 0x01};
@@ -38,7 +38,11 @@ typedef struct {
     InputEvent input;
 } PluginEvent;
 
-enum OutputMode { Loud, Vibro, Silent };
+enum OutputMode {
+    Loud,
+    Vibro,
+    Silent
+};
 
 typedef struct {
     double bpm;

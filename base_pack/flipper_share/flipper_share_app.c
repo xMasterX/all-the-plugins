@@ -3,7 +3,7 @@
 #include <stream/buffered_file_stream.h>
 
 // About screen title bar (\e#/\e! markup: bold/inverted, see widget.h)
-#define FS_ABOUT_NAME "\e#\e! Flipper Share - SubGHz  \e!\n"
+#define FS_ABOUT_NAME      "\e#\e! Flipper Share - SubGHz  \e!\n"
 #define FS_ABOUT_BLANK_INV "\e#\e!                                                      \e!\n"
 
 // Callback when a file is selected in the file browser
@@ -27,7 +27,11 @@ static void file_browser_select_callback(void* context) {
 }
 
 // Callback for internal use, not used in the app
-_Bool file_browser_callback(FuriString* path, void* context, unsigned char** icon, FuriString* name) {
+_Bool file_browser_callback(
+    FuriString* path,
+    void* context,
+    unsigned char** icon,
+    FuriString* name) {
     UNUSED(icon);
     UNUSED(name);
     UNUSED(path);
@@ -40,8 +44,10 @@ _Bool file_browser_callback(FuriString* path, void* context, unsigned char** ico
 
 void show_file_info_scene(FlipperShareApp* app) {
     furi_assert(app);
-    dialog_ex_set_header(app->dialog_show_file, "File Info", 64, SCENE_HEADER_POSITION_Y, AlignCenter, AlignTop);
-    dialog_ex_set_text(app->dialog_show_file, app->selected_file_path, 64, 32, AlignCenter, AlignCenter);
+    dialog_ex_set_header(
+        app->dialog_show_file, "File Info", 64, SCENE_HEADER_POSITION_Y, AlignCenter, AlignTop);
+    dialog_ex_set_text(
+        app->dialog_show_file, app->selected_file_path, 64, 32, AlignCenter, AlignCenter);
     view_dispatcher_switch_to_view(app->view_dispatcher, FlipperShareViewIdShowFile);
 }
 
@@ -83,7 +89,8 @@ static void submenu_callback(void* context, uint32_t index) {
         furi_string_cat_printf(about_text, "Github: %s\n\n", "github.com/lomalkin");
         furi_string_cat_printf(about_text, "\e#%s\n", "Description");
         furi_string_cat_printf(about_text, "%s\n\n", "A file sharing app via Sub-GHz");
-        furi_string_cat_printf(about_text, "See also: Flipper Share IR to transfer via Infrared.\n");
+        furi_string_cat_printf(
+            about_text, "See also: Flipper Share IR to transfer via Infrared.\n");
         widget_add_text_scroll_element(
             app->widget_about, 0, 16, 128, 50, furi_string_get_cstr(about_text));
         furi_string_free(about_text);
@@ -232,7 +239,7 @@ static FlipperShareApp* flipper_share_alloc() {
     view_dispatcher_add_view(
         app->view_dispatcher, FlipperShareViewIdReceive, dialog_ex_get_view(app->dialog_receive));
 
-    app->selected_file_path[0] = '\0';  // Explicitly initialize with empty string
+    app->selected_file_path[0] = '\0'; // Explicitly initialize with empty string
     app->selected_file_size = 0;
     app->file_info_loaded = false;
 

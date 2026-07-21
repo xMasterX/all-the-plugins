@@ -40,13 +40,9 @@ UHFWorkerEvent read_bank_till_max_length(UHFWorker* uhf_worker, UHFTag* uhf_tag,
         if(uhf_worker->state == UHFWorkerStateStop) return UHFWorkerEventAborted;
         if(word_low >= word_high) return UHFWorkerEventSuccess;
         word_size = (word_low + word_high) / 2;
-        
+
         status = m100_read_label_data_storage(
-            uhf_worker->module,
-            uhf_tag,
-            bank,
-            uhf_worker->DefaultAP,
-            word_size); 
+            uhf_worker->module, uhf_tag, bank, uhf_worker->DefaultAP, word_size);
         if(status == M100SuccessResponse) {
             word_low = word_size + 1;
         } else if(status == M100MemoryOverrun) {
@@ -81,12 +77,10 @@ UHFWorkerEvent read_single_card(UHFWorker* uhf_worker) {
 //Modified by Riley Haffner to be able to write to the reserved bank
 UHFWorkerEvent write_single_card(UHFWorker* uhf_worker) {
     //uhf_worker->TagToWrite
-    UHFTag* uhf_tag_des = send_polling_command(
-        uhf_worker); 
+    UHFTag* uhf_tag_des = send_polling_command(uhf_worker);
     if(uhf_tag_des == NULL) return UHFWorkerEventAborted;
-    
-    UHFTag* uhf_tag_from =
-        uhf_worker->NewTag; 
+
+    UHFTag* uhf_tag_from = uhf_worker->NewTag;
     M100ResponseType rp_type;
     do {
         rp_type = m100_set_select(uhf_worker->module, uhf_tag_des);
@@ -130,36 +124,32 @@ UHFWorkerEvent write_single_card(UHFWorker* uhf_worker) {
         }
     }
     while(m100_is_write_mask_enabled(uhf_worker->module, WRITE_RFU)) {
+        if(uhf_worker->KillPwd && uhf_worker->AccessPwd) {
+            rp_type = m100_write_label_data_storage(
+                uhf_worker->module,
+                uhf_tag_from,
+                uhf_tag_des,
+                ReservedBank,
+                1,
+                uhf_worker->DefaultAP);
+        } else if(uhf_worker->KillPwd) {
+            rp_type = m100_write_label_data_storage(
+                uhf_worker->module,
+                uhf_tag_from,
+                uhf_tag_des,
+                ReservedBank,
+                0,
+                uhf_worker->DefaultAP);
+        } else if(uhf_worker->AccessPwd) {
+            rp_type = m100_write_label_data_storage(
+                uhf_worker->module,
+                uhf_tag_from,
+                uhf_tag_des,
+                ReservedBank,
+                32,
+                uhf_worker->DefaultAP);
+        }
 
-        if(uhf_worker->KillPwd && uhf_worker->AccessPwd){
-            rp_type = m100_write_label_data_storage(
-            uhf_worker->module,
-            uhf_tag_from,
-            uhf_tag_des,
-            ReservedBank,
-            1,
-            uhf_worker->DefaultAP);
-        }
-        else if(uhf_worker->KillPwd){
-            rp_type = m100_write_label_data_storage(
-            uhf_worker->module,
-            uhf_tag_from,
-            uhf_tag_des,
-            ReservedBank,
-            0,
-            uhf_worker->DefaultAP);
-        }
-        else if (uhf_worker->AccessPwd){
-        rp_type = m100_write_label_data_storage(
-            uhf_worker->module,
-            uhf_tag_from,
-            uhf_tag_des,
-            ReservedBank,
-            32,
-            uhf_worker->DefaultAP); 
-            }
-            
-           
         if(uhf_worker->state == UHFWorkerStateStop) {
             m100_disable_write_mask(uhf_worker->module, WRITE_RFU);
             return UHFWorkerEventAborted;
@@ -168,7 +158,7 @@ UHFWorkerEvent write_single_card(UHFWorker* uhf_worker) {
             m100_disable_write_mask(uhf_worker->module, WRITE_RFU);
             break;
         }
-        if(rp_type == M100APWrong){
+        if(rp_type == M100APWrong) {
             m100_disable_write_mask(uhf_worker->module, WRITE_RFU);
             return UHFWorkerEventAborted;
         }

@@ -161,8 +161,7 @@ SubGhzGPS* subghz_gps_apply(SubGhzGPS* current, SubGhzGpsProtocol protocol, uint
 
     if(current) {
         bool matches = current->protocol == protocol;
-        if(matches &&
-           (protocol == SubGhzGpsProtocolNmea || protocol == SubGhzGpsProtocolUbox)) {
+        if(matches && (protocol == SubGhzGpsProtocolNmea || protocol == SubGhzGpsProtocolUbox)) {
             matches = current->baudrate == resolved_baud;
         }
         if(matches) return current;

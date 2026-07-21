@@ -10,15 +10,16 @@
 #include <nfc/protocols/mf_ultralight/mf_ultralight_poller.h>
 
 #define FLIPPER_WEDGE_NFC_UID_MAX_LEN 10
-#define FLIPPER_WEDGE_NDEF_MAX_LEN 1024  // Buffer size (max user setting is 1000 chars, +24 for safety)
+#define FLIPPER_WEDGE_NDEF_MAX_LEN \
+    1024 // Buffer size (max user setting is 1000 chars, +24 for safety)
 
 typedef struct FlipperWedgeNfc FlipperWedgeNfc;
 
 typedef enum {
-    FlipperWedgeNfcErrorNone,            // Success
+    FlipperWedgeNfcErrorNone, // Success
     FlipperWedgeNfcErrorNotForumCompliant, // Tag is not NFC Forum compliant (e.g., MIFARE Classic)
     FlipperWedgeNfcErrorUnsupportedType, // Tag detected but unsupported NFC Forum Type for NDEF
-    FlipperWedgeNfcErrorNoTextRecord,    // Supported type but no NDEF text record found
+    FlipperWedgeNfcErrorNoTextRecord, // Supported type but no NDEF text record found
 } FlipperWedgeNfcError;
 
 typedef struct {

@@ -8,7 +8,6 @@ void flipper_wedge_format_uid(
     const char* delimiter,
     char* output,
     size_t output_size) {
-
     if(!uid || uid_len == 0 || !output || output_size == 0) {
         if(output && output_size > 0) {
             output[0] = '\0';
@@ -46,7 +45,6 @@ void flipper_wedge_format_output(
     bool nfc_first,
     char* output,
     size_t output_size) {
-
     if(!output || output_size == 0) {
         return;
     }
@@ -124,7 +122,6 @@ size_t flipper_wedge_sanitize_text(
     char* output,
     size_t output_size,
     size_t max_len) {
-
     if(!input || !output || output_size == 0) {
         if(output && output_size > 0) {
             output[0] = '\0';

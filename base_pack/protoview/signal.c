@@ -455,7 +455,8 @@ bool bitmap_match_bitmap(
  * string, stored at 'dst', that must have space at least for len+1 bytes.
  * The bits are extracted from the specified offset. */
 void bitmap_to_string(char* dst, uint8_t* b, uint32_t blen, uint32_t off, uint32_t len) {
-    for(uint32_t j = 0; j < len; j++) dst[j] = bitmap_get(b, blen, off + j) ? '1' : '0';
+    for(uint32_t j = 0; j < len; j++)
+        dst[j] = bitmap_get(b, blen, off + j) ? '1' : '0';
     dst[len] = 0;
 }
 
@@ -530,7 +531,8 @@ uint32_t convert_signal_to_bits(
          * and ignore it completely. */
         if(numbits == 0) continue;
 
-        while(numbits--) bitmap_set(b, blen, bitpos++, level);
+        while(numbits--)
+            bitmap_set(b, blen, bitpos++, level);
     }
     return bitpos;
 }

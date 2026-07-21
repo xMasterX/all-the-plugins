@@ -15,10 +15,10 @@ _Static_assert(
     "ISH packet too large for the IR modem frame; raise IR_MODEM_MAX_FRAME_BYTES or lower ISH_DATA_LENGTH");
 
 // RX worker thread flags.
-#define IR_TP_FLAG_RX_DATA 0x01u // one or more captured edges are in the stream
+#define IR_TP_FLAG_RX_DATA    0x01u // one or more captured edges are in the stream
 #define IR_TP_FLAG_RX_TIMEOUT 0x02u // silence timeout -> frame boundary
-#define IR_TP_FLAG_EXIT 0x04u
-#define IR_TP_FLAG_ALL (IR_TP_FLAG_RX_DATA | IR_TP_FLAG_RX_TIMEOUT | IR_TP_FLAG_EXIT)
+#define IR_TP_FLAG_EXIT       0x04u
+#define IR_TP_FLAG_ALL        (IR_TP_FLAG_RX_DATA | IR_TP_FLAG_RX_TIMEOUT | IR_TP_FLAG_EXIT)
 
 // Stream buffer depth in events (each event is one packed uint32).
 #define IR_TP_STREAM_EVENTS 512u
@@ -73,8 +73,7 @@ static int32_t ir_tp_rx_thread(void* context) {
     IrTransport* t = context;
 
     while(true) {
-        uint32_t flags =
-            furi_thread_flags_wait(IR_TP_FLAG_ALL, FuriFlagWaitAny, FuriWaitForever);
+        uint32_t flags = furi_thread_flags_wait(IR_TP_FLAG_ALL, FuriFlagWaitAny, FuriWaitForever);
         if((flags & IR_TP_FLAG_ALL) == 0) continue; // spurious / error
 
         if(flags & IR_TP_FLAG_RX_DATA) {
@@ -137,7 +136,10 @@ void ir_transport_init(void) {
     furi_hal_infrared_set_tx_output(FuriHalInfraredTxPinInternal);
     ir_tp_rx_arm(ir);
 
-    FURI_LOG_I(TAG, "init done (bits/sym=%u, ~%u us/sym)", (unsigned)IR_MODEM_BITS_PER_SYMBOL,
+    FURI_LOG_I(
+        TAG,
+        "init done (bits/sym=%u, ~%u us/sym)",
+        (unsigned)IR_MODEM_BITS_PER_SYMBOL,
         (unsigned)(IR_MODEM_MARK_US + IR_MODEM_SPACE_BASE_US +
                    ((IR_MODEM_LEVELS - 1u) * IR_MODEM_SPACE_STEP_US) / 2u));
 }

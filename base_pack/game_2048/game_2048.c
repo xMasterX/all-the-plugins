@@ -18,14 +18,14 @@
 #include "digits.h"
 #include "array_utils.h"
 
-#define CELLS_COUNT 4
+#define CELLS_COUNT     4
 #define CELL_INNER_SIZE 14
-#define FRAME_LEFT 10
-#define FRAME_TOP 1
-#define FRAME_SIZE 61
+#define FRAME_LEFT      10
+#define FRAME_TOP       1
+#define FRAME_SIZE      61
 
 #define SAVING_DIRECTORY "/ext/apps/Games"
-#define SAVING_FILENAME SAVING_DIRECTORY "/game_2048.save"
+#define SAVING_FILENAME  SAVING_DIRECTORY "/game_2048.save"
 
 typedef enum {
     GameStateMenu,
@@ -194,7 +194,8 @@ void calculate_move_to_left(uint8_t arr[], MoveResult* const move_result) {
     while(index < CELLS_COUNT - 1) {
         // find offset from [index] to next non-empty value
         offset = 1;
-        while(index + offset < CELLS_COUNT && arr[index + offset] == 0) offset++;
+        while(index + offset < CELLS_COUNT && arr[index + offset] == 0)
+            offset++;
 
         // if all remaining values in this row are empty then go to next row
         if(index + offset >= CELLS_COUNT) break;
@@ -209,7 +210,8 @@ void calculate_move_to_left(uint8_t arr[], MoveResult* const move_result) {
         if(arr[next_index] == 0) {
             // find offset from [next_index] to next non-empty value
             offset = 1;
-            while(next_index + offset < CELLS_COUNT && arr[next_index + offset] == 0) offset++;
+            while(next_index + offset < CELLS_COUNT && arr[next_index + offset] == 0)
+                offset++;
 
             // if all remaining values in this row are empty then go to next row
             if(next_index + offset >= CELLS_COUNT) break;

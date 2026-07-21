@@ -11,7 +11,7 @@
 static const uint32_t eh_timeout_seconds[] = {1, 2, 5, 10, 30, 0};
 
 // Restart delay in ticks (250ms per tick)
-#define RESTART_DELAY_ERROR 4    // 1000ms after error
+#define RESTART_DELAY_ERROR 4 // 1000ms after error
 
 // Tick-based restart state (avoids blocking the GUI thread)
 static uint32_t restart_countdown = 0;
@@ -22,7 +22,10 @@ static bool showing_result = false;
 // NFC callback - called when temperature is read or error occurs
 // IMPORTANT: This runs on the GUI thread (from tick handler).
 // NEVER block here - no furi_delay_ms, no long operations.
-static void vk_thermo_scene_scan_nfc_callback(VkThermoNfcEvent event, VkThermoNfcData* data, void* context) {
+static void vk_thermo_scene_scan_nfc_callback(
+    VkThermoNfcEvent event,
+    VkThermoNfcData* data,
+    void* context) {
     furi_assert(context);
     VkThermo* app = context;
 
@@ -37,7 +40,7 @@ static void vk_thermo_scene_scan_nfc_callback(VkThermoNfcEvent event, VkThermoNf
         // We have a valid temperature — this is ALWAYS a success, period.
         // The NFC event type doesn't matter; what matters is that we got data.
         showing_result = true;
-        restart_countdown = 0;  // Cancel any pending error restart
+        restart_countdown = 0; // Cancel any pending error restart
 
         // Update the scan view with temperature
         vk_thermo_scan_view_set_temperature(app->scan_view, data->temperature_celsius, data->uid);
@@ -109,7 +112,8 @@ void vk_thermo_scene_scan_on_enter(void* context) {
 
     // Set NFC callback, EH timeout, and start scanning
     vk_thermo_nfc_set_callback(app->nfc, vk_thermo_scene_scan_nfc_callback, app);
-    uint32_t timeout_idx = app->eh_timeout < VkThermoEhTimeoutCount ? app->eh_timeout : VkThermoEhTimeout5s;
+    uint32_t timeout_idx = app->eh_timeout < VkThermoEhTimeoutCount ? app->eh_timeout :
+                                                                      VkThermoEhTimeout5s;
     vk_thermo_nfc_set_eh_timeout(app->nfc, eh_timeout_seconds[timeout_idx]);
     vk_thermo_nfc_set_debug(app->nfc, app->debug == VkThermoDebugOn);
     vk_thermo_nfc_start(app->nfc);

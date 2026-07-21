@@ -3,60 +3,69 @@
 #include "radio_clock.h"
 
 static const RadioClockSignalInfo radio_clock_signal_info[RadioClockSignalCount] = {
-    [RadioClockSignalTest] = {
-        .label = "Test",
-        .default_freq = 77500U,
-        .confidence = RadioClockProtocolConfidenceExperimental,
-        .tx_supported = true,
-    },
-    [RadioClockSignalDcf77] = {
-        .label = "DCF77",
-        .default_freq = 77500U,
-        .confidence = RadioClockProtocolConfidenceStable,
-        .tx_supported = true,
-    },
-    [RadioClockSignalWwvb] = {
-        .label = "WWVB",
-        .default_freq = 60000U,
-        .confidence = RadioClockProtocolConfidenceStable,
-        .tx_supported = true,
-    },
-    [RadioClockSignalBpc] = {
-        .label = "BPC",
-        .default_freq = 68500U,
-        .confidence = RadioClockProtocolConfidenceExperimental,
-        .tx_supported = true,
-    },
-    [RadioClockSignalJjy] = {
-        .label = "JJY",
-        .default_freq = 60000U,
-        .confidence = RadioClockProtocolConfidenceLikely,
-        .tx_supported = true,
-    },
-    [RadioClockSignalMsf] = {
-        .label = "MSF",
-        .default_freq = 60000U,
-        .confidence = RadioClockProtocolConfidenceStable,
-        .tx_supported = true,
-    },
-    [RadioClockSignalRbu] = {
-        .label = "RBU",
-        .default_freq = 67500U,
-        .confidence = RadioClockProtocolConfidenceUnsupported,
-        .tx_supported = false,
-    },
-    [RadioClockSignalHbg] = {
-        .label = "HBG",
-        .default_freq = 75000U,
-        .confidence = RadioClockProtocolConfidenceLikely,
-        .tx_supported = true,
-    },
-    [RadioClockSignalBsf] = {
-        .label = "BSF",
-        .default_freq = 77500U,
-        .confidence = RadioClockProtocolConfidenceExperimental,
-        .tx_supported = true,
-    },
+    [RadioClockSignalTest] =
+        {
+            .label = "Test",
+            .default_freq = 77500U,
+            .confidence = RadioClockProtocolConfidenceExperimental,
+            .tx_supported = true,
+        },
+    [RadioClockSignalDcf77] =
+        {
+            .label = "DCF77",
+            .default_freq = 77500U,
+            .confidence = RadioClockProtocolConfidenceStable,
+            .tx_supported = true,
+        },
+    [RadioClockSignalWwvb] =
+        {
+            .label = "WWVB",
+            .default_freq = 60000U,
+            .confidence = RadioClockProtocolConfidenceStable,
+            .tx_supported = true,
+        },
+    [RadioClockSignalBpc] =
+        {
+            .label = "BPC",
+            .default_freq = 68500U,
+            .confidence = RadioClockProtocolConfidenceExperimental,
+            .tx_supported = true,
+        },
+    [RadioClockSignalJjy] =
+        {
+            .label = "JJY",
+            .default_freq = 60000U,
+            .confidence = RadioClockProtocolConfidenceLikely,
+            .tx_supported = true,
+        },
+    [RadioClockSignalMsf] =
+        {
+            .label = "MSF",
+            .default_freq = 60000U,
+            .confidence = RadioClockProtocolConfidenceStable,
+            .tx_supported = true,
+        },
+    [RadioClockSignalRbu] =
+        {
+            .label = "RBU",
+            .default_freq = 67500U,
+            .confidence = RadioClockProtocolConfidenceUnsupported,
+            .tx_supported = false,
+        },
+    [RadioClockSignalHbg] =
+        {
+            .label = "HBG",
+            .default_freq = 75000U,
+            .confidence = RadioClockProtocolConfidenceLikely,
+            .tx_supported = true,
+        },
+    [RadioClockSignalBsf] =
+        {
+            .label = "BSF",
+            .default_freq = 77500U,
+            .confidence = RadioClockProtocolConfidenceExperimental,
+            .tx_supported = true,
+        },
 };
 
 static const RadioClockSignal radio_clock_visible_signals[] = {
@@ -108,7 +117,8 @@ RadioClockSignal radio_clock_visible_signal_get(size_t index) {
 }
 
 size_t radio_clock_visible_signal_index(RadioClockSignal signal) {
-    const size_t count = sizeof(radio_clock_visible_signals) / sizeof(radio_clock_visible_signals[0]);
+    const size_t count =
+        sizeof(radio_clock_visible_signals) / sizeof(radio_clock_visible_signals[0]);
 
     for(size_t i = 0; i < count; i++) {
         if(radio_clock_visible_signals[i] == signal) {

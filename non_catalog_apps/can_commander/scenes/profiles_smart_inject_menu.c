@@ -49,11 +49,13 @@ bool cancommander_scene_profiles_smart_inject_menu_on_event(void* context, Scene
 
     switch(event.event) {
     case ProfilesSmartInjectSave:
-        scene_manager_next_scene(app->scene_manager, cancommander_scene_custom_inject_save_slots_menu);
+        scene_manager_next_scene(
+            app->scene_manager, cancommander_scene_custom_inject_save_slots_menu);
         return true;
 
     case ProfilesSmartInjectLoad:
-        scene_manager_next_scene(app->scene_manager, cancommander_scene_custom_inject_load_slots_menu);
+        scene_manager_next_scene(
+            app->scene_manager, cancommander_scene_custom_inject_load_slots_menu);
         return true;
 
     default:

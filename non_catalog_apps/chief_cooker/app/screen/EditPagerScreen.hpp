@@ -56,8 +56,7 @@ public:
         SubGhzModule* subghz,
         PagerReceiver* receiver,
         PagerDataGetter pagerGetter,
-        bool isFromFile
-    ) {
+        bool isFromFile) {
         this->config = config;
         this->subghz = subghz;
         this->receiver = receiver;
@@ -75,12 +74,17 @@ public:
 
         varItemList->AddItem(
             encodingItem = new UiVariableItem(
-                "Encoding", pager->decoder, receiver->decodersCount, HANDLER_1ARG(&EditPagerScreen::encodingValueChanged)
-            )
-        );
+                "Encoding",
+                pager->decoder,
+                receiver->decodersCount,
+                HANDLER_1ARG(&EditPagerScreen::encodingValueChanged)));
 
-        varItemList->AddItem(stationItem = new UiVariableItem("Station", HANDLER_1ARG(&EditPagerScreen::stationValueChanged)));
-        varItemList->AddItem(pagerItem = new UiVariableItem("Pager", HANDLER_1ARG(&EditPagerScreen::pagerValueChanged)));
+        varItemList->AddItem(
+            stationItem = new UiVariableItem(
+                "Station", HANDLER_1ARG(&EditPagerScreen::stationValueChanged)));
+        varItemList->AddItem(
+            pagerItem =
+                new UiVariableItem("Pager", HANDLER_1ARG(&EditPagerScreen::pagerValueChanged)));
         updatePagerIsEditable();
 
         varItemList->AddItem(
@@ -88,35 +92,38 @@ public:
                 "Action",
                 decoder->GetActionValue(pager->data),
                 decoder->GetActionsCount(),
-                HANDLER_1ARG(&EditPagerScreen::actionValueChanged)
-            )
-        );
+                HANDLER_1ARG(&EditPagerScreen::actionValueChanged)));
 
-        varItemList->AddItem(hexItem = new UiVariableItem("HEX value", HANDLER_1ARG(&EditPagerScreen::hexValueChanged)));
-        varItemList->AddItem(protocolItem = new UiVariableItem("Protocol", protocol->GetSystemName()));
+        varItemList->AddItem(
+            hexItem =
+                new UiVariableItem("HEX value", HANDLER_1ARG(&EditPagerScreen::hexValueChanged)));
+        varItemList->AddItem(
+            protocolItem = new UiVariableItem("Protocol", protocol->GetSystemName()));
         varItemList->AddItem(
             frequencyItem = new UiVariableItem(
-                "Frequency", frequencyStr.format("%lu.%02lu", frequency / 1000000, (frequency % 1000000) / 10000)
-            )
-        );
+                "Frequency",
+                frequencyStr.format(
+                    "%lu.%02lu", frequency / 1000000, (frequency % 1000000) / 10000)));
         varItemList->AddItem(
             teItem = new UiVariableItem(
-                "TE", pager->te / TE_DIV, protocol->GetMaxTE() / TE_DIV, HANDLER_1ARG(&EditPagerScreen::teValueChanged)
-            )
-        );
+                "TE",
+                pager->te / TE_DIV,
+                protocol->GetMaxTE() / TE_DIV,
+                HANDLER_1ARG(&EditPagerScreen::teValueChanged)));
         varItemList->AddItem(
             repeatsItem = new UiVariableItem(
-                "Signal Repeats", repeatsStr.format(pager->repeats == MAX_REPEATS ? "%d+" : "%d", pager->repeats)
-            )
-        );
+                "Signal Repeats",
+                repeatsStr.format(pager->repeats == MAX_REPEATS ? "%d+" : "%d", pager->repeats)));
 
         if(canSave()) {
             const char* saveAsItemName = isFromFile ? "Save / Rename" : "Save signal as...";
-            saveAsItemIndex = varItemList->AddItem(saveAsItem = new UiVariableItem(saveAsItemName, ""));
+            saveAsItemIndex =
+                varItemList->AddItem(saveAsItem = new UiVariableItem(saveAsItemName, ""));
         }
 
         if(canDelete()) {
-            deleteItemIndex = varItemList->AddItem(deleteItem = new UiVariableItem("Delete station", ""));
+            deleteItemIndex =
+                varItemList->AddItem(deleteItem = new UiVariableItem("Delete station", ""));
         }
     }
 
@@ -147,7 +154,8 @@ private:
         if(index == saveAsItemIndex) {
             saveAs();
         } else if(index == deleteItemIndex) {
-            DialogUiView* removeConfirmation = new DialogUiView("Really delete?", currentStationName()->cstr());
+            DialogUiView* removeConfirmation =
+                new DialogUiView("Really delete?", currentStationName()->cstr());
             removeConfirmation->AddLeftButton("Nope");
             removeConfirmation->AddRightButton("Yup");
             removeConfirmation->SetResultHandler(HANDLER_1ARG(&EditPagerScreen::confirmDelete));
@@ -170,13 +178,15 @@ private:
         StoredPagerData* pager = getPager();
         PagerProtocol* protocol = receiver->protocols[pager->protocol];
         uint32_t frequency = FrequencyManager::GetInstance()->GetFrequency(pager->frequency);
-        subghz->Transmit(protocol->CreatePayload(pager->data, pager->te, config->SignalRepeats), frequency);
+        subghz->Transmit(
+            protocol->CreatePayload(pager->data, pager->te, config->SignalRepeats), frequency);
 
         FlipperDolphin::Deed(DolphinDeedSubGhzSend);
     }
 
     void saveAs() {
-        TextInputUiView* nameInputView = new TextInputUiView("Enter station name", NAME_MIN_LENGTH, NAME_MAX_LENGTH);
+        TextInputUiView* nameInputView =
+            new TextInputUiView("Enter station name", NAME_MIN_LENGTH, NAME_MAX_LENGTH);
         String* name = currentStationName();
         if(name != NULL) {
             nameInputView->SetDefaultText(name);
@@ -190,8 +200,8 @@ private:
 
         UiManager::GetInstance()->ShowLoading();
         UiManager::GetInstance()->PushView(
-            (new SelectCategoryScreen(true, User, HANDLER_2ARG(&EditPagerScreen::categorySelected)))->GetView()
-        );
+            (new SelectCategoryScreen(true, User, HANDLER_2ARG(&EditPagerScreen::categorySelected)))
+                ->GetView());
     }
 
     void categorySelected(CategoryType, const char* category) {
@@ -200,7 +210,8 @@ private:
         PagerProtocol* protocol = receiver->protocols[pager->protocol];
         uint32_t frequency = FrequencyManager::GetInstance()->GetFrequency(pager->frequency);
 
-        AppFileSysytem().SaveToUserCategory(category, saveAsName, pager, decoder, protocol, frequency);
+        AppFileSysytem().SaveToUserCategory(
+            category, saveAsName, pager, decoder, protocol, frequency);
         FlipperDolphin::Deed(DolphinDeedSubGhzSave);
 
         receiver->ReloadKnownStations();
@@ -223,7 +234,8 @@ private:
             pagerItem->Refresh();
         }
         if(actionItem != NULL) {
-            actionItem->SetSelectedItem(decoder->GetActionValue(pager->data), decoder->GetActionsCount());
+            actionItem->SetSelectedItem(
+                decoder->GetActionValue(pager->data), decoder->GetActionsCount());
         }
         return receiver->decoders[pager->decoder]->GetShortName();
     }

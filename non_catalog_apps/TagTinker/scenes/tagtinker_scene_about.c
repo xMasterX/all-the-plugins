@@ -5,9 +5,9 @@
 #include "../tagtinker_app.h"
 #include <gui/elements.h>
 
-#define TAGTINKER_SYNC_DIR        APP_DATA_PATH("sync")
-#define TAGTINKER_SYNC_INDEX_PATH APP_DATA_PATH("synced_images.txt")
-#define TAGTINKER_BLE_FLOW_WINDOW 8192U
+#define TAGTINKER_SYNC_DIR             APP_DATA_PATH("sync")
+#define TAGTINKER_SYNC_INDEX_PATH      APP_DATA_PATH("synced_images.txt")
+#define TAGTINKER_BLE_FLOW_WINDOW      8192U
 #define TAGTINKER_SYNC_MAX_CHUNK_BYTES 384U
 
 enum {
@@ -53,7 +53,7 @@ static void ble_configure_serial(TagTinkerApp* app) {
 
 static void ble_sync_start(TagTinkerApp* app) {
     if(!app || !app->bt || app->ble_sync_active) return;
-    
+
     app->ble_total_rx = 0;
     memset(app->ble_last_bytes, 0, 3);
     app->ble_rx_len = 0;
@@ -64,7 +64,7 @@ static void ble_sync_start(TagTinkerApp* app) {
     bt_disconnect(app->bt);
     bt_set_status_changed_callback(app->bt, bt_status_cb, app);
     app->ble_serial = bt_profile_start(app->bt, ble_profile_serial, NULL);
-    
+
     if(!app->ble_serial) {
         ble_set_status(app, "Serial Start Fail");
     } else {
@@ -158,8 +158,14 @@ static void sync_send_targets(TagTinkerApp* app) {
     ble_send_line(app, line);
     for(uint8_t i = 0; i < app->target_count; i++) {
         const TagTinkerTarget* target = &app->targets[i];
-        snprintf(line, sizeof(line), "TT_TARGET|%s|%s|%u|%u",
-            target->barcode, target->name, target->profile.width, target->profile.height);
+        snprintf(
+            line,
+            sizeof(line),
+            "TT_TARGET|%s|%s|%u|%u",
+            target->barcode,
+            target->name,
+            target->profile.width,
+            target->profile.height);
         ble_send_line(app, line);
     }
     ble_send_line(app, "TT_TARGETS_END");
@@ -241,11 +247,8 @@ static int8_t sync_base64_value(char c) {
     return -1;
 }
 
-static bool sync_decode_base64(
-    const char* input,
-    uint8_t* output,
-    size_t output_size,
-    size_t* output_len) {
+static bool
+    sync_decode_base64(const char* input, uint8_t* output, size_t output_size, size_t* output_len) {
     if(!input || !output || !output_len) return false;
     size_t out_len = 0;
     uint8_t quartet[4];
@@ -282,8 +285,8 @@ static bool sync_begin_job(
     uint32_t byte_count,
     bool compact_protocol) {
     if(!app || !sync_safe_token(job_id, TAGTINKER_SYNC_JOB_ID_LEN) ||
-       (barcode && *barcode && !sync_safe_token(barcode, TAGTINKER_BC_LEN)) || width == 0U || height == 0U ||
-       page > 7U || byte_count == 0U) {
+       (barcode && *barcode && !sync_safe_token(barcode, TAGTINKER_BC_LEN)) || width == 0U ||
+       height == 0U || page > 7U || byte_count == 0U) {
         return false;
     }
     sync_abort_active_job(app);
@@ -304,16 +307,17 @@ static bool sync_begin_job(
         job_id);
     storage_common_remove(storage, app->ble_sync_temp_path);
     storage_common_remove(storage, app->ble_sync_final_path);
-    
+
     app->ble_sync_file = storage_file_alloc(storage);
-    bool ok = storage_file_open(app->ble_sync_file, app->ble_sync_temp_path, FSAM_WRITE, FSOM_CREATE_ALWAYS);
+    bool ok = storage_file_open(
+        app->ble_sync_file, app->ble_sync_temp_path, FSAM_WRITE, FSOM_CREATE_ALWAYS);
     furi_record_close(RECORD_STORAGE);
     if(!ok) {
         storage_file_free(app->ble_sync_file);
         app->ble_sync_file = NULL;
         return false;
     }
-    
+
     strncpy(app->ble_sync_job_id, job_id, TAGTINKER_SYNC_JOB_ID_LEN);
     app->ble_sync_job_id[TAGTINKER_SYNC_JOB_ID_LEN] = '\0';
     if(barcode && *barcode) {
@@ -338,7 +342,8 @@ static bool sync_begin_job(
 }
 
 static bool sync_append_chunk(TagTinkerApp* app, uint16_t sequence, const char* payload) {
-    if(!app || !app->ble_sync_job_active || !payload || sequence == 0U || !app->ble_sync_file) return false;
+    if(!app || !app->ble_sync_job_active || !payload || sequence == 0U || !app->ble_sync_file)
+        return false;
     if(sequence == app->ble_sync_last_chunk) {
         char ack[32];
         snprintf(ack, sizeof(ack), "TT_ACK|%u", sequence);
@@ -350,7 +355,7 @@ static bool sync_append_chunk(TagTinkerApp* app, uint16_t sequence, const char* 
     size_t decoded_len = 0;
     if(!sync_decode_base64(payload, decoded, sizeof(decoded), &decoded_len)) return false;
     if((app->ble_sync_received_bytes + decoded_len) > app->ble_sync_expected_bytes) return false;
-    
+
     if(storage_file_write(app->ble_sync_file, decoded, decoded_len) != decoded_len) return false;
 
     app->ble_sync_received_bytes += decoded_len;
@@ -387,7 +392,8 @@ static bool sync_finish_job(TagTinkerApp* app, const char* job_id) {
 
     Storage* storage = furi_record_open(RECORD_STORAGE);
     storage_common_remove(storage, app->ble_sync_final_path);
-    bool ok = storage_common_rename(storage, app->ble_sync_temp_path, app->ble_sync_final_path) == FSE_OK;
+    bool ok = storage_common_rename(storage, app->ble_sync_temp_path, app->ble_sync_final_path) ==
+              FSE_OK;
     furi_record_close(RECORD_STORAGE);
     if(!ok) {
         ble_set_status(app, "Save failed");
@@ -408,9 +414,9 @@ static bool sync_finish_job(TagTinkerApp* app, const char* job_id) {
     app->ble_sync_last_job_id[TAGTINKER_SYNC_JOB_ID_LEN] = '\0';
     app->ble_sync_last_completed_chunks = app->ble_sync_last_chunk;
     app->ble_sync_last_compact_protocol = app->ble_sync_compact_protocol;
-    
+
     ble_send_line(app, "TT_ACK|END");
-    
+
     int8_t target_index = tagtinker_ensure_target(app, app->ble_sync_barcode);
     if(target_index >= 0) {
         tagtinker_select_target(app, (uint8_t)target_index);
@@ -459,14 +465,14 @@ static void sync_apply_line(TagTinkerApp* app, const char* line) {
         char* bytes = sync_next_token(&cursor);
         if(job_id && barcode && width && height && page && bytes) {
             if(sync_begin_job(
-               app,
-               job_id,
-               barcode,
-               (uint16_t)atoi(width),
-               (uint16_t)atoi(height),
-               (uint8_t)atoi(page),
-               (uint32_t)strtoul(bytes, NULL, 10),
-               false)) {
+                   app,
+                   job_id,
+                   barcode,
+                   (uint16_t)atoi(width),
+                   (uint16_t)atoi(height),
+                   (uint8_t)atoi(page),
+                   (uint32_t)strtoul(bytes, NULL, 10),
+                   false)) {
                 return;
             } else {
                 ble_set_status(app, "BEGIN JOB FAIL");
@@ -512,16 +518,21 @@ static void about_draw_cb(Canvas* canvas, void* _model) {
         if(model->can_send_latest) {
             canvas_draw_str_aligned(canvas, 64, 20, AlignCenter, AlignTop, "Image received!");
             canvas_draw_str_aligned(canvas, 64, 32, AlignCenter, AlignTop, model->target_name);
-            canvas_draw_str_aligned(canvas, 64, 46, AlignCenter, AlignTop, "Point at tag & press OK");
+            canvas_draw_str_aligned(
+                canvas, 64, 46, AlignCenter, AlignTop, "Point at tag & press OK");
         } else {
-            canvas_draw_str_aligned(canvas, 64, 19, AlignCenter, AlignTop, "1. Open TagTinker app");
-            canvas_draw_str_aligned(canvas, 64, 29, AlignCenter, AlignTop, "2. Connect to Flipper");
-            canvas_draw_str_aligned(canvas, 64, 39, AlignCenter, AlignTop, "3. Select & send image");
+            canvas_draw_str_aligned(
+                canvas, 64, 19, AlignCenter, AlignTop, "1. Open TagTinker app");
+            canvas_draw_str_aligned(
+                canvas, 64, 29, AlignCenter, AlignTop, "2. Connect to Flipper");
+            canvas_draw_str_aligned(
+                canvas, 64, 39, AlignCenter, AlignTop, "3. Select & send image");
             canvas_draw_str_aligned(canvas, 64, 52, AlignCenter, AlignTop, model->status_text);
         }
         if(model->can_send_latest) elements_button_center(canvas, "Send");
     } else {
-        canvas_draw_str_aligned(canvas, 64, 10, AlignCenter, AlignTop, TAGTINKER_DISPLAY_NAME " v" TAGTINKER_VERSION);
+        canvas_draw_str_aligned(
+            canvas, 64, 10, AlignCenter, AlignTop, TAGTINKER_DISPLAY_NAME " v" TAGTINKER_VERSION);
         canvas_draw_str_aligned(canvas, 64, 24, AlignCenter, AlignTop, "Ported by I12BP8");
         canvas_draw_str_aligned(canvas, 64, 34, AlignCenter, AlignTop, "Research by furrtek");
         canvas_draw_str_aligned(canvas, 64, 44, AlignCenter, AlignTop, "NFC by 7h30th3r0n3");
@@ -555,9 +566,9 @@ void tagtinker_scene_about_on_enter(void* ctx) {
     model->total_rx = 0;
     memset(model->last_bytes, 0, 3);
     strncpy(model->status_text, "Init...", 31);
-    
+
     app->ble_sync_ready_target = -1; // RESET STATE
-    
+
     view_commit_model(app->about_view, true);
 
     /* Delay BLE start until GUI settles */
@@ -577,7 +588,8 @@ bool tagtinker_scene_about_on_event(void* ctx, SceneManagerEvent event) {
                 app->draw_x = 0;
                 app->draw_y = 0;
                 app->color_clear = false;
-                tagtinker_prepare_bmp_tx(app, target->plid, image.image_path, image.width, image.height, image.page);
+                tagtinker_prepare_bmp_tx(
+                    app, target->plid, image.image_path, image.width, image.height, image.page);
                 app->tx_spam = false;
                 app->ble_sync_ready_target = -1;
                 /* Tear down BLE before IR transmission to prevent timing interference */
@@ -592,7 +604,7 @@ bool tagtinker_scene_about_on_event(void* ctx, SceneManagerEvent event) {
     if(event.type == SceneManagerEventTypeTick) {
         AboutViewModel* model = view_get_model(app->about_view);
         model->tick++;
-        
+
         /* Delayed start: Wait until 5th tick (250ms) */
         if(app->ble_sync_start_pending && model->tick >= 5) {
             app->ble_sync_start_pending = false;
@@ -605,29 +617,29 @@ bool tagtinker_scene_about_on_event(void* ctx, SceneManagerEvent event) {
                  * in case connection fired before bt_status_cb was set up */
                 ble_configure_serial(app);
             }
-            
+
             if(app->ble_rx_pending_ready) {
                 char safe_line[1024];
                 strncpy(safe_line, app->ble_rx_pending_line, 1023);
                 safe_line[1023] = '\0';
                 app->ble_rx_pending_line[0] = '\0';
                 app->ble_rx_pending_ready = false;
-                
+
                 /* Process the line FIRST (SD card write + send ACK) */
                 sync_apply_line(app, safe_line);
-                
+
                 /* THEN tell BLE stack we're ready for next packet.
                  * Order matters: phone waits for ACK before sending next chunk,
                  * so notify_buffer_is_empty here is just belt-and-suspenders. */
                 if(app->ble_serial) ble_profile_serial_notify_buffer_is_empty(app->ble_serial);
             }
-            
+
             model->total_rx = app->ble_total_rx;
             memcpy(model->last_bytes, app->ble_last_bytes, 3);
             model->can_send_latest = (app->ble_sync_ready_target >= 0);
             strncpy(model->status_text, app->ble_status_text, 31);
         }
-        
+
         view_commit_model(app->about_view, true);
         return true;
     }

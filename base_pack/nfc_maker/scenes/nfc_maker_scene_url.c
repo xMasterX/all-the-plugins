@@ -16,10 +16,7 @@ void nfc_maker_scene_url_on_enter(void* context) {
 
     text_input_set_header_text(text_input, "Enter Plain URL:");
 
-    strlcpy(
-        app->big_buf,
-        "https://flipperzero.one",
-        sizeof(app->big_buf));
+    strlcpy(app->big_buf, "https://flipperzero.one", sizeof(app->big_buf));
 
     text_input_set_result_callback(
         text_input,

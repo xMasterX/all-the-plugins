@@ -32,47 +32,47 @@
 
 /** Enum for all possible views in the NFC Comparator app */
 typedef enum {
-   NfcComparatorView_Submenu,
-   NfcComparatorView_FileBrowser,
-   NfcComparatorView_Popup,
-   NfcComparatorView_Widget,
-   NfcComparatorView_Loading,
-   NfcComparatorView_VariableItemList,
-   NfcComparatorView_Count
+    NfcComparatorView_Submenu,
+    NfcComparatorView_FileBrowser,
+    NfcComparatorView_Popup,
+    NfcComparatorView_Widget,
+    NfcComparatorView_Loading,
+    NfcComparatorView_VariableItemList,
+    NfcComparatorView_Count
 } NfcComparatorViews;
 
 /** File browser view and its output string */
 typedef struct {
-   FileBrowser* view;
-   FuriString* output;
-   FuriString* tmp_output;
+    FileBrowser* view;
+    FuriString* output;
+    FuriString* tmp_output;
 } NfcComparatorFileBrowserView;
 
 /** All views used by the NFC Comparator app */
 typedef struct {
-   Submenu* submenu;
-   NfcComparatorFileBrowserView file_browser;
-   Popup* popup;
-   Widget* widget;
-   Loading* loading;
-   VariableItemList* variable_item_list;
+    Submenu* submenu;
+    NfcComparatorFileBrowserView file_browser;
+    Popup* popup;
+    Widget* widget;
+    Loading* loading;
+    VariableItemList* variable_item_list;
 } NfcComparatorView;
 
 /** All worker instances used by the NFC Comparator app */
 typedef struct {
-   NfcComparatorFinderWorker* finder_worker;
-   NfcComparatorFinderWorkerSettings finder_settings;
-   NfcComparatorReaderWorker* reader_worker;
-   NfcComparatorCompareChecks* compare_checks;
+    NfcComparatorFinderWorker* finder_worker;
+    NfcComparatorFinderWorkerSettings finder_settings;
+    NfcComparatorReaderWorker* reader_worker;
+    NfcComparatorCompareChecks* compare_checks;
 } NfcComparatorWorkers;
 
 /** Main app struct holding all state */
 typedef struct {
-   SceneManager* scene_manager;
-   ViewDispatcher* view_dispatcher;
-   NotificationApp* notification_app;
-   NfcComparatorView views;
-   NfcComparatorWorkers workers;
+    SceneManager* scene_manager;
+    ViewDispatcher* view_dispatcher;
+    NotificationApp* notification_app;
+    NfcComparatorView views;
+    NfcComparatorWorkers workers;
 } NfcComparator;
 
 // #endif // NFC_COMPARATOR_H

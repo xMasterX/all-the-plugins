@@ -24,8 +24,7 @@
 LIST_DEF(EntityList, Entity*, M_POD_OPLIST);
 #define M_OPL_EntityList_t() LIST_OPLIST(EntityList)
 
-typedef struct
-{
+typedef struct {
     Entity* pause_menu;
     Entity* player;
     Entity* target;
@@ -35,10 +34,8 @@ typedef struct
 
 } GameLevelContext;
 
-void
-pause_game(Level* level);
+void pause_game(Level* level);
 
-void
-resume_game(Level* level);
+void resume_game(Level* level);
 
 extern const LevelBehaviour level_game;

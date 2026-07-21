@@ -1130,14 +1130,14 @@ const SubGhzProtocol kia_protocol_v0 = {
     .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_FM |
             SubGhzProtocolFlag_Decodable | SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save |
             SubGhzProtocolFlag_Send,
-    #if PROTOPIRATE_WITH_DECODER
+#if PROTOPIRATE_WITH_DECODER
     .decoder = &subghz_protocol_kia_decoder,
-    #else
+#else
     .decoder = NULL,
-    #endif
-    #if PROTOPIRATE_WITH_ENCODER
+#endif
+#if PROTOPIRATE_WITH_ENCODER
     .encoder = &subghz_protocol_kia_encoder,
-    #else
+#else
     .encoder = NULL,
-    #endif
+#endif
 };

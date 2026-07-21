@@ -28,8 +28,8 @@ void mfp_scene_dict_select_on_enter(void* ctx) {
         DICT_EXTENSION,
         MFP_APP_FOLDER,
         false, /* skip_assets */
-        true,  /* hide_dot_files */
-        NULL,  /* file_icon */
+        true, /* hide_dot_files */
+        NULL, /* file_icon */
         false); /* hide_ext */
 
     file_browser_set_callback(app->file_browser, dict_select_cb, app);
@@ -40,8 +40,7 @@ void mfp_scene_dict_select_on_enter(void* ctx) {
 
 bool mfp_scene_dict_select_on_event(void* ctx, SceneManagerEvent event) {
     MfpApp* app = ctx;
-    if(event.type == SceneManagerEventTypeCustom &&
-       event.event == DictSelectEventSelected) {
+    if(event.type == SceneManagerEventTypeCustom && event.event == DictSelectEventSelected) {
         scene_manager_next_scene(app->scene_manager, MfpSceneReadAll);
         return true;
     }

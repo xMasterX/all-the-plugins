@@ -5,7 +5,7 @@
 #include <furi_hal_bus.h>
 #include <stm32wbxx_ll_tim.h>
 
-#define FURI_HAL_CLOCK_TIMER TIM2
+#define FURI_HAL_CLOCK_TIMER     TIM2
 #define FURI_HAL_CLOCK_TIMER_BUS FuriHalBusTIM2
 #define FURI_HAL_CLOCK_TIMER_IRQ FuriHalInterruptIdTIM2
 

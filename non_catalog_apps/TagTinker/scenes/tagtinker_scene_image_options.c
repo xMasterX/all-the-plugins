@@ -36,8 +36,7 @@ void tagtinker_scene_image_options_on_enter(void* ctx) {
 
     variable_item_list_reset(list);
 
-    VariableItem* item =
-        variable_item_list_add(list, "Page", 8, image_option_page_changed, app);
+    VariableItem* item = variable_item_list_add(list, "Page", 8, image_option_page_changed, app);
     variable_item_set_current_value_index(item, job->page);
     {
         char buf[4];

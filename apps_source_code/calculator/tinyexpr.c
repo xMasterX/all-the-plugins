@@ -65,7 +65,9 @@ enum {
     TOK_INFIX
 };
 
-enum { TE_CONSTANT = 1 };
+enum {
+    TE_CONSTANT = 1
+};
 
 typedef struct state {
     const char* start;
@@ -82,12 +84,12 @@ typedef struct state {
     int lookup_len;
 } state;
 
-#define TYPE_MASK(TYPE) ((TYPE)&0x0000001F)
+#define TYPE_MASK(TYPE) ((TYPE) & 0x0000001F)
 
-#define IS_PURE(TYPE) (((TYPE)&TE_FLAG_PURE) != 0)
-#define IS_FUNCTION(TYPE) (((TYPE)&TE_FUNCTION0) != 0)
-#define IS_CLOSURE(TYPE) (((TYPE)&TE_CLOSURE0) != 0)
-#define ARITY(TYPE) (((TYPE) & (TE_FUNCTION0 | TE_CLOSURE0)) ? ((TYPE)&0x00000007) : 0)
+#define IS_PURE(TYPE)       (((TYPE) & TE_FLAG_PURE) != 0)
+#define IS_FUNCTION(TYPE)   (((TYPE) & TE_FUNCTION0) != 0)
+#define IS_CLOSURE(TYPE)    (((TYPE) & TE_CLOSURE0) != 0)
+#define ARITY(TYPE)         (((TYPE) & (TE_FUNCTION0 | TE_CLOSURE0)) ? ((TYPE) & 0x00000007) : 0)
 #define NEW_EXPR(type, ...) new_expr((type), (const te_expr*[]){__VA_ARGS__})
 
 static te_expr* new_expr(const int type, const te_expr* parameters[]) {
@@ -596,7 +598,7 @@ static te_expr* list(state* s) {
 }
 
 #define TE_FUN(...) ((double (*)(__VA_ARGS__))n->function)
-#define M(e) te_eval(n->parameters[e])
+#define M(e)        te_eval(n->parameters[e])
 
 double te_eval(const te_expr* n) {
     if(!n) return NAN;

@@ -87,7 +87,8 @@ uint8_t dcf77_debug_gpio_baseband_default_pin(void) {
     return 7U;
 }
 
-uint8_t dcf77_debug_gpio_baseband_step(uint8_t current_pin, int8_t direction, uint8_t reserved_pin) {
+uint8_t
+    dcf77_debug_gpio_baseband_step(uint8_t current_pin, int8_t direction, uint8_t reserved_pin) {
     const size_t count = dcf77_debug_gpio_baseband_pin_count();
     size_t index = dcf77_debug_gpio_baseband_pin_index(current_pin);
 
@@ -256,8 +257,5 @@ void dcf77_debug_format_pin_text(
 
 void dcf77_debug_format_gpio_rf_duty_text(char* buffer, size_t buffer_size, uint8_t duty_cycle) {
     snprintf(
-        buffer,
-        buffer_size,
-        "%u%%",
-        (unsigned int)dcf77_debug_gpio_rf_duty_normalize(duty_cycle));
+        buffer, buffer_size, "%u%%", (unsigned int)dcf77_debug_gpio_rf_duty_normalize(duty_cycle));
 }

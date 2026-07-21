@@ -21,8 +21,7 @@
 
 typedef struct Sprite Sprite;
 
-typedef struct
-{
+typedef struct {
     Sprite* logo_sprite;
 } AboutContext;
 

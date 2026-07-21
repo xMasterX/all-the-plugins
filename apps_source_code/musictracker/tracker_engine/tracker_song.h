@@ -14,8 +14,8 @@
  */
 typedef uint16_t Row;
 
-#define ROW_NOTE_MASK 0x3F
-#define ROW_EFFECT_MASK 0x0F
+#define ROW_NOTE_MASK        0x3F
+#define ROW_EFFECT_MASK      0x0F
 #define ROW_EFFECT_DATA_MASK 0x3F
 
 typedef enum {
@@ -73,23 +73,23 @@ typedef enum {
     EffectSetSpeed = 0x0F,
 } Effect;
 
-#define EFFECT_DATA_2(x, y) ((x) | ((y) << 3))
-#define EFFECT_DATA_GET_X(data) ((data)&0x07)
+#define EFFECT_DATA_2(x, y)     ((x) | ((y) << 3))
+#define EFFECT_DATA_GET_X(data) ((data) & 0x07)
 #define EFFECT_DATA_GET_Y(data) (((data) >> 3) & 0x07)
-#define EFFECT_DATA_NONE 0
-#define EFFECT_DATA_1_MAX 0x3F
-#define EFFECT_DATA_2_MAX 0x07
+#define EFFECT_DATA_NONE        0
+#define EFFECT_DATA_1_MAX       0x3F
+#define EFFECT_DATA_2_MAX       0x07
 
 #define FREQUENCY_UNSET -1.0f
 
-#define PWM_MIN 0.01f
-#define PWM_MAX 0.5f
+#define PWM_MIN     0.01f
+#define PWM_MAX     0.5f
 #define PWM_DEFAULT PWM_MAX
 
 #define PATTERN_SIZE 64
 
 #define ROW_MAKE(note, effect, data) \
-    ((Row)(((note)&0x3F) | (((effect)&0xF) << 6) | (((data)&0x3F) << 10)))
+    ((Row)(((note) & 0x3F) | (((effect) & 0xF) << 6) | (((data) & 0x3F) << 10)))
 
 typedef struct {
     Row rows[PATTERN_SIZE];

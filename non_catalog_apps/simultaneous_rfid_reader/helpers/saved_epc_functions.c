@@ -18,16 +18,13 @@ void update_dictionary_keys(void* context) {
     // Open the saved epcs file and extract the tag name and create the submenu items
     if(flipper_format_file_open_existing(App->EpcFile, APP_DATA_PATH("Saved_EPCs.txt"))) {
         for(uint32_t i = 0; i < TotalTags; i++) {
-            
             FuriString* TempStr = furi_string_alloc();
             FuriString* TempTag = furi_string_alloc();
             furi_string_printf(TempStr, "Tag%ld", i + 1);
-            
-            if(!flipper_format_read_string(
-                   App->EpcFile, furi_string_get_cstr(TempStr), TempTag)) {
+
+            if(!flipper_format_read_string(App->EpcFile, furi_string_get_cstr(TempStr), TempTag)) {
                 FURI_LOG_D(TAG, "Could not read tag %ld data", i + 1);
             } else {
-                
                 // Extract the name of the saved UHF Tag
                 const char* InputString = furi_string_get_cstr(TempTag);
                 char* ExtractedName = extract_name(InputString);
@@ -38,9 +35,9 @@ void update_dictionary_keys(void* context) {
                         ExtractedName,
                         (i + 1),
                         uhf_reader_submenu_saved_callback,
-                        App); 
+                        App);
                     free(ExtractedName);
-                } 
+                }
             }
             furi_string_free(TempStr);
             furi_string_free(TempTag);
@@ -66,7 +63,6 @@ void delete_and_update_entry(void* context, uint32_t KeyToDelete) {
 
     // Open the saved epcs file
     if(flipper_format_file_open_existing(App->EpcFile, APP_DATA_PATH("Saved_EPCs.txt"))) {
-        
         // Update subsequent keys
         for(uint32_t i = 1; i <= TotalTags; i++) {
             FuriString* TempStrOld = furi_string_alloc();
@@ -77,7 +73,7 @@ void delete_and_update_entry(void* context, uint32_t KeyToDelete) {
             uint32_t NewKey = (i > KeyToDelete) ? i - 1 : i;
 
             // Skip the deleted key
-            if(i != KeyToDelete) { 
+            if(i != KeyToDelete) {
                 furi_string_printf(TempStrNew, "Tag%ld", NewKey);
                 FuriString* TempTag = furi_string_alloc();
                 if(!flipper_format_read_string(
@@ -104,10 +100,9 @@ void delete_and_update_entry(void* context, uint32_t KeyToDelete) {
 
         furi_string_printf(EpcToDelete, "Tag%ld", App->NumberOfSavedTags);
         if(!flipper_format_delete_key(App->EpcFile, furi_string_get_cstr(EpcToDelete))) {
-            FURI_LOG_D(
-                TAG, "Could not delete saved tag with index %ld", App->NumberOfSavedTags);
+            FURI_LOG_D(TAG, "Could not delete saved tag with index %ld", App->NumberOfSavedTags);
         }
-        
+
         // Update the total number of saved tags
         App->NumberOfSavedTags--;
         flipper_format_file_close(App->EpcFile);
@@ -129,7 +124,6 @@ void delete_and_update_entry(void* context, uint32_t KeyToDelete) {
     furi_string_free(NewNumEpcs);
 }
 
-
 /**
  * @brief      Function to convert a hex character to its integer value
  * @details    This function converts a hex character to its integer value in ASCII
@@ -137,11 +131,11 @@ void delete_and_update_entry(void* context, uint32_t KeyToDelete) {
  * @return     the int - the converted integer       
 */
 uint8_t hex_char_to_int(char c) {
-    if (c >= '0' && c <= '9') {
+    if(c >= '0' && c <= '9') {
         return c - '0';
-    } else if (c >= 'A' && c <= 'F') {
+    } else if(c >= 'A' && c <= 'F') {
         return c - 'A' + 10;
-    } else if (c >= 'a' && c <= 'f') {
+    } else if(c >= 'a' && c <= 'f') {
         return c - 'a' + 10;
     }
     return 0;
@@ -156,15 +150,16 @@ uint8_t hex_char_to_int(char c) {
 */
 void hex_string_to_bytes(const char* hex_string, uint8_t* byte_array, size_t* byte_array_len) {
     size_t hex_len = strlen(hex_string);
-    if (hex_len % 2 != 0) {
+    if(hex_len % 2 != 0) {
         // Handle error: hex string length must be even
         *byte_array_len = 0;
         return;
     }
-    
+
     *byte_array_len = hex_len / 2;
-    for (size_t i = 0; i < *byte_array_len; i++) {
-        byte_array[i] = (hex_char_to_int(hex_string[2 * i]) << 4) | hex_char_to_int(hex_string[2 * i + 1]);
+    for(size_t i = 0; i < *byte_array_len; i++) {
+        byte_array[i] = (hex_char_to_int(hex_string[2 * i]) << 4) |
+                        hex_char_to_int(hex_string[2 * i + 1]);
     }
 }
 
@@ -177,14 +172,14 @@ void hex_string_to_bytes(const char* hex_string, uint8_t* byte_array, size_t* by
 */
 void hex_string_to_uint16(const char* hex_string, uint16_t* uint16_array, size_t* uint16_array_len) {
     size_t hex_len = strlen(hex_string);
-    if (hex_len % 4 != 0) {
+    if(hex_len % 4 != 0) {
         // Handle error: hex string length must be a multiple of 4 for uint16_t conversion
         *uint16_array_len = 0;
         return;
     }
-    
+
     *uint16_array_len = hex_len / 4;
-    for (size_t i = 0; i < *uint16_array_len; i++) {
+    for(size_t i = 0; i < *uint16_array_len; i++) {
         uint16_array[i] = (hex_char_to_int(hex_string[4 * i]) << 12) |
                           (hex_char_to_int(hex_string[4 * i + 1]) << 8) |
                           (hex_char_to_int(hex_string[4 * i + 2]) << 4) |
@@ -201,14 +196,14 @@ void hex_string_to_uint16(const char* hex_string, uint16_t* uint16_array, size_t
 char* uint16_to_hex_string(uint16_t value) {
     // Allocate memory for the hex string (4 characters for hex + 1 for null terminator)
     char* hex_string = (char*)malloc(5 * sizeof(char));
-    if (hex_string == NULL) {
+    if(hex_string == NULL) {
         // Handle memory allocation failure
         return NULL;
     }
-    
+
     // Convert the value to hex and store it in the string
     snprintf(hex_string, 5, "%04X", value);
-    
+
     return hex_string;
 }
 
@@ -222,7 +217,7 @@ char* uint16_to_hex_string(uint16_t value) {
 char* combineArrays(const char* array1, const char* array2) {
     // Allocate memory for the new array (size 4 + 4 = 8)
     char* combinedArray = (char*)malloc(16 * sizeof(char));
-    if (combinedArray == NULL) {
+    if(combinedArray == NULL) {
         return NULL;
     }
 
@@ -243,12 +238,12 @@ char* combineArrays(const char* array1, const char* array2) {
  * @return     uint32 the 32 bit int     
 */
 uint32_t bytes_to_uint32(uint8_t* bytes, size_t length) {
-    if (length > sizeof(uint32_t)) {
+    if(length > sizeof(uint32_t)) {
         return 0;
     }
 
     uint32_t result = 0;
-    for (size_t i = 0; i < length; i++) {
+    for(size_t i = 0; i < length; i++) {
         result = (result << 8) | bytes[i];
     }
 

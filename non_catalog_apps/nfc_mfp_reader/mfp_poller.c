@@ -10,15 +10,15 @@
 
 /* ---- helpers ---- */
 
-#define MFP_CMD_GET_VERSION      0x60
-#define MFP_CMD_AUTH1_PART1      0x70
-#define MFP_CMD_AUTH_NONFIRST    0x76
-#define MFP_CMD_AUTH1_PART2      0x72
-#define MFP_CMD_READ_ENC         0x31
-#define MFP_CMD_WRITE_ENC        0xA1
+#define MFP_CMD_GET_VERSION   0x60
+#define MFP_CMD_AUTH1_PART1   0x70
+#define MFP_CMD_AUTH_NONFIRST 0x76
+#define MFP_CMD_AUTH1_PART2   0x72
+#define MFP_CMD_READ_ENC      0x31
+#define MFP_CMD_WRITE_ENC     0xA1
 
-#define MFP_STATUS_OK            0x90
-#define MFP_STATUS_ADDITIONAL    0xAF
+#define MFP_STATUS_OK         0x90
+#define MFP_STATUS_ADDITIONAL 0xAF
 
 static MfpError iso4a_error_to_mfp(Iso14443_4aError e) {
     return (e == Iso14443_4aErrorNone) ? MfpOk : MfpErrorComm;
@@ -88,25 +88,25 @@ MfpError mfp_poller_read_version(
     if(err != MfpOk) return err;
     if(resp_len < 8 || resp[0] != MFP_STATUS_ADDITIONAL) return MfpErrorNotMfp;
 
-    out->hw_vendor  = resp[1];
-    out->hw_type    = resp[2];
+    out->hw_vendor = resp[1];
+    out->hw_type = resp[2];
     out->hw_subtype = resp[3];
-    out->hw_major   = resp[4];
-    out->hw_minor   = resp[5];
+    out->hw_major = resp[4];
+    out->hw_minor = resp[5];
     out->hw_storage = resp[6];
-    out->hw_proto   = resp[7];
+    out->hw_proto = resp[7];
 
     uint8_t cont[1] = {MFP_STATUS_ADDITIONAL};
     err = mfp_send(poller, cont, 1, resp, &resp_len, sizeof(resp));
     if(err != MfpOk || resp_len < 8 || resp[0] != MFP_STATUS_ADDITIONAL) return MfpErrorProtocol;
 
-    out->sw_vendor  = resp[1];
-    out->sw_type    = resp[2];
+    out->sw_vendor = resp[1];
+    out->sw_type = resp[2];
     out->sw_subtype = resp[3];
-    out->sw_major   = resp[4];
-    out->sw_minor   = resp[5];
+    out->sw_major = resp[4];
+    out->sw_minor = resp[5];
     out->sw_storage = resp[6];
-    out->sw_proto   = resp[7];
+    out->sw_proto = resp[7];
 
     err = mfp_send(poller, cont, 1, resp, &resp_len, sizeof(resp));
     if(err != MfpOk || resp_len < 2 || resp[0] != 0x00) return MfpErrorProtocol;
@@ -128,10 +128,7 @@ MfpError mfp_poller_read_version(
 
 /* ---- SL probe ---- */
 
-MfpError mfp_poller_probe_sl(
-    void* iso4a_poller,
-    uint8_t sak,
-    MfpSecurityLevel* out_sl) {
+MfpError mfp_poller_probe_sl(void* iso4a_poller, uint8_t sak, MfpSecurityLevel* out_sl) {
     /* SAK fast path: Classic-compatible SAKs mean SL1 */
     if(sak == 0x08 || sak == 0x18) {
         *out_sl = MfpSL1;
@@ -193,7 +190,7 @@ static MfpError mfp_poller_auth_common(
     cmd1[3] = 0x00;
 
     uint8_t resp1[32];
-    size_t  resp1_len = 0;
+    size_t resp1_len = 0;
     MfpError err = mfp_send(poller, cmd1, sizeof(cmd1), resp1, &resp1_len, sizeof(resp1));
     if(err != MfpOk) return err;
     if(resp1_len < 17 || resp1[0] != MFP_STATUS_OK) return MfpErrorProtocol;
@@ -220,8 +217,8 @@ static MfpError mfp_poller_auth_common(
     memcpy(&rnd_a_rrot[1], rnd_a, MFP_AES_BLOCK_SIZE - 1);
 
     uint8_t plain[32];
-    memcpy(&plain[0],  rnd_a_rrot, MFP_AES_BLOCK_SIZE);
-    memcpy(&plain[16], rnd_b_rot,  MFP_AES_BLOCK_SIZE);
+    memcpy(&plain[0], rnd_a_rrot, MFP_AES_BLOCK_SIZE);
+    memcpy(&plain[16], rnd_b_rot, MFP_AES_BLOCK_SIZE);
 
     uint8_t zero_iv[MFP_AES_BLOCK_SIZE];
     memset(zero_iv, 0, MFP_AES_BLOCK_SIZE);
@@ -235,7 +232,7 @@ static MfpError mfp_poller_auth_common(
     memcpy(&cmd2[1], token, 32);
 
     uint8_t resp2[64];
-    size_t  resp2_len = 0;
+    size_t resp2_len = 0;
     err = mfp_send(poller, cmd2, sizeof(cmd2), resp2, &resp2_len, sizeof(resp2));
     if(err != MfpOk) return err;
     if(resp2_len < 33 || resp2[0] != MFP_STATUS_OK) return MfpErrorAuth;
@@ -283,8 +280,13 @@ MfpError mfp_poller_auth(
     const MfpKey key,
     MfpSession* session) {
     return mfp_poller_auth_common(
-        iso4a_poller, sector, key_type, key, session,
-        MFP_CMD_AUTH1_PART1, /* preserve_ti = */ false);
+        iso4a_poller,
+        sector,
+        key_type,
+        key,
+        session,
+        MFP_CMD_AUTH1_PART1,
+        /* preserve_ti = */ false);
 }
 
 MfpError mfp_poller_auth_nonfirst(
@@ -294,8 +296,13 @@ MfpError mfp_poller_auth_nonfirst(
     const MfpKey key,
     MfpSession* session) {
     return mfp_poller_auth_common(
-        iso4a_poller, sector, key_type, key, session,
-        MFP_CMD_AUTH_NONFIRST, /* preserve_ti = */ true);
+        iso4a_poller,
+        sector,
+        key_type,
+        key,
+        session,
+        MFP_CMD_AUTH_NONFIRST,
+        /* preserve_ti = */ true);
 }
 
 /* ---- Encrypted block read ---- */
@@ -310,8 +317,13 @@ MfpError mfp_poller_read_block(
     uint8_t cmd_payload[3] = {block_num, 0x00, 0x01};
     uint8_t mac_t[MFP_MAC_SIZE];
     mfp_crypto_calculate_mac(
-        session->k_mac, MFP_CMD_READ_ENC, session->r_ctr, session->ti,
-        cmd_payload, sizeof(cmd_payload), mac_t);
+        session->k_mac,
+        MFP_CMD_READ_ENC,
+        session->r_ctr,
+        session->ti,
+        cmd_payload,
+        sizeof(cmd_payload),
+        mac_t);
 
     uint8_t cmd[12];
     cmd[0] = MFP_CMD_READ_ENC;
@@ -321,7 +333,7 @@ MfpError mfp_poller_read_block(
     memcpy(&cmd[4], mac_t, MFP_MAC_SIZE);
 
     uint8_t resp[32];
-    size_t  resp_len = 0;
+    size_t resp_len = 0;
     MfpError err = mfp_send(poller, cmd, sizeof(cmd), resp, &resp_len, sizeof(resp));
     if(err != MfpOk) return err;
     /* Response: status(1) + enc_block(16) + mac(8) [+ optional 2 pad bytes] */
@@ -335,8 +347,13 @@ MfpError mfp_poller_read_block(
 
     uint8_t expected_mac[MFP_MAC_SIZE];
     mfp_crypto_calculate_mac(
-        session->k_mac, MFP_STATUS_OK, session->r_ctr, session->ti,
-        mac_resp_input, sizeof(mac_resp_input), expected_mac);
+        session->k_mac,
+        MFP_STATUS_OK,
+        session->r_ctr,
+        session->ti,
+        mac_resp_input,
+        sizeof(mac_resp_input),
+        expected_mac);
 
     if(memcmp(&resp[17], expected_mac, MFP_MAC_SIZE) != 0) return MfpErrorMac;
 
@@ -372,8 +389,13 @@ MfpError mfp_poller_write_block(
 
     uint8_t mac_t[MFP_MAC_SIZE];
     mfp_crypto_calculate_mac(
-        session->k_mac, MFP_CMD_WRITE_ENC, session->w_ctr, session->ti,
-        mac_input, sizeof(mac_input), mac_t);
+        session->k_mac,
+        MFP_CMD_WRITE_ENC,
+        session->w_ctr,
+        session->ti,
+        mac_input,
+        sizeof(mac_input),
+        mac_t);
 
     /* Command: 0xA1 + block_num(1) + 0x00(1 header) + enc_data(16) + mac(8) = 27 bytes */
     uint8_t cmd[1 + 2 + MFP_BLOCK_SIZE + MFP_MAC_SIZE];
@@ -384,7 +406,7 @@ MfpError mfp_poller_write_block(
     memcpy(&cmd[3 + MFP_BLOCK_SIZE], mac_t, MFP_MAC_SIZE);
 
     uint8_t resp[16];
-    size_t  resp_len = 0;
+    size_t resp_len = 0;
     MfpError err = mfp_send(poller, cmd, sizeof(cmd), resp, &resp_len, sizeof(resp));
     if(err != MfpOk) return err;
 
@@ -396,8 +418,7 @@ MfpError mfp_poller_write_block(
     /* Verify MAC_r = CMAC8(Kmac, 0x90 || w_ctr || TI) — no data */
     uint8_t expected_mac[MFP_MAC_SIZE];
     mfp_crypto_calculate_mac(
-        session->k_mac, MFP_STATUS_OK, session->w_ctr, session->ti,
-        NULL, 0, expected_mac);
+        session->k_mac, MFP_STATUS_OK, session->w_ctr, session->ti, NULL, 0, expected_mac);
 
     if(memcmp(&resp[1], expected_mac, MFP_MAC_SIZE) != 0) return MfpErrorMac;
 

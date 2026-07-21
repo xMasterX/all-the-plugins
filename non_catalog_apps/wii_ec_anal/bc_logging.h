@@ -59,8 +59,8 @@
 // Logging helper macros
 //
 #define ERROR(fmt, ...) FURI_LOG_E(appName, fmt __VA_OPT__(, ) __VA_ARGS__)
-#define WARN(fmt, ...) FURI_LOG_W(appName, fmt __VA_OPT__(, ) __VA_ARGS__)
-#define INFO(fmt, ...) FURI_LOG_I(appName, fmt __VA_OPT__(, ) __VA_ARGS__)
+#define WARN(fmt, ...)  FURI_LOG_W(appName, fmt __VA_OPT__(, ) __VA_ARGS__)
+#define INFO(fmt, ...)  FURI_LOG_I(appName, fmt __VA_OPT__(, ) __VA_ARGS__)
 #define DEBUG(fmt, ...) FURI_LOG_D(appName, fmt __VA_OPT__(, ) __VA_ARGS__)
 #define TRACE(fmt, ...) FURI_LOG_T(appName, fmt __VA_OPT__(, ) __VA_ARGS__)
 

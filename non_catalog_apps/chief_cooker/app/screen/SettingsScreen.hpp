@@ -30,7 +30,11 @@ private:
     uint32_t categoryItemIndex;
 
 public:
-    SettingsScreen(AppConfig* config, PagerReceiver* receiver, SubGhzModule* subghz, bool updateUserCategory) {
+    SettingsScreen(
+        AppConfig* config,
+        PagerReceiver* receiver,
+        SubGhzModule* subghz,
+        bool updateUserCategory) {
         this->config = config;
         this->receiver = receiver;
         this->subghz = subghz;
@@ -41,8 +45,8 @@ public:
         varItemList->SetEnterPressHandler(HANDLER_1ARG(&SettingsScreen::enterPressHandler));
 
         categoryItemIndex = varItemList->AddItem(
-            currentCategoryItem = new UiVariableItem("Category", HANDLER_1ARG(&SettingsScreen::categoryChangedHandler))
-        );
+            currentCategoryItem = new UiVariableItem(
+                "Category", HANDLER_1ARG(&SettingsScreen::categoryChangedHandler)));
 
         varItemList->AddItem(
             frequencyItem = new UiVariableItem(
@@ -50,12 +54,12 @@ public:
                 FrequencyManager::GetInstance()->GetFrequencyIndex(config->Frequency),
                 FrequencyManager::GetInstance()->GetFrequencyCount(),
                 [this](uint8_t val) {
-                    uint32_t freq = this->config->Frequency = FrequencyManager::GetInstance()->GetFrequency(val);
+                    uint32_t freq = this->config->Frequency =
+                        FrequencyManager::GetInstance()->GetFrequency(val);
                     this->subghz->SetReceiveFrequency(this->config->Frequency);
-                    return frequencyStr.format("%lu.%02lu", freq / 1000000, (freq % 1000000) / 10000);
-                }
-            )
-        );
+                    return frequencyStr.format(
+                        "%lu.%02lu", freq / 1000000, (freq % 1000000) / 10000);
+                }));
 
         varItemList->AddItem(
             maxPagerItem = new UiVariableItem(
@@ -65,9 +69,7 @@ public:
                 [this](uint8_t val) {
                     this->config->MaxPagerForBatchOrDetection = val + 1;
                     return maxPagerStr.fromInt(this->config->MaxPagerForBatchOrDetection);
-                }
-            )
-        );
+                }));
 
         varItemList->AddItem(
             signalRepeatItem = new UiVariableItem(
@@ -77,9 +79,7 @@ public:
                 [this](uint8_t val) {
                     this->config->SignalRepeats = val + 1;
                     return signalRepeatStr.fromInt(this->config->SignalRepeats);
-                }
-            )
-        );
+                }));
 
         varItemList->AddItem(
             ignoreSavedItem = new UiVariableItem(
@@ -89,21 +89,14 @@ public:
                 [this](uint8_t val) {
                     this->config->SavedStrategy = static_cast<enum SavedStationStrategy>(val);
                     return savedStationsStrategy(this->config->SavedStrategy);
-                }
-            )
-        );
+                }));
 
         varItemList->AddItem(
             autosaveFoundItem = new UiVariableItem(
-                "Autosave found signals",
-                config->AutosaveFoundSignals,
-                2,
-                [this](uint8_t val) {
+                "Autosave found signals", config->AutosaveFoundSignals, 2, [this](uint8_t val) {
                     this->config->AutosaveFoundSignals = val;
                     return boolOption(val);
-                }
-            )
-        );
+                }));
     }
 
     UiView* GetView() {
@@ -116,8 +109,8 @@ private:
             return;
         }
         UiManager::GetInstance()->PushView(
-            (new SelectCategoryScreen(false, User, HANDLER_2ARG(&SettingsScreen::categorySelected)))->GetView()
-        );
+            (new SelectCategoryScreen(false, User, HANDLER_2ARG(&SettingsScreen::categorySelected)))
+                ->GetView());
     }
 
     void categorySelected(CategoryType, const char* category) {

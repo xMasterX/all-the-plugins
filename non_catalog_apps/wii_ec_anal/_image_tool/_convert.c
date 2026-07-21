@@ -47,7 +47,8 @@ int main(int argc, char* argv[]) {
     }
 
     // Find white value
-    for(x = 1; x < img.bpp; x++) white = (white << 8) | 0xFF;
+    for(x = 1; x < img.bpp; x++)
+        white = (white << 8) | 0xFF;
 
     // build bit pattern
     // create the comment as we go

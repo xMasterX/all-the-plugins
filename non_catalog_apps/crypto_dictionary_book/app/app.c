@@ -12,16 +12,13 @@ App* app_alloc() {
     }
     app->scene_manager = scene_manager_alloc(&scene_manager_handlers, app);
     app->view_dispatcher = view_dispatcher_alloc();
-    
+
     view_dispatcher_set_event_callback_context(app->view_dispatcher, app);
-    view_dispatcher_set_navigation_event_callback(
-        app->view_dispatcher, back_event_callback);
+    view_dispatcher_set_navigation_event_callback(app->view_dispatcher, back_event_callback);
     app->submenu = submenu_alloc();
-    view_dispatcher_add_view(
-        app->view_dispatcher, SubmenuView, submenu_get_view(app->submenu));
+    view_dispatcher_add_view(app->view_dispatcher, SubmenuView, submenu_get_view(app->submenu));
     app->widget = widget_alloc();
-    view_dispatcher_add_view(
-        app->view_dispatcher, WidgetView, widget_get_view(app->widget));
+    view_dispatcher_add_view(app->view_dispatcher, WidgetView, widget_get_view(app->widget));
     return app;
 }
 

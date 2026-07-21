@@ -24,25 +24,25 @@
  *   # Name: ...   sets the profile's display name
  */
 
-#include "fsd_state.h"  // FSDState, CANFRAME / MAX_LEN (via fsd_types.h)
+#include "fsd_state.h" // FSDState, CANFRAME / MAX_LEN (via fsd_types.h)
 #include <stdbool.h>
 #include <stdint.h>
 
 // One transmit step parsed from a profile line.
 typedef struct {
     uint32_t can_id;
-    uint8_t  data[MAX_LEN];
-    uint8_t  dlc;
-    uint16_t repeat;    // times to send (>= 1)
-    uint16_t delay_ms;  // delay between sends
+    uint8_t data[MAX_LEN];
+    uint8_t dlc;
+    uint16_t repeat; // times to send (>= 1)
+    uint16_t delay_ms; // delay between sends
 } FsdProfileStep;
 
 typedef enum {
-    FSD_PLINE_EMPTY = 0,  // blank line or plain comment — skip
-    FSD_PLINE_NAME,       // "# Name: ..." — name_out filled
-    FSD_PLINE_STEP,       // a frame to send — *step filled
-    FSD_PLINE_BLOCKED,    // parsed OK but a safety-denied id — *step filled, must NOT send
-    FSD_PLINE_ERROR,      // malformed line
+    FSD_PLINE_EMPTY = 0, // blank line or plain comment — skip
+    FSD_PLINE_NAME, // "# Name: ..." — name_out filled
+    FSD_PLINE_STEP, // a frame to send — *step filled
+    FSD_PLINE_BLOCKED, // parsed OK but a safety-denied id — *step filled, must NOT send
+    FSD_PLINE_ERROR, // malformed line
 } FsdProfileLineKind;
 
 // Safety denylist: ids whose semantics make them too dangerous to transmit from a
@@ -56,8 +56,8 @@ bool fsd_profile_id_blocked(uint32_t can_id);
 
 // Parse a single profile line. See the format above. name_out (may be NULL) is
 // filled only for FSD_PLINE_NAME.
-FsdProfileLineKind fsd_profile_parse_line(const char* line, FsdProfileStep* step,
-                                          char* name_out, int name_cap);
+FsdProfileLineKind
+    fsd_profile_parse_line(const char* line, FsdProfileStep* step, char* name_out, int name_cap);
 
 // Safety interlock: may a user test profile transmit *right now*?
 // Requires: not in Listen-Only, a DI_speed (0x257) frame has been seen, that

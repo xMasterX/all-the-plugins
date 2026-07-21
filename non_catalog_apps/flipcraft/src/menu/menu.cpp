@@ -21,7 +21,7 @@ namespace menu {
 
 namespace {
 
-constexpr const char* DATA_DIR = STORAGE_APP_DATA_PATH_PREFIX;     // "/data"
+constexpr const char* DATA_DIR = STORAGE_APP_DATA_PATH_PREFIX; // "/data"
 constexpr const char* ASSETS_DIR = STORAGE_APP_ASSETS_PATH_PREFIX; // "/assets"
 constexpr const char* ABOUT_PATH = APP_ASSETS_PATH("about.txt");
 
@@ -44,19 +44,28 @@ constexpr uint32_t IDX_GENERATE = 0xE000;
 constexpr uint32_t ACT_PLAY = 0, ACT_INFO = 1, ACT_RENAME = 2, ACT_DELETE = 3;
 
 constexpr uint8_t SIZE_CHUNKS[4] = {16, 32, 64, 128};
-static const char* const SIZE_LABELS[4] = {
-    "128 x 128", "256 x 256", "512 x 512", "1024 x 1024"};
+static const char* const SIZE_LABELS[4] = {"128 x 128", "256 x 256", "512 x 512", "1024 x 1024"};
 
 enum ViewId : uint32_t {
     VIEW_MAIN = 0,
-    VIEW_LIST,    // worlds / create / world actions / size
-    VIEW_TEXT,    // seed, world name or rename keyboard
-    VIEW_ABOUT,   // scrollable text: about.txt or world info
+    VIEW_LIST, // worlds / create / world actions / size
+    VIEW_TEXT, // seed, world name or rename keyboard
+    VIEW_ABOUT, // scrollable text: about.txt or world info
     VIEW_CONFIRM, // delete dialog
 };
 
-enum ListMode { LIST_WORLDS, LIST_CREATE, LIST_ACTIONS, LIST_SIZE };
-enum TextMode { TEXT_SEED, TEXT_GEN_NAME, TEXT_TPL_NAME, TEXT_RENAME };
+enum ListMode {
+    LIST_WORLDS,
+    LIST_CREATE,
+    LIST_ACTIONS,
+    LIST_SIZE
+};
+enum TextMode {
+    TEXT_SEED,
+    TEXT_GEN_NAME,
+    TEXT_TPL_NAME,
+    TEXT_RENAME
+};
 
 struct MenuApp {
     Gui* gui = nullptr;
@@ -82,7 +91,7 @@ struct MenuApp {
     char text_buf[NAME_LEN] = {0};
     char chosen_template[256] = {0};
     char sel_name[NAME_LEN] = {0}; // save selected in the Worlds list
-    char info_text[512] = {0};     // shared text box content (info / about)
+    char info_text[512] = {0}; // shared text box content (info / about)
 
     char saves[MAX_ITEMS][NAME_LEN] = {{0}};
     int saves_count = 0;
@@ -154,7 +163,8 @@ bool copy_file(Storage* storage, const char* src, const char* dst) {
 uint32_t parse_seed(const char* s) {
     size_t len = strlen(s);
     bool digits = len > 0 && len <= 10;
-    for(size_t i = 0; i < len && digits; i++) digits = s[i] >= '0' && s[i] <= '9';
+    for(size_t i = 0; i < len && digits; i++)
+        digits = s[i] >= '0' && s[i] <= '9';
     if(digits) {
         unsigned long long v = strtoull(s, nullptr, 10);
         if(v <= 0xFFFFFFFFull) return (uint32_t)v;
@@ -296,15 +306,18 @@ void open_info(MenuApp* app) {
             (long)((int32_t)u32(22) / 16),
             (long)((int32_t)u32(26) / 16));
     } else {
-        snprintf(app->info_text, sizeof(app->info_text), "%s\nNot a Flipcraft world", app->sel_name);
+        snprintf(
+            app->info_text, sizeof(app->info_text), "%s\nNot a Flipcraft world", app->sel_name);
     }
     open_text_box(app, true);
 }
 
 void main_callback(void* context, uint32_t index) {
     MenuApp* app = static_cast<MenuApp*>(context);
-    if(index == IDX_WORLDS) open_worlds(app);
-    else if(index == IDX_ABOUT) open_about(app);
+    if(index == IDX_WORLDS)
+        open_worlds(app);
+    else if(index == IDX_ABOUT)
+        open_about(app);
 }
 
 void build_result_path(MenuApp* app) {
@@ -374,14 +387,13 @@ void list_callback(void* context, uint32_t index) {
     case LIST_CREATE:
         if(index == IDX_GENERATE) {
             snprintf(
-                app->text_buf,
-                sizeof(app->text_buf),
-                "%lu",
-                (unsigned long)furi_hal_random_get());
+                app->text_buf, sizeof(app->text_buf), "%lu", (unsigned long)furi_hal_random_get());
             open_text(app, TEXT_SEED, "World seed", text_callback);
         } else if((int)index < app->templates_count) {
             join_path(
-                app->chosen_template, sizeof(app->chosen_template), ASSETS_DIR,
+                app->chosen_template,
+                sizeof(app->chosen_template),
+                ASSETS_DIR,
                 app->templates[index]);
             strip_ext(app->text_buf, sizeof(app->text_buf), app->templates[index]);
             open_text(app, TEXT_TPL_NAME, "World name", text_callback);
@@ -433,19 +445,24 @@ bool nav_callback(void* context) {
         view_dispatcher_stop(app->vd);
         break;
     case VIEW_LIST:
-        if(app->list_mode == LIST_WORLDS) open_main(app);
+        if(app->list_mode == LIST_WORLDS)
+            open_main(app);
         else if(app->list_mode == LIST_ACTIONS || app->list_mode == LIST_CREATE)
             open_worlds(app);
         else
             open_create(app); // size list backs out to Create
         break;
     case VIEW_ABOUT:
-        if(app->about_from_actions) open_actions(app);
-        else open_main(app);
+        if(app->about_from_actions)
+            open_actions(app);
+        else
+            open_main(app);
         break;
     default: // keyboards, delete dialog
-        if(app->list_mode == LIST_ACTIONS) open_actions(app);
-        else open_worlds(app);
+        if(app->list_mode == LIST_ACTIONS)
+            open_actions(app);
+        else
+            open_worlds(app);
         break;
     }
     return true;
@@ -524,9 +541,12 @@ static FlipcraftMenuAction
     if(out_chunks) *out_chunks = result.chunks;
     if(out_seed) *out_seed = result.seed;
     switch(result.action) {
-    case flipcraft::menu::Action::Launch: return FlipcraftMenuActionLaunch;
-    case flipcraft::menu::Action::Generate: return FlipcraftMenuActionGenerate;
-    default: return FlipcraftMenuActionQuit;
+    case flipcraft::menu::Action::Launch:
+        return FlipcraftMenuActionLaunch;
+    case flipcraft::menu::Action::Generate:
+        return FlipcraftMenuActionGenerate;
+    default:
+        return FlipcraftMenuActionQuit;
     }
 }
 

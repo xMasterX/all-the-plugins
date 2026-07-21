@@ -4,8 +4,8 @@
 #include <stddef.h>
 #include "../../types/automation_kb_layout.h"
 
-#define TOTP_DEFAULT_KB_LAYOUT (0)
-#define TOTP_KB_LAYOUT_DATA_LENGTH (36)
+#define TOTP_DEFAULT_KB_LAYOUT         (0)
+#define TOTP_KB_LAYOUT_DATA_LENGTH     (36)
 #define TOTP_KB_LAYOUT_NAME_MAX_LENGTH (10)
 
 #ifdef __cplusplus

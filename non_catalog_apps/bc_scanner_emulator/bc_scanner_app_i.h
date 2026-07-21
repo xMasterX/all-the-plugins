@@ -16,9 +16,9 @@
 #include "views/bc_scanner_view.h"
 #include "bc_scanner_icons.h"
 
-#define RECORD_STORAGE "storage"
+#define RECORD_STORAGE             "storage"
 #define BC_SCANNER_APP_PATH_FOLDER ANY_PATH("bcscanner")
-#define BC_SCANNER_APP_EXTENSION ".bc"
+#define BC_SCANNER_APP_EXTENSION   ".bc"
 
 typedef enum {
     BarCodeAppErrorNoFiles,

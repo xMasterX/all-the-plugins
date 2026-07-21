@@ -1,20 +1,17 @@
 #pragma once
 
-typedef struct LevelItem
-{
+typedef struct LevelItem {
     unsigned short worldBest;
     unsigned short playerBest;
 } LevelItem;
 
-typedef struct LevelsCollection
-{
+typedef struct LevelsCollection {
     char name[32];
     int levelsCount;
     LevelItem* levels;
 } LevelsCollection;
 
-typedef struct LevelsDatabase
-{
+typedef struct LevelsDatabase {
     int collectionsCount;
     LevelsCollection* collections;
 } LevelsDatabase;

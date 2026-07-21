@@ -38,11 +38,11 @@ typedef unsigned char byte;
 
 #include <notification/notification_messages.h>
 
-#define BF_INST_BUFFER_SIZE 2048
-#define BF_OUTPUT_SIZE 512
+#define BF_INST_BUFFER_SIZE   2048
+#define BF_OUTPUT_SIZE        512
 #define BF_STACK_INITIAL_SIZE 128
-#define BF_INPUT_BUFFER_SIZE 64
-#define BF_STACK_STEP_SIZE 32
+#define BF_INPUT_BUFFER_SIZE  64
+#define BF_STACK_STEP_SIZE    32
 
 enum brainfuckCustomEvent {
     // Reserve first 100 events for button types and indexes, starting from 0

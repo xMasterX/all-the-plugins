@@ -192,8 +192,7 @@ static bool myki_on_event(Metroflip* app, SceneManagerEvent event) {
             /* Read finished on the worker thread; build the card view here on
                the main/GUI thread. */
             metroflip_app_blink_stop(app);
-            const MfDesfireData* data =
-                nfc_device_get_data(app->nfc_device, NfcProtocolMfDesfire);
+            const MfDesfireData* data = nfc_device_get_data(app->nfc_device, NfcProtocolMfDesfire);
             if(!myki_display_card_view(data, app, false)) {
                 FURI_LOG_I(TAG, "Unknown card type");
                 Widget* widget = app->widget;
@@ -229,7 +228,6 @@ static bool myki_on_event(Metroflip* app, SceneManagerEvent event) {
 }
 
 static void myki_on_exit(Metroflip* app) {
-
     widget_reset(app->widget);
     popup_reset(app->popup);
     metroflip_app_blink_stop(app);

@@ -19,8 +19,7 @@ void metroflip_scene_parse_on_enter(void* context) {
     app->resolver = NULL;
 
     if(!app->card_type || (app->card_type[0] == '\0') ||
-       (strcmp(app->card_type, "unknown") == 0) ||
-       (strcmp(app->card_type, "Unknown Card") == 0) ||
+       (strcmp(app->card_type, "unknown") == 0) || (strcmp(app->card_type, "Unknown Card") == 0) ||
        (app->is_desfire && is_desfire_locked(app->card_type))) {
         FURI_LOG_I(TAG, "Bad card condition met - sending wrong card event");
         view_dispatcher_send_custom_event(app->view_dispatcher, MetroflipCustomEventWrongCard);
@@ -34,8 +33,7 @@ void metroflip_scene_parse_on_enter(void* context) {
                atr plugin would just re-read zero bytes and fire AtrComplete
                again, looping forever (issue #71 follow-up). */
             FURI_LOG_I(TAG, "ATR card without historical bytes - unknown");
-            view_dispatcher_send_custom_event(
-                app->view_dispatcher, MetroflipCustomEventWrongCard);
+            view_dispatcher_send_custom_event(app->view_dispatcher, MetroflipCustomEventWrongCard);
             return;
         }
         FURI_LOG_I(TAG, "Tag is either T-Mobilitat or T-Money");
@@ -46,8 +44,7 @@ void metroflip_scene_parse_on_enter(void* context) {
             FURI_LOG_I(TAG, "Card is T-Money");
             app->card_type = "tmoney";
         } else {
-            view_dispatcher_send_custom_event(
-                app->view_dispatcher, MetroflipCustomEventWrongCard);
+            view_dispatcher_send_custom_event(app->view_dispatcher, MetroflipCustomEventWrongCard);
             return;
         }
     }
@@ -120,8 +117,7 @@ bool metroflip_scene_parse_on_event(void* context, SceneManagerEvent event) {
                     MetroflipCardViewModel * m,
                     {
                         if(m->anim[0]) {
-                            m->anim_frame =
-                                (m->anim_frame + 1) % METROFLIP_CARD_VIEW_ANIM_FRAMES;
+                            m->anim_frame = (m->anim_frame + 1) % METROFLIP_CARD_VIEW_ANIM_FRAMES;
                         }
                     },
                     true);

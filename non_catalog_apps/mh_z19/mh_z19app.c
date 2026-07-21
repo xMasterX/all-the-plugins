@@ -14,7 +14,10 @@ typedef enum {
     RedStatus,
 } StatusPPM;
 
-typedef enum { RANGE_2000 = 2000, RANGE_5000 = 5000 } SensorRange;
+typedef enum {
+    RANGE_2000 = 2000,
+    RANGE_5000 = 5000
+} SensorRange;
 
 struct MHZ19App {
     Gui* gui;

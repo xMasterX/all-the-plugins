@@ -17,13 +17,13 @@
 
 #define DINO_RUNNING_MS_PER_FRAME 500
 
-#define GRAVITY 60
+#define GRAVITY    60
 #define JUMP_SPEED 30
 
-#define CACTUS_W 10
-#define CACTUS_H 10
+#define CACTUS_W      10
+#define CACTUS_H      10
 #define START_x_speed 35
-#define X_INCREASE 3
+#define X_INCREASE    3
 
 #define BACKGROUND_W 128
 #define BACKGROUND_H 12

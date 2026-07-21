@@ -16,17 +16,17 @@
 
 #define TAG "MfpListener"
 
-#define MFP_CMD_GET_VERSION      0x60
-#define MFP_CMD_AUTH1_PART1      0x70
-#define MFP_CMD_AUTH1_PART2      0x72
-#define MFP_CMD_AUTH_NONFIRST    0x76
-#define MFP_CMD_READ_ENC         0x31
-#define MFP_CMD_READ_ENC_NOMAC   0x33
-#define MFP_CMD_READ_PLAIN       0x37
-#define MFP_CMD_WRITE_ENC        0xA1
+#define MFP_CMD_GET_VERSION    0x60
+#define MFP_CMD_AUTH1_PART1    0x70
+#define MFP_CMD_AUTH1_PART2    0x72
+#define MFP_CMD_AUTH_NONFIRST  0x76
+#define MFP_CMD_READ_ENC       0x31
+#define MFP_CMD_READ_ENC_NOMAC 0x33
+#define MFP_CMD_READ_PLAIN     0x37
+#define MFP_CMD_WRITE_ENC      0xA1
 
-#define MFP_STATUS_OK            0x90
-#define MFP_STATUS_AUTH_ERR      0x06
+#define MFP_STATUS_OK       0x90
+#define MFP_STATUS_AUTH_ERR 0x06
 
 /* Helper: send a raw response as an I-block.
  * Frame = [PCB | CID(if present) | INF]. Hardware adds CRC_A. */
@@ -98,7 +98,8 @@ static void handle_get_version_continue(MfpListener* inst, int stage) {
     }
 }
 
-static void handle_auth_part1(MfpListener* inst, const uint8_t* data, size_t len, bool is_nonfirst) {
+static void
+    handle_auth_part1(MfpListener* inst, const uint8_t* data, size_t len, bool is_nonfirst) {
     /* AuthNonFirst requires an existing active session */
     if(is_nonfirst && !inst->authed) {
         uint8_t nak = MFP_STATUS_AUTH_ERR;
@@ -269,8 +270,13 @@ static void handle_read_encrypted(MfpListener* inst, const uint8_t* data, size_t
     uint8_t cmd_payload[3] = {block_num, data[2], data[3]};
     uint8_t expected_mac[MFP_MAC_SIZE];
     mfp_crypto_calculate_mac(
-        inst->session.k_mac, MFP_CMD_READ_ENC, inst->session.r_ctr, inst->session.ti,
-        cmd_payload, sizeof(cmd_payload), expected_mac);
+        inst->session.k_mac,
+        MFP_CMD_READ_ENC,
+        inst->session.r_ctr,
+        inst->session.ti,
+        cmd_payload,
+        sizeof(cmd_payload),
+        expected_mac);
 
     if(memcmp(&data[4], expected_mac, MFP_MAC_SIZE) != 0) {
         uint8_t nak = 0x08; /* integrity error */
@@ -295,8 +301,13 @@ static void handle_read_encrypted(MfpListener* inst, const uint8_t* data, size_t
 
     uint8_t resp_mac[MFP_MAC_SIZE];
     mfp_crypto_calculate_mac(
-        inst->session.k_mac, MFP_STATUS_OK, inst->session.r_ctr, inst->session.ti,
-        mac_input, sizeof(mac_input), resp_mac);
+        inst->session.k_mac,
+        MFP_STATUS_OK,
+        inst->session.r_ctr,
+        inst->session.ti,
+        mac_input,
+        sizeof(mac_input),
+        resp_mac);
 
     /* Response: 0x90 + enc_block(16) + mac(8) + 2 bytes pad = 27 bytes */
     uint8_t resp[1 + MFP_BLOCK_SIZE + MFP_MAC_SIZE + 2];
@@ -341,8 +352,13 @@ static void handle_write_encrypted(MfpListener* inst, const uint8_t* data, size_
 
     uint8_t expected_mac[MFP_MAC_SIZE];
     mfp_crypto_calculate_mac(
-        inst->session.k_mac, MFP_CMD_WRITE_ENC, inst->session.w_ctr, inst->session.ti,
-        mac_input, sizeof(mac_input), expected_mac);
+        inst->session.k_mac,
+        MFP_CMD_WRITE_ENC,
+        inst->session.w_ctr,
+        inst->session.ti,
+        mac_input,
+        sizeof(mac_input),
+        expected_mac);
 
     if(memcmp(received_mac, expected_mac, MFP_MAC_SIZE) != 0) {
         uint8_t nak = 0x08;
@@ -353,15 +369,21 @@ static void handle_write_encrypted(MfpListener* inst, const uint8_t* data, size_
     /* Decrypt data */
     uint8_t iv[MFP_AES_BLOCK_SIZE];
     mfp_crypto_build_write_iv(inst->session.ti, inst->session.r_ctr, inst->session.w_ctr, iv);
-    mfp_crypto_cbc_decrypt(inst->session.k_enc, iv, enc_data, inst->blocks[block_num], MFP_BLOCK_SIZE);
+    mfp_crypto_cbc_decrypt(
+        inst->session.k_enc, iv, enc_data, inst->blocks[block_num], MFP_BLOCK_SIZE);
 
     inst->session.w_ctr++;
 
     /* Response: 0x90 + MAC(CMAC8(Kmac, 0x90 || w_ctr || TI)) */
     uint8_t resp_mac[MFP_MAC_SIZE];
     mfp_crypto_calculate_mac(
-        inst->session.k_mac, MFP_STATUS_OK, inst->session.w_ctr, inst->session.ti,
-        NULL, 0, resp_mac);
+        inst->session.k_mac,
+        MFP_STATUS_OK,
+        inst->session.w_ctr,
+        inst->session.ti,
+        NULL,
+        0,
+        resp_mac);
 
     uint8_t resp[1 + MFP_MAC_SIZE + 2];
     resp[0] = MFP_STATUS_OK;
@@ -519,8 +541,8 @@ void mfp_listener_set_from_app(MfpListener* instance, const MfpApp* app) {
 
 void mfp_listener_start(MfpListener* instance) {
     if(instance->listener) return;
-    instance->listener = nfc_listener_alloc(
-        instance->nfc, NfcProtocolIso14443_4a, instance->iso_data);
+    instance->listener =
+        nfc_listener_alloc(instance->nfc, NfcProtocolIso14443_4a, instance->iso_data);
     instance->current_pcb = 0x0A;
     instance->authed = false;
     instance->part1_done = false;

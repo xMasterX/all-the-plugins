@@ -45,8 +45,8 @@ static void tagtinker_clamp_region_to_target(
     const TagTinkerTarget* target = &app->targets[app->selected_target];
     if(!target->profile.known || !target->profile.width || !target->profile.height) return;
 
-    uint16_t max_x =
-        (width < target->profile.width) ? (uint16_t)(target->profile.width - width) : 0U;
+    uint16_t max_x = (width < target->profile.width) ? (uint16_t)(target->profile.width - width) :
+                                                       0U;
     uint16_t max_y =
         (height < target->profile.height) ? (uint16_t)(target->profile.height - height) : 0U;
 
@@ -228,7 +228,8 @@ size_t tagtinker_delete_synced_images_for_barcode(TagTinkerApp* app, const char*
                                                 removed_count++;
                                             } else {
                                                 size_t line_len = strlen(line_copy);
-                                                if(output_len + line_len + 2U <= (size_t)size + 1U) {
+                                                if(output_len + line_len + 2U <=
+                                                   (size_t)size + 1U) {
                                                     strcpy(output + output_len, line_copy);
                                                     output_len += line_len;
                                                     output[output_len++] = '\n';
@@ -248,7 +249,11 @@ size_t tagtinker_delete_synced_images_for_barcode(TagTinkerApp* app, const char*
                 if(removed_count > 0U) {
                     if(output_len == 0U) {
                         storage_common_remove(storage, APP_DATA_PATH("synced_images.txt"));
-                    } else if(storage_file_open(file, APP_DATA_PATH("synced_images.txt"), FSAM_WRITE, FSOM_CREATE_ALWAYS)) {
+                    } else if(storage_file_open(
+                                  file,
+                                  APP_DATA_PATH("synced_images.txt"),
+                                  FSAM_WRITE,
+                                  FSOM_CREATE_ALWAYS)) {
                         storage_file_write(file, output, (uint16_t)output_len);
                         storage_file_close(file);
                     }
@@ -341,7 +346,8 @@ void tagtinker_free_frame_sequence(TagTinkerApp* app) {
 uint16_t tagtinker_pick_chunk_height(uint16_t width, bool color_clear) {
     if(width == 0) return 1;
 
-    size_t plane_budget = color_clear ? (TAGTINKER_STREAM_PIXEL_BUDGET / 2U) : TAGTINKER_STREAM_PIXEL_BUDGET;
+    size_t plane_budget = color_clear ? (TAGTINKER_STREAM_PIXEL_BUDGET / 2U) :
+                                        TAGTINKER_STREAM_PIXEL_BUDGET;
     uint16_t chunk_h = (uint16_t)(plane_budget / width);
     if(chunk_h == 0) chunk_h = 1;
     return chunk_h;
@@ -534,11 +540,7 @@ bool tagtinker_targets_save(const TagTinkerApp* app) {
         for(uint8_t i = 0; i < app->target_count; i++) {
             char line[64];
             int len = snprintf(
-                line,
-                sizeof(line),
-                "%s|%s\n",
-                app->targets[i].barcode,
-                app->targets[i].name);
+                line, sizeof(line), "%s|%s\n", app->targets[i].barcode, app->targets[i].name);
 
             if(len <= 0 || !storage_file_write(file, line, (uint16_t)len)) {
                 ok = false;
@@ -668,7 +670,10 @@ void tagtinker_recents_add(TagTinkerApp* app, const char* text) {
             char text_copy[TAGTINKER_PRESET_TEXT_LEN];
             strncpy(text_copy, app->recents[existing_idx].text, TAGTINKER_PRESET_TEXT_LEN);
 
-            memmove(&app->recents[1], &app->recents[0], sizeof(app->recents[0]) * (size_t)existing_idx);
+            memmove(
+                &app->recents[1],
+                &app->recents[0],
+                sizeof(app->recents[0]) * (size_t)existing_idx);
 
             app->recents[0].width = width;
             app->recents[0].height = height;
@@ -684,7 +689,10 @@ void tagtinker_recents_add(TagTinkerApp* app, const char* text) {
         if(app->recent_count < TAGTINKER_MAX_PRESETS) {
             app->recent_count++;
         }
-        memmove(&app->recents[1], &app->recents[0], sizeof(app->recents[0]) * (size_t)(app->recent_count - 1));
+        memmove(
+            &app->recents[1],
+            &app->recents[0],
+            sizeof(app->recents[0]) * (size_t)(app->recent_count - 1));
         app->recents[0].width = app->esl_width;
         app->recents[0].height = app->esl_height;
         app->recents[0].page = app->img_page;
@@ -787,15 +795,9 @@ static bool tagtinker_try_consume_web_job(TagTinkerApp* app) {
         unsigned height = 0U;
         unsigned page = 0U;
 
-        if(
-            sscanf(
-                buf,
-                "%17[^|]|%u|%u|%u|%255[^\r\n]",
-                barcode,
-                &width,
-                &height,
-                &page,
-                image_path) == 5) {
+        if(sscanf(
+               buf, "%17[^|]|%u|%u|%u|%255[^\r\n]", barcode, &width, &height, &page, image_path) ==
+           5) {
             int8_t target_index = tagtinker_ensure_target(app, barcode);
             if(target_index >= 0) {
                 tagtinker_select_target(app, (uint8_t)target_index);
@@ -874,25 +876,33 @@ static TagTinkerApp* app_alloc(void) {
 
     /* Views */
     app->submenu = submenu_alloc();
-    view_dispatcher_add_view(app->view_dispatcher, TagTinkerViewSubmenu, submenu_get_view(app->submenu));
+    view_dispatcher_add_view(
+        app->view_dispatcher, TagTinkerViewSubmenu, submenu_get_view(app->submenu));
 
     app->var_item_list = variable_item_list_alloc();
-    view_dispatcher_add_view(app->view_dispatcher, TagTinkerViewVarItemList, variable_item_list_get_view(app->var_item_list));
+    view_dispatcher_add_view(
+        app->view_dispatcher,
+        TagTinkerViewVarItemList,
+        variable_item_list_get_view(app->var_item_list));
 
     app->text_input = text_input_alloc();
-    view_dispatcher_add_view(app->view_dispatcher, TagTinkerViewTextInput, text_input_get_view(app->text_input));
+    view_dispatcher_add_view(
+        app->view_dispatcher, TagTinkerViewTextInput, text_input_get_view(app->text_input));
 
     app->popup = popup_alloc();
     view_dispatcher_add_view(app->view_dispatcher, TagTinkerViewPopup, popup_get_view(app->popup));
 
     app->widget = widget_alloc();
-    view_dispatcher_add_view(app->view_dispatcher, TagTinkerViewWidget, widget_get_view(app->widget));
+    view_dispatcher_add_view(
+        app->view_dispatcher, TagTinkerViewWidget, widget_get_view(app->widget));
 
     app->numlock = numlock_input_alloc();
-    view_dispatcher_add_view(app->view_dispatcher, TagTinkerViewNumlock, numlock_input_get_view(app->numlock));
+    view_dispatcher_add_view(
+        app->view_dispatcher, TagTinkerViewNumlock, numlock_input_get_view(app->numlock));
 
     app->text_box = text_box_alloc();
-    view_dispatcher_add_view(app->view_dispatcher, TagTinkerViewTextBox, text_box_get_view(app->text_box));
+    view_dispatcher_add_view(
+        app->view_dispatcher, TagTinkerViewTextBox, text_box_get_view(app->text_box));
 
     app->warning_view = view_alloc();
     view_dispatcher_add_view(app->view_dispatcher, TagTinkerViewWarning, app->warning_view);

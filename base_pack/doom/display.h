@@ -9,7 +9,7 @@
 static const uint8_t bit_mask[8] = {128, 64, 32, 16, 8, 4, 2, 1};
 
 #define pgm_read_byte(addr) (*(const unsigned char*)(addr))
-#define read_bit(b, n) b& pgm_read_byte(bit_mask + n) ? 1 : 0
+#define read_bit(b, n)      b& pgm_read_byte(bit_mask + n) ? 1 : 0
 //#define read_bit(byte, index) (((unsigned)(byte) >> (index)) & 1)
 
 void drawVLine(uint8_t x, int8_t start_y, int8_t end_y, uint8_t intensity, Canvas* const canvas);
@@ -202,7 +202,8 @@ void drawPixel(int8_t x, int8_t y, bool color, bool raycasterViewport, Canvas* c
 void drawChar(int8_t x, int8_t y, char ch, Canvas* const canvas) {
     uint8_t lsb;
     uint8_t c = 0;
-    while(CHAR_MAP[c] != ch && CHAR_MAP[c] != '\0') c++;
+    while(CHAR_MAP[c] != ch && CHAR_MAP[c] != '\0')
+        c++;
     for(uint8_t i = 0; i < 6; i++) {
         //lsb = (char_arr[c][i] >> 4);
         lsb = reverse_bits(char_arr[c][i]);

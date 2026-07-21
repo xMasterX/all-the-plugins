@@ -77,12 +77,12 @@ static const AssetTask kAssetTasks[] = {
 };
 
 static void PrintUsage(const char* exe) {
-    std::cout
-        << "Usage: " << exe << " [--root <repo_root>] [--images <images_dir>] [--out-dir <generated_dir>]\n"
-        << "Defaults:\n"
-        << "  root    = current working directory\n"
-        << "  images  = <root>/Images\n"
-        << "  out-dir = <root>/game/Generated\n";
+    std::cout << "Usage: " << exe
+              << " [--root <repo_root>] [--images <images_dir>] [--out-dir <generated_dir>]\n"
+              << "Defaults:\n"
+              << "  root    = current working directory\n"
+              << "  images  = <root>/Images\n"
+              << "  out-dir = <root>/game/Generated\n";
 }
 
 static bool ParseArgs(int argc, char* argv[], Config& config) {
@@ -123,12 +123,18 @@ static bool ParseArgs(int argc, char* argv[], Config& config) {
     return true;
 }
 
-static ImageColour CalculateColour(const std::vector<uint8_t>& pixels, unsigned int x, unsigned int y, unsigned int pitch) {
+static ImageColour CalculateColour(
+    const std::vector<uint8_t>& pixels,
+    unsigned int x,
+    unsigned int y,
+    unsigned int pitch) {
     const unsigned int index = (y * pitch + x) * 4;
-    if(pixels[index] == 0 && pixels[index + 1] == 0 && pixels[index + 2] == 0 && pixels[index + 3] == 255) {
+    if(pixels[index] == 0 && pixels[index + 1] == 0 && pixels[index + 2] == 0 &&
+       pixels[index + 3] == 255) {
         return ImageColour::Black;
     }
-    if(pixels[index] == 255 && pixels[index + 1] == 255 && pixels[index + 2] == 255 && pixels[index + 3] == 255) {
+    if(pixels[index] == 255 && pixels[index + 1] == 255 && pixels[index + 2] == 255 &&
+       pixels[index + 3] == 255) {
         return ImageColour::White;
     }
 
@@ -142,7 +148,8 @@ static bool DecodeImage(
     unsigned& height) {
     const unsigned error = lodepng::decode(pixels, width, height, inputPath.string());
     if(error) {
-        std::cerr << inputPath << " : decoder error " << error << ": " << lodepng_error_text(error) << '\n';
+        std::cerr << inputPath << " : decoder error " << error << ": " << lodepng_error_text(error)
+                  << '\n';
         return false;
     }
 
@@ -197,11 +204,13 @@ static bool EncodeSprite3D(
     const unsigned int numFrames = width / 16;
 
     typefs << "// Generated from Images/" << relativePath << '\n';
-    typefs << "constexpr uint8_t " << variableName << "_numFrames = " << std::dec << numFrames << ";\n";
+    typefs << "constexpr uint8_t " << variableName << "_numFrames = " << std::dec << numFrames
+           << ";\n";
     typefs << "extern const uint16_t " << variableName << "[];\n";
 
     fsout << "// Generated from Images/" << relativePath << '\n';
-    fsout << "constexpr uint8_t " << variableName << "_numFrames = " << std::dec << numFrames << ";\n";
+    fsout << "constexpr uint8_t " << variableName << "_numFrames = " << std::dec << numFrames
+          << ";\n";
     fsout << "extern const uint16_t " << variableName << "[] PROGMEM =\n";
     fsout << "{\n\t";
 
@@ -258,11 +267,13 @@ static bool EncodeTextures(
     const unsigned int numTextures = width / 16;
 
     typefs << "// Generated from Images/" << relativePath << '\n';
-    typefs << "constexpr uint8_t " << variableName << "_numTextures = " << std::dec << numTextures << ";\n";
+    typefs << "constexpr uint8_t " << variableName << "_numTextures = " << std::dec << numTextures
+           << ";\n";
     typefs << "extern const uint16_t " << variableName << "[];\n";
 
     fsout << "// Generated from Images/" << relativePath << '\n';
-    fsout << "constexpr uint8_t " << variableName << "_numTextures = " << std::dec << numTextures << ";\n";
+    fsout << "constexpr uint8_t " << variableName << "_numTextures = " << std::dec << numTextures
+          << ";\n";
     fsout << "extern const uint16_t " << variableName << "[] PROGMEM =\n";
     fsout << "{\n\t";
 
@@ -433,7 +444,9 @@ static bool EncodeSprite2D(
 int main(int argc, char* argv[]) {
     Config config;
     if(!ParseArgs(argc, argv, config)) {
-        return (argc > 1 && (std::string(argv[1]) == "--help" || std::string(argv[1]) == "-h")) ? 0 : 1;
+        return (argc > 1 && (std::string(argv[1]) == "--help" || std::string(argv[1]) == "-h")) ?
+                   0 :
+                   1;
     }
 
     if(!fs::exists(config.imagesDir)) {
@@ -444,11 +457,12 @@ int main(int argc, char* argv[]) {
     std::error_code ec;
     fs::create_directories(config.outputDir, ec);
     if(ec) {
-        std::cerr << "Failed to create output directory " << config.outputDir << ": " << ec.message() << '\n';
+        std::cerr << "Failed to create output directory " << config.outputDir << ": "
+                  << ec.message() << '\n';
         return 1;
     }
 
-    const fs::path spriteDataHeaderOutputPath = config.outputDir / "SpriteData.inc.h";
+    const fs::path spriteDataHeaderOutputPath = config.outputDir / "SpriteData_inc.h";
     const fs::path spriteTypesHeaderOutputPath = config.outputDir / "SpriteTypes.h";
 
     std::ofstream dataFile(spriteDataHeaderOutputPath);
@@ -479,7 +493,8 @@ int main(int argc, char* argv[]) {
             ok = EncodeTextures(typeFile, dataFile, inputPath, task.inputPath, task.variableName);
             break;
         case AssetKind::HudElement:
-            ok = EncodeHUDElement(typeFile, dataFile, inputPath, task.inputPath, task.variableName);
+            ok =
+                EncodeHUDElement(typeFile, dataFile, inputPath, task.inputPath, task.variableName);
             break;
         }
 

@@ -23,26 +23,20 @@
 
 #include "src/game.h"
 
-static void
-about_update(Entity* self, GameManager* manager, void* _entity_context)
-{
+static void about_update(Entity* self, GameManager* manager, void* _entity_context) {
     UNUSED(self);
     UNUSED(_entity_context);
 
     GameContext* game_context = game_manager_game_context_get(manager);
 
     InputState input = game_manager_input_get(manager);
-    if (input.pressed & (GameKeyOk | GameKeyBack | GameKeyLeft)) {
+    if(input.pressed & (GameKeyOk | GameKeyBack | GameKeyLeft)) {
         game_manager_next_level_set(manager, game_context->levels.menu);
     }
 }
 
 static void
-about_render(Entity* self,
-             GameManager* manager,
-             Canvas* canvas,
-             void* _entity_context)
-{
+    about_render(Entity* self, GameManager* manager, Canvas* canvas, void* _entity_context) {
     UNUSED(self);
     UNUSED(manager);
 
@@ -52,8 +46,7 @@ about_render(Entity* self,
     // Calculate positions
     const size_t logo_size = 10;
     const size_t space = 3;
-    size_t title_width =
-      logo_size + space + canvas_string_width(canvas, GAME_NAME);
+    size_t title_width = logo_size + space + canvas_string_width(canvas, GAME_NAME);
     int32_t logo_x = SCREEN_WIDTH / 2 - title_width / 2;
     int32_t title_x = logo_x + logo_size + space;
     int32_t font_height = canvas_current_font_height(canvas);
@@ -69,28 +62,20 @@ about_render(Entity* self,
 
     // Draw authors
     canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str_aligned(canvas,
-                            64,
-                            first_line_y,
-                            AlignCenter,
-                            AlignTop,
-                            "Developed by Ivan Barsukov");
-    canvas_draw_str_aligned(canvas,
-                            64,
-                            first_line_y + font_height,
-                            AlignCenter,
-                            AlignTop,
-                            "Inspired by David Martinez");
-    canvas_draw_str_aligned(canvas,
-                            64,
-                            first_line_y + font_height * 2,
-                            AlignCenter,
-                            AlignTop,
-                            "Graphics by DarKaoz");
+    canvas_draw_str_aligned(
+        canvas, 64, first_line_y, AlignCenter, AlignTop, "Developed by Ivan Barsukov");
+    canvas_draw_str_aligned(
+        canvas,
+        64,
+        first_line_y + font_height,
+        AlignCenter,
+        AlignTop,
+        "Inspired by David Martinez");
+    canvas_draw_str_aligned(
+        canvas, 64, first_line_y + font_height * 2, AlignCenter, AlignTop, "Graphics by DarKaoz");
 
     // Draw link
-    canvas_draw_str_aligned(
-      canvas, 64, 62, AlignCenter, AlignBottom, "github.com/ivanbarsukov");
+    canvas_draw_str_aligned(canvas, 64, 62, AlignCenter, AlignBottom, "github.com/ivanbarsukov");
 }
 
 const EntityDescription about_description = {

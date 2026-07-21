@@ -38,10 +38,10 @@ SOFTWARE.
 #include "nhc_link042_emulator.h"
 #include "config.h"
 
-#define EP_RX 0x01
+#define EP_RX      0x01
 #define EP_RX_SIZE 96
 
-#define EP_TX 0x81
+#define EP_TX      0x81
 #define EP_TX_SIZE 64
 
 #define TAG "NCHL_EMU"

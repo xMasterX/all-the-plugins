@@ -38,10 +38,7 @@ static void test_nist_gold_vector_2001_day_258_1842_utc(void) {
        decoded UTC at the start of frame is year 2001, day 258, 18:42
        with UT1 correction -0.7 s. */
     assert(wwvb_day_of_year(2001, 9, 15) == 258);
-    assert(
-        strcmp(
-            actual,
-            "M10000010M000101000M001000101M100000010M011100000M000100011M") == 0);
+    assert(strcmp(actual, "M10000010M000101000M001000101M100000010M011100000M000100011M") == 0);
 }
 
 static void test_field_encoding_and_markers(void) {

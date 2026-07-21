@@ -4,9 +4,16 @@
 
 typedef struct GameState GameState;
 
-typedef enum PlayerTurn { PlayerTurn_X, PlayerTurn_O } PlayerTurn;
+typedef enum PlayerTurn {
+    PlayerTurn_X,
+    PlayerTurn_O
+} PlayerTurn;
 
-typedef enum CellState { CellState_Empty, CellState_X, CellState_O } CellState;
+typedef enum CellState {
+    CellState_Empty,
+    CellState_X,
+    CellState_O
+} CellState;
 
 typedef enum BoardWinner {
     BoardWinner_TBD,

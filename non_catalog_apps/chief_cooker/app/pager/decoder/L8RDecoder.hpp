@@ -10,8 +10,10 @@
 // So I decided to keep it's name as L8R
 class L8RDecoder : public PagerDecoder {
 private:
-    const uint32_t stationMask = 0b111111111111100000000000; // leading 13 bits (of 24) are station (any maybe more)
-    const uint32_t actionMask = 0b11100000000; // next 3 bits are action (possibly, just my guess, may be they are also station)
+    const uint32_t stationMask =
+        0b111111111111100000000000; // leading 13 bits (of 24) are station (any maybe more)
+    const uint32_t actionMask =
+        0b11100000000; // next 3 bits are action (possibly, just my guess, may be they are also station)
     const uint32_t pagerMask = 0b11111111; // and the last 8 bits seem to be pager number
 
     const uint8_t stationBitCount = 13;

@@ -47,23 +47,23 @@ LGPL License Terms @ref lgpl_license
 
 /* Appendix A.1: MS Class-Specific Interface Descriptor Subtypes */
 #define USB_MIDI_SUBTYPE_MS_DESCRIPTOR_UNDEFINED 0x00
-#define USB_MIDI_SUBTYPE_MS_HEADER 0x01
-#define USB_MIDI_SUBTYPE_MIDI_IN_JACK 0x02
-#define USB_MIDI_SUBTYPE_MIDI_OUT_JACK 0x03
-#define USB_MIDI_SUBTYPE_MIDI_ELEMENT 0x04
+#define USB_MIDI_SUBTYPE_MS_HEADER               0x01
+#define USB_MIDI_SUBTYPE_MIDI_IN_JACK            0x02
+#define USB_MIDI_SUBTYPE_MIDI_OUT_JACK           0x03
+#define USB_MIDI_SUBTYPE_MIDI_ELEMENT            0x04
 
 /* Appendix A.2: MS Class-Specific Endpoint Descriptor Subtypes */
 #define USB_MIDI_SUBTYPE_DESCRIPTOR_UNDEFINED 0x00
-#define USB_MIDI_SUBTYPE_MS_GENERAL 0x01
+#define USB_MIDI_SUBTYPE_MS_GENERAL           0x01
 
 /* Appendix A.3: MS MIDI IN and OUT Jack types */
 #define USB_MIDI_JACK_TYPE_UNDEFINED 0x00
-#define USB_MIDI_JACK_TYPE_EMBEDDED 0x01
-#define USB_MIDI_JACK_TYPE_EXTERNAL 0x02
+#define USB_MIDI_JACK_TYPE_EMBEDDED  0x01
+#define USB_MIDI_JACK_TYPE_EXTERNAL  0x02
 
 /* Appendix A.5.1 Endpoint Control Selectors */
 #define USB_MIDI_EP_CONTROL_UNDEFINED 0x00
-#define USB_MIDI_ASSOCIATION_CONTROL 0x01
+#define USB_MIDI_ASSOCIATION_CONTROL  0x01
 
 /* Table 6-2: Class-Specific MS Interface Header Descriptor */
 struct usb_midi_header_descriptor {

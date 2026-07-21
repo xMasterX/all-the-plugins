@@ -203,8 +203,8 @@ void protopirate_radio_deinit(ProtoPirateApp* app) {
     bool has_radio_resources = app->radio_initialized || app->txrx->worker ||
                                app->txrx->environment || app->txrx->receiver ||
                                app->txrx->history || app->txrx->radio_device ||
-                               app->txrx->protocol_plugin_manager ||
-                               app->txrx->plugin_resolver || app->txrx->protocol_plugin;
+                               app->txrx->protocol_plugin_manager || app->txrx->plugin_resolver ||
+                               app->txrx->protocol_plugin;
     if(!has_radio_resources) {
 #ifndef REMOVE_LOGS
         FURI_LOG_D(TAG, "Radio resources were not initialized, returning");

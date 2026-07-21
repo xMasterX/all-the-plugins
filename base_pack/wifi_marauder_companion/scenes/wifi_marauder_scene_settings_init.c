@@ -4,7 +4,7 @@ const char* Y = "Y";
 const char* N = "N";
 
 #define PROMPT_PCAPS 0
-#define PROMPT_LOGS 1
+#define PROMPT_LOGS  1
 
 void wifi_marauder_scene_settings_init_widget_callback(
     GuiButtonType result,

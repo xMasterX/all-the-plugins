@@ -6,7 +6,7 @@
 #ifndef CALYPSO_I_H
 #define CALYPSO_I_H
 #define CALYPSO_MAX_FILE_COUNT (10U)
-#define CALYPSO_MAX_FILE_SIZE (30U)
+#define CALYPSO_MAX_FILE_SIZE  (30U)
 
 #include <lib/flipper_format/flipper_format.h>
 

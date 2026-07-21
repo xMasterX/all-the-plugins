@@ -18,7 +18,15 @@ static void delayMs(uint32_t ms) {
     furi_delay_ms(ms);
 }
 
-enum KeyIndex { B_UP = 0, B_DOWN, B_LEFT, B_RIGHT, B_OK, B_BACK, KEY_COUNT };
+enum KeyIndex {
+    B_UP = 0,
+    B_DOWN,
+    B_LEFT,
+    B_RIGHT,
+    B_OK,
+    B_BACK,
+    KEY_COUNT
+};
 
 static constexpr uint8_t kUp = 1u << B_UP;
 static constexpr uint8_t kDown = 1u << B_DOWN;
@@ -36,14 +44,14 @@ static constexpr uint32_t GAME_TICK_MS = 80;
 
 struct AppState {
     Game* game = nullptr;
-    FuriMutex* mutex = nullptr;    
+    FuriMutex* mutex = nullptr;
     FuriMutex* inputMutex = nullptr;
     ViewPort* view_port = nullptr;
 
     uint8_t present[SCREEN_WIDTH * SCREEN_HEIGHT / 8] = {};
     ScreenId presentScreen = SCR_PLAY;
     char presentLabel[24] = {};
-    int presentLX = 0, presentLY = 0;   // cursor cell anchor for the GUI tooltip
+    int presentLX = 0, presentLY = 0; // cursor cell anchor for the GUI tooltip
 
     uint8_t held = 0;
     uint8_t pressLatch = 0;
@@ -76,9 +84,8 @@ static void packFramebuffer(const Framebuffer& fb, uint8_t* dst) {
         uint8_t* out = dst + page * SCREEN_WIDTH;
         for(int col = 0; col < SCREEN_WIDTH; ++col) {
             out[col] = static_cast<uint8_t>(
-                (r0[col] & 1)        | ((r1[col] & 1) << 1) |
-                ((r2[col] & 1) << 2) | ((r3[col] & 1) << 3) |
-                ((r4[col] & 1) << 4) | ((r5[col] & 1) << 5) |
+                (r0[col] & 1) | ((r1[col] & 1) << 1) | ((r2[col] & 1) << 2) |
+                ((r3[col] & 1) << 3) | ((r4[col] & 1) << 4) | ((r5[col] & 1) << 5) |
                 ((r6[col] & 1) << 6) | ((r7[col] & 1) << 7));
         }
     }
@@ -146,7 +153,7 @@ static void drawCb(Canvas* canvas, void* ctx) {
         if(screen == SCR_PLAY) {
             bx = 64 - bw / 2;
             by = 40;
-        } else {   // float next to the cursor cell, above it when possible
+        } else { // float next to the cursor cell, above it when possible
             by = ly - bh - 2;
             if(by < 0) by = ly + 12;
             bx = lx + 4 - bw / 2;
@@ -163,13 +170,20 @@ static void drawCb(Canvas* canvas, void* ctx) {
 
 static int keyIndex(InputKey key) {
     switch(key) {
-    case InputKeyUp: return B_UP;
-    case InputKeyDown: return B_DOWN;
-    case InputKeyLeft: return B_LEFT;
-    case InputKeyRight: return B_RIGHT;
-    case InputKeyOk: return B_OK;
-    case InputKeyBack: return B_BACK;
-    default: return -1;
+    case InputKeyUp:
+        return B_UP;
+    case InputKeyDown:
+        return B_DOWN;
+    case InputKeyLeft:
+        return B_LEFT;
+    case InputKeyRight:
+        return B_RIGHT;
+    case InputKeyOk:
+        return B_OK;
+    case InputKeyBack:
+        return B_BACK;
+    default:
+        return -1;
     }
 }
 
@@ -277,7 +291,8 @@ static Input pollInput(AppState* st) {
             if(held & kDown) in.forward = -8;
             if(held & kLeft) in.turn = 1;
             if(held & kRight) in.turn = -1;
-            for(int i = 0; i < 4; ++i) st->dirNextRepeat[i] = 0;
+            for(int i = 0; i < 4; ++i)
+                st->dirNextRepeat[i] = 0;
         }
 
         if(okHeld && !st->okConsumed && !st->okLongFired &&

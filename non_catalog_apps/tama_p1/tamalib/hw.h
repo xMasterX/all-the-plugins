@@ -22,7 +22,7 @@
 
 #include "hal.h"
 
-#define LCD_WIDTH 32
+#define LCD_WIDTH  32
 #define LCD_HEIGHT 16
 
 #define ICON_NUM 8

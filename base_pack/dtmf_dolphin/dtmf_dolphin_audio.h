@@ -4,8 +4,8 @@
 #include "dtmf_dolphin_hal.h"
 
 #define SAMPLE_BUFFER_LENGTH 8192
-#define PERIOD_2_PI 6.2832
-#define CPU_CLOCK_FREQ 64000000
+#define PERIOD_2_PI          6.2832
+#define CPU_CLOCK_FREQ       64000000
 
 typedef struct {
     float cached_freq;

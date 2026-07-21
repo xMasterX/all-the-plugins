@@ -130,7 +130,7 @@ static void mag_scene_emulate_config_set_tx(VariableItem* item) {
     variable_item_set_current_value_text(item, tx_text[index]);
 
     mag->state.tx = tx_value[index];
-};
+}
 
 static void mag_scene_emulate_config_set_track(VariableItem* item) {
     Mag* mag = variable_item_get_context(item);
@@ -146,7 +146,7 @@ static void mag_scene_emulate_config_set_track(VariableItem* item) {
 
     // TODO: Check there is data in selected track?
     //       Only display track options with data?
-};
+}
 
 static void mag_scene_emulate_config_set_reverse(VariableItem* item) {
     Mag* mag = variable_item_get_context(item);
@@ -162,7 +162,7 @@ static void mag_scene_emulate_config_set_reverse(VariableItem* item) {
         variable_item_set_current_value_index(
             item, value_index_uint32(MagReverseStateOff, reverse_value, REVERSE_COUNT));
     }
-};
+}
 
 static void mag_scene_emulate_config_set_repeat_mode(VariableItem* item) {
     Mag* mag = variable_item_get_context(item);
@@ -179,7 +179,7 @@ static void mag_scene_emulate_config_set_clock(VariableItem* item) {
     variable_item_set_current_value_text(item, clock_text[index]);
 
     mag->state.us_clock = clock_value[index];
-};
+}
 
 static void mag_scene_emulate_config_set_interpacket(VariableItem* item) {
     Mag* mag = variable_item_get_context(item);
@@ -188,7 +188,7 @@ static void mag_scene_emulate_config_set_interpacket(VariableItem* item) {
     variable_item_set_current_value_text(item, interpacket_text[index]);
 
     mag->state.us_interpacket = interpacket_value[index];
-};
+}
 
 void mag_scene_emulate_config_on_enter(void* context) {
     Mag* mag = context;

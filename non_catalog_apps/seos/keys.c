@@ -164,7 +164,8 @@ static bool seos_load_keys_v2(Seos* seos, const char* filename) {
         if(furi_hal_crypto_decrypt(SEOS_ADF1_READ, output, sizeof(output))) {
             memcpy(SEOS_ADF1_READ, output, sizeof(SEOS_ADF1_READ));
         }
-        if(has_optional_write_key && furi_hal_crypto_decrypt(SEOS_ADF1_WRITE, output, sizeof(output))) {
+        if(has_optional_write_key &&
+           furi_hal_crypto_decrypt(SEOS_ADF1_WRITE, output, sizeof(output))) {
             memcpy(SEOS_ADF1_WRITE, output, sizeof(SEOS_ADF1_WRITE));
         }
 

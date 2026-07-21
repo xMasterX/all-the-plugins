@@ -160,8 +160,8 @@ static void* CJSON_CDECL internal_realloc(void* pointer, size_t size) {
     return realloc(pointer, size);
 }
 #else
-#define internal_malloc malloc
-#define internal_free free
+#define internal_malloc  malloc
+#define internal_free    free
 #define internal_realloc realloc
 #endif
 
@@ -270,7 +270,7 @@ typedef struct {
     ((buffer != NULL) && (((buffer)->offset + index) < (buffer)->length))
 #define cannot_access_at_index(buffer, index) (!can_access_at_index(buffer, index))
 /* get a pointer to the buffer at the position */
-#define buffer_at_offset(buffer) ((buffer)->content + (buffer)->offset)
+#define buffer_at_offset(buffer)              ((buffer)->content + (buffer)->offset)
 
 /* Converts an array of characters to double. Alternative implementation of strtod() */
 double string_to_double(const char* str, char** endptr) {
@@ -278,7 +278,8 @@ double string_to_double(const char* str, char** endptr) {
     int sign = 1;
     const char* p = str;
 
-    while(isspace((unsigned char)*p)) p++;
+    while(isspace((unsigned char)*p))
+        p++;
 
     if(*p == '-') {
         sign = -1;

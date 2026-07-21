@@ -4,7 +4,7 @@
 #include "furi_hal.h"
 #include "toolbox/path.h"
 
-#define TAG "BcScanner"
+#define TAG        "BcScanner"
 #define WORKER_TAG TAG "WorkScene"
 
 void bc_scanner_scene_work_ok_callback(InputType type, void* context) {

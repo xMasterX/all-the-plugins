@@ -7,7 +7,6 @@
  * @author frux-c
 */
 
-
 // UHF module regions
 typedef enum {
     WR_CHINA_900 = 1, // Freq_CH-920.125M

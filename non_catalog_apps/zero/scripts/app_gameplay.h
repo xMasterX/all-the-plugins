@@ -1,6 +1,10 @@
 #include <stdbool.h>
 
-typedef enum PlayerType { PlayerType_Human, PlayerType_AiRandom, PlayerType_COUNT } PlayerType;
+typedef enum PlayerType {
+    PlayerType_Human,
+    PlayerType_AiRandom,
+    PlayerType_COUNT
+} PlayerType;
 
 typedef struct AppGameplayState AppGameplayState;
 typedef struct GameState GameState;

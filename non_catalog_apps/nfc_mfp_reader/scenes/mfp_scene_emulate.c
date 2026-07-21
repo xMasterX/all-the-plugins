@@ -85,8 +85,8 @@ bool mfp_scene_emulate_on_event(void* ctx, SceneManagerEvent event) {
     MfpApp* app = ctx;
 
     if(event.type == SceneManagerEventTypeBack) {
-        EmulateState state = (EmulateState)scene_manager_get_scene_state(
-            app->scene_manager, MfpSceneEmulate);
+        EmulateState state =
+            (EmulateState)scene_manager_get_scene_state(app->scene_manager, MfpSceneEmulate);
 
         if(state == EmulateStateRunning) {
             notification_message(app->notifications, &sequence_blink_stop);

@@ -236,8 +236,7 @@ HexViewerStartscreen* hex_viewer_startscreen_alloc() {
 void hex_viewer_startscreen_free(HexViewerStartscreen* instance) {
     furi_assert(instance);
 
-    with_view_model(
-        instance->view, HexViewerStartscreenModel * model, { UNUSED(model); }, true);
+    with_view_model(instance->view, HexViewerStartscreenModel * model, { UNUSED(model); }, true);
     view_free(instance->view);
     free(instance);
 }

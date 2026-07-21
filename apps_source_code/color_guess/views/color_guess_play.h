@@ -5,11 +5,11 @@
 
 extern const Icon* digits[17];
 
-#define TIMER_FORMAT "%02ld:%02ld" //"%.2d:%.2d"
-#define TIMER_LENGHT 13
+#define TIMER_FORMAT     "%02ld:%02ld" //"%.2d:%.2d"
+#define TIMER_LENGHT     13
 #define CLOSENESS_LENGTH 7
 #define CLOSENESS_FORMAT "%d%%"
-#define ARR_SIZE(arr) (sizeof((arr)) / sizeof((arr[0])))
+#define ARR_SIZE(arr)    (sizeof((arr)) / sizeof((arr[0])))
 
 typedef struct ColorGuessPlay ColorGuessPlay;
 

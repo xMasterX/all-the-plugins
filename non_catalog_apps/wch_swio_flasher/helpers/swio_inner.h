@@ -29,18 +29,18 @@ SOFTWARE.
 
 #define SWI_HW_RST_GPIO gpio_ext_pc1
 
-#define SWI_GPIO gpio_ext_pc0
-#define SWI_PORT_BASE GPIOC_BASE
-#define SWI_PORT_BSSR_OFFSET 0x18
-#define SWI_PORT_IDR_OFFSET 0x10
-#define SWI_PORT_MODER_OFFSET 0x00
+#define SWI_GPIO                 gpio_ext_pc0
+#define SWI_PORT_BASE            GPIOC_BASE
+#define SWI_PORT_BSSR_OFFSET     0x18
+#define SWI_PORT_IDR_OFFSET      0x10
+#define SWI_PORT_MODER_OFFSET    0x00
 #define SWI_SET_MODE_OUTPUT_MASK GPIO_MODER_MODE0_0
-#define SWI_SET_MODE_INPUT_MASK (~SWI_SET_MODE_OUTPUT_MASK)
-#define SWI_SET_MASK GPIO_ODR_OD0
-#define SWI_RESET_MASK (SWI_SET_MASK << 16)
+#define SWI_SET_MODE_INPUT_MASK  (~SWI_SET_MODE_OUTPUT_MASK)
+#define SWI_SET_MASK             GPIO_ODR_OD0
+#define SWI_RESET_MASK           (SWI_SET_MASK << 16)
 
-#define WCH_DM_CPBR 0x7C
-#define WCH_DM_CFGR 0x7D
+#define WCH_DM_CPBR     0x7C
+#define WCH_DM_CFGR     0x7D
 #define WCH_DM_SHDWCFGR 0x7E
 
 typedef enum {

@@ -20,8 +20,7 @@ void weebo_scene_saved_menu_on_enter(void* context) {
     submenu_reset(submenu);
 
     // Writing only targets NTAG215, so only offer it for NTAG215-loaded files.
-    const MfUltralightData* data =
-        nfc_device_get_data(weebo->nfc_device, NfcProtocolMfUltralight);
+    const MfUltralightData* data = nfc_device_get_data(weebo->nfc_device, NfcProtocolMfUltralight);
     if(data->type == MfUltralightTypeNTAG215) {
         submenu_add_item(
             submenu, "Write", SubmenuIndexWrite, weebo_scene_saved_menu_submenu_callback, weebo);

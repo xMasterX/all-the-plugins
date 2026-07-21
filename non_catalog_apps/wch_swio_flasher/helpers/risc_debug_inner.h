@@ -33,14 +33,14 @@ This file is based on modified original from https://github.com/aappleby/PicoRVD
 
 typedef union {
     struct {
-        uint32_t REGNO : 16;
-        uint32_t WRITE : 1;
-        uint32_t TRANSFER : 1;
-        uint32_t POSTEXEC : 1;
+        uint32_t REGNO      : 16;
+        uint32_t WRITE      : 1;
+        uint32_t TRANSFER   : 1;
+        uint32_t POSTEXEC   : 1;
         uint32_t AARPOSTINC : 1;
-        uint32_t AARSIZE : 3;
-        uint32_t PAD0 : 1;
-        uint32_t CMDTYPE : 8;
+        uint32_t AARSIZE    : 3;
+        uint32_t PAD0       : 1;
+        uint32_t CMDTYPE    : 8;
     };
     uint32_t raw;
 } RVD_COMMAND;

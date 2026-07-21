@@ -434,16 +434,16 @@ const SubGhzProtocol honda_v1_protocol = {
             | SubGhzProtocolFlag_Send
 #endif
     ,
-    #if PROTOPIRATE_WITH_DECODER
+#if PROTOPIRATE_WITH_DECODER
     .decoder = &subghz_protocol_honda_v1_decoder,
-    #else
+#else
     .decoder = NULL,
-    #endif
-    #if PROTOPIRATE_WITH_ENCODER
+#endif
+#if PROTOPIRATE_WITH_ENCODER
     .encoder = &subghz_protocol_honda_v1_encoder,
-    #else
+#else
     .encoder = NULL,
-    #endif
+#endif
 };
 
 #if PROTOPIRATE_WITH_ENCODER

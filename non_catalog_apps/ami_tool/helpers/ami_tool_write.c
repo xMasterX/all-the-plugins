@@ -5,8 +5,8 @@
 #include <string.h>
 
 #define AMI_TOOL_WRITE_COMPLETE_EVENT (1UL << 0)
-#define AMI_TOOL_UID_COMPARE_LEN (7U)
-#define AMI_TOOL_REQUIRED_MAX_PAGE (134U)
+#define AMI_TOOL_UID_COMPARE_LEN      (7U)
+#define AMI_TOOL_REQUIRED_MAX_PAGE    (134U)
 
 typedef struct {
     AmiToolApp* app;
@@ -16,7 +16,8 @@ typedef struct {
     uint16_t failed_page;
 } AmiToolCustomWriteContext;
 
-static bool ami_tool_write_uid_matches(AmiToolCustomWriteContext* ctx, MfUltralightPoller* poller) {
+static bool
+    ami_tool_write_uid_matches(AmiToolCustomWriteContext* ctx, MfUltralightPoller* poller) {
     furi_check(ctx);
     furi_check(poller);
 

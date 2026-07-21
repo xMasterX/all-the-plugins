@@ -101,9 +101,9 @@ static inline bool furi_hal_Wi2c_trx(
 
 //----------------------------------------------------------------------------- ----------------------------------------
 #define furi_hal_i2c_is_device_ready(...) furi_hal_Wi2c_is_device_ready(__VA_ARGS__)
-#define furi_hal_i2c_tx(...) furi_hal_Wi2c_tx(__VA_ARGS__)
-#define furi_hal_i2c_rx(...) furi_hal_Wi2c_rx(__VA_ARGS__)
-#define furi_hal_i2c_trx(...) furi_hal_Wi2c_trx(__VA_ARGS__)
+#define furi_hal_i2c_tx(...)              furi_hal_Wi2c_tx(__VA_ARGS__)
+#define furi_hal_i2c_rx(...)              furi_hal_Wi2c_rx(__VA_ARGS__)
+#define furi_hal_i2c_trx(...)             furi_hal_Wi2c_trx(__VA_ARGS__)
 
 #endif //ENABLE_WORKAROUND
 

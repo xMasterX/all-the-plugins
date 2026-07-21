@@ -11,5 +11,4 @@ void scene_dialog_show_custom(
     const char* left_btn,
     const char* right_btn,
     DialogExResultCallback callback,
-    void* context
-); 
+    void* context);

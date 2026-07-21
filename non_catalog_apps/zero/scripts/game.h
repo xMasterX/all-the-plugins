@@ -2,11 +2,11 @@
 #include <stdbool.h>
 #include <string.h>
 
-#define NUMBER_OF_PLAYERS 4
-#define NUMBER_OF_CARDS 108
-#define MAX_HAND_SIZE 30
+#define NUMBER_OF_PLAYERS        4
+#define NUMBER_OF_CARDS          108
+#define MAX_HAND_SIZE            30
 #define NUMBER_OF_STARTING_CARDS 7
-#define PLAYER_NUMBER 1
+#define PLAYER_NUMBER            1
 
 typedef struct List List;
 

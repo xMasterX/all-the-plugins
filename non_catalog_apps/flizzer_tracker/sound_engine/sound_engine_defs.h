@@ -8,21 +8,21 @@
 
 #define RANDOM_SEED 0xf31782ce
 
-#define ACC_BITS 23
+#define ACC_BITS   23
 #define ACC_LENGTH (1 << (ACC_BITS - 1))
 
 #define OUTPUT_BITS 16
-#define WAVE_AMP (1 << OUTPUT_BITS)
+#define WAVE_AMP    (1 << OUTPUT_BITS)
 
-#define SINE_LUT_SIZE 256
+#define SINE_LUT_SIZE     256
 #define SINE_LUT_BITDEPTH 8
 
-#define MAX_ADSR (0xff << 17)
+#define MAX_ADSR        (0xff << 17)
 #define MAX_ADSR_VOLUME 0x80
-#define BASE_FREQ 22050
-#define envspd(eng, slope)                                                                     \
-    ((slope) != 0 ?                                                                            \
-         (((uint64_t)MAX_ADSR / ((slope) * (slope)*256 / 8)) * BASE_FREQ / eng->sample_rate) : \
+#define BASE_FREQ       22050
+#define envspd(eng, slope)                                                                       \
+    ((slope) != 0 ?                                                                              \
+         (((uint64_t)MAX_ADSR / ((slope) * (slope) * 256 / 8)) * BASE_FREQ / eng->sample_rate) : \
          ((uint64_t)MAX_ADSR * BASE_FREQ / eng->sample_rate))
 
 typedef enum {

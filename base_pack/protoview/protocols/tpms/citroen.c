@@ -36,7 +36,8 @@ static bool decode(uint8_t* bits, uint32_t numbytes, uint32_t numbits, ProtoView
      * is not included. The meaning of the first byte is unknown and
      * we don't display it. */
     uint8_t crc = 0;
-    for(int j = 1; j < 10; j++) crc ^= raw[j];
+    for(int j = 1; j < 10; j++)
+        crc ^= raw[j];
     if(crc != 0) return false; /* Require sane checksum. */
 
     info->pulses_count = (off + 8 * 10 * 2) - info->start_off;

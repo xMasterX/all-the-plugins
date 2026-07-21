@@ -82,7 +82,7 @@ void Engine::exitToMenu() {
         actors[i].type = ActorType_Empty;
         actors[i].spawnId = 0xff;
     }
-	
+
     menu.goMain();
     fadeTransition();
 }

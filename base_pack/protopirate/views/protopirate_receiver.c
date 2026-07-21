@@ -221,8 +221,7 @@ static void protopirate_view_receiver_draw_frame(Canvas* canvas, uint16_t idx, b
     canvas_draw_dot(canvas, scrollbar ? 121 : 126, (0 + idx * FRAME_HEIGHT) + 11);
 }
 
-static void
-    protopirate_view_receiver_draw_progress_badge(Canvas* canvas, uint8_t progress) {
+static void protopirate_view_receiver_draw_progress_badge(Canvas* canvas, uint8_t progress) {
     char progress_text[8];
     snprintf(progress_text, sizeof(progress_text), "%u%%", progress > 100 ? 100 : progress);
 

@@ -143,8 +143,7 @@ View* tracker_view_get_view(TrackerView* tracker_view) {
 }
 
 void tracker_view_set_song(TrackerView* tracker_view, const Song* song) {
-    with_view_model(
-        tracker_view->view, TrackerViewModel * model, { model->song = song; }, true);
+    with_view_model(tracker_view->view, TrackerViewModel * model, { model->song = song; }, true);
 }
 
 void tracker_view_set_position(TrackerView* tracker_view, uint8_t order_list_index, uint8_t row) {

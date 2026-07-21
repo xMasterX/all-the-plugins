@@ -10,31 +10,36 @@
 #include "msf_util.h"
 #include "wwvb_util.h"
 
-#define RADIO_CLOCK_LPTIM_HZ 32768U
-#define RADIO_CLOCK_FULL_SECOND_TICKS RADIO_CLOCK_LPTIM_HZ
-#define RADIO_CLOCK_DCF77_ZERO_HIGH_TICKS ((RADIO_CLOCK_LPTIM_HZ * 9U) / 10U)
-#define RADIO_CLOCK_DCF77_ONE_HIGH_TICKS ((RADIO_CLOCK_LPTIM_HZ * 8U) / 10U)
-#define RADIO_CLOCK_WWVB_ZERO_HIGH_TICKS ((RADIO_CLOCK_LPTIM_HZ * 8U) / 10U)
-#define RADIO_CLOCK_WWVB_ONE_HIGH_TICKS ((RADIO_CLOCK_LPTIM_HZ * 5U) / 10U)
+#define RADIO_CLOCK_LPTIM_HZ               32768U
+#define RADIO_CLOCK_FULL_SECOND_TICKS      RADIO_CLOCK_LPTIM_HZ
+#define RADIO_CLOCK_DCF77_ZERO_HIGH_TICKS  ((RADIO_CLOCK_LPTIM_HZ * 9U) / 10U)
+#define RADIO_CLOCK_DCF77_ONE_HIGH_TICKS   ((RADIO_CLOCK_LPTIM_HZ * 8U) / 10U)
+#define RADIO_CLOCK_WWVB_ZERO_HIGH_TICKS   ((RADIO_CLOCK_LPTIM_HZ * 8U) / 10U)
+#define RADIO_CLOCK_WWVB_ONE_HIGH_TICKS    ((RADIO_CLOCK_LPTIM_HZ * 5U) / 10U)
 #define RADIO_CLOCK_WWVB_MARKER_HIGH_TICKS ((RADIO_CLOCK_LPTIM_HZ * 2U) / 10U)
-#define RADIO_CLOCK_JJY_ZERO_HIGH_TICKS ((RADIO_CLOCK_LPTIM_HZ * 8U) / 10U)
-#define RADIO_CLOCK_JJY_ONE_HIGH_TICKS ((RADIO_CLOCK_LPTIM_HZ * 5U) / 10U)
-#define RADIO_CLOCK_JJY_MARKER_HIGH_TICKS ((RADIO_CLOCK_LPTIM_HZ * 2U) / 10U)
-#define RADIO_CLOCK_DCF77_ZERO_LOW_TICKS (RADIO_CLOCK_FULL_SECOND_TICKS - RADIO_CLOCK_DCF77_ZERO_HIGH_TICKS)
-#define RADIO_CLOCK_DCF77_ONE_LOW_TICKS (RADIO_CLOCK_FULL_SECOND_TICKS - RADIO_CLOCK_DCF77_ONE_HIGH_TICKS)
+#define RADIO_CLOCK_JJY_ZERO_HIGH_TICKS    ((RADIO_CLOCK_LPTIM_HZ * 8U) / 10U)
+#define RADIO_CLOCK_JJY_ONE_HIGH_TICKS     ((RADIO_CLOCK_LPTIM_HZ * 5U) / 10U)
+#define RADIO_CLOCK_JJY_MARKER_HIGH_TICKS  ((RADIO_CLOCK_LPTIM_HZ * 2U) / 10U)
+#define RADIO_CLOCK_DCF77_ZERO_LOW_TICKS \
+    (RADIO_CLOCK_FULL_SECOND_TICKS - RADIO_CLOCK_DCF77_ZERO_HIGH_TICKS)
+#define RADIO_CLOCK_DCF77_ONE_LOW_TICKS \
+    (RADIO_CLOCK_FULL_SECOND_TICKS - RADIO_CLOCK_DCF77_ONE_HIGH_TICKS)
 #define RADIO_CLOCK_MSF_MARKER_LOW_TICKS ((RADIO_CLOCK_LPTIM_HZ * 5U) / 10U)
-#define RADIO_CLOCK_MSF_SLOT_TICKS ((RADIO_CLOCK_LPTIM_HZ + 5U) / 10U)
-#define RADIO_CLOCK_BPC_00_LOW_TICKS ((RADIO_CLOCK_LPTIM_HZ + 5U) / 10U)
-#define RADIO_CLOCK_BPC_01_LOW_TICKS (((RADIO_CLOCK_LPTIM_HZ * 2U) + 5U) / 10U)
-#define RADIO_CLOCK_BPC_10_LOW_TICKS (((RADIO_CLOCK_LPTIM_HZ * 3U) + 5U) / 10U)
-#define RADIO_CLOCK_BPC_11_LOW_TICKS (((RADIO_CLOCK_LPTIM_HZ * 4U) + 5U) / 10U)
-#define RADIO_CLOCK_BSF_00_LOW_TICKS (((RADIO_CLOCK_LPTIM_HZ * 2U) + 5U) / 10U)
-#define RADIO_CLOCK_BSF_01_LOW_TICKS (((RADIO_CLOCK_LPTIM_HZ * 4U) + 5U) / 10U)
-#define RADIO_CLOCK_BSF_11_LOW_TICKS (((RADIO_CLOCK_LPTIM_HZ * 6U) + 5U) / 10U)
-#define RADIO_CLOCK_BSF_10_LOW_TICKS (((RADIO_CLOCK_LPTIM_HZ * 8U) + 5U) / 10U)
-#define RADIO_CLOCK_WWVB_ZERO_LOW_TICKS (RADIO_CLOCK_FULL_SECOND_TICKS - RADIO_CLOCK_WWVB_ZERO_HIGH_TICKS)
-#define RADIO_CLOCK_WWVB_ONE_LOW_TICKS (RADIO_CLOCK_FULL_SECOND_TICKS - RADIO_CLOCK_WWVB_ONE_HIGH_TICKS)
-#define RADIO_CLOCK_WWVB_MARKER_LOW_TICKS (RADIO_CLOCK_FULL_SECOND_TICKS - RADIO_CLOCK_WWVB_MARKER_HIGH_TICKS)
+#define RADIO_CLOCK_MSF_SLOT_TICKS       ((RADIO_CLOCK_LPTIM_HZ + 5U) / 10U)
+#define RADIO_CLOCK_BPC_00_LOW_TICKS     ((RADIO_CLOCK_LPTIM_HZ + 5U) / 10U)
+#define RADIO_CLOCK_BPC_01_LOW_TICKS     (((RADIO_CLOCK_LPTIM_HZ * 2U) + 5U) / 10U)
+#define RADIO_CLOCK_BPC_10_LOW_TICKS     (((RADIO_CLOCK_LPTIM_HZ * 3U) + 5U) / 10U)
+#define RADIO_CLOCK_BPC_11_LOW_TICKS     (((RADIO_CLOCK_LPTIM_HZ * 4U) + 5U) / 10U)
+#define RADIO_CLOCK_BSF_00_LOW_TICKS     (((RADIO_CLOCK_LPTIM_HZ * 2U) + 5U) / 10U)
+#define RADIO_CLOCK_BSF_01_LOW_TICKS     (((RADIO_CLOCK_LPTIM_HZ * 4U) + 5U) / 10U)
+#define RADIO_CLOCK_BSF_11_LOW_TICKS     (((RADIO_CLOCK_LPTIM_HZ * 6U) + 5U) / 10U)
+#define RADIO_CLOCK_BSF_10_LOW_TICKS     (((RADIO_CLOCK_LPTIM_HZ * 8U) + 5U) / 10U)
+#define RADIO_CLOCK_WWVB_ZERO_LOW_TICKS \
+    (RADIO_CLOCK_FULL_SECOND_TICKS - RADIO_CLOCK_WWVB_ZERO_HIGH_TICKS)
+#define RADIO_CLOCK_WWVB_ONE_LOW_TICKS \
+    (RADIO_CLOCK_FULL_SECOND_TICKS - RADIO_CLOCK_WWVB_ONE_HIGH_TICKS)
+#define RADIO_CLOCK_WWVB_MARKER_LOW_TICKS \
+    (RADIO_CLOCK_FULL_SECOND_TICKS - RADIO_CLOCK_WWVB_MARKER_HIGH_TICKS)
 
 static void radio_clock_waveform_clear(RadioClockMinuteFrame* frame, uint8_t second) {
     frame->waveforms[second].segment_count = 0U;
@@ -161,7 +166,8 @@ static void radio_clock_waveform_set_msf_symbol(
     uint8_t second,
     bool bit_a,
     bool bit_b) {
-    const uint16_t trailing_ticks = (uint16_t)(RADIO_CLOCK_FULL_SECOND_TICKS - (RADIO_CLOCK_MSF_SLOT_TICKS * 3U));
+    const uint16_t trailing_ticks =
+        (uint16_t)(RADIO_CLOCK_FULL_SECOND_TICKS - (RADIO_CLOCK_MSF_SLOT_TICKS * 3U));
 
     radio_clock_waveform_clear(frame, second);
     frame->pulses[second] = radio_clock_msf_symbol(bit_a, bit_b);
@@ -191,10 +197,10 @@ static uint8_t radio_clock_last_sunday(uint16_t year, uint8_t month) {
         adjusted_year--;
     }
 
-    const uint8_t weekday = (uint8_t)(
-        (adjusted_year + (adjusted_year / 4U) - (adjusted_year / 100U) +
-         (adjusted_year / 400U) + month_offsets[month - 1U] + day) %
-        7U);
+    const uint8_t weekday =
+        (uint8_t)((adjusted_year + (adjusted_year / 4U) - (adjusted_year / 100U) +
+                   (adjusted_year / 400U) + month_offsets[month - 1U] + day) %
+                  7U);
     return (uint8_t)(day - weekday);
 }
 
@@ -262,7 +268,8 @@ static void dcf77_prepare_frame(RadioClockMinuteFrame* frame, const RadioClockPr
 
 static void hbg_prepare_frame(RadioClockMinuteFrame* frame, const RadioClockProtocolTime* time) {
     dcf77_prepare_frame(frame, time);
-    hbg_build_start_waveform(&frame->waveforms[0], hbg_get_start_pattern(time->hour, time->minute));
+    hbg_build_start_waveform(
+        &frame->waveforms[0], hbg_get_start_pattern(time->hour, time->minute));
 }
 
 static void wwvb_prepare_frame(RadioClockMinuteFrame* frame, const RadioClockProtocolTime* time) {

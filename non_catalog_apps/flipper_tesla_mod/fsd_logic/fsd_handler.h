@@ -1,49 +1,56 @@
 #pragma once
 
-#include "fsd_types.h"  // CANFRAME (hardware-free); was ../libraries/mcp_can_2515.h
+#include "fsd_types.h" // CANFRAME (hardware-free); was ../libraries/mcp_can_2515.h
 #include <stdbool.h>
 #include <stdint.h>
 
-#define CAN_ID_STW_ACTN_RQ    0x045  // 69 - steering wheel stalk (Legacy follow distance)
-#define CAN_ID_AP_LEGACY      0x3EE  // 1006 - autopilot control (Legacy)
-#define CAN_ID_ISA_SPEED      0x399  // 921 - ISA speed chime (HW4)
-#define CAN_ID_GTW_CAR_CONFIG 0x398  // 920 - HW version detection
-#define CAN_ID_FOLLOW_DIST    0x3F8  // 1016 - follow distance / speed profile
-#define CAN_ID_AP_CONTROL     0x3FD  // 1021 - autopilot control (HW3/HW4)
-#define CAN_ID_EPAS_STATUS    0x370  // 880 - EPAS3P_sysStatus (nag killer target)
-#define CAN_ID_GTW_CAR_STATE  0x318  // 792 - GTW_carState (carries GTW_updateInProgress)
-#define CAN_ID_BMS_HV_BUS     0x132  // 306 - BMS_hvBusStatus (pack voltage / current)
-#define CAN_ID_BMS_SOC        0x292  // 658 - BMS_socStatus (state of charge)
-#define CAN_ID_BMS_THERMAL    0x312  // 786 - BMS_thermalStatus (battery temp)
-#define CAN_ID_TRIP_PLANNING  0x082  // 130 - UI_tripPlanning (precondition trigger)
+#define CAN_ID_STW_ACTN_RQ    0x045 // 69 - steering wheel stalk (Legacy follow distance)
+#define CAN_ID_AP_LEGACY      0x3EE // 1006 - autopilot control (Legacy)
+#define CAN_ID_ISA_SPEED      0x399 // 921 - ISA speed chime (HW4)
+#define CAN_ID_GTW_CAR_CONFIG 0x398 // 920 - HW version detection
+#define CAN_ID_FOLLOW_DIST    0x3F8 // 1016 - follow distance / speed profile
+#define CAN_ID_AP_CONTROL     0x3FD // 1021 - autopilot control (HW3/HW4)
+#define CAN_ID_EPAS_STATUS    0x370 // 880 - EPAS3P_sysStatus (nag killer target)
+#define CAN_ID_GTW_CAR_STATE  0x318 // 792 - GTW_carState (carries GTW_updateInProgress)
+#define CAN_ID_BMS_HV_BUS     0x132 // 306 - BMS_hvBusStatus (pack voltage / current)
+#define CAN_ID_BMS_SOC        0x292 // 658 - BMS_socStatus (state of charge)
+#define CAN_ID_BMS_THERMAL    0x312 // 786 - BMS_thermalStatus (battery temp)
+#define CAN_ID_TRIP_PLANNING  0x082 // 130 - UI_tripPlanning (precondition trigger)
 
 // --- Extras CAN IDs (Model 3/Y) ---
-#define CAN_ID_VCFRONT_LIGHT  0x3F5  // 1013 - ID3F5VCFRONT_lighting (hazard, fog, DRL, wiper)
-#define CAN_ID_SCCM_RSTALK   0x229  // 553  - SCCM_rightStalk (gear shift, park button)
-#define CAN_ID_DI_SYS_STATUS  0x118  // 280  - DI_systemStatus (track mode, traction ctrl)
-#define CAN_ID_VCRIGHT_STATUS 0x343  // 835  - VCRIGHT_status (rear defrost state)
-#define CAN_ID_DI_SPEED       0x257  // 599  - DI_speed (vehicle speed, checksummed)
-#define CAN_ID_ESP_STATUS     0x145  // 325  - ESP_status (brake, stability)
-#define CAN_ID_GTW_EPAS_CTRL  0x101  // 257  - GTW_epasControl (steering tune WRITE, Chassis CAN)
-#define CAN_ID_DAS_STATUS     0x39B  // 923  - DAS_status (HW4 + Highland HW3; AP state, nag, lane change, blind spot)
-#define CAN_ID_DAS_STATUS_HW3 0x399  // 921  - DAS_status (pre-Highland HW3 / Legacy, same ID as HW4 ISA chime — HW-dependent meaning)
-#define CAN_ID_DAS_STATUS2    0x389  // 905  - DAS_status2 (ACC report, driver interaction)
-#define CAN_ID_DAS_SETTINGS   0x293  // 659  - DAS_settings (autosteer enable, steering weight, etc.)
-#define CAN_ID_DAS_AP_CONFIG  0x331  // 817  - DAS autopilot config (tier restore target, ~1 Hz)
-#define CAN_ID_GTW_CONFIG_ETH 0x7FF  // 2047 - GTW_carConfig on Ethernet/mixed bus (autopilot tier readback)
-#define CAN_ID_TRACK_MODE_SET 0x313  // 787  - UI_trackModeSettings (track mode request, checksummed)
-#define CAN_ID_SCCM_LSTALK   0x249  // 585  - SCCM_leftStalk (high beam, turn signal, wiper wash — Party CAN, 3 bytes)
-#define CAN_ID_DI_TORQUE     0x108  // 264  - DI_torque (motor torque/power — Party CAN)
-#define CAN_ID_DAS_CONTROL   0x2B9  // 697  - DAS_control (ACC state, set speed — Party CAN)
-#define CAN_ID_DI_STATE      0x286  // 646  - DI_state (cruise state, gear, park brake — Party CAN)
-#define CAN_ID_UI_WARNING    0x311  // 785  - UI_warning (blinker, door, buckle, wiper — Party CAN)
-#define CAN_ID_ESP_WHEELSPD  0x175  // 373  - ESP_wheelSpeeds (4 wheel speeds — Party CAN)
-#define CAN_ID_STEER_ANGLE   0x129  // 297  - SCCM_steeringAngleSensor (steering angle — Party CAN)
-#define CAN_ID_DAS_STEER     0x488  // 1160 - DAS_steeringControl (DAS steering request — Party CAN)
-#define CAN_ID_APS_EACMON    0x27D  // 637  - APS_eacMonitor (steering permission — Party CAN)
-#define CAN_ID_ENERGY_CONS   0x33A  // 826  - UI_ratedConsumption (energy Wh/km — Party CAN)
-#define CAN_ID_DRIVER_ASSIST 0x3F8  // 1016 - UI_driverAssistControl (also follow distance — Party CAN)
-#define CAN_ID_VCLEFT_SWITCH 0x3C2  // 962  - VCLEFT_switchStatus (steering-wheel scrollwheel buttons — Vehicle CAN)
+#define CAN_ID_VCFRONT_LIGHT  0x3F5 // 1013 - ID3F5VCFRONT_lighting (hazard, fog, DRL, wiper)
+#define CAN_ID_SCCM_RSTALK    0x229 // 553  - SCCM_rightStalk (gear shift, park button)
+#define CAN_ID_DI_SYS_STATUS  0x118 // 280  - DI_systemStatus (track mode, traction ctrl)
+#define CAN_ID_VCRIGHT_STATUS 0x343 // 835  - VCRIGHT_status (rear defrost state)
+#define CAN_ID_DI_SPEED       0x257 // 599  - DI_speed (vehicle speed, checksummed)
+#define CAN_ID_ESP_STATUS     0x145 // 325  - ESP_status (brake, stability)
+#define CAN_ID_GTW_EPAS_CTRL  0x101 // 257  - GTW_epasControl (steering tune WRITE, Chassis CAN)
+#define CAN_ID_DAS_STATUS \
+    0x39B // 923  - DAS_status (HW4 + Highland HW3; AP state, nag, lane change, blind spot)
+#define CAN_ID_DAS_STATUS_HW3 \
+    0x399 // 921  - DAS_status (pre-Highland HW3 / Legacy, same ID as HW4 ISA chime — HW-dependent meaning)
+#define CAN_ID_DAS_STATUS2   0x389 // 905  - DAS_status2 (ACC report, driver interaction)
+#define CAN_ID_DAS_SETTINGS  0x293 // 659  - DAS_settings (autosteer enable, steering weight, etc.)
+#define CAN_ID_DAS_AP_CONFIG 0x331 // 817  - DAS autopilot config (tier restore target, ~1 Hz)
+#define CAN_ID_GTW_CONFIG_ETH \
+    0x7FF // 2047 - GTW_carConfig on Ethernet/mixed bus (autopilot tier readback)
+#define CAN_ID_TRACK_MODE_SET \
+    0x313 // 787  - UI_trackModeSettings (track mode request, checksummed)
+#define CAN_ID_SCCM_LSTALK \
+    0x249 // 585  - SCCM_leftStalk (high beam, turn signal, wiper wash — Party CAN, 3 bytes)
+#define CAN_ID_DI_TORQUE    0x108 // 264  - DI_torque (motor torque/power — Party CAN)
+#define CAN_ID_DAS_CONTROL  0x2B9 // 697  - DAS_control (ACC state, set speed — Party CAN)
+#define CAN_ID_DI_STATE     0x286 // 646  - DI_state (cruise state, gear, park brake — Party CAN)
+#define CAN_ID_UI_WARNING   0x311 // 785  - UI_warning (blinker, door, buckle, wiper — Party CAN)
+#define CAN_ID_ESP_WHEELSPD 0x175 // 373  - ESP_wheelSpeeds (4 wheel speeds — Party CAN)
+#define CAN_ID_STEER_ANGLE  0x129 // 297  - SCCM_steeringAngleSensor (steering angle — Party CAN)
+#define CAN_ID_DAS_STEER    0x488 // 1160 - DAS_steeringControl (DAS steering request — Party CAN)
+#define CAN_ID_APS_EACMON   0x27D // 637  - APS_eacMonitor (steering permission — Party CAN)
+#define CAN_ID_ENERGY_CONS  0x33A // 826  - UI_ratedConsumption (energy Wh/km — Party CAN)
+#define CAN_ID_DRIVER_ASSIST \
+    0x3F8 // 1016 - UI_driverAssistControl (also follow distance — Party CAN)
+#define CAN_ID_VCLEFT_SWITCH \
+    0x3C2 // 962  - VCLEFT_switchStatus (steering-wheel scrollwheel buttons — Vehicle CAN)
 
 // TeslaHWVersion, OpMode, and FSDState are defined in the shared headers
 // (fsd_types.h / fsd_state.h) so both the Flipper and ESP32 builds use one copy.
@@ -141,8 +148,11 @@ bool fsd_das_ctx_fresh(const FSDState* state, uint32_t now_ms);
  *  Builds a new frame in out_frame. Returns true if should be sent.
  *  now_ms is a millisecond clock used by the EPAS-faithful (Mode-C) path's
  *  demand-state timing; the legacy path ignores it. */
-bool fsd_handle_nag_killer(FSDState* state, const CANFRAME* frame, CANFRAME* out_frame,
-                           uint32_t now_ms);
+bool fsd_handle_nag_killer(
+    FSDState* state,
+    const CANFRAME* frame,
+    CANFRAME* out_frame,
+    uint32_t now_ms);
 
 /** Handle CAN ID 0x318 - GTW_carState - update OTA-in-progress flag in state. */
 void fsd_handle_gtw_car_state(FSDState* state, const CANFRAME* frame);

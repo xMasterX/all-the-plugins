@@ -348,7 +348,8 @@ bool load_level(
 // https://stackoverflow.com/a/53966346
 void btox(char* xp, const char* bb, int n) {
     const char xx[] = "0123456789ABCDEF";
-    while(--n >= 0) xp[n] = xx[(bb[n >> 1] >> ((1 - (n & 1)) << 2)) & 0xF];
+    while(--n >= 0)
+        xp[n] = xx[(bb[n >> 1] >> ((1 - (n & 1)) << 2)) & 0xF];
 }
 
 //-----------------------------------------------------------------------------

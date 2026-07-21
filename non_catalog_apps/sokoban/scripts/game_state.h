@@ -5,8 +5,7 @@
 
 typedef char UndoToken;
 
-typedef struct GameState
-{
+typedef struct GameState {
     int playerX, playerY, pushesCount;
     int levelWidth, levelHeight;
     CellType board[MAX_BOARD_SIZE][MAX_BOARD_SIZE];

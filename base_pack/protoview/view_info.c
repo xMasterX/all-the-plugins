@@ -181,7 +181,7 @@ typedef enum {
 } SendSignalState;
 
 #define PROTOVIEW_SENDSIGNAL_START_GAP 10000 /* microseconds. */
-#define PROTOVIEW_SENDSIGNAL_END_GAP 10000 /* microseconds. */
+#define PROTOVIEW_SENDSIGNAL_END_GAP   10000 /* microseconds. */
 
 typedef struct {
     SendSignalState state; // Current state.

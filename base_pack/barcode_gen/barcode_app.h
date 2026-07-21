@@ -39,7 +39,7 @@
 #define DEFAULT_USER_BARCODES EXT_PATH("apps_data/barcodes")
 
 //The extension barcode files use
-#define BARCODE_EXTENSION ".txt"
+#define BARCODE_EXTENSION        ".txt"
 #define BARCODE_EXTENSION_LENGTH 4
 
 #include "views/barcode_view.h"

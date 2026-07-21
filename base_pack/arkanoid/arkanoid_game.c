@@ -9,11 +9,14 @@
 
 #define TAG "Arkanoid"
 
-#define FLIPPER_LCD_WIDTH 128
+#define FLIPPER_LCD_WIDTH  128
 #define FLIPPER_LCD_HEIGHT 64
-#define MAX_SPEED 3
+#define MAX_SPEED          3
 
-typedef enum { EventTypeTick, EventTypeKey } EventType;
+typedef enum {
+    EventTypeTick,
+    EventTypeKey
+} EventType;
 
 typedef struct {
     //Brick Bounds used in collision detection

@@ -10,11 +10,7 @@ static void saved_submenu_cb(void* ctx, uint32_t index) {
     if(index >= app->saved_count) return;
 
     char path[128];
-    snprintf(
-        path,
-        sizeof(path),
-        MFP_APP_FOLDER "/%s" MFP_FILE_EXT,
-        app->saved_names[index]);
+    snprintf(path, sizeof(path), MFP_APP_FOLDER "/%s" MFP_FILE_EXT, app->saved_names[index]);
 
     if(mfp_storage_load(app, path)) {
         /* Reuse the fresh-dump result view — loaded V2 files populate
@@ -37,8 +33,7 @@ void mfp_scene_saved_on_enter(void* ctx) {
         FileInfo fi;
         char name[MFP_NAME_LEN];
 
-        while(storage_dir_read(dir, &fi, name, sizeof(name)) &&
-              app->saved_count < MFP_MAX_SAVED) {
+        while(storage_dir_read(dir, &fi, name, sizeof(name)) && app->saved_count < MFP_MAX_SAVED) {
             if(fi.flags & FSF_DIRECTORY) continue;
 
             size_t len = strlen(name);

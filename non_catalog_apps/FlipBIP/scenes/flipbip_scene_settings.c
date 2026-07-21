@@ -3,7 +3,7 @@
 // From: lib/crypto
 #include <memzero.h>
 
-#define TEXT_LABEL_ON "ON"
+#define TEXT_LABEL_ON  "ON"
 #define TEXT_LABEL_OFF "OFF"
 
 const char* const bip39_strength_text[3] = {

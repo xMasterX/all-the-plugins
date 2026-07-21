@@ -11,7 +11,7 @@ namespace flipcraft {
 static constexpr uint32_t FCW_MAGIC = 0x31574346;
 static constexpr uint16_t FCW_VERSION = 3;
 static constexpr uint32_t HEADER_SIZE = 64;
-static constexpr uint8_t INVENTORY_MAGIC = 0xA6;    // v3; v2 used 0xA5
+static constexpr uint8_t INVENTORY_MAGIC = 0xA6; // v3; v2 used 0xA5
 static constexpr uint8_t INVENTORY_MAGIC_V2 = 0xA5;
 
 static inline void put_u16(uint8_t* p, uint16_t v) {
@@ -182,12 +182,12 @@ void World::migrateV2() {
     uint32_t invBase = inventoryBase(*this);
     uint8_t inv[INVENTORY_REGION_SIZE];
     if(storage_file_seek(file, invBase, true) &&
-       storage_file_read(file, inv, sizeof(inv)) == sizeof(inv) &&
-       inv[0] == INVENTORY_MAGIC_V2) {
+       storage_file_read(file, inv, sizeof(inv)) == sizeof(inv) && inv[0] == INVENTORY_MAGIC_V2) {
         uint8_t out[INVENTORY_REGION_SIZE];
         memset(out, 0, sizeof(out));
         out[0] = INVENTORY_MAGIC;
-        for(int i = 0; i < 15; i++) cellFromV2(inv[1 + i], out + 1 + 2 * i);
+        for(int i = 0; i < 15; i++)
+            cellFromV2(inv[1 + i], out + 1 + 2 * i);
         out[31] = (uint8_t)(((inv[17] & 0x0F) << 4) | (inv[16] & 0x0F));
         if(storage_file_seek(file, invBase, true)) storage_file_write(file, out, sizeof(out));
     }
@@ -210,7 +210,8 @@ void World::migrateV2() {
             n[3] = o[3];
             n[4] = o[4];
             n[5] = o[15]; // furnace fuel|timer moved from [15] to [5]
-            for(int k = 0; k < 10; k++) cellFromV2(o[5 + k], n + 6 + 2 * k);
+            for(int k = 0; k < 10; k++)
+                cellFromV2(o[5 + k], n + 6 + 2 * k);
         }
         if(!storage_file_seek(file, newBase + (uint32_t)first * STORAGE_SLOT_SIZE, true) ||
            storage_file_write(file, newB, sizeof(newB)) != sizeof(newB))
@@ -377,7 +378,7 @@ void World::updateWindow(int blockX, int blockZ, bool immediate) {
     // still RENDER_RADIUS_BLOCKS away, so spreading the loads over a few ticks
     // is invisible but removes the multi-chunk stall from a single frame.
     static const int8_t kOrder[9][2] = {
-        {0,0}, {-1,0}, {1,0}, {0,-1}, {0,1}, {-1,-1}, {1,-1}, {-1,1}, {1,1}};
+        {0, 0}, {-1, 0}, {1, 0}, {0, -1}, {0, 1}, {-1, -1}, {1, -1}, {-1, 1}, {1, 1}};
     int missing = 0, firstCX = 0, firstCZ = 0;
     for(const auto& o : kOrder) {
         int ncx = cx + o[0], ncz = cz + o[1];

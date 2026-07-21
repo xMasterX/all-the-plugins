@@ -11,12 +11,12 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-#define WAVE_COUNT 3
+#define WAVE_COUNT      3
 #define WAVE_MIN_RADIUS 28
 #define WAVE_MAX_RADIUS 80
-#define WAVE_RANGE (WAVE_MAX_RADIUS - WAVE_MIN_RADIUS)
-#define WAVE_SPACING (WAVE_RANGE / WAVE_COUNT)
-#define WAVE_SPEED 3
+#define WAVE_RANGE      (WAVE_MAX_RADIUS - WAVE_MIN_RADIUS)
+#define WAVE_SPACING    (WAVE_RANGE / WAVE_COUNT)
+#define WAVE_SPEED      3
 
 struct VkThermoScanView {
     View* view;
@@ -75,15 +75,15 @@ static void vk_thermo_scan_view_draw(Canvas* canvas, VkThermoScanViewModel* mode
         // Animated NFC wave arcs expanding from both sides of text
         for(int w = 0; w < WAVE_COUNT; w++) {
             int radius = WAVE_MIN_RADIUS +
-                ((model->animation_frame * WAVE_SPEED + w * WAVE_SPACING) % WAVE_RANGE);
-            draw_wave_arc(canvas, 64, 26, radius, 1);   // right
-            draw_wave_arc(canvas, 64, 26, radius, -1);  // left
+                         ((model->animation_frame * WAVE_SPEED + w * WAVE_SPACING) % WAVE_RANGE);
+            draw_wave_arc(canvas, 64, 26, radius, 1); // right
+            draw_wave_arc(canvas, 64, 26, radius, -1); // left
         }
 
         canvas_set_font(canvas, FontSecondary);
         const char* subtitle = (model->state == VkThermoScanStateReading) ?
-            "Tag found, please hold still" :
-            "Hold near VivoKey Thermo";
+                                   "Tag found, please hold still" :
+                                   "Hold near VivoKey Thermo";
         canvas_draw_str_aligned(canvas, 64, 40, AlignCenter, AlignCenter, subtitle);
 
     } else if(model->has_reading) {
@@ -212,7 +212,8 @@ void vk_thermo_scan_view_tick(VkThermoScanView* instance) {
         instance->view,
         VkThermoScanViewModel * model,
         {
-            if(model->state == VkThermoScanStateScanning || model->state == VkThermoScanStateReading) {
+            if(model->state == VkThermoScanStateScanning ||
+               model->state == VkThermoScanStateReading) {
                 model->animation_frame++;
             }
         },

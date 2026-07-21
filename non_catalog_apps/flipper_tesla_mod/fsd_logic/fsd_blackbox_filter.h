@@ -27,22 +27,21 @@
 // actually reads. Edit this list to add or drop a capture ID. IDs mirror the
 // CAN_ID_* defines in fsd_handler.h / esp32/.firmware/config.h.
 static const uint32_t FSD_BLACKBOX_KEY_IDS[] = {
-    0x370u,  // EPAS3P_sysStatus     — nag killer / EPAS
-    0x399u,  // DAS_status (HW3/Legacy), also ISA speed on HW4
-    0x39Bu,  // DAS_status (HW4)
-    0x488u,  // DAS_steeringControl  — DAS steering request/angle
-    0x129u,  // SCCM_steeringAngleSensor — steering angle (#108 soft-engage gate)
-    0x3EEu,  // DAS_autopilot        — AP legacy
-    0x3FDu,  // DAS_autopilotControl — AP control (HW3/HW4 core)
-    0x145u,  // ESP_status           — driver brake pedal
-    0x238u,  // UI_driverAssistMapData — map speed limit
-    0x389u,  // DAS_status2          — ACC speed limit
-    0x2B9u,  // DAS_control          — cruise set speed / ACC state
-    0x118u,  // DI_systemStatus      — vehicle state
+    0x370u, // EPAS3P_sysStatus     — nag killer / EPAS
+    0x399u, // DAS_status (HW3/Legacy), also ISA speed on HW4
+    0x39Bu, // DAS_status (HW4)
+    0x488u, // DAS_steeringControl  — DAS steering request/angle
+    0x129u, // SCCM_steeringAngleSensor — steering angle (#108 soft-engage gate)
+    0x3EEu, // DAS_autopilot        — AP legacy
+    0x3FDu, // DAS_autopilotControl — AP control (HW3/HW4 core)
+    0x145u, // ESP_status           — driver brake pedal
+    0x238u, // UI_driverAssistMapData — map speed limit
+    0x389u, // DAS_status2          — ACC speed limit
+    0x2B9u, // DAS_control          — cruise set speed / ACC state
+    0x118u, // DI_systemStatus      — vehicle state
 };
 
-#define FSD_BLACKBOX_KEY_ID_COUNT \
-    (sizeof(FSD_BLACKBOX_KEY_IDS) / sizeof(FSD_BLACKBOX_KEY_IDS[0]))
+#define FSD_BLACKBOX_KEY_ID_COUNT (sizeof(FSD_BLACKBOX_KEY_IDS) / sizeof(FSD_BLACKBOX_KEY_IDS[0]))
 
 // True when `id` should enter the black-box ring. Runs on every RX frame, so it
 // stays cheap: a linear scan of ~12 constants (O(1)-ish, no allocation). Define
@@ -52,8 +51,8 @@ static inline bool fsd_blackbox_should_record(uint32_t id) {
     (void)id;
     return true;
 #else
-    for (size_t i = 0; i < FSD_BLACKBOX_KEY_ID_COUNT; i++) {
-        if (FSD_BLACKBOX_KEY_IDS[i] == id) return true;
+    for(size_t i = 0; i < FSD_BLACKBOX_KEY_ID_COUNT; i++) {
+        if(FSD_BLACKBOX_KEY_IDS[i] == id) return true;
     }
     return false;
 #endif

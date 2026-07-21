@@ -35,8 +35,7 @@ bool mfp_storage_save(MfpApp* app) {
 
     FuriString* line = furi_string_alloc();
 
-#define WRITE_LINE(s) \
-    storage_file_write(f, furi_string_get_cstr(s), furi_string_size(s))
+#define WRITE_LINE(s) storage_file_write(f, furi_string_get_cstr(s), furi_string_size(s))
 
     furi_string_set_str(line, "Filetype: MFP Reader\nVersion: 1\n");
     WRITE_LINE(line);
@@ -50,15 +49,13 @@ bool mfp_storage_save(MfpApp* app) {
     furi_string_printf(line, "Security Level: %d\n", (int)app->version.sl);
     WRITE_LINE(line);
 
-    furi_string_printf(
-        line, "Card Size: %s\n", app->version.size == MfpSize4K ? "4K" : "2K");
+    furi_string_printf(line, "Card Size: %s\n", app->version.size == MfpSize4K ? "4K" : "2K");
     WRITE_LINE(line);
 
     furi_string_printf(line, "Sector: %d\n", (int)app->target_sector);
     WRITE_LINE(line);
 
-    furi_string_printf(
-        line, "Allow Overwrite: %s\n", app->allow_overwrite ? "yes" : "no");
+    furi_string_printf(line, "Allow Overwrite: %s\n", app->allow_overwrite ? "yes" : "no");
     WRITE_LINE(line);
 
     uint8_t first_block = mfp_sector_first_block(app->version.size, app->target_sector);
@@ -92,8 +89,7 @@ static bool mfp_storage_write_all_to_path(MfpApp* app, const char* path) {
 
     FuriString* line = furi_string_alloc();
 
-#define WRITE_LINE(s) \
-    storage_file_write(f, furi_string_get_cstr(s), furi_string_size(s))
+#define WRITE_LINE(s) storage_file_write(f, furi_string_get_cstr(s), furi_string_size(s))
 
     furi_string_set_str(line, "Filetype: MFP Reader\nVersion: 2\n");
     WRITE_LINE(line);
@@ -107,15 +103,13 @@ static bool mfp_storage_write_all_to_path(MfpApp* app, const char* path) {
     furi_string_printf(line, "Security Level: %d\n", (int)app->version.sl);
     WRITE_LINE(line);
 
-    furi_string_printf(
-        line, "Card Size: %s\n", app->version.size == MfpSize4K ? "4K" : "2K");
+    furi_string_printf(line, "Card Size: %s\n", app->version.size == MfpSize4K ? "4K" : "2K");
     WRITE_LINE(line);
 
     furi_string_printf(line, "Sectors Read: %d\n", (int)app->scan_sectors_ok);
     WRITE_LINE(line);
 
-    furi_string_printf(
-        line, "Allow Overwrite: %s\n", app->allow_overwrite ? "yes" : "no");
+    furi_string_printf(line, "Allow Overwrite: %s\n", app->allow_overwrite ? "yes" : "no");
     WRITE_LINE(line);
 
     uint8_t total = mfp_sector_count(app->version.size);
@@ -203,7 +197,8 @@ static void mfp_storage_parse_v1(MfpApp* app, char* buf) {
             const char* tok = p + 4;
             uint8_t len = 0;
             while(*tok && len < 7) {
-                while(*tok == ' ') tok++;
+                while(*tok == ' ')
+                    tok++;
                 if(!*tok) break;
                 app->version.uid[len++] = (uint8_t)strtoul(tok, (char**)&tok, 16);
             }
@@ -222,10 +217,10 @@ static void mfp_storage_parse_v1(MfpApp* app, char* buf) {
                 col++;
                 uint8_t j = 0;
                 while(*col && j < MFP_BLOCK_SIZE) {
-                    while(*col == ' ') col++;
+                    while(*col == ' ')
+                        col++;
                     if(!*col) break;
-                    app->blocks[app->blocks_read][j++] =
-                        (uint8_t)strtoul(col, (char**)&col, 16);
+                    app->blocks[app->blocks_read][j++] = (uint8_t)strtoul(col, (char**)&col, 16);
                 }
                 app->blocks_read++;
             }
@@ -248,7 +243,8 @@ static void mfp_storage_parse_v2(MfpApp* app, char* buf) {
             const char* tok = p + 4;
             uint8_t len = 0;
             while(*tok && len < 7) {
-                while(*tok == ' ') tok++;
+                while(*tok == ' ')
+                    tok++;
                 if(!*tok) break;
                 app->version.uid[len++] = (uint8_t)strtoul(tok, (char**)&tok, 16);
             }
@@ -267,7 +263,8 @@ static void mfp_storage_parse_v2(MfpApp* app, char* buf) {
             cur_sector = (uint8_t)strtoul(sp, (char**)&sp, 10);
             if(cur_sector < MFP_SECTORS_4K) {
                 /* skip ": " */
-                while(*sp == ':' || *sp == ' ') sp++;
+                while(*sp == ':' || *sp == ' ')
+                    sp++;
 
                 if(strncmp(sp, "OK", 2) == 0) {
                     MfpSectorResult* sr = &app->sector_results[cur_sector];
@@ -279,7 +276,8 @@ static void mfp_storage_parse_v2(MfpApp* app, char* buf) {
                     /* Look for "KeyA <32hex>" and/or "KeyB <32hex>" tokens
                      * anywhere on the line. Order-independent. */
                     while(*sp) {
-                        while(*sp == ' ') sp++;
+                        while(*sp == ' ')
+                            sp++;
                         if(!*sp) break;
                         MfpKey* target = NULL;
                         bool* found_flag = NULL;
@@ -293,10 +291,12 @@ static void mfp_storage_parse_v2(MfpApp* app, char* buf) {
                             sp += 4;
                         } else {
                             /* Unknown token — skip one word to avoid loop */
-                            while(*sp && *sp != ' ') sp++;
+                            while(*sp && *sp != ' ')
+                                sp++;
                             continue;
                         }
-                        while(*sp == ' ') sp++;
+                        while(*sp == ' ')
+                            sp++;
                         for(uint8_t k = 0; k < MFP_AES_KEY_SIZE && sp[0] && sp[1]; k++) {
                             char byte_str[3] = {sp[0], sp[1], '\0'};
                             (*target)[k] = (uint8_t)strtoul(byte_str, NULL, 16);
@@ -323,10 +323,10 @@ static void mfp_storage_parse_v2(MfpApp* app, char* buf) {
                     col++;
                     uint8_t j = 0;
                     while(*col && j < MFP_BLOCK_SIZE) {
-                        while(*col == ' ') col++;
+                        while(*col == ' ')
+                            col++;
                         if(!*col) break;
-                        app->blocks[blk_num][j++] =
-                            (uint8_t)strtoul(col, (char**)&col, 16);
+                        app->blocks[blk_num][j++] = (uint8_t)strtoul(col, (char**)&col, 16);
                     }
                     if(cur_sector < MFP_SECTORS_4K) {
                         app->sector_results[cur_sector].blocks_read++;

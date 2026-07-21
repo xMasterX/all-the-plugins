@@ -6,9 +6,9 @@
 
 typedef struct NfcListener NfcListener;
 
-typedef NfcCommand (*NfcGenericCallback)(NfcGenericEvent event, void *context);
+typedef NfcCommand (*NfcGenericCallback)(NfcGenericEvent event, void* context);
 
-NfcListener *nfc_listener_alloc(Nfc *nfc, NfcProtocol protocol, const NfcDeviceData *data);
-void nfc_listener_free(NfcListener *instance);
-void nfc_listener_start(NfcListener *instance, NfcGenericCallback callback, void *context);
-void nfc_listener_stop(NfcListener *instance);
+NfcListener* nfc_listener_alloc(Nfc* nfc, NfcProtocol protocol, const NfcDeviceData* data);
+void nfc_listener_free(NfcListener* instance);
+void nfc_listener_start(NfcListener* instance, NfcGenericCallback callback, void* context);
+void nfc_listener_stop(NfcListener* instance);

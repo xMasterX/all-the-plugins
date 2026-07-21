@@ -36,7 +36,8 @@ static void select_prev_decoder(ProtoViewApp* app) {
     do {
         if(privdata->cur_decoder == 0) {
             /* Go one after the last one to wrap around. */
-            while(Decoders[privdata->cur_decoder]) privdata->cur_decoder++;
+            while(Decoders[privdata->cur_decoder])
+                privdata->cur_decoder++;
         }
         privdata->cur_decoder--;
     } while(Decoders[privdata->cur_decoder]->get_fields == NULL);
@@ -194,10 +195,12 @@ static void process_input_set_fields(ProtoViewApp* app, InputEvent input) {
         // The reason why we don't use a large increment directly
         // is that certain field types only support +1 -1 increments.
         int times = 10;
-        while(times--) increment_current_field(app, 1);
+        while(times--)
+            increment_current_field(app, 1);
     } else if(input.type == InputTypeRepeat && input.key == InputKeyLeft) {
         int times = 10;
-        while(times--) increment_current_field(app, -1);
+        while(times--)
+            increment_current_field(app, -1);
     } else if(input.type == InputTypeLong && input.key == InputKeyOk) {
         // Build the message in a fresh raw buffer.
         if(privdata->decoder->build_message) {
@@ -236,7 +239,8 @@ void view_enter_build_message(ProtoViewApp* app) {
     // select it.
     if(app->signal_decoded && app->msg_info->decoder->get_fields &&
        app->msg_info->decoder->build_message) {
-        while(Decoders[privdata->cur_decoder] != app->msg_info->decoder) select_next_decoder(app);
+        while(Decoders[privdata->cur_decoder] != app->msg_info->decoder)
+            select_next_decoder(app);
     }
 }
 

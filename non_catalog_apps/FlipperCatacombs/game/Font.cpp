@@ -4,22 +4,18 @@
 #include "game/Platform.h"
 #include "game/Generated/SpriteTypes.h"
 
-static inline uint8_t v3(uint8_t m)
-{
+static inline uint8_t v3(uint8_t m) {
     return m | (m << 1) | (m >> 1);
 }
 
-static inline void apply4(uint8_t* dst, uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint8_t xorMask)
-{
-    if (xorMask)
-    {
+static inline void
+    apply4(uint8_t* dst, uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint8_t xorMask) {
+    if(xorMask) {
         dst[0] |= a;
         dst[1] |= b;
         dst[2] |= c;
         dst[3] |= d;
-    }
-    else
-    {
+    } else {
         dst[0] &= ~a;
         dst[1] &= ~b;
         dst[2] &= ~c;
@@ -27,33 +23,30 @@ static inline void apply4(uint8_t* dst, uint8_t a, uint8_t b, uint8_t c, uint8_t
     }
 }
 
-static inline void apply1(uint8_t* dst, uint8_t m, uint8_t xorMask)
-{
-    if (xorMask) *dst |= m;
-    else *dst &= ~m;
+static inline void apply1(uint8_t* dst, uint8_t m, uint8_t xorMask) {
+    if(xorMask)
+        *dst |= m;
+    else
+        *dst &= ~m;
 }
 
-void Font::PrintString(const char* str, uint8_t line, uint8_t x, uint8_t colour)
-{
+void Font::PrintString(const char* str, uint8_t line, uint8_t x, uint8_t colour) {
     uint8_t* p = Platform::GetScreenBuffer() + DISPLAY_WIDTH * line + x;
     uint8_t xorMask = (colour == COLOUR_BLACK) ? 0 : 0xff;
 
-    for (;;)
-    {
+    for(;;) {
         char c = *str++;
-        if (!c) break;
+        if(!c) break;
         DrawChar(p, c, xorMask);
         p += glyphWidth;
     }
 }
 
-void Font::PrintInt(uint16_t val, uint8_t line, uint8_t x, uint8_t colour)
-{
+void Font::PrintInt(uint16_t val, uint8_t line, uint8_t x, uint8_t colour) {
     uint8_t* p = Platform::GetScreenBuffer() + DISPLAY_WIDTH * line + x;
     uint8_t xorMask = (colour == COLOUR_BLACK) ? 0 : 0xff;
 
-    if (val == 0)
-    {
+    if(val == 0) {
         DrawChar(p, '0', xorMask);
         return;
     }
@@ -61,23 +54,20 @@ void Font::PrintInt(uint16_t val, uint8_t line, uint8_t x, uint8_t colour)
     char buf[5];
     int n = 0;
 
-    while (val && n < 5)
-    {
+    while(val && n < 5) {
         buf[n++] = (char)('0' + (val % 10));
         val /= 10;
     }
 
-    while (n--)
-    {
+    while(n--) {
         DrawChar(p, buf[n], xorMask);
         p += glyphWidth;
     }
 }
 
-void Font::DrawChar(uint8_t* p, char c, uint8_t xorMask)
-{
+void Font::DrawChar(uint8_t* p, char c, uint8_t xorMask) {
     uint8_t uc = (uint8_t)c;
-    if (uc < firstGlyphIndex) return;
+    if(uc < firstGlyphIndex) return;
 
     const uint8_t* f = fontPageData + glyphWidth * (uc - firstGlyphIndex);
 

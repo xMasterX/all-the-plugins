@@ -22,15 +22,13 @@
 
 #include "src/game.h"
 
-Entity*
-moving_sprite_add_to_level(Level* level,
-                           GameManager* manager,
-                           Vector pos_start,
-                           Vector pos_end,
-                           float duration,
-                           const char* sprite_name)
-{
-
+Entity* moving_sprite_add_to_level(
+    Level* level,
+    GameManager* manager,
+    Vector pos_start,
+    Vector pos_end,
+    float duration,
+    const char* sprite_name) {
     Entity* entity = level_add_entity(level, &moving_sprite_description);
     MovingSpriteContext* entity_context = entity_context_get(entity);
     entity_context->pos_start = pos_start;
@@ -41,18 +39,14 @@ moving_sprite_add_to_level(Level* level,
     return entity;
 }
 
-static void
-moving_sprite_update(Entity* self, GameManager* manager, void* _entity_context)
-{
+static void moving_sprite_update(Entity* self, GameManager* manager, void* _entity_context) {
     UNUSED(manager);
     MovingSpriteContext* entity_context = _entity_context;
 
     // lerp position between start and end for duration
-    if (entity_context->time < entity_context->duration) {
-        Vector dir =
-          vector_sub(entity_context->pos_end, entity_context->pos_start);
-        Vector len =
-          vector_mulf(dir, entity_context->time / entity_context->duration);
+    if(entity_context->time < entity_context->duration) {
+        Vector dir = vector_sub(entity_context->pos_end, entity_context->pos_start);
+        Vector len = vector_mulf(dir, entity_context->time / entity_context->duration);
         Vector pos = vector_add(entity_context->pos_start, len);
 
         entity_pos_set(self, pos);
@@ -62,33 +56,31 @@ moving_sprite_update(Entity* self, GameManager* manager, void* _entity_context)
     }
 }
 
-static void
-moving_sprite_render(Entity* self,
-                     GameManager* manager,
-                     Canvas* canvas,
-                     void* _entity_context)
-{
+static void moving_sprite_render(
+    Entity* self,
+    GameManager* manager,
+    Canvas* canvas,
+    void* _entity_context) {
     UNUSED(manager);
     MovingSpriteContext* entity_context = _entity_context;
 
-    if (entity_context->sprite) {
+    if(entity_context->sprite) {
         Vector pos = entity_pos_get(self);
         canvas_draw_sprite(canvas, entity_context->sprite, pos.x, pos.y);
     }
 }
 
-static void
-moving_sprite_event(Entity* self,
-                    GameManager* manager,
-                    EntityEvent event,
-                    void* _entity_context)
-{
+static void moving_sprite_event(
+    Entity* self,
+    GameManager* manager,
+    EntityEvent event,
+    void* _entity_context) {
     UNUSED(self);
     UNUSED(manager);
     UNUSED(event);
 
     MovingSpriteContext* entity_context = _entity_context;
-    if (event.type == GameEventSkipAnimation) {
+    if(event.type == GameEventSkipAnimation) {
         entity_context->time = entity_context->duration;
     }
 }

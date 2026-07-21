@@ -21,12 +21,11 @@ static bool tagtinker_parse_dropped_filename(
     if(!name || !out) return false;
 
     size_t name_len = strlen(name);
-    if(name_len < 5U) return false;                           /* min: "a.bmp" */
+    if(name_len < 5U) return false; /* min: "a.bmp" */
     const char* ext = name + name_len - 4;
-    if(!((ext[0] == '.') &&
-         (ext[1] == 'b' || ext[1] == 'B') &&
-         (ext[2] == 'm' || ext[2] == 'M') &&
-         (ext[3] == 'p' || ext[3] == 'P'))) return false;
+    if(!((ext[0] == '.') && (ext[1] == 'b' || ext[1] == 'B') && (ext[2] == 'm' || ext[2] == 'M') &&
+         (ext[3] == 'p' || ext[3] == 'P')))
+        return false;
 
     unsigned page = 1U;
     int consumed = 0;
@@ -91,11 +90,7 @@ static void dropped_images_load(TagTinkerApp* app) {
 
             TagTinkerSyncedImage entry;
             if(!tagtinker_parse_dropped_filename(
-                   name,
-                   target->barcode,
-                   target->profile.width,
-                   target->profile.height,
-                   &entry)) {
+                   name, target->barcode, target->profile.width, target->profile.height, &entry)) {
                 continue;
             }
 

@@ -42,7 +42,7 @@ typedef struct {
 typedef struct MineSweeperApp {
     SceneManager* scene_manager;
     ViewDispatcher* view_dispatcher;
-    
+
     NotificationApp* notification;
 
     StartScreen* start_screen;

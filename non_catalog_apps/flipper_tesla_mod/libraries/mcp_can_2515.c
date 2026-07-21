@@ -310,13 +310,25 @@ void mcp_set_bitrate(FuriHalSpiBusHandle* spi, MCP_BITRATE bitrate, MCP_CLOCK cl
         // Source: arduino-CAN library GitHub issue, verified community values
         switch(bitrate) {
         case MCP_125KBPS:
-            cfg1 = 0x02; cfg2 = 0xB5; cfg3 = 0x01; break;
+            cfg1 = 0x02;
+            cfg2 = 0xB5;
+            cfg3 = 0x01;
+            break;
         case MCP_250KBPS:
-            cfg1 = 0x00; cfg2 = 0xB5; cfg3 = 0x01; break;
+            cfg1 = 0x00;
+            cfg2 = 0xB5;
+            cfg3 = 0x01;
+            break;
         case MCP_500KBPS:
-            cfg1 = 0x00; cfg2 = 0xA2; cfg3 = 0x02; break;
+            cfg1 = 0x00;
+            cfg2 = 0xA2;
+            cfg3 = 0x02;
+            break;
         case MCP_1000KBPS:
-            cfg1 = 0x00; cfg2 = 0x80; cfg3 = 0x01; break;
+            cfg1 = 0x00;
+            cfg2 = 0x80;
+            cfg3 = 0x01;
+            break;
         }
         break;
     case MCP_16MHZ:
@@ -745,7 +757,10 @@ MCP2515* mcp_alloc(MCP_MODE mode, MCP_CLOCK clck, MCP_BITRATE bitrate) {
     MCP2515* mcp_can = malloc(sizeof(MCP2515));
     if(!mcp_can) return NULL;
     mcp_can->spi = spi_alloc();
-    if(!mcp_can->spi) { free(mcp_can); return NULL; }
+    if(!mcp_can->spi) {
+        free(mcp_can);
+        return NULL;
+    }
     mcp_can->mode = mode;
     mcp_can->bitRate = bitrate;
     mcp_can->clck = clck;

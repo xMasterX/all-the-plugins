@@ -43,17 +43,17 @@
  * @brief max size of filename
  * 
  */
-#define SHAPSHUP_MAX_LEN_NAME 64
+#define SHAPSHUP_MAX_LEN_NAME    64
 /**
  * @brief default directory to show
  * 
  */
-#define SHAPSHUP_PATH EXT_PATH("subghz")
+#define SHAPSHUP_PATH            EXT_PATH("subghz")
 /**
  * @brief filename extension to show
  * 
  */
-#define SHAPSHUP_FILE_EXT ".sub"
+#define SHAPSHUP_FILE_EXT        ".sub"
 
 /**
  * @brief used for DEBUG purpose

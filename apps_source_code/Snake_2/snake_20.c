@@ -108,7 +108,7 @@ static void snake_game_render_callback(Canvas* const canvas, void* ctx) {
 
     // Frame
     canvas_draw_frame(canvas, 0, 0, 128, 64);
-    
+
     // Fruit
     Point f = snake_state->fruit;
     f.x = f.x * 4 + 1;
@@ -149,7 +149,7 @@ static void snake_game_render_callback(Canvas* const canvas, void* ctx) {
 
         canvas_set_font(canvas, FontPrimary);
         if(snake_state->state == GameStateGameOver) {
-            if(snake_state->len >= MAX_SNAKE_LEN-1) {
+            if(snake_state->len >= MAX_SNAKE_LEN - 1) {
                 canvas_draw_str_aligned(canvas, 65, 35, AlignCenter, AlignBottom, "You WON!");
             } else {
                 canvas_draw_str_aligned(canvas, 65, 35, AlignCenter, AlignBottom, "Game Over");
@@ -479,8 +479,8 @@ static void
     bool eatFruit = (next_step.x == snake_state->fruit.x) && (next_step.y == snake_state->fruit.y);
     if(eatFruit) {
         snake_state->len++;
-        
-        if(snake_state->len >= MAX_SNAKE_LEN-1) {
+
+        if(snake_state->len >= MAX_SNAKE_LEN - 1) {
             //You win!!!
             //It's impossible to collect ALL fruits, because
             //the number of rows is odd (15),

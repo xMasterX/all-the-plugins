@@ -46,15 +46,15 @@
 #include <stdint.h>
 
 // QR Code Format Encoding
-#define MODE_NUMERIC 0
+#define MODE_NUMERIC      0
 #define MODE_ALPHANUMERIC 1
-#define MODE_BYTE 2
+#define MODE_BYTE         2
 
 // Error Correction Code Levels
-#define ECC_LOW 0
-#define ECC_MEDIUM 1
+#define ECC_LOW      0
+#define ECC_MEDIUM   1
 #define ECC_QUARTILE 2
-#define ECC_HIGH 3
+#define ECC_HIGH     3
 
 // If set to non-zero, this library can ONLY produce QR codes at that version
 // This saves a lot of dynamic memory, as the codeword tables are skipped

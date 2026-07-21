@@ -2,8 +2,8 @@
 
 #include "furi_hal.h"
 
-#define UART_CH (FuriHalSerialIdUsart)
-#define BAUDRATE (115200)
+#define UART_CH       (FuriHalSerialIdUsart)
+#define BAUDRATE      (115200)
 #define FAST_BAUDRATE (921600)
 
 #define RX_BUF_SIZE (2048)

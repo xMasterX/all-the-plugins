@@ -38,7 +38,7 @@ static VkThermo* vk_thermo_app_alloc(void) {
     view_dispatcher_set_navigation_event_callback(
         app->view_dispatcher, vk_thermo_navigation_event_callback);
     view_dispatcher_set_tick_event_callback(
-        app->view_dispatcher, vk_thermo_tick_event_callback, 250);  // 250ms tick for animation
+        app->view_dispatcher, vk_thermo_tick_event_callback, 250); // 250ms tick for animation
     view_dispatcher_set_custom_event_callback(
         app->view_dispatcher, vk_thermo_custom_event_callback);
 
@@ -63,23 +63,17 @@ static VkThermo* vk_thermo_app_alloc(void) {
     // Allocate views
     app->scan_view = vk_thermo_scan_view_alloc();
     view_dispatcher_add_view(
-        app->view_dispatcher,
-        VkThermoViewIdScan,
-        vk_thermo_scan_view_get_view(app->scan_view));
+        app->view_dispatcher, VkThermoViewIdScan, vk_thermo_scan_view_get_view(app->scan_view));
 
     // Log view
     app->log_view = vk_thermo_log_view_alloc();
     view_dispatcher_add_view(
-        app->view_dispatcher,
-        VkThermoViewIdLog,
-        vk_thermo_log_view_get_view(app->log_view));
+        app->view_dispatcher, VkThermoViewIdLog, vk_thermo_log_view_get_view(app->log_view));
 
     // Graph view
     app->graph_view = vk_thermo_graph_view_alloc();
     view_dispatcher_add_view(
-        app->view_dispatcher,
-        VkThermoViewIdGraph,
-        vk_thermo_graph_view_get_view(app->graph_view));
+        app->view_dispatcher, VkThermoViewIdGraph, vk_thermo_graph_view_get_view(app->graph_view));
 
     // Settings (Variable Item List)
     app->variable_item_list = variable_item_list_alloc();
@@ -91,9 +85,7 @@ static VkThermo* vk_thermo_app_alloc(void) {
     // Dialog for confirmations
     app->dialog = dialog_ex_alloc();
     view_dispatcher_add_view(
-        app->view_dispatcher,
-        VkThermoViewIdDialog,
-        dialog_ex_get_view(app->dialog));
+        app->view_dispatcher, VkThermoViewIdDialog, dialog_ex_get_view(app->dialog));
 
     // Allocate NFC
     app->nfc = vk_thermo_nfc_alloc();

@@ -6,20 +6,20 @@
 #include <dialogs/dialogs.h>
 #include <storage/storage.h>
 
-#define TAG "schip"
-#define FONT_SIZE 180
-#define MEM_SIZE 0x1000
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
+#define TAG             "schip"
+#define FONT_SIZE       180
+#define MEM_SIZE        0x1000
+#define SCREEN_WIDTH    128
+#define SCREEN_HEIGHT   64
 #define REGISTERS_COUNT 16
-#define STACK_SIZE 16
-#define KEYPAD_WIDTH 4
-#define KEYPAD_HEIGHT 4
-#define BUTTONS_COUNT 16
-#define ROM_START 0x200
-#define FILES_PATH "/ext/schip"
-#define FILE_EXTENSION ".ch8"
-#define RPL_COUNT 8
+#define STACK_SIZE      16
+#define KEYPAD_WIDTH    4
+#define KEYPAD_HEIGHT   4
+#define BUTTONS_COUNT   16
+#define ROM_START       0x200
+#define FILES_PATH      "/ext/schip"
+#define FILE_EXTENSION  ".ch8"
+#define RPL_COUNT       8
 
 const uint8_t font[FONT_SIZE] = {
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -170,7 +170,8 @@ static void tick(void* context) {
         // TODO: scroll down d4 px
     } else if(d6 == 0x00e0) {
         for(uint8_t x = 0; x < SCREEN_WIDTH; x++)
-            for(uint8_t y = 0; y < SCREEN_HEIGHT; y++) screen[x][y] = false;
+            for(uint8_t y = 0; y < SCREEN_HEIGHT; y++)
+                screen[x][y] = false;
     } else if(d6 == 0x00ee) {
         PC = stack[stack_pointer--];
     } else if(d6 == 0x00fb) {
@@ -280,13 +281,17 @@ static void tick(void* context) {
         memory[I + 1] = (registers[d2] / 10) % 10;
         memory[I + 2] = registers[d2] % 10;
     } else if(d1 == 0xf && d7 == 0x55) {
-        for(uint8_t i = 0; i <= d2; i++) memory[I + i] = registers[i];
+        for(uint8_t i = 0; i <= d2; i++)
+            memory[I + i] = registers[i];
     } else if(d1 == 0xf && d7 == 0x65) {
-        for(uint8_t i = 0; i <= d2; i++) registers[i] = memory[I + i];
+        for(uint8_t i = 0; i <= d2; i++)
+            registers[i] = memory[I + i];
     } else if(d1 == 0xf && d7 == 0x75) {
-        for(uint8_t i = 0; i <= d2; i++) rpl[I + i] = registers[i];
+        for(uint8_t i = 0; i <= d2; i++)
+            rpl[I + i] = registers[i];
     } else if(d1 == 0xf && d7 == 0x85) {
-        for(uint8_t i = 0; i <= d2; i++) registers[i] = rpl[I + i];
+        for(uint8_t i = 0; i <= d2; i++)
+            registers[i] = rpl[I + i];
     }
 
     if(next) PC += 2;
@@ -322,7 +327,8 @@ static void tick_sound(void* context) {
 }
 
 int32_t schip_main(void* p) {
-    for(int i = 0; i < FONT_SIZE; i++) memory[i] = font[i];
+    for(int i = 0; i < FONT_SIZE; i++)
+        memory[i] = font[i];
 
     UNUSED(p);
     FuriMessageQueue* event_queue = furi_message_queue_alloc(8, sizeof(InputEvent));

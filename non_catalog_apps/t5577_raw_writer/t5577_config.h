@@ -5,20 +5,18 @@
 #include <stdio.h>
 #include <lib/lfrfid/tools/t5577.h>
 
-
 #define MODULATION_NUM 11
-#define CLOCK_NUM 8
-
+#define CLOCK_NUM      8
 
 typedef struct {
-    char* modulation_name; 
+    char* modulation_name;
     uint32_t mod_page_zero;
 } t5577_modulation;
 
 extern const t5577_modulation all_mods[MODULATION_NUM];
 
 typedef struct {
-    uint8_t rf_clock_num; 
+    uint8_t rf_clock_num;
     uint32_t clock_page_zero;
 } t5577_rf_clock;
 

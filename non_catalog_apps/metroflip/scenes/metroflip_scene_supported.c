@@ -48,8 +48,7 @@ void metroflip_scene_supported_on_enter(void* context) {
         submenu, "ITSO (United Kingdom)", 11, metroflip_scene_supported_submenu_callback, app);
     submenu_add_item(
         submenu, "myki (Melbourne)", 12, metroflip_scene_supported_submenu_callback, app);
-    submenu_add_item(
-        submenu, "Nol (Dubai)", 13, metroflip_scene_supported_submenu_callback, app);
+    submenu_add_item(submenu, "Nol (Dubai)", 13, metroflip_scene_supported_submenu_callback, app);
     submenu_add_item(
         submenu, "Opal (Sydney)", 14, metroflip_scene_supported_submenu_callback, app);
 

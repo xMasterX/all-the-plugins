@@ -10,4 +10,4 @@ void scene_text_input_show(SubGhzPlaylistCreator* app) {
 void scene_text_input_init_view(SubGhzPlaylistCreator* app) {
     // The view is allocated in subghz_playlist_creator_alloc and added to the dispatcher there.
     UNUSED(app);
-} 
+}

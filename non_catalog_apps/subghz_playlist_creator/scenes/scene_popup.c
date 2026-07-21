@@ -9,4 +9,4 @@ void scene_popup_show(SubGhzPlaylistCreator* app, const char* header, const char
     popup_set_timeout(app->popup, 2000);
     popup_enable_timeout(app->popup);
     view_dispatcher_switch_to_view(app->view_dispatcher, SubGhzPlaylistCreatorViewPopup);
-} 
+}

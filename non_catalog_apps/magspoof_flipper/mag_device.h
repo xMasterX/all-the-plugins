@@ -9,9 +9,9 @@
 #include "helpers/mag_types.h"
 
 #define MAG_DEV_NAME_MAX_LEN 22
-#define MAG_DEV_TRACKS 3
+#define MAG_DEV_TRACKS       3
 
-#define MAG_APP_FOLDER STORAGE_APP_DATA_PATH_PREFIX
+#define MAG_APP_FOLDER    STORAGE_APP_DATA_PATH_PREFIX
 #define MAG_APP_EXTENSION ".mag"
 
 #define MAG_EXAMPLE_FILE_1 "TestMagstripe.mag"

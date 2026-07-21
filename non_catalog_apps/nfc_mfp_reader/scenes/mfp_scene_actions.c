@@ -38,19 +38,14 @@ void mfp_scene_actions_on_enter(void* ctx) {
     /* Save is only meaningful for fresh scans — loaded files are
      * already on disk and Save would just overwrite the same bytes. */
     if(!app->loaded_from_file) {
-        submenu_add_item(
-            app->submenu, "Save", ActionsMenuSave, actions_submenu_cb, app);
+        submenu_add_item(app->submenu, "Save", ActionsMenuSave, actions_submenu_cb, app);
     }
-    submenu_add_item(
-        app->submenu, "Emulate", ActionsMenuEmulate, actions_submenu_cb, app);
-    submenu_add_item(
-        app->submenu, "View dump", ActionsMenuViewDump, actions_submenu_cb, app);
-    submenu_add_item(
-        app->submenu, "Card Info", ActionsMenuCardInfo, actions_submenu_cb, app);
+    submenu_add_item(app->submenu, "Emulate", ActionsMenuEmulate, actions_submenu_cb, app);
+    submenu_add_item(app->submenu, "View dump", ActionsMenuViewDump, actions_submenu_cb, app);
+    submenu_add_item(app->submenu, "Card Info", ActionsMenuCardInfo, actions_submenu_cb, app);
     /* Delete only makes sense for files already on disk. */
     if(app->loaded_from_file) {
-        submenu_add_item(
-            app->submenu, "Delete", ActionsMenuDelete, actions_submenu_cb, app);
+        submenu_add_item(app->submenu, "Delete", ActionsMenuDelete, actions_submenu_cb, app);
     }
 
     view_dispatcher_switch_to_view(app->view_dispatcher, MfpViewSubmenu);

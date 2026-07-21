@@ -6,7 +6,8 @@
 #include "tx_ratio.h"
 
 static void test_y_values_sequence(void) {
-    static const uint8_t expected[] = {1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U, 9U, 10U, 12U, 15U, 16U, 20U, 24U};
+    static const uint8_t expected[] = {
+        1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U, 9U, 10U, 12U, 15U, 16U, 20U, 24U};
 
     assert(dcf77_tx_ratio_y_count() == sizeof(expected) / sizeof(expected[0]));
 

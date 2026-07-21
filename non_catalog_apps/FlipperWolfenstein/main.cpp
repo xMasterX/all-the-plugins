@@ -157,8 +157,8 @@ extern "C" int32_t arduboy_app(void* p) {
                 const uint8_t in = Platform.readInput();
                 const bool inGame = engine.inGame();
                 const bool backHeld = (in & Input_Btn_A);
-                const bool strafeHeld =
-                    inGame && backHeld && ((in & Input_Dpad_Left) || (in & Input_Dpad_Right));
+                const bool strafeHeld = inGame && backHeld &&
+                                        ((in & Input_Dpad_Left) || (in & Input_Dpad_Right));
 
                 if(!backHeld) {
                     exit_hold_frames = 0;

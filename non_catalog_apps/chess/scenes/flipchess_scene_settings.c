@@ -2,7 +2,7 @@
 #include "../helpers/flipchess_voice.h"
 #include <lib/toolbox/value_index.h>
 
-#define TEXT_LABEL_ON "ON"
+#define TEXT_LABEL_ON  "ON"
 #define TEXT_LABEL_OFF "OFF"
 
 const char* const haptic_text[2] = {

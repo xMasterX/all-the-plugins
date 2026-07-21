@@ -322,16 +322,16 @@ const SubGhzProtocol chrysler_protocol_v0 = {
             | SubGhzProtocolFlag_Send
 #endif
     ,
-    #if PROTOPIRATE_WITH_DECODER
+#if PROTOPIRATE_WITH_DECODER
     .decoder = &subghz_protocol_chrysler_v0_decoder,
-    #else
+#else
     .decoder = NULL,
-    #endif
-    #if PROTOPIRATE_WITH_ENCODER
+#endif
+#if PROTOPIRATE_WITH_ENCODER
     .encoder = &subghz_protocol_chrysler_v0_encoder,
-    #else
+#else
     .encoder = NULL,
-    #endif
+#endif
 };
 
 #if PROTOPIRATE_WITH_ENCODER

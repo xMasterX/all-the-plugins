@@ -76,52 +76,29 @@ static const size_t kNumAgencies = COUNT(agency_names);
 // Known station names for various agencies.
 //
 static const IdMapping bart_zones[] = {
-    {.id = 0x0001, .name = "Colma"},
-    {.id = 0x0002, .name = "Daly City"},
-    {.id = 0x0003, .name = "Balboa Park"},
-    {.id = 0x0004, .name = "Glen Park"},
-    {.id = 0x0005, .name = "24th St Mission"},
-    {.id = 0x0006, .name = "16th St Mission"},
-    {.id = 0x0007, .name = "Civic Ctr"},
-    {.id = 0x0008, .name = "Powell St"},
-    {.id = 0x0009, .name = "Montgomery St"},
-    {.id = 0x000a, .name = "Embarcadero"},
-    {.id = 0x000b, .name = "West Oakland"},
-    {.id = 0x000c, .name = "12th St Oakland"},
-    {.id = 0x000d, .name = "19th St Oakland"},
-    {.id = 0x000e, .name = "MacArthur"},
-    {.id = 0x000f, .name = "Rockridge"},
-    {.id = 0x0010, .name = "Orinda"},
-    {.id = 0x0011, .name = "Lafayette"},
-    {.id = 0x0012, .name = "Walnut Creek"},
-    {.id = 0x0013, .name = "Pleasant Hill"},
-    {.id = 0x0014, .name = "Concord"},
-    {.id = 0x0015, .name = "N Concord"},
-    {.id = 0x0016, .name = "Pittsburg/BP"},
-    {.id = 0x0017, .name = "Ashby"},
-    {.id = 0x0018, .name = "Downtown Berk"},
-    {.id = 0x0019, .name = "North Berkeley"},
-    {.id = 0x001a, .name = "El Cerrito Plz"},
-    {.id = 0x001b, .name = "El Cerrito DN"},
-    {.id = 0x001c, .name = "Richmond"},
-    {.id = 0x001d, .name = "Lake Merrit"},
-    {.id = 0x001e, .name = "Fruitvale"},
-    {.id = 0x001f, .name = "Coliseum"},
-    {.id = 0x0021, .name = "San Leandro"},
-    {.id = 0x0022, .name = "Hayward"},
-    {.id = 0x0023, .name = "South Hayward"},
-    {.id = 0x0024, .name = "Union City"},
-    {.id = 0x0025, .name = "Fremont"},
-    {.id = 0x0026, .name = "Castro Valley"},
-    {.id = 0x0027, .name = "Dublin/Plsntn"},
-    {.id = 0x0028, .name = "S San Francisco"},
-    {.id = 0x0029, .name = "San Bruno"},
-    {.id = 0x002a, .name = "SFO Airport"},
-    {.id = 0x002b, .name = "Millbrae"},
-    {.id = 0x002c, .name = "W Dublin/Plsn"},
-    {.id = 0x002d, .name = "OAK Airport"},
-    {.id = 0x002e, .name = "Warm Springs"},
-    {.id = 0x002f, .name = "Milpitas"},
+    {.id = 0x0001, .name = "Colma"},           {.id = 0x0002, .name = "Daly City"},
+    {.id = 0x0003, .name = "Balboa Park"},     {.id = 0x0004, .name = "Glen Park"},
+    {.id = 0x0005, .name = "24th St Mission"}, {.id = 0x0006, .name = "16th St Mission"},
+    {.id = 0x0007, .name = "Civic Ctr"},       {.id = 0x0008, .name = "Powell St"},
+    {.id = 0x0009, .name = "Montgomery St"},   {.id = 0x000a, .name = "Embarcadero"},
+    {.id = 0x000b, .name = "West Oakland"},    {.id = 0x000c, .name = "12th St Oakland"},
+    {.id = 0x000d, .name = "19th St Oakland"}, {.id = 0x000e, .name = "MacArthur"},
+    {.id = 0x000f, .name = "Rockridge"},       {.id = 0x0010, .name = "Orinda"},
+    {.id = 0x0011, .name = "Lafayette"},       {.id = 0x0012, .name = "Walnut Creek"},
+    {.id = 0x0013, .name = "Pleasant Hill"},   {.id = 0x0014, .name = "Concord"},
+    {.id = 0x0015, .name = "N Concord"},       {.id = 0x0016, .name = "Pittsburg/BP"},
+    {.id = 0x0017, .name = "Ashby"},           {.id = 0x0018, .name = "Downtown Berk"},
+    {.id = 0x0019, .name = "North Berkeley"},  {.id = 0x001a, .name = "El Cerrito Plz"},
+    {.id = 0x001b, .name = "El Cerrito DN"},   {.id = 0x001c, .name = "Richmond"},
+    {.id = 0x001d, .name = "Lake Merrit"},     {.id = 0x001e, .name = "Fruitvale"},
+    {.id = 0x001f, .name = "Coliseum"},        {.id = 0x0021, .name = "San Leandro"},
+    {.id = 0x0022, .name = "Hayward"},         {.id = 0x0023, .name = "South Hayward"},
+    {.id = 0x0024, .name = "Union City"},      {.id = 0x0025, .name = "Fremont"},
+    {.id = 0x0026, .name = "Castro Valley"},   {.id = 0x0027, .name = "Dublin/Plsntn"},
+    {.id = 0x0028, .name = "S San Francisco"}, {.id = 0x0029, .name = "San Bruno"},
+    {.id = 0x002a, .name = "SFO Airport"},     {.id = 0x002b, .name = "Millbrae"},
+    {.id = 0x002c, .name = "W Dublin/Plsn"},   {.id = 0x002d, .name = "OAK Airport"},
+    {.id = 0x002e, .name = "Warm Springs"},    {.id = 0x002f, .name = "Milpitas"},
     {.id = 0x0030, .name = "Berryessa/NSJ"},
 };
 static const size_t kNumBARTZones = COUNT(bart_zones);
@@ -283,8 +260,7 @@ static bool clipper_add_ride_page(View* view, const uint8_t* record, uint8_t rid
     if(agency_id == 0) return false;
 
     const char* agency_name;
-    if(!get_map_item(agency_id, agency_names, kNumAgencies, &agency_name))
-        agency_name = "Unknown";
+    if(!get_map_item(agency_id, agency_names, kNumAgencies, &agency_name)) agency_name = "Unknown";
 
     uint16_t vehicle_id = get_u16be(&record[0x0a]);
 
@@ -490,7 +466,8 @@ static void clipper_on_enter(Metroflip* app) {
         furi_record_close(RECORD_STORAGE);
     } else {
         Popup* popup = app->popup;
-        popup_set_header(popup, "Scanning...\nApply card\nto the back", 68, 30, AlignLeft, AlignTop);
+        popup_set_header(
+            popup, "Scanning...\nApply card\nto the back", 68, 30, AlignLeft, AlignTop);
         popup_set_icon(popup, 0, 3, &I_RFIDDolphinReceive_97x61);
 
         view_dispatcher_switch_to_view(app->view_dispatcher, MetroflipViewPopup);
@@ -509,8 +486,7 @@ static bool clipper_on_event(Metroflip* app, SceneManagerEvent event) {
             /* Read finished on the worker thread; build the card view here on
                the main/GUI thread. */
             metroflip_app_blink_stop(app);
-            const MfDesfireData* data =
-                nfc_device_get_data(app->nfc_device, NfcProtocolMfDesfire);
+            const MfDesfireData* data = nfc_device_get_data(app->nfc_device, NfcProtocolMfDesfire);
             if(!clipper_display_card_view(data, app, false)) {
                 FURI_LOG_I(TAG, "Unknown card type");
                 Widget* widget = app->widget;
@@ -546,7 +522,6 @@ static bool clipper_on_event(Metroflip* app, SceneManagerEvent event) {
 }
 
 static void clipper_on_exit(Metroflip* app) {
-
     widget_reset(app->widget);
     popup_reset(app->popup);
     metroflip_app_blink_stop(app);

@@ -146,8 +146,7 @@ FlipChessStartscreen* flipchess_startscreen_alloc() {
 void flipchess_startscreen_free(FlipChessStartscreen* instance) {
     furi_assert(instance);
 
-    with_view_model(
-        instance->view, FlipChessStartscreenModel * model, { UNUSED(model); }, true);
+    with_view_model(instance->view, FlipChessStartscreenModel * model, { UNUSED(model); }, true);
     view_free(instance->view);
     free(instance);
 }

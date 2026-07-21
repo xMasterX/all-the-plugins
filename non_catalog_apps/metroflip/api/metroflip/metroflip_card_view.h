@@ -41,8 +41,8 @@ typedef struct {
     uint8_t page_count;
     uint8_t page_capacity;
     uint8_t current_page;
-    int16_t scroll_y;      // lines scrolled (0 = top)
-    uint16_t total_lines;  // set by draw callback for scroll clamping
+    int16_t scroll_y; // lines scrolled (0 = top)
+    uint16_t total_lines; // set by draw callback for scroll clamping
     bool show_save;
     bool show_delete;
 } MetroflipCardViewModel;

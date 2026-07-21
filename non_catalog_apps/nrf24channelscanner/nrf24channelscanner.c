@@ -176,7 +176,6 @@ int32_t nrf24channelscanner_main(void* p) {
         furi_delay_ms(10);
     }
 
-
     nrf24_init();
 
     ViewPort* view_port = view_port_alloc();
@@ -256,7 +255,7 @@ int32_t nrf24channelscanner_main(void* p) {
     if(furi_hal_power_is_otg_enabled() && !otg_was_enabled) {
         furi_hal_power_disable_otg();
     }
-    
+
     furi_message_queue_free(event_queue);
     gui_remove_view_port(gui, view_port);
     view_port_free(view_port);

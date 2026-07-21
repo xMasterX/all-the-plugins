@@ -407,8 +407,5 @@ void vk_thermo_log_view_set_log(VkThermoLogView* instance, VkThermoLog* log) {
 void vk_thermo_log_view_set_temp_unit(VkThermoLogView* instance, uint32_t temp_unit) {
     furi_assert(instance);
     with_view_model(
-        instance->view,
-        VkThermoLogViewModel * model,
-        { model->temp_unit = temp_unit; },
-        true);
+        instance->view, VkThermoLogViewModel * model, { model->temp_unit = temp_unit; }, true);
 }

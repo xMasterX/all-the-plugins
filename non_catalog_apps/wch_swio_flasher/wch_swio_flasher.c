@@ -34,7 +34,7 @@ SOFTWARE.
 
 #define TAG "WCH_SWIO_FL"
 
-#define SYSTEM_DEFAULTS_MAGIC 0xCAFED00D
+#define SYSTEM_DEFAULTS_MAGIC    0xCAFED00D
 #define SYSTEM_DEFAULTS_FILENAME "defaults.txt"
 
 typedef struct {
@@ -148,7 +148,6 @@ WchSwioFlasherApp* wch_swio_flasher_app_alloc() {
 
     app->view_dispatcher = view_dispatcher_alloc();
     app->scene_manager = scene_manager_alloc(&wch_swio_flasher_scene_handlers, app);
-    
 
     view_dispatcher_set_event_callback_context(app->view_dispatcher, app);
 

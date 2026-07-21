@@ -77,9 +77,12 @@ static void test_field_encoding_and_odd_parity(void) {
     assert(bits_to_value(bits_a, year_positions, year_weights, sizeof(year_positions)) == 99U);
     assert(bits_to_value(bits_a, month_positions, month_weights, sizeof(month_positions)) == 12U);
     assert(bits_to_value(bits_a, day_positions, day_weights, sizeof(day_positions)) == 31U);
-    assert(bits_to_value(bits_a, weekday_positions, weekday_weights, sizeof(weekday_positions)) == 6U);
+    assert(
+        bits_to_value(bits_a, weekday_positions, weekday_weights, sizeof(weekday_positions)) ==
+        6U);
     assert(bits_to_value(bits_a, hour_positions, hour_weights, sizeof(hour_positions)) == 23U);
-    assert(bits_to_value(bits_a, minute_positions, minute_weights, sizeof(minute_positions)) == 59U);
+    assert(
+        bits_to_value(bits_a, minute_positions, minute_weights, sizeof(minute_positions)) == 59U);
 
     assert(((uint8_t)(count_ones(bits_a, 17, 24) + (bits_b[54] ? 1U : 0U)) & 1U) == 1U);
     assert(((uint8_t)(count_ones(bits_a, 25, 35) + (bits_b[55] ? 1U : 0U)) & 1U) == 1U);

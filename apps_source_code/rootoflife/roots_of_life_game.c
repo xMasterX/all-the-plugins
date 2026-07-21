@@ -11,45 +11,48 @@
 #define TAG "RootsOfLife"
 
 // Flipper
-#define FLIPPER_LCD_WIDTH 128
+#define FLIPPER_LCD_WIDTH  128
 #define FLIPPER_LCD_HEIGHT 64
 
 // General
 #define GROUND_HEIGHT 10
-#define CELL_SIZE 3
+#define CELL_SIZE     3
 #define FIELD_START_X 0
 #define FIELD_START_Y (GROUND_HEIGHT + 1)
-#define CELLS_X (FLIPPER_LCD_WIDTH / CELL_SIZE)
-#define CELLS_Y ((FLIPPER_LCD_HEIGHT - GROUND_HEIGHT) / CELL_SIZE)
-#define CELLS_TOTAL (CELLS_Y * CELLS_X)
-#define CELL(Y, X) (Y * CELLS_X + X)
+#define CELLS_X       (FLIPPER_LCD_WIDTH / CELL_SIZE)
+#define CELLS_Y       ((FLIPPER_LCD_HEIGHT - GROUND_HEIGHT) / CELL_SIZE)
+#define CELLS_TOTAL   (CELLS_Y * CELLS_X)
+#define CELL(Y, X)    (Y * CELLS_X + X)
 
 // Root Spawn
 #define ROOT_SIZE_X 7
 #define ROOT_SIZE_Y 7
-#define ROOT(Y, X) ((Y)*ROOT_SIZE_X + (X))
+#define ROOT(Y, X)  ((Y) * ROOT_SIZE_X + (X))
 
-#define SPAWN_DIRECTIONS 2
-#define GROW_STEPS 4
+#define SPAWN_DIRECTIONS           2
+#define GROW_STEPS                 4
 #define GROW_SAME_DIRECTION_CHANCE 70
-#define RANDOM_GROW_ATTEMPTS 4
-#define RANDOM_GROW_CHANCE 50
+#define RANDOM_GROW_ATTEMPTS       4
+#define RANDOM_GROW_CHANCE         50
 
 // UI
-#define BLINK_PERIOD 12
+#define BLINK_PERIOD      12
 #define BLINK_HIDE_FRAMES 5
-#define TREE_HEIGHT 10
-#define PICKUP_FREQUENCY 10
+#define TREE_HEIGHT       10
+#define PICKUP_FREQUENCY  10
 
 // Game
-#define REROLLS_MAX 5
+#define REROLLS_MAX  5
 #define SCORE_FACTOR 10
 
-#define PICKUPS_MIN 1
-#define PICKUPS_MAX 5
+#define PICKUPS_MIN           1
+#define PICKUPS_MAX           5
 #define PICKUPS_POINTS_FACTOR 10
 
-typedef enum { EventTypeTick, EventTypeKey } EventType;
+typedef enum {
+    EventTypeTick,
+    EventTypeKey
+} EventType;
 
 typedef enum {
     R_NONE = 0,
@@ -59,7 +62,11 @@ typedef enum {
     R_RIGHT = 0b0001
 } Direction;
 
-typedef enum { StageStart, StageRun, StageOver } GameStage;
+typedef enum {
+    StageStart,
+    StageRun,
+    StageOver
+} GameStage;
 
 typedef struct {
     bool initialDraw;

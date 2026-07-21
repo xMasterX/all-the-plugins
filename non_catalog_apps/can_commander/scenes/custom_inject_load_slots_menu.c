@@ -5,13 +5,14 @@
 #include <stdio.h>
 #include <string.h>
 
-#define CUSTOM_INJECT_SET_MAX      24U
+#define CUSTOM_INJECT_SET_MAX 24U
 
 static char cancommander_custom_inject_set_labels[CUSTOM_INJECT_SET_MAX][32];
 static char cancommander_custom_inject_set_paths[CUSTOM_INJECT_SET_MAX][160];
 static uint8_t cancommander_custom_inject_set_count = 0U;
 
-static void cancommander_scene_custom_inject_load_slots_menu_callback(void* context, uint32_t index) {
+static void
+    cancommander_scene_custom_inject_load_slots_menu_callback(void* context, uint32_t index) {
     App* app = context;
     view_dispatcher_send_custom_event(app->view_dispatcher, index);
 }
@@ -30,7 +31,8 @@ static bool cancommander_scene_custom_inject_has_suffix(const char* name, const 
     return strcmp(name + name_len - suffix_len, suffix) == 0;
 }
 
-static bool cancommander_scene_custom_inject_type_ok(const FuriString* file_type, uint32_t version) {
+static bool
+    cancommander_scene_custom_inject_type_ok(const FuriString* file_type, uint32_t version) {
     if(!file_type || version != APP_SMART_INJECT_PROFILE_VER) {
         return false;
     }
@@ -87,9 +89,8 @@ static void cancommander_scene_custom_inject_set_list_scan_dir(const char* dir_p
             dir_path,
             entry_name);
 
-        const size_t suffix_len =
-            is_new ? strlen(APP_SMART_INJECT_PROFILE_EXT) :
-                     strlen(APP_SMART_INJECT_PROFILE_LEGACY_EXT);
+        const size_t suffix_len = is_new ? strlen(APP_SMART_INJECT_PROFILE_EXT) :
+                                           strlen(APP_SMART_INJECT_PROFILE_LEGACY_EXT);
         size_t label_len = len - suffix_len;
         if(label_len >= sizeof(cancommander_custom_inject_set_labels[idx])) {
             label_len = sizeof(cancommander_custom_inject_set_labels[idx]) - 1U;
@@ -103,19 +104,17 @@ static void cancommander_scene_custom_inject_set_list_scan_dir(const char* dir_p
         if(ff && file_type && name_value) {
             if(flipper_format_file_open_existing(ff, cancommander_custom_inject_set_paths[idx])) {
                 uint32_t version = 0U;
-                if(
-                    flipper_format_read_header(ff, file_type, &version) &&
-                    cancommander_scene_custom_inject_type_ok(file_type, version) &&
-                    flipper_format_read_string(ff, "name", name_value)) {
+                if(flipper_format_read_header(ff, file_type, &version) &&
+                   cancommander_scene_custom_inject_type_ok(file_type, version) &&
+                   flipper_format_read_string(ff, "name", name_value)) {
                     const char* display_name = furi_string_get_cstr(name_value);
                     if(display_name && display_name[0] != '\0') {
                         strncpy(
                             cancommander_custom_inject_set_labels[idx],
                             display_name,
                             sizeof(cancommander_custom_inject_set_labels[idx]) - 1U);
-                        cancommander_custom_inject_set_labels[idx]
-                                                            [sizeof(cancommander_custom_inject_set_labels[idx]) - 1U] =
-                                                                '\0';
+                        cancommander_custom_inject_set_labels
+                            [idx][sizeof(cancommander_custom_inject_set_labels[idx]) - 1U] = '\0';
                     }
                 }
             }
@@ -177,7 +176,9 @@ void cancommander_scene_custom_inject_load_slots_menu_on_enter(void* context) {
     view_dispatcher_switch_to_view(app->view_dispatcher, AppViewSubmenu);
 }
 
-bool cancommander_scene_custom_inject_load_slots_menu_on_event(void* context, SceneManagerEvent event) {
+bool cancommander_scene_custom_inject_load_slots_menu_on_event(
+    void* context,
+    SceneManagerEvent event) {
     App* app = context;
 
     if(event.type != SceneManagerEventTypeCustom) {
@@ -187,18 +188,18 @@ bool cancommander_scene_custom_inject_load_slots_menu_on_event(void* context, Sc
     scene_manager_set_scene_state(
         app->scene_manager, cancommander_scene_custom_inject_load_slots_menu, event.event);
 
-    if(
-        cancommander_custom_inject_set_count == 0U || event.event >= cancommander_custom_inject_set_count) {
+    if(cancommander_custom_inject_set_count == 0U ||
+       event.event >= cancommander_custom_inject_set_count) {
         return true;
     }
 
-    if(app_custom_inject_load_slot_set_file(app, cancommander_custom_inject_set_paths[event.event])) {
+    if(app_custom_inject_load_slot_set_file(
+           app, cancommander_custom_inject_set_paths[event.event])) {
         cancommander_scene_custom_inject_load_slots_start(app);
-        const bool ready =
-            app->connected && app->tool_active && app->dashboard_mode == AppDashboardCustomInject;
+        const bool ready = app->connected && app->tool_active &&
+                           app->dashboard_mode == AppDashboardCustomInject;
         scene_manager_next_scene(
-            app->scene_manager,
-            ready ? cancommander_scene_monitor : cancommander_scene_status);
+            app->scene_manager, ready ? cancommander_scene_monitor : cancommander_scene_status);
         return true;
     }
 

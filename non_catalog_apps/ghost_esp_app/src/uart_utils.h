@@ -13,7 +13,7 @@
 #include <stdbool.h>
 #define UART_CH_ESP FuriHalSerialIdUsart
 #define UART_CH_GPS FuriHalSerialIdLpuart
-#define BAUDRATE (115200)
+#define BAUDRATE    (115200)
 
 #define TEXT_BOX_STORE_SIZE           (8 * 1024) // 8KB text box buffer size
 #define RX_BUF_SIZE                   2048

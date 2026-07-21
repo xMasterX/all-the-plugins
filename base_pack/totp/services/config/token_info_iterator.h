@@ -16,7 +16,6 @@ typedef TotpIteratorUpdateTokenResult (
 typedef struct TokenInfoIteratorContext TokenInfoIteratorContext;
 
 enum TotpIteratorUpdateTokenResults {
-
     /**
      * @brief Token successfully updated
      */

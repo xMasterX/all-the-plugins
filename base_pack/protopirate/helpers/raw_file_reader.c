@@ -88,7 +88,6 @@ static bool local_flipper_format_stream_read_valid_key(Stream* stream, FuriStrin
                 // just new symbol, reset the new_line flag
                 new_line = false;
                 if(accumulate) {
-
                     if(furi_string_size(key) >= RAW_READER_MAX_TOKEN_LEN) {
                         accumulate = false;
                     } else {
@@ -328,10 +327,7 @@ bool raw_file_reader_open(RawFileReader* reader, const char* file_path) {
         }
     }
 
-    FURI_LOG_I(
-        TAG,
-        "Opened RAW file for streaming decode: %s",
-        file_path);
+    FURI_LOG_I(TAG, "Opened RAW file for streaming decode: %s", file_path);
     return true;
 }
 

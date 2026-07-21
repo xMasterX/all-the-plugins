@@ -1,6 +1,6 @@
 #pragma once
 
-#include <lib/Arduboy2.h>   
+#include <lib/Arduboy2.h>
 #include "../utils/Constants.h"
 #include "../utils/Enums.h"
 

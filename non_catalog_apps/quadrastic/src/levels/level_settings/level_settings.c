@@ -39,9 +39,7 @@ const char* const state_text[StateCount] = {
     "ON",
 };
 
-static bool
-back_callback(void* context)
-{
+static bool back_callback(void* context) {
     GameManager* manager = context;
     GameContext* game_context = game_manager_game_context_get(manager);
     game_save_settings(game_context);
@@ -49,9 +47,7 @@ back_callback(void* context)
     return true;
 }
 
-static void
-difficulty_change_callback(VariableItem* item)
-{
+static void difficulty_change_callback(VariableItem* item) {
     uint8_t index = variable_item_get_current_value_index(item);
     variable_item_set_current_value_text(item, difficulty_text[index]);
 
@@ -60,9 +56,7 @@ difficulty_change_callback(VariableItem* item)
     game_context->difficulty = index;
 }
 
-static void
-state_change_callback(VariableItem* item)
-{
+static void state_change_callback(VariableItem* item) {
     uint8_t index = variable_item_get_current_value_index(item);
     variable_item_set_current_value_text(item, state_text[index]);
 
@@ -70,13 +64,10 @@ state_change_callback(VariableItem* item)
     *state = (State)index;
 }
 
-static void
-level_settings_alloc(Level* level, GameManager* manager, void* context)
-{
+static void level_settings_alloc(Level* level, GameManager* manager, void* context) {
     UNUSED(context);
 
-    Entity* entity =
-      view_module_add_to_level(level, manager, &variable_item_list_description);
+    Entity* entity = view_module_add_to_level(level, manager, &variable_item_list_description);
     view_module_set_back_callback(entity, back_callback, manager);
 
     GameContext* game_context = game_manager_game_context_get(manager);
@@ -84,48 +75,33 @@ level_settings_alloc(Level* level, GameManager* manager, void* context)
     VariableItem* item;
 
     // Add difficulty
-    item = variable_item_list_add(variable_item_list,
-                                  "Difficulty",
-                                  DifficultyCount,
-                                  difficulty_change_callback,
-                                  manager);
+    item = variable_item_list_add(
+        variable_item_list, "Difficulty", DifficultyCount, difficulty_change_callback, manager);
     variable_item_set_current_value_index(item, game_context->difficulty);
-    variable_item_set_current_value_text(
-      item, difficulty_text[game_context->difficulty]);
+    variable_item_set_current_value_text(item, difficulty_text[game_context->difficulty]);
 
     // Add sound
-    item = variable_item_list_add(variable_item_list,
-                                  "Sound",
-                                  StateCount,
-                                  state_change_callback,
-                                  &game_context->sound);
+    item = variable_item_list_add(
+        variable_item_list, "Sound", StateCount, state_change_callback, &game_context->sound);
     variable_item_set_current_value_index(item, game_context->sound);
     variable_item_set_current_value_text(item, state_text[game_context->sound]);
 
     // Add vibro
-    item = variable_item_list_add(variable_item_list,
-                                  "Vibro",
-                                  StateCount,
-                                  state_change_callback,
-                                  &game_context->vibro);
+    item = variable_item_list_add(
+        variable_item_list, "Vibro", StateCount, state_change_callback, &game_context->vibro);
     variable_item_set_current_value_index(item, game_context->vibro);
     variable_item_set_current_value_text(item, state_text[game_context->vibro]);
 
     // Add led
-    item = variable_item_list_add(variable_item_list,
-                                  "LED",
-                                  StateCount,
-                                  state_change_callback,
-                                  &game_context->led);
+    item = variable_item_list_add(
+        variable_item_list, "LED", StateCount, state_change_callback, &game_context->led);
     variable_item_set_current_value_index(item, game_context->led);
     variable_item_set_current_value_text(item, state_text[game_context->led]);
 
     FURI_LOG_D(GAME_NAME, "Settings level allocated");
 }
 
-static void
-level_settings_start(Level* level, GameManager* manager, void* context)
-{
+static void level_settings_start(Level* level, GameManager* manager, void* context) {
     UNUSED(level);
     UNUSED(manager);
     UNUSED(context);

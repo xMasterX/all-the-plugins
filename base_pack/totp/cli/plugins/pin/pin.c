@@ -10,8 +10,8 @@
 #include "../../../ui/scene_director.h"
 #include "../../../lib/polyfills/memset_s.h"
 
-#define TOTP_CLI_COMMAND_PIN_COMMAND_SET "set"
-#define TOTP_CLI_COMMAND_PIN_COMMAND_REMOVE "remove"
+#define TOTP_CLI_COMMAND_PIN_COMMAND_SET                    "set"
+#define TOTP_CLI_COMMAND_PIN_COMMAND_REMOVE                 "remove"
 #define TOTP_CLI_COMMAND_PIN_ARG_NEW_CRYPTO_KEY_SLOT_PREFIX "-c"
 
 static inline uint8_t totp_cli_key_to_pin_code(uint8_t key) {

@@ -3,8 +3,7 @@
 #include <storage/storage.h>
 // #include <flipper_format/flipper_format.h>
 
-
-#define SAVE_DIR STORAGE_APP_DATA_PATH_PREFIX
+#define SAVE_DIR  STORAGE_APP_DATA_PATH_PREFIX
 #define SAVE_FILE SAVE_DIR "/flipper_hero.save"
 #define CONF_FILE SAVE_DIR "/flipper_hero_config.save"
 
@@ -19,7 +18,7 @@ static void flipper_hero_close_storage() {
 void save_game_config(Config* config) {
     Storage* storage = flipper_hero_open_storage();
     File* file = storage_file_alloc(storage);
-    if (storage_file_open(file, GAME_CONFIG_FILE_PATH, FSAM_WRITE, FSOM_CREATE_ALWAYS)) {
+    if(storage_file_open(file, GAME_CONFIG_FILE_PATH, FSAM_WRITE, FSOM_CREATE_ALWAYS)) {
         storage_file_write(file, config, sizeof(Config));
     }
 
@@ -30,9 +29,9 @@ void save_game_config(Config* config) {
 }
 
 bool load_game_config(Config* config) {
-
     Storage* storage = flipper_hero_open_storage();
-    storage_common_migrate(storage, EXT_PATH("apps/Games/game_flipper_hero_config.save"), CONF_FILE);
+    storage_common_migrate(
+        storage, EXT_PATH("apps/Games/game_flipper_hero_config.save"), CONF_FILE);
 
     File* file = storage_file_alloc(storage);
     uint16_t bytes_read = 0;
@@ -49,7 +48,7 @@ bool load_game_config(Config* config) {
 void save_game_records(Record* record) {
     Storage* storage = flipper_hero_open_storage();
     File* file = storage_file_alloc(storage);
-    if (storage_file_open(file, GAME_RECORDS_FILE_PATH, FSAM_WRITE, FSOM_CREATE_ALWAYS)) {
+    if(storage_file_open(file, GAME_RECORDS_FILE_PATH, FSAM_WRITE, FSOM_CREATE_ALWAYS)) {
         storage_file_write(file, record, sizeof(Record));
     }
 
@@ -60,7 +59,6 @@ void save_game_records(Record* record) {
 }
 
 bool load_game_records(Record* record) {
-
     Storage* storage = flipper_hero_open_storage();
     storage_common_migrate(storage, EXT_PATH("apps/Games/game_flipper_hero.save"), SAVE_FILE);
 

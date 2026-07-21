@@ -138,7 +138,8 @@ void canvas_draw_str_with_border(
      * border, then write the actual string in the other color in the
      * middle. */
     canvas_set_color(canvas, border_color);
-    for(int j = 0; j < 8; j++) canvas_draw_str(canvas, x + dir[j].x, y + dir[j].y, str);
+    for(int j = 0; j < 8; j++)
+        canvas_draw_str(canvas, x + dir[j].x, y + dir[j].y, str);
     canvas_set_color(canvas, text_color);
     canvas_draw_str(canvas, x, y, str);
     canvas_set_color(canvas, ColorBlack);

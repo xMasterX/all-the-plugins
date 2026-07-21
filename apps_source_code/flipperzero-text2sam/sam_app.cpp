@@ -13,8 +13,8 @@
 
 #include "stm32_sam.h"
 
-#define TAG "SAM"
-#define SAM_SAVE_PATH EXT_PATH("sam.txt")
+#define TAG              "SAM"
+#define SAM_SAVE_PATH    EXT_PATH("sam.txt")
 #define TEXT_BUFFER_SIZE 256
 STM32SAM voice;
 

@@ -4,16 +4,16 @@
 #include "point.h"
 #include <gui/icon_animation.h>
 
-#define SCREEN_WIDTH 128
+#define SCREEN_WIDTH  128
 #define SCREEN_HEIGHT 64
 
-#define BARRY_WIDTH 11
+#define BARRY_WIDTH  11
 #define BARRY_HEIGHT 15
 
-#define MISSILE_WIDTH 26
+#define MISSILE_WIDTH  26
 #define MISSILE_HEIGHT 12
 
-#define SCIENTIST_WIDTH 9
+#define SCIENTIST_WIDTH  9
 #define SCIENTIST_HEIGHT 14
 
 #define COIN_WIDTH 7

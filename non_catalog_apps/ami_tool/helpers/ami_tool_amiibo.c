@@ -7,31 +7,31 @@
 #include <stdlib.h>
 #include <nfc/protocols/iso14443_3a/iso14443_3a.h>
 
-#define AMIIBO_PAGE_COUNT (135U)
-#define AMIIBO_TOTAL_BYTES (AMIIBO_PAGE_COUNT * MF_ULTRALIGHT_PAGE_SIZE)
-#define AMIIBO_OFFSET_CAPABILITY (0x0CU)
-#define AMIIBO_OFFSET_FIXED_A5 (0x10U)
+#define AMIIBO_PAGE_COUNT           (135U)
+#define AMIIBO_TOTAL_BYTES          (AMIIBO_PAGE_COUNT * MF_ULTRALIGHT_PAGE_SIZE)
+#define AMIIBO_OFFSET_CAPABILITY    (0x0CU)
+#define AMIIBO_OFFSET_FIXED_A5      (0x10U)
 #define AMIIBO_OFFSET_WRITE_COUNTER (0x11U)
-#define AMIIBO_WRITE_COUNTER_SIZE (2U)
-#define AMIIBO_OFFSET_TAG_CONFIG (0x14U)
-#define AMIIBO_TAG_CONFIG_SIZE (32U)
-#define AMIIBO_OFFSET_TAG_HASH (0x34U)
-#define AMIIBO_HASH_SIZE (32U)
-#define AMIIBO_OFFSET_MODEL_INFO (0x54U)
-#define AMIIBO_MODEL_INFO_SIZE (12U)
-#define AMIIBO_OFFSET_KEYGEN_SALT (0x60U)
-#define AMIIBO_KEYGEN_SALT_SIZE (32U)
-#define AMIIBO_OFFSET_DATA_HASH (0x80U)
-#define AMIIBO_OFFSET_APP_DATA (0xA0U)
-#define AMIIBO_APP_DATA_SIZE (360U)
-#define AMIIBO_OFFSET_AUTH_MAGIC (0x218U)
-#define AMIIBO_AUTH_MAGIC_SIZE (2U)
-#define AMIIBO_OFFSET_DYNAMIC_LOCK (0x208U)
-#define AMIIBO_OFFSET_RESERVED (0x20BU)
-#define AMIIBO_OFFSET_CONFIG (0x20CU)
-#define AMIIBO_CONFIG_SIZE (16U)
-#define AMIIBO_SIGNING_BUFFER_SIZE (480U)
-#define AMIIBO_MAX_SEED_SIZE (480U)
+#define AMIIBO_WRITE_COUNTER_SIZE   (2U)
+#define AMIIBO_OFFSET_TAG_CONFIG    (0x14U)
+#define AMIIBO_TAG_CONFIG_SIZE      (32U)
+#define AMIIBO_OFFSET_TAG_HASH      (0x34U)
+#define AMIIBO_HASH_SIZE            (32U)
+#define AMIIBO_OFFSET_MODEL_INFO    (0x54U)
+#define AMIIBO_MODEL_INFO_SIZE      (12U)
+#define AMIIBO_OFFSET_KEYGEN_SALT   (0x60U)
+#define AMIIBO_KEYGEN_SALT_SIZE     (32U)
+#define AMIIBO_OFFSET_DATA_HASH     (0x80U)
+#define AMIIBO_OFFSET_APP_DATA      (0xA0U)
+#define AMIIBO_APP_DATA_SIZE        (360U)
+#define AMIIBO_OFFSET_AUTH_MAGIC    (0x218U)
+#define AMIIBO_AUTH_MAGIC_SIZE      (2U)
+#define AMIIBO_OFFSET_DYNAMIC_LOCK  (0x208U)
+#define AMIIBO_OFFSET_RESERVED      (0x20BU)
+#define AMIIBO_OFFSET_CONFIG        (0x20CU)
+#define AMIIBO_CONFIG_SIZE          (16U)
+#define AMIIBO_SIGNING_BUFFER_SIZE  (480U)
+#define AMIIBO_MAX_SEED_SIZE        (480U)
 
 static const uint8_t amiibo_ntag215_atqa[2] = {0x44, 0x00};
 static const uint8_t amiibo_ntag215_sak = 0x00;
@@ -561,8 +561,7 @@ RfidxStatus amiibo_prepare_blank_tag(MfUltralightData* tag_data) {
         return status;
     }
 
-    MfUltralightConfigPages* config =
-        (MfUltralightConfigPages*)(raw + AMIIBO_OFFSET_CONFIG);
+    MfUltralightConfigPages* config = (MfUltralightConfigPages*)(raw + AMIIBO_OFFSET_CONFIG);
     memset(config, 0, sizeof(*config));
     config->mirror.value = 0x04;
     config->rfui1 = 0x00;

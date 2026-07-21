@@ -8,13 +8,16 @@
 #include <storage/storage.h>
 #include "reversi.h"
 
-#define FRAME_LEFT 3
-#define FRAME_TOP 3
+#define FRAME_LEFT      3
+#define FRAME_TOP       3
 #define FRAME_CELL_SIZE 7
 
 #define SAVING_FILENAME APP_DATA_PATH("reversi.save")
 
-typedef enum { AppScreenGame, AppScreenMenu } AppScreen;
+typedef enum {
+    AppScreenGame,
+    AppScreenMenu
+} AppScreen;
 
 typedef struct {
     GameState game;

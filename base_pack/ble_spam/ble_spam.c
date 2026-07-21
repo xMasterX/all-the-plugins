@@ -622,8 +622,7 @@ static void lock_timer_callback(void* _ctx) {
     } else {
         state->ctx.lock_keyboard = false;
     }
-    with_view_model(
-        state->main_view, State * *model, { (*model)->lock_warning = false; }, true);
+    with_view_model(state->main_view, State * *model, { (*model)->lock_warning = false; }, true);
     state->lock_count = 0;
     furi_timer_set_thread_priority(FuriTimerThreadPriorityNormal);
 }
@@ -679,8 +678,7 @@ int32_t ble_spam(void* p) {
 
     state->main_view = view_alloc();
     view_allocate_model(state->main_view, ViewModelTypeLocking, sizeof(State*));
-    with_view_model(
-        state->main_view, State * *model, { *model = state; }, false);
+    with_view_model(state->main_view, State * *model, { *model = state; }, false);
     view_set_context(state->main_view, state->main_view);
     view_set_draw_callback(state->main_view, draw_callback);
     view_set_input_callback(state->main_view, input_callback);

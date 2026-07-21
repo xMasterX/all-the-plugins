@@ -7,13 +7,13 @@
 static void direct_sampling_timer_start(ProtoViewApp* app);
 static void direct_sampling_timer_stop(ProtoViewApp* app);
 
-#define CAPTURED_BITMAP_BITS (128 * 64)
-#define CAPTURED_BITMAP_BYTES (CAPTURED_BITMAP_BITS / 8)
-#define DEFAULT_USEC_PER_PIXEL 50
+#define CAPTURED_BITMAP_BITS        (128 * 64)
+#define CAPTURED_BITMAP_BYTES       (CAPTURED_BITMAP_BITS / 8)
+#define DEFAULT_USEC_PER_PIXEL      50
 #define USEC_PER_PIXEL_SMALL_CHANGE 5
 #define USEC_PER_PIXEL_LARGE_CHANGE 25
-#define USEC_PER_PIXEL_MIN 5
-#define USEC_PER_PIXEL_MAX 300
+#define USEC_PER_PIXEL_MIN          5
+#define USEC_PER_PIXEL_MAX          300
 typedef struct {
     uint8_t* captured; // Bitmap with the last captured screen.
     uint32_t captured_idx; // Current index to write into the bitmap

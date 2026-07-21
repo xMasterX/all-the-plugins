@@ -116,7 +116,8 @@ static void nol_on_enter(Metroflip* app) {
         furi_record_close(RECORD_STORAGE);
     } else {
         Popup* popup = app->popup;
-        popup_set_header(popup, "Scanning...\nApply card\nto the back", 68, 30, AlignLeft, AlignTop);
+        popup_set_header(
+            popup, "Scanning...\nApply card\nto the back", 68, 30, AlignLeft, AlignTop);
         popup_set_icon(popup, 0, 3, &I_RFIDDolphinReceive_97x61);
 
         view_dispatcher_switch_to_view(app->view_dispatcher, MetroflipViewPopup);
@@ -135,8 +136,7 @@ static bool nol_on_event(Metroflip* app, SceneManagerEvent event) {
             /* Read finished on the worker thread; build the card view here on
                the main/GUI thread. */
             metroflip_app_blink_stop(app);
-            const MfDesfireData* data =
-                nfc_device_get_data(app->nfc_device, NfcProtocolMfDesfire);
+            const MfDesfireData* data = nfc_device_get_data(app->nfc_device, NfcProtocolMfDesfire);
             if(!nol_display_card_view(data, app, false)) {
                 FURI_LOG_I(TAG, "Unknown card type");
                 Widget* widget = app->widget;
@@ -172,7 +172,6 @@ static bool nol_on_event(Metroflip* app, SceneManagerEvent event) {
 }
 
 static void nol_on_exit(Metroflip* app) {
-
     widget_reset(app->widget);
     popup_reset(app->popup);
     metroflip_app_blink_stop(app);

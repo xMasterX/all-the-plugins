@@ -15,15 +15,35 @@ bool beginning = true;
 
 // SELECT APPLICATION by partial AID (Calypso RID) - used when CLA 0x94 is rejected
 static const uint8_t calypso_aid_select[] = {
-    0x00, 0xA4, 0x04, 0x00, 0x05, // CLA=00 INS=A4 P1=04(by name) P2=00 Lc=05
-    0xA0, 0x00, 0x00, 0x04, 0x04  // Calypso RID
+    0x00,
+    0xA4,
+    0x04,
+    0x00,
+    0x05, // CLA=00 INS=A4 P1=04(by name) P2=00 Lc=05
+    0xA0,
+    0x00,
+    0x00,
+    0x04,
+    0x04 // Calypso RID
 };
 
 // SELECT APPLICATION by full Navigo AID - for new Navigo variants that reject partial AID
 static const uint8_t calypso_navigo_aid_select[] = {
-    0x00, 0xA4, 0x04, 0x00, 0x0A, // CLA=00 INS=A4 P1=04(by name) P2=00 Lc=0A
-    0xA0, 0x00, 0x00, 0x04, 0x04, // Calypso RID
-    0x01, 0x25, 0x09, 0x01, 0x01  // Navigo PIX
+    0x00,
+    0xA4,
+    0x04,
+    0x00,
+    0x0A, // CLA=00 INS=A4 P1=04(by name) P2=00 Lc=0A
+    0xA0,
+    0x00,
+    0x00,
+    0x04,
+    0x04, // Calypso RID
+    0x01,
+    0x25,
+    0x09,
+    0x01,
+    0x01 // Navigo PIX
 };
 
 char* build_hex_string(BitBuffer* rx_buffer) {
@@ -461,84 +481,72 @@ static bool calypso_read_card(Metroflip* app, Iso14443_4bPoller* iso14443_4b_pol
     CalypsoCardData* card = NULL;
 
     do {
-                // Initialize the card data
-                card = malloc(sizeof(CalypsoCardData));
-                if(!card) {
-                    stage = MetroflipPollerEventTypeFail;
-                    view_dispatcher_send_custom_event(
-                        app->view_dispatcher, MetroflipCustomEventPollerFail);
-                    break;
+        // Initialize the card data
+        card = malloc(sizeof(CalypsoCardData));
+        if(!card) {
+            stage = MetroflipPollerEventTypeFail;
+            view_dispatcher_send_custom_event(
+                app->view_dispatcher, MetroflipCustomEventPollerFail);
+            break;
+        }
+        // Zero everything so the section counters (contracts/events/
+        // special_events) start at 0 - the display loops read them, and
+        // a card that never increments one would otherwise render garbage
+        // pages. Also NULLs the sub-allocs for safe cleanup.
+        memset(card, 0, sizeof(CalypsoCardData));
+        card->navigo = NULL;
+        card->opus = NULL;
+        card->ravkav = NULL;
+
+        // Try selecting Calypso application by AID first (must be first command
+        // sent to card - a prior failed command can corrupt card session state)
+        if(!app->data_loaded) {
+            bool aid_selected = false;
+
+            // 1. Try partial AID (RID only) - works for most Calypso cards
+            bit_buffer_reset(tx_buffer);
+            bit_buffer_reset(rx_buffer);
+            bit_buffer_append_bytes(tx_buffer, calypso_aid_select, sizeof(calypso_aid_select));
+            error = iso14443_4b_poller_send_block(iso14443_4b_poller, tx_buffer, rx_buffer);
+            if(error == Iso14443_4bErrorNone) {
+                response_length = bit_buffer_get_size_bytes(rx_buffer);
+                if(response_length >= 2 &&
+                   bit_buffer_get_byte(rx_buffer, response_length - 2) == apdu_success[0] &&
+                   bit_buffer_get_byte(rx_buffer, response_length - 1) == apdu_success[1]) {
+                    FURI_LOG_I(TAG, "Calypso AID selected, using ISO 7816 mode");
+                    aid_selected = true;
                 }
-                // Zero everything so the section counters (contracts/events/
-                // special_events) start at 0 - the display loops read them, and
-                // a card that never increments one would otherwise render garbage
-                // pages. Also NULLs the sub-allocs for safe cleanup.
-                memset(card, 0, sizeof(CalypsoCardData));
-                card->navigo = NULL;
-                card->opus = NULL;
-                card->ravkav = NULL;
+            }
 
-                // Try selecting Calypso application by AID first (must be first command
-                // sent to card - a prior failed command can corrupt card session state)
-                if(!app->data_loaded) {
-                    bool aid_selected = false;
-
-                    // 1. Try partial AID (RID only) - works for most Calypso cards
-                    bit_buffer_reset(tx_buffer);
-                    bit_buffer_reset(rx_buffer);
-                    bit_buffer_append_bytes(
-                        tx_buffer, calypso_aid_select, sizeof(calypso_aid_select));
-                    error = iso14443_4b_poller_send_block(
-                        iso14443_4b_poller, tx_buffer, rx_buffer);
-                    if(error == Iso14443_4bErrorNone) {
-                        response_length = bit_buffer_get_size_bytes(rx_buffer);
-                        if(response_length >= 2 &&
-                           bit_buffer_get_byte(rx_buffer, response_length - 2) ==
-                               apdu_success[0] &&
-                           bit_buffer_get_byte(rx_buffer, response_length - 1) ==
-                               apdu_success[1]) {
-                            FURI_LOG_I(TAG, "Calypso AID selected, using ISO 7816 mode");
-                            aid_selected = true;
-                        }
-                    }
-
-                    // 2. If RID select failed, try full Navigo AID for new card variants
-                    if(!aid_selected) {
-                        FURI_LOG_I(
-                            TAG, "RID select failed, trying full Navigo AID");
-                        bit_buffer_reset(tx_buffer);
-                        bit_buffer_reset(rx_buffer);
-                        bit_buffer_append_bytes(
-                            tx_buffer,
-                            calypso_navigo_aid_select,
-                            sizeof(calypso_navigo_aid_select));
-                        error = iso14443_4b_poller_send_block(
-                            iso14443_4b_poller, tx_buffer, rx_buffer);
-                        if(error == Iso14443_4bErrorNone) {
-                            response_length = bit_buffer_get_size_bytes(rx_buffer);
-                            if(response_length >= 2 &&
-                               bit_buffer_get_byte(rx_buffer, response_length - 2) ==
-                                   apdu_success[0] &&
-                               bit_buffer_get_byte(rx_buffer, response_length - 1) ==
-                                   apdu_success[1]) {
-                                FURI_LOG_I(
-                                    TAG,
-                                    "Full Navigo AID selected, using ISO 7816 mode");
-                                aid_selected = true;
-                            }
-                        }
-                    }
-
-                    if(aid_selected) {
-                        select_app[0] = 0x00;
-                        select_app[2] = 0x09; // P1: select from current DF
-                        read_file[0] = 0x00;
+            // 2. If RID select failed, try full Navigo AID for new card variants
+            if(!aid_selected) {
+                FURI_LOG_I(TAG, "RID select failed, trying full Navigo AID");
+                bit_buffer_reset(tx_buffer);
+                bit_buffer_reset(rx_buffer);
+                bit_buffer_append_bytes(
+                    tx_buffer, calypso_navigo_aid_select, sizeof(calypso_navigo_aid_select));
+                error = iso14443_4b_poller_send_block(iso14443_4b_poller, tx_buffer, rx_buffer);
+                if(error == Iso14443_4bErrorNone) {
+                    response_length = bit_buffer_get_size_bytes(rx_buffer);
+                    if(response_length >= 2 &&
+                       bit_buffer_get_byte(rx_buffer, response_length - 2) == apdu_success[0] &&
+                       bit_buffer_get_byte(rx_buffer, response_length - 1) == apdu_success[1]) {
+                        FURI_LOG_I(TAG, "Full Navigo AID selected, using ISO 7816 mode");
+                        aid_selected = true;
                     }
                 }
+            }
 
-                int start = 0, end = 0;
+            if(aid_selected) {
+                select_app[0] = 0x00;
+                select_app[2] = 0x09; // P1: select from current DF
+                read_file[0] = 0x00;
+            }
+        }
 
-                /* Read the ICC file (0x0002) for the card serial number. Paper
+        int start = 0, end = 0;
+
+        /* Read the ICC file (0x0002) for the card serial number. Paper
                  * and anonymous Navigo tickets have no ICC file (SELECT returns
                  * 6A82 "file not found"); that is NOT fatal - we leave the
                  * serial unknown (0) and continue to the ticketing/environment
@@ -546,106 +554,530 @@ static bool calypso_read_card(Metroflip* app, Iso14443_4bPoller* iso14443_4b_pol
                  * checked inline instead of via check_response() so a missing
                  * ICC file does not post a spurious "wrong card" failure event.
                  */
-                card->card_number = 0;
-                error = select_new_app(
-                    0x00, 0x02, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
-                if(error != 0) {
-                    break; // transport-level failure (e.g. card removed)
-                }
+        card->card_number = 0;
+        error = select_new_app(0x00, 0x02, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+        if(error != 0) {
+            break; // transport-level failure (e.g. card removed)
+        }
 
-                bool icc_present = app->data_loaded; // file replay: assume present
+        bool icc_present = app->data_loaded; // file replay: assume present
+        if(!app->data_loaded) {
+            response_length = bit_buffer_get_size_bytes(rx_buffer);
+            icc_present =
+                (response_length >= 2 &&
+                 bit_buffer_get_byte(rx_buffer, response_length - 2) == apdu_success[0] &&
+                 bit_buffer_get_byte(rx_buffer, response_length - 1) == apdu_success[1]);
+        }
+
+        if(icc_present) {
+            // Send the read command for ICC
+            error = read_new_file(
+                "0002", "01", 0x01, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+            if(error != 0) {
+                // Live: transport failure -> give up. File replay: the
+                // 0002 record is simply absent -> skip, serial stays 0.
                 if(!app->data_loaded) {
-                    response_length = bit_buffer_get_size_bytes(rx_buffer);
-                    icc_present =
-                        (response_length >= 2 &&
-                         bit_buffer_get_byte(rx_buffer, response_length - 2) == apdu_success[0] &&
-                         bit_buffer_get_byte(rx_buffer, response_length - 1) == apdu_success[1]);
-                }
-
-                if(icc_present) {
-                    // Send the read command for ICC
-                    error = read_new_file(
-                        "0002", "01", 0x01, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
-                    if(error != 0) {
-                        // Live: transport failure -> give up. File replay: the
-                        // 0002 record is simply absent -> skip, serial stays 0.
-                        if(!app->data_loaded) {
-                            view_dispatcher_send_custom_event(
-                                app->view_dispatcher, MetroflipCustomEventPollerFail);
-                            break;
-                        }
-                    } else {
-                        response_length = bit_buffer_get_size_bytes(rx_buffer);
-                        bool icc_read_ok =
-                            app->data_loaded ||
-                            (response_length >= 2 &&
-                             bit_buffer_get_byte(rx_buffer, response_length - 2) ==
-                                 apdu_success[0] &&
-                             bit_buffer_get_byte(rx_buffer, response_length - 1) ==
-                                 apdu_success[1]);
-                        if(icc_read_ok) {
-                            char icc_bit_representation[29 * 8 + 1];
-                            icc_bit_representation[0] = '\0';
-                            size_t icc_copy_length = response_length > 29 ? 29 : response_length;
-                            for(size_t i = 0; i < icc_copy_length; i++) {
-                                char bits[9];
-                                uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
-                                byte_to_binary(byte, bits);
-                                strlcat(
-                                    icc_bit_representation, bits, sizeof(icc_bit_representation));
-                            }
-                            icc_bit_representation[icc_copy_length * 8] = '\0';
-
-                            start = 128;
-                            end = 159;
-                            card->card_number =
-                                bit_slice_to_dec(icc_bit_representation, start, end);
-                        }
-                    }
-                } else {
-                    FURI_LOG_I(TAG, "No ICC file (paper/anonymous ticket) - serial unknown");
-                }
-
-                // Select the ticketing DF (0x2000). Cards selected via the full
-                // Navigo AID are already positioned inside this DF, so a relative
-                // SELECT for it returns 6A82 ("file not found") - that is NOT
-                // fatal: we just proceed to the environment file (a child EF that
-                // selects fine from the current DF). The SW is checked inline so a
-                // missing child does not post a spurious "wrong card" event.
-                error = select_new_app(
-                    0x20, 0x00, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
-                if(error != 0) {
-                    FURI_LOG_E(TAG, "Failed to select app for ticketing");
-                    break; // transport-level failure (e.g. card removed)
-                }
-                if(!app->data_loaded) {
-                    response_length = bit_buffer_get_size_bytes(rx_buffer);
-                    bool ticketing_ok =
-                        (response_length >= 2 &&
-                         bit_buffer_get_byte(rx_buffer, response_length - 2) == apdu_success[0] &&
-                         bit_buffer_get_byte(rx_buffer, response_length - 1) == apdu_success[1]);
-                    if(!ticketing_ok) {
-                        FURI_LOG_I(
-                            TAG, "Ticketing DF not a child (already inside it) - continuing");
-                    }
-                }
-
-                // Select app for environment
-                error = select_new_app(
-                    0x20, 0x1, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
-                if(error != 0) {
+                    view_dispatcher_send_custom_event(
+                        app->view_dispatcher, MetroflipCustomEventPollerFail);
                     break;
                 }
+            } else {
+                response_length = bit_buffer_get_size_bytes(rx_buffer);
+                bool icc_read_ok =
+                    app->data_loaded ||
+                    (response_length >= 2 &&
+                     bit_buffer_get_byte(rx_buffer, response_length - 2) == apdu_success[0] &&
+                     bit_buffer_get_byte(rx_buffer, response_length - 1) == apdu_success[1]);
+                if(icc_read_ok) {
+                    char icc_bit_representation[29 * 8 + 1];
+                    icc_bit_representation[0] = '\0';
+                    size_t icc_copy_length = response_length > 29 ? 29 : response_length;
+                    for(size_t i = 0; i < icc_copy_length; i++) {
+                        char bits[9];
+                        uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
+                        byte_to_binary(byte, bits);
+                        strlcat(icc_bit_representation, bits, sizeof(icc_bit_representation));
+                    }
+                    icc_bit_representation[icc_copy_length * 8] = '\0';
 
-                // Check the response after selecting app
-                if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
-                    break;
+                    start = 128;
+                    end = 159;
+                    card->card_number = bit_slice_to_dec(icc_bit_representation, start, end);
                 }
+            }
+        } else {
+            FURI_LOG_I(TAG, "No ICC file (paper/anonymous ticket) - serial unknown");
+        }
 
-                // read file 1
+        // Select the ticketing DF (0x2000). Cards selected via the full
+        // Navigo AID are already positioned inside this DF, so a relative
+        // SELECT for it returns 6A82 ("file not found") - that is NOT
+        // fatal: we just proceed to the environment file (a child EF that
+        // selects fine from the current DF). The SW is checked inline so a
+        // missing child does not post a spurious "wrong card" event.
+        error = select_new_app(0x20, 0x00, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+        if(error != 0) {
+            FURI_LOG_E(TAG, "Failed to select app for ticketing");
+            break; // transport-level failure (e.g. card removed)
+        }
+        if(!app->data_loaded) {
+            response_length = bit_buffer_get_size_bytes(rx_buffer);
+            bool ticketing_ok =
+                (response_length >= 2 &&
+                 bit_buffer_get_byte(rx_buffer, response_length - 2) == apdu_success[0] &&
+                 bit_buffer_get_byte(rx_buffer, response_length - 1) == apdu_success[1]);
+            if(!ticketing_ok) {
+                FURI_LOG_I(TAG, "Ticketing DF not a child (already inside it) - continuing");
+            }
+        }
+
+        // Select app for environment
+        error = select_new_app(0x20, 0x1, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+        if(error != 0) {
+            break;
+        }
+
+        // Check the response after selecting app
+        if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
+            break;
+        }
+
+        // read file 1
+        error =
+            read_new_file("2001", "01", 1, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+
+        if(error != 0) {
+            view_dispatcher_send_custom_event(
+                app->view_dispatcher, MetroflipCustomEventPollerFail);
+            break;
+        }
+
+        // Check the response after reading the file
+        if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
+            break;
+        }
+        char environment_bit_representation[29 * 8 + 1];
+        environment_bit_representation[0] = '\0';
+        size_t env_copy_length = response_length > 29 ? 29 : response_length;
+        for(size_t i = 0; i < env_copy_length; i++) {
+            char bits[9];
+            uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
+            byte_to_binary(byte, bits);
+            strlcat(environment_bit_representation, bits, sizeof(environment_bit_representation));
+        }
+        //FURI_LOG_I(
+        //     TAG, "Environment bit_representation: %s", environment_bit_representation);
+        start = 13;
+        end = 16;
+        card->country_num =
+            bit_slice_to_dec(environment_bit_representation, start, end) * 100 +
+            bit_slice_to_dec(environment_bit_representation, start + 4, end + 4) * 10 +
+            bit_slice_to_dec(environment_bit_representation, start + 8, end + 8);
+        start = 25;
+        end = 28;
+        card->network_num =
+            bit_slice_to_dec(environment_bit_representation, start, end) * 100 +
+            bit_slice_to_dec(environment_bit_representation, start + 4, end + 4) * 10 +
+            bit_slice_to_dec(environment_bit_representation, start + 8, end + 8);
+        card->card_type = guess_card_type(card->country_num, card->network_num);
+        switch(card->card_type) {
+        case CALYPSO_CARD_NAVIGO: {
+            card->navigo = malloc(sizeof(NavigoCardData));
+            if(!card->navigo) {
+                stage = MetroflipPollerEventTypeFail;
+                view_dispatcher_send_custom_event(
+                    app->view_dispatcher, MetroflipCustomEventPollerFail);
+                break;
+            }
+            /* Zero unread contract/event slots so the display (which
+                     * iterates by .present / *_count) never reads heap garbage. */
+            memset(card->navigo, 0, sizeof(NavigoCardData));
+
+            card->navigo->environment.country_num = card->country_num;
+            card->navigo->environment.network_num = card->network_num;
+
+            CalypsoApp* IntercodeEnvHolderStructure = get_intercode_structure_env_holder();
+
+            // EnvApplicationVersionNumber
+            const char* env_key = "EnvApplicationVersionNumber";
+            int positionOffset = get_calypso_node_offset(
+                environment_bit_representation, env_key, IntercodeEnvHolderStructure);
+            int start = positionOffset,
+                end = positionOffset +
+                      get_calypso_node_size(env_key, IntercodeEnvHolderStructure) - 1;
+            card->navigo->environment.app_version =
+                bit_slice_to_dec(environment_bit_representation, start, end);
+
+            // EnvApplicationValidityEndDate
+            env_key = "EnvApplicationValidityEndDate";
+            positionOffset = get_calypso_node_offset(
+                environment_bit_representation, env_key, IntercodeEnvHolderStructure);
+            start = positionOffset,
+            end = positionOffset + get_calypso_node_size(env_key, IntercodeEnvHolderStructure) - 1;
+            float decimal_value = bit_slice_to_dec(environment_bit_representation, start, end);
+            uint64_t end_validity_timestamp = (decimal_value * 24 * 3600) + (float)epoch + 3600;
+            datetime_timestamp_to_datetime(
+                end_validity_timestamp, &card->navigo->environment.end_dt);
+
+            // HolderDataCardStatus
+            env_key = "HolderDataCardStatus";
+            positionOffset = get_calypso_node_offset(
+                environment_bit_representation, env_key, IntercodeEnvHolderStructure);
+            start = positionOffset,
+            end = positionOffset + get_calypso_node_size(env_key, IntercodeEnvHolderStructure) - 1;
+            card->navigo->holder.card_status =
+                bit_slice_to_dec(environment_bit_representation, start, end);
+
+            // HolderDataCommercialID
+            env_key = "HolderDataCommercialID";
+            positionOffset = get_calypso_node_offset(
+                environment_bit_representation, env_key, IntercodeEnvHolderStructure);
+            start = positionOffset,
+            end = positionOffset + get_calypso_node_size(env_key, IntercodeEnvHolderStructure) - 1;
+            card->navigo->holder.commercial_id =
+                bit_slice_to_dec(environment_bit_representation, start, end);
+
+            // Free the calypso structure
+            free_calypso_structure(IntercodeEnvHolderStructure);
+
+            // Select app for contracts
+            error =
+                select_new_app(0x20, 0x20, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+            if(error != 0) {
+                FURI_LOG_E(TAG, "Failed to select app for contracts");
+                break;
+            }
+
+            // Check the response after selecting app
+            if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
+                FURI_LOG_E(TAG, "Failed to check response after selecting app for contracts");
+                break;
+            }
+
+            // Prepare calypso structure
+            CalypsoApp* IntercodeContractStructure = get_intercode_structure_contract();
+            if(!IntercodeContractStructure) {
+                FURI_LOG_E(TAG, "Failed to load Intercode Contract structure");
+                break;
+            }
+
+            // Now send the read command for contracts
+
+            for(size_t i = 1; i < 5; i++) {
+                char FID_buf[3];
+                snprintf(FID_buf, sizeof(FID_buf), "%02X", i);
+                const char* FID = FID_buf;
                 error = read_new_file(
-                    "2001", "01", 1, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+                    "2020", FID, i, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+                if(error != 0) {
+                    view_dispatcher_send_custom_event(
+                        app->view_dispatcher, MetroflipCustomEventPollerFail);
+                    FURI_LOG_E(TAG, "Failed to read contract %d", i);
+                    break;
+                }
 
+                // Check the response after reading the file
+                if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
+                    FURI_LOG_E(TAG, "Failed to check response after reading contract %d", i);
+                    break;
+                }
+
+                char bit_representation[29 * 8 + 1];
+                bit_representation[0] = '\0';
+                size_t contract_copy_length = response_length > 29 ? 29 : response_length;
+                for(size_t i = 0; i < contract_copy_length; i++) {
+                    char bits[9];
+                    uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
+                    byte_to_binary(byte, bits);
+                    strlcat(bit_representation, bits, sizeof(bit_representation));
+                }
+                bit_representation[contract_copy_length * 8] = '\0';
+
+                if(bit_slice_to_dec(
+                       bit_representation,
+                       0,
+                       IntercodeContractStructure->container->elements[0].bitmap->size - 1) == 0) {
+                    break;
+                }
+
+                card->navigo->contracts[i - 1].present = 1;
+                card->contracts_count++;
+
+                // 2. ContractTariff
+                const char* contract_key = "ContractTariff";
+                if(is_calypso_node_present(
+                       bit_representation, contract_key, IntercodeContractStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        bit_representation, contract_key, IntercodeContractStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(contract_key, IntercodeContractStructure) - 1;
+                    card->navigo->contracts[i - 1].tariff =
+                        bit_slice_to_dec(bit_representation, start, end);
+                }
+
+                // 3. ContractSerialNumber
+                contract_key = "ContractSerialNumber";
+                if(is_calypso_node_present(
+                       bit_representation, contract_key, IntercodeContractStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        bit_representation, contract_key, IntercodeContractStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(contract_key, IntercodeContractStructure) - 1;
+                    card->navigo->contracts[i - 1].serial_number =
+                        bit_slice_to_dec(bit_representation, start, end);
+                    card->navigo->contracts[i - 1].serial_number_available = true;
+                }
+
+                // 8. ContractPayMethod
+                contract_key = "ContractPayMethod";
+                if(is_calypso_node_present(
+                       bit_representation, contract_key, IntercodeContractStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        bit_representation, contract_key, IntercodeContractStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(contract_key, IntercodeContractStructure) - 1;
+                    card->navigo->contracts[i - 1].pay_method =
+                        bit_slice_to_dec(bit_representation, start, end);
+                    card->navigo->contracts[i - 1].pay_method_available = true;
+                }
+
+                // 10. ContractPriceAmount
+                contract_key = "ContractPriceAmount";
+                if(is_calypso_node_present(
+                       bit_representation, contract_key, IntercodeContractStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        bit_representation, contract_key, IntercodeContractStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(contract_key, IntercodeContractStructure) - 1;
+                    card->navigo->contracts[i - 1].price_amount =
+                        bit_slice_to_dec(bit_representation, start, end) / 100.0;
+                    card->navigo->contracts[i - 1].price_amount_available = true;
+                }
+
+                // 13.0. ContractValidityStartDate
+                contract_key = "ContractValidityStartDate";
+                if(is_calypso_node_present(
+                       bit_representation, contract_key, IntercodeContractStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        bit_representation, contract_key, IntercodeContractStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(contract_key, IntercodeContractStructure) - 1;
+                    float decimal_value =
+                        bit_slice_to_dec(bit_representation, start, end) * 24 * 3600;
+                    uint64_t start_validity_timestamp = (decimal_value + (float)epoch) + 3600;
+                    datetime_timestamp_to_datetime(
+                        start_validity_timestamp, &card->navigo->contracts[i - 1].start_date);
+                }
+
+                // 13.2. ContractValidityEndDate
+                contract_key = "ContractValidityEndDate";
+                if(is_calypso_node_present(
+                       bit_representation, contract_key, IntercodeContractStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        bit_representation, contract_key, IntercodeContractStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(contract_key, IntercodeContractStructure) - 1;
+                    float decimal_value =
+                        bit_slice_to_dec(bit_representation, start, end) * 24 * 3600;
+                    uint64_t end_validity_timestamp = (decimal_value + (float)epoch) + 3600;
+                    datetime_timestamp_to_datetime(
+                        end_validity_timestamp, &card->navigo->contracts[i - 1].end_date);
+                    card->navigo->contracts[i - 1].end_date_available = true;
+                }
+
+                // 13.6. ContractValidityZones
+                contract_key = "ContractValidityZones";
+                if(is_calypso_node_present(
+                       bit_representation, contract_key, IntercodeContractStructure)) {
+                    int start = get_calypso_node_offset(
+                        bit_representation, contract_key, IntercodeContractStructure);
+                    // binary form is 00011111 for zones 5, 4, 3, 2, 1
+                    for(int j = 0; j < 5; j++) {
+                        card->navigo->contracts[i - 1].zones[j] =
+                            bit_slice_to_dec(bit_representation, start + 3 + j, start + 3 + j);
+                    }
+                    card->navigo->contracts[i - 1].zones_available = true;
+                }
+
+                // 13.7. ContractValidityJourneys
+                contract_key = "ContractValidityJourneys";
+                if(is_calypso_node_present(
+                       bit_representation, contract_key, IntercodeContractStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        bit_representation, contract_key, IntercodeContractStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(contract_key, IntercodeContractStructure) - 1;
+                    int decimal_value = bit_slice_to_dec(bit_representation, start, end);
+                    // first 5 bits -> CounterStructureNumber
+                    // last 8 bits -> CounterLastLoad
+                    // other bits -> RFU
+                    card->navigo->contracts[i - 1].counter.struct_number = decimal_value >> 11;
+                    card->navigo->contracts[i - 1].counter.last_load = decimal_value & 0xFF;
+                    card->navigo->contracts[i - 1].counter_present = true;
+                }
+
+                // 15.0. ContractValiditySaleDate
+                contract_key = "ContractValiditySaleDate";
+                if(is_calypso_node_present(
+                       bit_representation, contract_key, IntercodeContractStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        bit_representation, contract_key, IntercodeContractStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(contract_key, IntercodeContractStructure) - 1;
+                    float decimal_value =
+                        bit_slice_to_dec(bit_representation, start, end) * 24 * 3600;
+                    uint64_t sale_timestamp = (decimal_value + (float)epoch) + 3600;
+                    datetime_timestamp_to_datetime(
+                        sale_timestamp, &card->navigo->contracts[i - 1].sale_date);
+                }
+
+                // 15.2. ContractValiditySaleAgent - FIX NEEDED
+                contract_key = "ContractValiditySaleAgent";
+                /* if(is_calypso_node_present(
+                           bit_representation, contract_key, NavigoContractStructure)) { */
+                int positionOffset = get_calypso_node_offset(
+                    bit_representation, contract_key, IntercodeContractStructure);
+                int start = positionOffset,
+                    end = positionOffset +
+                          get_calypso_node_size(contract_key, IntercodeContractStructure) - 1;
+                card->navigo->contracts[i - 1].sale_agent =
+                    bit_slice_to_dec(bit_representation, start, end);
+                // }
+
+                // 15.3. ContractValiditySaleDevice
+                contract_key = "ContractValiditySaleDevice";
+                if(is_calypso_node_present(
+                       bit_representation, contract_key, IntercodeContractStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        bit_representation, contract_key, IntercodeContractStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(contract_key, IntercodeContractStructure) - 1;
+                    card->navigo->contracts[i - 1].sale_device =
+                        bit_slice_to_dec(bit_representation, start, end);
+                }
+
+                // 16. ContractStatus  -- 0x1 ou 0xff
+                contract_key = "ContractStatus";
+                if(is_calypso_node_present(
+                       bit_representation, contract_key, IntercodeContractStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        bit_representation, contract_key, IntercodeContractStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(contract_key, IntercodeContractStructure) - 1;
+                    card->navigo->contracts[i - 1].status =
+                        bit_slice_to_dec(bit_representation, start, end);
+                }
+
+                // 18. ContractAuthenticator
+                contract_key = "ContractAuthenticator";
+                if(is_calypso_node_present(
+                       bit_representation, contract_key, IntercodeContractStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        bit_representation, contract_key, IntercodeContractStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(contract_key, IntercodeContractStructure) - 1;
+                    card->navigo->contracts[i - 1].authenticator =
+                        bit_slice_to_dec(bit_representation, start, end);
+                }
+            }
+
+            // Free the calypso structure
+            free_calypso_structure(IntercodeContractStructure);
+
+            // Select app for counters (remaining tickets on Navigo Easy)
+            error =
+                select_new_app(0x20, 0x69, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+            if(error != 0) {
+                break;
+            }
+
+            // Check the response after selecting app
+            if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
+                break;
+            }
+
+            // read file 1
+            error = read_new_file(
+                "2069", "01", 1, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+            if(error != 0) {
+                view_dispatcher_send_custom_event(
+                    app->view_dispatcher, MetroflipCustomEventPollerFail);
+                break;
+            }
+
+            // Check the response after reading the file
+            if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
+                break;
+            }
+
+            char counter_bit_representation[29 * 8 + 1];
+            counter_bit_representation[0] = '\0';
+            size_t counter_copy_length = response_length > 29 ? 29 : response_length;
+            for(size_t i = 0; i < counter_copy_length; i++) {
+                char bits[9];
+                uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
+                byte_to_binary(byte, bits);
+                strlcat(counter_bit_representation, bits, sizeof(counter_bit_representation));
+            }
+            // FURI_LOG_I(TAG, "Counter bit_representation: %s", counter_bit_representation);
+
+            // Ticket counts (contracts 1-4)
+            for(int i = 0; i < 4; i++) {
+                if(card->navigo->contracts[i].present == 0) {
+                    continue;
+                }
+                if(card->navigo->contracts[i].counter_present == 0) {
+                    continue;
+                }
+                start = 0;
+                end = 5;
+                card->navigo->contracts[i].counter.count =
+                    bit_slice_to_dec(counter_bit_representation, 24 * i + start, 24 * i + end);
+
+                start = 6;
+                end = 23;
+                card->navigo->contracts[i].counter.relative_first_stamp_15mn =
+                    bit_slice_to_dec(counter_bit_representation, 24 * i + start, 24 * i + end);
+            }
+
+            // Select app for events
+            error =
+                select_new_app(0x20, 0x10, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+            if(error != 0) {
+                break;
+            }
+
+            // Check the response after selecting app
+            if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
+                break;
+            }
+
+            // Load the calypso structure for events
+            CalypsoApp* IntercodeEventStructure = get_intercode_structure_event();
+            if(!IntercodeEventStructure) {
+                FURI_LOG_E(TAG, "Failed to load Intercode Event structure");
+                break;
+            }
+
+            // furi_string_cat_printf(parsed_data, "\e#Events :\n");
+            // Now send the read command for events
+            for(size_t i = 1; i < 4; i++) {
+                char FID_buf[3];
+                snprintf(FID_buf, sizeof(FID_buf), "%02X", i);
+                const char* FID = FID_buf;
+                error = read_new_file(
+                    "2010", FID, i, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
                 if(error != 0) {
                     view_dispatcher_send_custom_event(
                         app->view_dispatcher, MetroflipCustomEventPollerFail);
@@ -656,399 +1088,1248 @@ static bool calypso_read_card(Metroflip* app, Iso14443_4bPoller* iso14443_4b_pol
                 if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
                     break;
                 }
-                char environment_bit_representation[29 * 8 + 1];
-                environment_bit_representation[0] = '\0';
-                size_t env_copy_length = response_length > 29 ? 29 : response_length;
-                for(size_t i = 0; i < env_copy_length; i++) {
+
+                char event_bit_representation[29 * 8 + 1];
+                event_bit_representation[0] = '\0';
+                size_t event_copy_length = response_length > 29 ? 29 : response_length;
+                for(size_t i = 0; i < event_copy_length; i++) {
                     char bits[9];
                     uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
                     byte_to_binary(byte, bits);
-                    strlcat(
-                        environment_bit_representation,
-                        bits,
-                        sizeof(environment_bit_representation));
+                    strlcat(event_bit_representation, bits, sizeof(event_bit_representation));
                 }
-                //FURI_LOG_I(
-                //     TAG, "Environment bit_representation: %s", environment_bit_representation);
-                start = 13;
-                end = 16;
-                card->country_num =
-                    bit_slice_to_dec(environment_bit_representation, start, end) * 100 +
-                    bit_slice_to_dec(environment_bit_representation, start + 4, end + 4) * 10 +
-                    bit_slice_to_dec(environment_bit_representation, start + 8, end + 8);
-                start = 25;
-                end = 28;
-                card->network_num =
-                    bit_slice_to_dec(environment_bit_representation, start, end) * 100 +
-                    bit_slice_to_dec(environment_bit_representation, start + 4, end + 4) * 10 +
-                    bit_slice_to_dec(environment_bit_representation, start + 8, end + 8);
-                card->card_type = guess_card_type(card->country_num, card->network_num);
-                switch(card->card_type) {
-                case CALYPSO_CARD_NAVIGO: {
-                    card->navigo = malloc(sizeof(NavigoCardData));
-                    if(!card->navigo) {
-                        stage = MetroflipPollerEventTypeFail;
-                        view_dispatcher_send_custom_event(
-                            app->view_dispatcher, MetroflipCustomEventPollerFail);
-                        break;
-                    }
-                    /* Zero unread contract/event slots so the display (which
-                     * iterates by .present / *_count) never reads heap garbage. */
-                    memset(card->navigo, 0, sizeof(NavigoCardData));
 
-                    card->navigo->environment.country_num = card->country_num;
-                    card->navigo->environment.network_num = card->network_num;
-
-                    CalypsoApp* IntercodeEnvHolderStructure = get_intercode_structure_env_holder();
-
-                    // EnvApplicationVersionNumber
-                    const char* env_key = "EnvApplicationVersionNumber";
+                // 2. EventCode
+                const char* event_key = "EventCode";
+                if(is_calypso_node_present(
+                       event_bit_representation, event_key, IntercodeEventStructure)) {
                     int positionOffset = get_calypso_node_offset(
-                        environment_bit_representation, env_key, IntercodeEnvHolderStructure);
+                        event_bit_representation, event_key, IntercodeEventStructure);
                     int start = positionOffset,
                         end = positionOffset +
-                              get_calypso_node_size(env_key, IntercodeEnvHolderStructure) - 1;
-                    card->navigo->environment.app_version =
-                        bit_slice_to_dec(environment_bit_representation, start, end);
+                              get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
+                    int decimal_value = bit_slice_to_dec(event_bit_representation, start, end);
+                    card->navigo->events[i - 1].transport_type = decimal_value >> 4;
+                    card->navigo->events[i - 1].transition = decimal_value & 15;
+                }
 
-                    // EnvApplicationValidityEndDate
-                    env_key = "EnvApplicationValidityEndDate";
-                    positionOffset = get_calypso_node_offset(
-                        environment_bit_representation, env_key, IntercodeEnvHolderStructure);
+                // 4. EventServiceProvider
+                event_key = "EventServiceProvider";
+                if(is_calypso_node_present(
+                       event_bit_representation, event_key, IntercodeEventStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        event_bit_representation, event_key, IntercodeEventStructure);
                     start = positionOffset,
                     end = positionOffset +
-                          get_calypso_node_size(env_key, IntercodeEnvHolderStructure) - 1;
+                          get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
+                    card->navigo->events[i - 1].service_provider =
+                        bit_slice_to_dec(event_bit_representation, start, end);
+                }
+
+                // 8. EventLocationId
+                event_key = "EventLocationId";
+                if(is_calypso_node_present(
+                       event_bit_representation, event_key, IntercodeEventStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        event_bit_representation, event_key, IntercodeEventStructure);
+                    start = positionOffset,
+                    end = positionOffset +
+                          get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
+                    int decimal_value = bit_slice_to_dec(event_bit_representation, start, end);
+                    card->navigo->events[i - 1].station_group_id = decimal_value >> 9;
+                    card->navigo->events[i - 1].station_id = (decimal_value >> 4) & 31;
+                    card->navigo->events[i - 1].station_sub_id = decimal_value & 15;
+                }
+
+                // 9. EventLocationGate
+                event_key = "EventLocationGate";
+                if(is_calypso_node_present(
+                       event_bit_representation, event_key, IntercodeEventStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        event_bit_representation, event_key, IntercodeEventStructure);
+                    start = positionOffset,
+                    end = positionOffset +
+                          get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
+                    card->navigo->events[i - 1].location_gate =
+                        bit_slice_to_dec(event_bit_representation, start, end);
+                    card->navigo->events[i - 1].location_gate_available = true;
+                }
+
+                // 10. EventDevice
+                event_key = "EventDevice";
+                if(is_calypso_node_present(
+                       event_bit_representation, event_key, IntercodeEventStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        event_bit_representation, event_key, IntercodeEventStructure);
+                    start = positionOffset,
+                    end = positionOffset +
+                          get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
+                    int decimal_value = bit_slice_to_dec(event_bit_representation, start, end);
+                    card->navigo->events[i - 1].device = decimal_value;
+                    int bus_device = decimal_value >> 8;
+                    card->navigo->events[i - 1].door = bus_device / 2 + 1;
+                    card->navigo->events[i - 1].side = bus_device % 2;
+                    card->navigo->events[i - 1].device_available = true;
+                }
+
+                // 11. EventRouteNumber
+                event_key = "EventRouteNumber";
+                if(is_calypso_node_present(
+                       event_bit_representation, event_key, IntercodeEventStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        event_bit_representation, event_key, IntercodeEventStructure);
+                    start = positionOffset,
+                    end = positionOffset +
+                          get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
+                    card->navigo->events[i - 1].route_number =
+                        bit_slice_to_dec(event_bit_representation, start, end);
+                    card->navigo->events[i - 1].route_number_available = true;
+                }
+
+                // 13. EventJourneyRun
+                event_key = "EventJourneyRun";
+                if(is_calypso_node_present(
+                       event_bit_representation, event_key, IntercodeEventStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        event_bit_representation, event_key, IntercodeEventStructure);
+                    start = positionOffset,
+                    end = positionOffset +
+                          get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
+                    card->navigo->events[i - 1].mission =
+                        bit_slice_to_dec(event_bit_representation, start, end);
+                    card->navigo->events[i - 1].mission_available = true;
+                }
+
+                // 14. EventVehicleId
+                event_key = "EventVehicleId";
+                if(is_calypso_node_present(
+                       event_bit_representation, event_key, IntercodeEventStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        event_bit_representation, event_key, IntercodeEventStructure);
+                    start = positionOffset,
+                    end = positionOffset +
+                          get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
+                    card->navigo->events[i - 1].vehicle_id =
+                        bit_slice_to_dec(event_bit_representation, start, end);
+                    card->navigo->events[i - 1].vehicle_id_available = true;
+                }
+
+                // 25. EventContractPointer
+                event_key = "EventContractPointer";
+                if(is_calypso_node_present(
+                       event_bit_representation, event_key, IntercodeEventStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        event_bit_representation, event_key, IntercodeEventStructure);
+                    start = positionOffset,
+                    end = positionOffset +
+                          get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
+                    card->navigo->events[i - 1].used_contract =
+                        bit_slice_to_dec(event_bit_representation, start, end);
+                    card->navigo->events[i - 1].used_contract_available = true;
+                    if(card->navigo->events[i - 1].used_contract > 0) {
+                        card->events_count++;
+                    }
+                }
+
+                // EventDateStamp
+                event_key = "EventDateStamp";
+                int positionOffset = get_calypso_node_offset(
+                    event_bit_representation, event_key, IntercodeEventStructure);
+                start = positionOffset,
+                end =
+                    positionOffset + get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
+                int decimal_value = bit_slice_to_dec(event_bit_representation, start, end);
+                uint64_t date_timestamp = (decimal_value * 24 * 3600) + epoch + 3600;
+                datetime_timestamp_to_datetime(date_timestamp, &card->navigo->events[i - 1].date);
+
+                // EventTimeStamp
+                event_key = "EventTimeStamp";
+                positionOffset = get_calypso_node_offset(
+                    event_bit_representation, event_key, IntercodeEventStructure);
+                start = positionOffset,
+                end =
+                    positionOffset + get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
+                decimal_value = bit_slice_to_dec(event_bit_representation, start, end);
+                card->navigo->events[i - 1].date.hour = (decimal_value * 60) / 3600;
+                card->navigo->events[i - 1].date.minute = ((decimal_value * 60) % 3600) / 60;
+                card->navigo->events[i - 1].date.second = ((decimal_value * 60) % 3600) % 60;
+            }
+
+            // Select app for special events
+            error =
+                select_new_app(0x20, 0x40, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+            if(error != 0) {
+                break;
+            }
+
+            // Check the response after selecting app
+            if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
+                break;
+            }
+
+            // Now send the read command for special events
+            for(size_t i = 1; i < 4; i++) {
+                char FID_buf[3];
+                snprintf(FID_buf, sizeof(FID_buf), "%02X", i);
+                const char* FID = FID_buf;
+                error = read_new_file(
+                    "2040", FID, i, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+                if(error != 0) {
+                    view_dispatcher_send_custom_event(
+                        app->view_dispatcher, MetroflipCustomEventPollerFail);
+                    break;
+                }
+
+                // Check the response after reading the file
+                if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
+                    break;
+                }
+
+                char event_bit_representation[29 * 8 + 1];
+                event_bit_representation[0] = '\0';
+                size_t special_event_copy_length = response_length > 29 ? 29 : response_length;
+                for(size_t i = 0; i < special_event_copy_length; i++) {
+                    char bits[9];
+                    uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
+                    byte_to_binary(byte, bits);
+                    strlcat(event_bit_representation, bits, sizeof(event_bit_representation));
+                }
+
+                if(bit_slice_to_dec(
+                       event_bit_representation,
+                       0,
+                       IntercodeEventStructure->container->elements[0].bitmap->size - 1) == 0) {
+                    break;
+                } else {
+                    card->special_events_count++;
+                }
+
+                // 2. EventCode
+                const char* event_key = "EventCode";
+                if(is_calypso_node_present(
+                       event_bit_representation, event_key, IntercodeEventStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        event_bit_representation, event_key, IntercodeEventStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
+                    int decimal_value = bit_slice_to_dec(event_bit_representation, start, end);
+                    card->navigo->special_events[i - 1].transport_type = decimal_value >> 4;
+                    card->navigo->special_events[i - 1].transition = decimal_value & 15;
+                }
+
+                // 3. EventResult
+                event_key = "EventResult";
+                if(is_calypso_node_present(
+                       event_bit_representation, event_key, IntercodeEventStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        event_bit_representation, event_key, IntercodeEventStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
+                    card->navigo->special_events[i - 1].result =
+                        bit_slice_to_dec(event_bit_representation, start, end);
+                }
+
+                // 4. EventServiceProvider
+                event_key = "EventServiceProvider";
+                if(is_calypso_node_present(
+                       event_bit_representation, event_key, IntercodeEventStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        event_bit_representation, event_key, IntercodeEventStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
+                    card->navigo->special_events[i - 1].service_provider =
+                        bit_slice_to_dec(event_bit_representation, start, end);
+                }
+
+                // 8. EventLocationId
+                event_key = "EventLocationId";
+                if(is_calypso_node_present(
+                       event_bit_representation, event_key, IntercodeEventStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        event_bit_representation, event_key, IntercodeEventStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
+                    int decimal_value = bit_slice_to_dec(event_bit_representation, start, end);
+                    card->navigo->special_events[i - 1].station_group_id = decimal_value >> 9;
+                    card->navigo->special_events[i - 1].station_id = (decimal_value >> 4) & 31;
+                    card->navigo->special_events[i - 1].station_sub_id = decimal_value & 15;
+                }
+
+                // 10. EventDevice
+                event_key = "EventDevice";
+                if(is_calypso_node_present(
+                       event_bit_representation, event_key, IntercodeEventStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        event_bit_representation, event_key, IntercodeEventStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
+                    int decimal_value = bit_slice_to_dec(event_bit_representation, start, end);
+                    card->navigo->special_events[i - 1].device = decimal_value;
+                }
+
+                // 11. EventRouteNumber
+                event_key = "EventRouteNumber";
+                if(is_calypso_node_present(
+                       event_bit_representation, event_key, IntercodeEventStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        event_bit_representation, event_key, IntercodeEventStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
+                    card->navigo->special_events[i - 1].route_number =
+                        bit_slice_to_dec(event_bit_representation, start, end);
+                    card->navigo->special_events[i - 1].route_number_available = true;
+                }
+
+                // EventDateStamp
+                event_key = "EventDateStamp";
+                int positionOffset = get_calypso_node_offset(
+                    event_bit_representation, event_key, IntercodeEventStructure);
+                int start = positionOffset,
+                    end = positionOffset +
+                          get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
+                int decimal_value = bit_slice_to_dec(event_bit_representation, start, end);
+                uint64_t date_timestamp = (decimal_value * 24 * 3600) + epoch + 3600;
+                datetime_timestamp_to_datetime(
+                    date_timestamp, &card->navigo->special_events[i - 1].date);
+
+                // EventTimeStamp
+                event_key = "EventTimeStamp";
+                positionOffset = get_calypso_node_offset(
+                    event_bit_representation, event_key, IntercodeEventStructure);
+                start = positionOffset,
+                end =
+                    positionOffset + get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
+                decimal_value = bit_slice_to_dec(event_bit_representation, start, end);
+                card->navigo->special_events[i - 1].date.hour = (decimal_value * 60) / 3600;
+                card->navigo->special_events[i - 1].date.minute =
+                    ((decimal_value * 60) % 3600) / 60;
+                card->navigo->special_events[i - 1].date.second =
+                    ((decimal_value * 60) % 3600) % 60;
+            }
+
+            // Free the calypso structure
+            free_calypso_structure(IntercodeEventStructure);
+            break;
+        }
+        case CALYPSO_CARD_OPUS: {
+            card->opus = malloc(sizeof(OpusCardData));
+            if(!card->opus) {
+                stage = MetroflipPollerEventTypeFail;
+                view_dispatcher_send_custom_event(
+                    app->view_dispatcher, MetroflipCustomEventPollerFail);
+                break;
+            }
+            /* Zero unread contract/event slots so the display (which
+                     * iterates by .present / *_count) never reads heap garbage. */
+            memset(card->opus, 0, sizeof(OpusCardData));
+
+            card->opus->environment.country_num = card->country_num;
+            card->opus->environment.network_num = card->network_num;
+
+            CalypsoApp* OpusEnvHolderStructure = get_opus_env_holder_structure();
+
+            // EnvApplicationVersionNumber
+            const char* env_key = "EnvApplicationVersionNumber";
+            int positionOffset = get_calypso_node_offset(
+                environment_bit_representation, env_key, OpusEnvHolderStructure);
+            int start = positionOffset,
+                end = positionOffset + get_calypso_node_size(env_key, OpusEnvHolderStructure) - 1;
+            card->opus->environment.app_version =
+                bit_slice_to_dec(environment_bit_representation, start, end);
+
+            // EnvApplicationIssuerId
+            env_key = "EnvApplicationIssuerId";
+            positionOffset = get_calypso_node_offset(
+                environment_bit_representation, env_key, OpusEnvHolderStructure);
+            start = positionOffset,
+            end = positionOffset + get_calypso_node_size(env_key, OpusEnvHolderStructure) - 1;
+            card->opus->environment.issuer_id =
+                bit_slice_to_dec(environment_bit_representation, start, end);
+
+            // EnvApplicationValidityEndDate
+            env_key = "EnvApplicationValidityEndDate";
+            positionOffset = get_calypso_node_offset(
+                environment_bit_representation, env_key, OpusEnvHolderStructure);
+            start = positionOffset,
+            end = positionOffset + get_calypso_node_size(env_key, OpusEnvHolderStructure) - 1;
+            float decimal_value = bit_slice_to_dec(environment_bit_representation, start, end);
+            uint64_t end_validity_timestamp = (decimal_value * 24 * 3600) + (float)epoch + 3600;
+            datetime_timestamp_to_datetime(
+                end_validity_timestamp, &card->opus->environment.end_dt);
+
+            // EnvDataCardStatus
+            env_key = "EnvDataCardStatus";
+            positionOffset = get_calypso_node_offset(
+                environment_bit_representation, env_key, OpusEnvHolderStructure);
+            start = positionOffset,
+            end = positionOffset + get_calypso_node_size(env_key, OpusEnvHolderStructure) - 1;
+            card->opus->environment.card_status =
+                bit_slice_to_dec(environment_bit_representation, start, end);
+
+            // EnvData_CardUtilisation
+            env_key = "EnvData_CardUtilisation";
+            positionOffset = get_calypso_node_offset(
+                environment_bit_representation, env_key, OpusEnvHolderStructure);
+            start = positionOffset,
+            end = positionOffset + get_calypso_node_size(env_key, OpusEnvHolderStructure) - 1;
+            card->opus->environment.card_utilisation =
+                bit_slice_to_dec(environment_bit_representation, start, end);
+
+            // HolderBirthDate
+            env_key = "HolderBirthDate";
+            positionOffset = get_calypso_node_offset(
+                environment_bit_representation, env_key, OpusEnvHolderStructure);
+            start = positionOffset, end = positionOffset + 3;
+            card->opus->holder.birth_date.year =
+                bit_slice_to_dec(environment_bit_representation, start, end) * 1000 +
+                bit_slice_to_dec(environment_bit_representation, start + 4, end + 4) * 100 +
+                bit_slice_to_dec(environment_bit_representation, start + 8, end + 8) * 10 +
+                bit_slice_to_dec(environment_bit_representation, start + 12, end + 12);
+            start += 16, end += 16;
+            card->opus->holder.birth_date.month =
+                bit_slice_to_dec(environment_bit_representation, start, end) * 10 +
+                bit_slice_to_dec(environment_bit_representation, start + 4, end + 4);
+            start += 8, end += 8;
+            card->opus->holder.birth_date.day =
+                bit_slice_to_dec(environment_bit_representation, start, end) * 10 +
+                bit_slice_to_dec(environment_bit_representation, start + 4, end + 4);
+
+            // Free the calypso structure
+            free_calypso_structure(OpusEnvHolderStructure);
+
+            // Select app for contracts
+            error =
+                select_new_app(0x20, 0x20, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+            if(error != 0) {
+                FURI_LOG_E(TAG, "Failed to select app for contracts");
+                break;
+            }
+
+            // Check the response after selecting app
+            if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
+                FURI_LOG_E(TAG, "Failed to check response after selecting app for contracts");
+                break;
+            }
+
+            // Prepare calypso structure
+            CalypsoApp* OpusContractStructure = get_opus_contract_structure();
+            if(!OpusContractStructure) {
+                FURI_LOG_E(TAG, "Failed to load Opus Contract structure");
+                break;
+            }
+
+            // Now send the read command for contracts
+            for(size_t i = 1; i < 5; i++) {
+                char FID_buf[3];
+                snprintf(FID_buf, sizeof(FID_buf), "%02X", i);
+                const char* FID = FID_buf;
+                error = read_new_file(
+                    "2020", FID, i, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+                if(error != 0) {
+                    view_dispatcher_send_custom_event(
+                        app->view_dispatcher, MetroflipCustomEventPollerFail);
+                    FURI_LOG_E(TAG, "Failed to read contract %d", i);
+                    break;
+                }
+
+                // Check the response after reading the file
+                if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
+                    FURI_LOG_E(TAG, "Failed to check response after reading contract %d", i);
+                    break;
+                }
+
+                char bit_representation[29 * 8 + 1];
+                bit_representation[0] = '\0';
+                size_t opus_contract_copy_length = response_length > 29 ? 29 : response_length;
+                for(size_t i = 0; i < opus_contract_copy_length; i++) {
+                    char bits[9];
+                    uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
+                    byte_to_binary(byte, bits);
+                    strlcat(bit_representation, bits, sizeof(bit_representation));
+                }
+                bit_representation[opus_contract_copy_length * 8] = '\0';
+
+                if(bit_slice_to_dec(
+                       bit_representation,
+                       0,
+                       OpusContractStructure->container->elements[0].bitmap->size - 1) == 0) {
+                    break;
+                }
+
+                card->opus->contracts[i - 1].present = 1;
+                card->contracts_count++;
+
+                // ContractProvider
+                const char* contract_key = "ContractProvider";
+                if(is_calypso_node_present(
+                       bit_representation, contract_key, OpusContractStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        bit_representation, contract_key, OpusContractStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(contract_key, OpusContractStructure) - 1;
+                    card->opus->contracts[i - 1].provider =
+                        bit_slice_to_dec(bit_representation, start, end);
+                }
+
+                // ContractTariff
+                contract_key = "ContractTariff";
+                if(is_calypso_node_present(
+                       bit_representation, contract_key, OpusContractStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        bit_representation, contract_key, OpusContractStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(contract_key, OpusContractStructure) - 1;
+                    card->opus->contracts[i - 1].tariff =
+                        bit_slice_to_dec(bit_representation, start, end);
+                }
+
+                // ContractValidityStartDate
+                contract_key = "ContractValidityStartDate";
+                if(is_calypso_node_present(
+                       bit_representation, contract_key, OpusContractStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        bit_representation, contract_key, OpusContractStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(contract_key, OpusContractStructure) - 1;
                     float decimal_value =
-                        bit_slice_to_dec(environment_bit_representation, start, end);
-                    uint64_t end_validity_timestamp =
-                        (decimal_value * 24 * 3600) + (float)epoch + 3600;
+                        bit_slice_to_dec(bit_representation, start, end) * 24 * 3600;
+                    uint64_t start_validity_timestamp = (decimal_value + (float)epoch) + 3600;
                     datetime_timestamp_to_datetime(
-                        end_validity_timestamp, &card->navigo->environment.end_dt);
+                        start_validity_timestamp, &card->opus->contracts[i - 1].start_date);
+                }
 
-                    // HolderDataCardStatus
-                    env_key = "HolderDataCardStatus";
-                    positionOffset = get_calypso_node_offset(
-                        environment_bit_representation, env_key, IntercodeEnvHolderStructure);
-                    start = positionOffset,
+                // ContractValidityEndDate
+                contract_key = "ContractValidityEndDate";
+                if(is_calypso_node_present(
+                       bit_representation, contract_key, OpusContractStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        bit_representation, contract_key, OpusContractStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(contract_key, OpusContractStructure) - 1;
+                    float decimal_value =
+                        bit_slice_to_dec(bit_representation, start, end) * 24 * 3600;
+                    uint64_t end_validity_timestamp = (decimal_value + (float)epoch) + 3600;
+                    datetime_timestamp_to_datetime(
+                        end_validity_timestamp, &card->opus->contracts[i - 1].end_date);
+                }
+
+                // ContractDataSaleAgent
+                contract_key = "ContractDataSaleAgent";
+                if(is_calypso_node_present(
+                       bit_representation, contract_key, OpusContractStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        bit_representation, contract_key, OpusContractStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(contract_key, OpusContractStructure) - 1;
+                    card->opus->contracts[i - 1].sale_agent =
+                        bit_slice_to_dec(bit_representation, start, end);
+                }
+
+                // ContractDataSaleDate + ContractDataSaleTime
+                contract_key = "ContractDataSaleDate";
+                int positionOffset = get_calypso_node_offset(
+                    bit_representation, contract_key, OpusContractStructure);
+                FURI_LOG_I(TAG, "ContractDataSaleDate positionOffset: %d", positionOffset);
+                int start = positionOffset,
                     end = positionOffset +
-                          get_calypso_node_size(env_key, IntercodeEnvHolderStructure) - 1;
-                    card->navigo->holder.card_status =
-                        bit_slice_to_dec(environment_bit_representation, start, end);
+                          get_calypso_node_size(contract_key, OpusContractStructure) - 1;
+                FURI_LOG_I(
+                    TAG,
+                    "ContractDataSaleDate: %d",
+                    bit_slice_to_dec(bit_representation, start, end));
+                uint64_t sale_date_timestamp =
+                    ((bit_slice_to_dec(bit_representation, start, end) * 24 * 3600) +
+                     (float)epoch) +
+                    3600;
+                ;
+                datetime_timestamp_to_datetime(
+                    sale_date_timestamp, &card->opus->contracts[i - 1].sale_date);
 
-                    // HolderDataCommercialID
-                    env_key = "HolderDataCommercialID";
-                    positionOffset = get_calypso_node_offset(
-                        environment_bit_representation, env_key, IntercodeEnvHolderStructure);
-                    start = positionOffset,
-                    end = positionOffset +
-                          get_calypso_node_size(env_key, IntercodeEnvHolderStructure) - 1;
-                    card->navigo->holder.commercial_id =
-                        bit_slice_to_dec(environment_bit_representation, start, end);
+                contract_key = "ContractDataSaleTime";
+                positionOffset = get_calypso_node_offset(
+                    bit_representation, contract_key, OpusContractStructure);
+                start = positionOffset,
+                end = positionOffset + get_calypso_node_size(contract_key, OpusContractStructure) -
+                      1;
+                int decimal_value = bit_slice_to_dec(bit_representation, start, end);
+                card->opus->contracts[i - 1].sale_date.hour = (decimal_value * 60) / 3600;
+                card->opus->contracts[i - 1].sale_date.minute = ((decimal_value * 60) % 3600) / 60;
+                card->opus->contracts[i - 1].sale_date.second = ((decimal_value * 60) % 3600) % 60;
 
-                    // Free the calypso structure
-                    free_calypso_structure(IntercodeEnvHolderStructure);
+                // ContractDataInhibition
+                contract_key = "ContractDataInhibition";
+                if(is_calypso_node_present(
+                       bit_representation, contract_key, OpusContractStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        bit_representation, contract_key, OpusContractStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(contract_key, OpusContractStructure) - 1;
+                    card->opus->contracts[i - 1].inhibition =
+                        bit_slice_to_dec(bit_representation, start, end);
+                }
 
-                    // Select app for contracts
-                    error = select_new_app(
-                        0x20, 0x20, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+                // ContractDataUsed
+                contract_key = "ContractDataUsed";
+                if(is_calypso_node_present(
+                       bit_representation, contract_key, OpusContractStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        bit_representation, contract_key, OpusContractStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(contract_key, OpusContractStructure) - 1;
+                    card->opus->contracts[i - 1].used =
+                        bit_slice_to_dec(bit_representation, start, end);
+                }
+            }
+
+            // Free the calypso structure
+            free_calypso_structure(OpusContractStructure);
+
+            // Select app for events
+            error =
+                select_new_app(0x20, 0x10, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+            if(error != 0) {
+                break;
+            }
+
+            // Check the response after selecting app
+            if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
+                break;
+            }
+
+            // Load the calypso structure for events
+            CalypsoApp* OpusEventStructure = get_opus_event_structure();
+            if(!OpusEventStructure) {
+                FURI_LOG_E(TAG, "Failed to load Opus Event structure");
+                break;
+            }
+
+            // Now send the read command for events
+            for(size_t i = 1; i < 4; i++) {
+                char FID_buf[3];
+                snprintf(FID_buf, sizeof(FID_buf), "%02X", i);
+                const char* FID = FID_buf;
+                error = read_new_file(
+                    "2010", FID, i, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+                if(error != 0) {
+                    view_dispatcher_send_custom_event(
+                        app->view_dispatcher, MetroflipCustomEventPollerFail);
+                    break;
+                }
+
+                // Check the response after reading the file
+                if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
+                    break;
+                }
+
+                char event_bit_representation[29 * 8 + 1];
+                event_bit_representation[0] = '\0';
+                size_t opus_event_copy_length = response_length > 29 ? 29 : response_length;
+                for(size_t i = 0; i < opus_event_copy_length; i++) {
+                    char bits[9];
+                    uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
+                    byte_to_binary(byte, bits);
+                    strlcat(event_bit_representation, bits, sizeof(event_bit_representation));
+                }
+
+                // EventResult
+                const char* event_key = "EventResult";
+                if(is_calypso_node_present(
+                       event_bit_representation, event_key, OpusEventStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        event_bit_representation, event_key, OpusEventStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(event_key, OpusEventStructure) - 1;
+                    card->opus->events[i - 1].result =
+                        bit_slice_to_dec(event_bit_representation, start, end);
+                }
+
+                // EventServiceProvider
+                event_key = "EventServiceProvider";
+                if(is_calypso_node_present(
+                       event_bit_representation, event_key, OpusEventStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        event_bit_representation, event_key, OpusEventStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(event_key, OpusEventStructure) - 1;
+                    card->opus->events[i - 1].service_provider =
+                        bit_slice_to_dec(event_bit_representation, start, end);
+                }
+
+                // EventLocationId
+                event_key = "EventLocationId";
+                if(is_calypso_node_present(
+                       event_bit_representation, event_key, OpusEventStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        event_bit_representation, event_key, OpusEventStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(event_key, OpusEventStructure) - 1;
+                    card->opus->events[i - 1].location_id =
+                        bit_slice_to_dec(event_bit_representation, start, end);
+                }
+
+                // EventRouteNumber
+                event_key = "EventRouteNumber";
+                if(is_calypso_node_present(
+                       event_bit_representation, event_key, OpusEventStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        event_bit_representation, event_key, OpusEventStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(event_key, OpusEventStructure) - 1;
+                    card->opus->events[i - 1].route_number =
+                        bit_slice_to_dec(event_bit_representation, start, end);
+                }
+
+                // EventContractPointer
+                event_key = "EventContractPointer";
+                if(is_calypso_node_present(
+                       event_bit_representation, event_key, OpusEventStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        event_bit_representation, event_key, OpusEventStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(event_key, OpusEventStructure) - 1;
+                    card->opus->events[i - 1].used_contract =
+                        bit_slice_to_dec(event_bit_representation, start, end);
+                    if(card->opus->events[i - 1].used_contract > 0) {
+                        card->events_count++;
+                    }
+                }
+
+                // EventDataSimulation
+                event_key = "EventDataSimulation";
+                if(is_calypso_node_present(
+                       event_bit_representation, event_key, OpusEventStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        event_bit_representation, event_key, OpusEventStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(event_key, OpusEventStructure) - 1;
+                    card->opus->events[i - 1].simulation =
+                        bit_slice_to_dec(event_bit_representation, start, end);
+                }
+
+                // EventDataRouteDirection
+                event_key = "EventDataRouteDirection";
+                if(is_calypso_node_present(
+                       event_bit_representation, event_key, OpusEventStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        event_bit_representation, event_key, OpusEventStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(event_key, OpusEventStructure) - 1;
+                    card->opus->events[i - 1].route_direction =
+                        bit_slice_to_dec(event_bit_representation, start, end);
+                }
+
+                // EventDateStamp
+                event_key = "EventDateStamp";
+                int positionOffset = get_calypso_node_offset(
+                    event_bit_representation, event_key, OpusEventStructure);
+                int start = positionOffset,
+                    end =
+                        positionOffset + get_calypso_node_size(event_key, OpusEventStructure) - 1;
+                int decimal_value = bit_slice_to_dec(event_bit_representation, start, end);
+                uint64_t date_timestamp = (decimal_value * 24 * 3600) + epoch + 3600;
+                datetime_timestamp_to_datetime(date_timestamp, &card->opus->events[i - 1].date);
+
+                // EventTimeStamp
+                event_key = "EventTimeStamp";
+                positionOffset = get_calypso_node_offset(
+                    event_bit_representation, event_key, OpusEventStructure);
+                start = positionOffset,
+                end = positionOffset + get_calypso_node_size(event_key, OpusEventStructure) - 1;
+                decimal_value = bit_slice_to_dec(event_bit_representation, start, end);
+                card->opus->events[i - 1].date.hour = (decimal_value * 60) / 3600;
+                card->opus->events[i - 1].date.minute = ((decimal_value * 60) % 3600) / 60;
+                card->opus->events[i - 1].date.second = ((decimal_value * 60) % 3600) % 60;
+
+                // EventDataDateFirstStamp
+                event_key = "EventDataDateFirstStamp";
+                positionOffset = get_calypso_node_offset(
+                    event_bit_representation, event_key, OpusEventStructure);
+                start = positionOffset,
+                end = positionOffset + get_calypso_node_size(event_key, OpusEventStructure) - 1;
+                decimal_value = bit_slice_to_dec(event_bit_representation, start, end);
+                uint64_t first_date_timestamp = (decimal_value * 24 * 3600) + epoch + 3600;
+                datetime_timestamp_to_datetime(
+                    first_date_timestamp, &card->opus->events[i - 1].first_stamp_date);
+
+                // EventDataTimeFirstStamp
+                event_key = "EventDataTimeFirstStamp";
+                positionOffset = get_calypso_node_offset(
+                    event_bit_representation, event_key, OpusEventStructure);
+                start = positionOffset,
+                end = positionOffset + get_calypso_node_size(event_key, OpusEventStructure) - 1;
+                decimal_value = bit_slice_to_dec(event_bit_representation, start, end);
+                card->opus->events[i - 1].first_stamp_date.hour = (decimal_value * 60) / 3600;
+                card->opus->events[i - 1].first_stamp_date.minute =
+                    ((decimal_value * 60) % 3600) / 60;
+                card->opus->events[i - 1].first_stamp_date.second =
+                    ((decimal_value * 60) % 3600) % 60;
+            }
+
+            // Free the calypso structure
+            free_calypso_structure(OpusEventStructure);
+
+            break;
+        }
+        case CALYPSO_CARD_UNKNOWN: {
+            start = 3;
+            end = 6;
+            int country_num =
+                bit_slice_to_dec(environment_bit_representation, start, end) * 100 +
+                bit_slice_to_dec(environment_bit_representation, start + 4, end + 4) * 10 +
+                bit_slice_to_dec(environment_bit_representation, start + 8, end + 8);
+            start = 15;
+            end = 18;
+            int network_num =
+                bit_slice_to_dec(environment_bit_representation, start, end) * 100 +
+                bit_slice_to_dec(environment_bit_representation, start + 4, end + 4) * 10 +
+                bit_slice_to_dec(environment_bit_representation, start + 8, end + 8);
+            card->card_type = guess_card_type(country_num, network_num);
+            FURI_LOG_I(TAG, "card type again: %d", card->card_type);
+            if(card->card_type == CALYPSO_CARD_RAVKAV) {
+                card->ravkav = malloc(sizeof(RavKavCardData));
+                if(!card->ravkav) {
+                    stage = MetroflipPollerEventTypeFail;
+                    view_dispatcher_send_custom_event(
+                        app->view_dispatcher, MetroflipCustomEventPollerFail);
+                    break;
+                }
+                /* Zero it: only the contracts/events actually read get
+                         * populated, and the display iterates contracts[0..3]
+                         * by their .present flag and events[0..count]. Without
+                         * this, unread slots hold heap garbage (non-zero after a
+                         * save->load cycle), and get_ravkav_issuer() then indexes
+                         * its list with a garbage provider -> MPU fault. */
+                memset(card->ravkav, 0, sizeof(RavKavCardData));
+
+                // Prepare calypso structure
+
+                CalypsoApp* RavKavContractStructure = get_ravkav_contract_structure();
+                if(!RavKavContractStructure) {
+                    FURI_LOG_E(TAG, "Failed to load RavKav Contract structure");
+                    break;
+                }
+
+                //get balance
+                error = select_new_app(
+                    0x20, 0x2A, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+                if(error != 0) {
+                    FURI_LOG_E(TAG, "Failed to select app for contracts");
+                    break;
+                }
+
+                // Check the response after selecting app
+                if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
+                    FURI_LOG_E(TAG, "Failed to check response after selecting app for counter");
+                    break;
+                }
+
+                error = read_new_file(
+                    "202A", "01", 1, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+                if(error != 0) {
+                    view_dispatcher_send_custom_event(
+                        app->view_dispatcher, MetroflipCustomEventPollerFail);
+                    FURI_LOG_E(TAG, "Failed to read counter %d", 1);
+                    break;
+                }
+
+                // Check the response after reading the file
+                if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
+                    FURI_LOG_E(TAG, "Failed to check response after reading counter %d", 1);
+                    break;
+                }
+
+                uint32_t value = 0;
+                for(uint8_t i = 0; i < 3; i++) {
+                    value = (value << 8) | bit_buffer_get_byte(rx_buffer, i);
+                }
+                float result = value / 100.0f;
+                FURI_LOG_I(TAG, "Value: %.2f ILS", (double)result);
+
+                card->ravkav->contracts[0].balance = result;
+
+                error = select_new_app(
+                    0x20, 0x20, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+                if(error != 0) {
+                    FURI_LOG_E(TAG, "Failed to select app for contracts");
+                    break;
+                }
+
+                // Check the response after selecting app
+                if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
+                    FURI_LOG_E(TAG, "Failed to check response after selecting app for contracts");
+                    break;
+                }
+
+                // Now send the read command for contracts
+                for(size_t i = 1; i < 2; i++) {
+                    char FID_buf[3];
+                    snprintf(FID_buf, sizeof(FID_buf), "%02X", i);
+                    const char* FID = FID_buf;
+                    error = read_new_file(
+                        "2020", FID, i, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
                     if(error != 0) {
-                        FURI_LOG_E(TAG, "Failed to select app for contracts");
+                        view_dispatcher_send_custom_event(
+                            app->view_dispatcher, MetroflipCustomEventPollerFail);
+                        FURI_LOG_E(TAG, "Failed to read contract %d", i);
                         break;
                     }
 
-                    // Check the response after selecting app
+                    // Check the response after reading the file
                     if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
-                        FURI_LOG_E(
-                            TAG, "Failed to check response after selecting app for contracts");
+                        FURI_LOG_E(TAG, "Failed to check response after reading contract %d", i);
                         break;
                     }
 
-                    // Prepare calypso structure
-                    CalypsoApp* IntercodeContractStructure = get_intercode_structure_contract();
-                    if(!IntercodeContractStructure) {
-                        FURI_LOG_E(TAG, "Failed to load Intercode Contract structure");
-                        break;
+                    char bit_representation[29 * 8 + 1];
+                    bit_representation[0] = '\0';
+                    size_t ravkav_contract_copy_length = response_length > 29 ? 29 :
+                                                                                response_length;
+                    for(size_t i = 0; i < ravkav_contract_copy_length; i++) {
+                        char bits[9];
+                        uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
+                        byte_to_binary(byte, bits);
+                        strlcat(bit_representation, bits, sizeof(bit_representation));
                     }
+                    bit_representation[ravkav_contract_copy_length * 8] = '\0';
+                    card->ravkav->contracts[i - 1].present = 1;
+                    card->contracts_count++;
 
-                    // Now send the read command for contracts
+                    // ContractVersion
 
-                    for(size_t i = 1; i < 5; i++) {
-                        char FID_buf[3];
-                        snprintf(FID_buf, sizeof(FID_buf), "%02X", i);
-                        const char* FID = FID_buf;
-                        error = read_new_file(
-                            "2020", FID, i, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
-                        if(error != 0) {
-                            view_dispatcher_send_custom_event(
-                                app->view_dispatcher, MetroflipCustomEventPollerFail);
-                            FURI_LOG_E(TAG, "Failed to read contract %d", i);
-                            break;
-                        }
+                    const char* contract_key = "ContractVersion";
 
-                        // Check the response after reading the file
-                        if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
-                            FURI_LOG_E(
-                                TAG, "Failed to check response after reading contract %d", i);
-                            break;
-                        }
-
-                        char bit_representation[29 * 8 + 1];
-                        bit_representation[0] = '\0';
-                        size_t contract_copy_length = response_length > 29 ? 29 : response_length;
-                        for(size_t i = 0; i < contract_copy_length; i++) {
-                            char bits[9];
-                            uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
-                            byte_to_binary(byte, bits);
-                            strlcat(bit_representation, bits, sizeof(bit_representation));
-                        }
-                        bit_representation[contract_copy_length * 8] = '\0';
-
-                        if(bit_slice_to_dec(
-                               bit_representation,
-                               0,
-                               IntercodeContractStructure->container->elements[0].bitmap->size -
-                                   1) == 0) {
-                            break;
-                        }
-
-                        card->navigo->contracts[i - 1].present = 1;
-                        card->contracts_count++;
-
-                        // 2. ContractTariff
-                        const char* contract_key = "ContractTariff";
-                        if(is_calypso_node_present(
-                               bit_representation, contract_key, IntercodeContractStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                bit_representation, contract_key, IntercodeContractStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(
-                                          contract_key, IntercodeContractStructure) -
-                                      1;
-                            card->navigo->contracts[i - 1].tariff =
-                                bit_slice_to_dec(bit_representation, start, end);
-                        }
-
-                        // 3. ContractSerialNumber
-                        contract_key = "ContractSerialNumber";
-                        if(is_calypso_node_present(
-                               bit_representation, contract_key, IntercodeContractStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                bit_representation, contract_key, IntercodeContractStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(
-                                          contract_key, IntercodeContractStructure) -
-                                      1;
-                            card->navigo->contracts[i - 1].serial_number =
-                                bit_slice_to_dec(bit_representation, start, end);
-                            card->navigo->contracts[i - 1].serial_number_available = true;
-                        }
-
-                        // 8. ContractPayMethod
-                        contract_key = "ContractPayMethod";
-                        if(is_calypso_node_present(
-                               bit_representation, contract_key, IntercodeContractStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                bit_representation, contract_key, IntercodeContractStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(
-                                          contract_key, IntercodeContractStructure) -
-                                      1;
-                            card->navigo->contracts[i - 1].pay_method =
-                                bit_slice_to_dec(bit_representation, start, end);
-                            card->navigo->contracts[i - 1].pay_method_available = true;
-                        }
-
-                        // 10. ContractPriceAmount
-                        contract_key = "ContractPriceAmount";
-                        if(is_calypso_node_present(
-                               bit_representation, contract_key, IntercodeContractStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                bit_representation, contract_key, IntercodeContractStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(
-                                          contract_key, IntercodeContractStructure) -
-                                      1;
-                            card->navigo->contracts[i - 1].price_amount =
-                                bit_slice_to_dec(bit_representation, start, end) / 100.0;
-                            card->navigo->contracts[i - 1].price_amount_available = true;
-                        }
-
-                        // 13.0. ContractValidityStartDate
-                        contract_key = "ContractValidityStartDate";
-                        if(is_calypso_node_present(
-                               bit_representation, contract_key, IntercodeContractStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                bit_representation, contract_key, IntercodeContractStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(
-                                          contract_key, IntercodeContractStructure) -
-                                      1;
-                            float decimal_value =
-                                bit_slice_to_dec(bit_representation, start, end) * 24 * 3600;
-                            uint64_t start_validity_timestamp =
-                                (decimal_value + (float)epoch) + 3600;
-                            datetime_timestamp_to_datetime(
-                                start_validity_timestamp,
-                                &card->navigo->contracts[i - 1].start_date);
-                        }
-
-                        // 13.2. ContractValidityEndDate
-                        contract_key = "ContractValidityEndDate";
-                        if(is_calypso_node_present(
-                               bit_representation, contract_key, IntercodeContractStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                bit_representation, contract_key, IntercodeContractStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(
-                                          contract_key, IntercodeContractStructure) -
-                                      1;
-                            float decimal_value =
-                                bit_slice_to_dec(bit_representation, start, end) * 24 * 3600;
-                            uint64_t end_validity_timestamp =
-                                (decimal_value + (float)epoch) + 3600;
-                            datetime_timestamp_to_datetime(
-                                end_validity_timestamp, &card->navigo->contracts[i - 1].end_date);
-                            card->navigo->contracts[i - 1].end_date_available = true;
-                        }
-
-                        // 13.6. ContractValidityZones
-                        contract_key = "ContractValidityZones";
-                        if(is_calypso_node_present(
-                               bit_representation, contract_key, IntercodeContractStructure)) {
-                            int start = get_calypso_node_offset(
-                                bit_representation, contract_key, IntercodeContractStructure);
-                            // binary form is 00011111 for zones 5, 4, 3, 2, 1
-                            for(int j = 0; j < 5; j++) {
-                                card->navigo->contracts[i - 1].zones[j] = bit_slice_to_dec(
-                                    bit_representation, start + 3 + j, start + 3 + j);
-                            }
-                            card->navigo->contracts[i - 1].zones_available = true;
-                        }
-
-                        // 13.7. ContractValidityJourneys
-                        contract_key = "ContractValidityJourneys";
-                        if(is_calypso_node_present(
-                               bit_representation, contract_key, IntercodeContractStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                bit_representation, contract_key, IntercodeContractStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(
-                                          contract_key, IntercodeContractStructure) -
-                                      1;
-                            int decimal_value = bit_slice_to_dec(bit_representation, start, end);
-                            // first 5 bits -> CounterStructureNumber
-                            // last 8 bits -> CounterLastLoad
-                            // other bits -> RFU
-                            card->navigo->contracts[i - 1].counter.struct_number = decimal_value >>
-                                                                                   11;
-                            card->navigo->contracts[i - 1].counter.last_load = decimal_value &
-                                                                               0xFF;
-                            card->navigo->contracts[i - 1].counter_present = true;
-                        }
-
-                        // 15.0. ContractValiditySaleDate
-                        contract_key = "ContractValiditySaleDate";
-                        if(is_calypso_node_present(
-                               bit_representation, contract_key, IntercodeContractStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                bit_representation, contract_key, IntercodeContractStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(
-                                          contract_key, IntercodeContractStructure) -
-                                      1;
-                            float decimal_value =
-                                bit_slice_to_dec(bit_representation, start, end) * 24 * 3600;
-                            uint64_t sale_timestamp = (decimal_value + (float)epoch) + 3600;
-                            datetime_timestamp_to_datetime(
-                                sale_timestamp, &card->navigo->contracts[i - 1].sale_date);
-                        }
-
-                        // 15.2. ContractValiditySaleAgent - FIX NEEDED
-                        contract_key = "ContractValiditySaleAgent";
-                        /* if(is_calypso_node_present(
-                           bit_representation, contract_key, NavigoContractStructure)) { */
+                    if(is_calypso_node_present(
+                           bit_representation, contract_key, RavKavContractStructure)) {
                         int positionOffset = get_calypso_node_offset(
-                            bit_representation, contract_key, IntercodeContractStructure);
+                            bit_representation, contract_key, RavKavContractStructure);
+
                         int start = positionOffset,
                             end = positionOffset +
-                                  get_calypso_node_size(contract_key, IntercodeContractStructure) -
-                                  1;
-                        card->navigo->contracts[i - 1].sale_agent =
+                                  get_calypso_node_size(contract_key, RavKavContractStructure) - 1;
+
+                        card->ravkav->contracts[i - 1].version =
                             bit_slice_to_dec(bit_representation, start, end);
-                        // }
+                    }
 
-                        // 15.3. ContractValiditySaleDevice
-                        contract_key = "ContractValiditySaleDevice";
-                        if(is_calypso_node_present(
-                               bit_representation, contract_key, IntercodeContractStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                bit_representation, contract_key, IntercodeContractStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(
-                                          contract_key, IntercodeContractStructure) -
-                                      1;
-                            card->navigo->contracts[i - 1].sale_device =
-                                bit_slice_to_dec(bit_representation, start, end);
-                        }
+                    // ContractStartDate
+                    contract_key = "ContractStartDate";
+                    if(is_calypso_node_present(
+                           bit_representation, contract_key, RavKavContractStructure)) {
+                        int positionOffset = get_calypso_node_offset(
+                            bit_representation, contract_key, RavKavContractStructure);
+                        int start = positionOffset,
+                            end = positionOffset +
+                                  get_calypso_node_size(contract_key, RavKavContractStructure) - 1;
+                        int decimal_value = bit_slice_to_dec(bit_representation, start, end);
+                        uint32_t invertedDays = decimal_value ^ 0x3FFF;
 
-                        // 16. ContractStatus  -- 0x1 ou 0xff
-                        contract_key = "ContractStatus";
-                        if(is_calypso_node_present(
-                               bit_representation, contract_key, IntercodeContractStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                bit_representation, contract_key, IntercodeContractStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(
-                                          contract_key, IntercodeContractStructure) -
-                                      1;
-                            card->navigo->contracts[i - 1].status =
-                                bit_slice_to_dec(bit_representation, start, end);
-                        }
+                        int start_validity_timestamp = (invertedDays * 3600 * 24) + epoch + 3600;
 
-                        // 18. ContractAuthenticator
-                        contract_key = "ContractAuthenticator";
-                        if(is_calypso_node_present(
-                               bit_representation, contract_key, IntercodeContractStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                bit_representation, contract_key, IntercodeContractStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(
-                                          contract_key, IntercodeContractStructure) -
-                                      1;
-                            card->navigo->contracts[i - 1].authenticator =
-                                bit_slice_to_dec(bit_representation, start, end);
+                        datetime_timestamp_to_datetime(
+                            start_validity_timestamp, &card->ravkav->contracts[i - 1].start_date);
+                    }
+
+                    // ContractProvider
+                    contract_key = "ContractProvider";
+                    if(is_calypso_node_present(
+                           bit_representation, contract_key, RavKavContractStructure)) {
+                        int positionOffset = get_calypso_node_offset(
+                            bit_representation, contract_key, RavKavContractStructure);
+                        int start = positionOffset,
+                            end = positionOffset +
+                                  get_calypso_node_size(contract_key, RavKavContractStructure) - 1;
+                        card->ravkav->contracts[i - 1].provider =
+                            bit_slice_to_dec(bit_representation, start, end);
+                        FURI_LOG_I(
+                            TAG, "issuer number: %d", card->ravkav->contracts[i - 1].provider);
+                    }
+
+                    // ContractTariff
+                    contract_key = "ContractTariff";
+                    if(is_calypso_node_present(
+                           bit_representation, contract_key, RavKavContractStructure)) {
+                        int positionOffset = get_calypso_node_offset(
+                            bit_representation, contract_key, RavKavContractStructure);
+                        int start = positionOffset,
+                            end = positionOffset +
+                                  get_calypso_node_size(contract_key, RavKavContractStructure) - 1;
+                        card->ravkav->contracts[i - 1].tariff =
+                            bit_slice_to_dec(bit_representation, start, end);
+                    }
+
+                    // ContractSaleDate
+                    contract_key = "ContractSaleDate";
+                    int positionOffset = get_calypso_node_offset(
+                        bit_representation, contract_key, RavKavContractStructure);
+                    int start = positionOffset,
+                        end = positionOffset +
+                              get_calypso_node_size(contract_key, RavKavContractStructure) - 1;
+                    uint64_t sale_date_timestamp =
+                        (bit_slice_to_dec(bit_representation, start, end) * 3600 * 24) +
+                        (float)epoch + 3600;
+                    datetime_timestamp_to_datetime(
+                        sale_date_timestamp, &card->ravkav->contracts[i - 1].sale_date);
+
+                    // ContractSaleDevice
+                    contract_key = "ContractSaleDevice";
+                    if(is_calypso_node_present(
+                           bit_representation, contract_key, RavKavContractStructure)) {
+                        int positionOffset = get_calypso_node_offset(
+                            bit_representation, contract_key, RavKavContractStructure);
+                        int start = positionOffset,
+                            end = positionOffset +
+                                  get_calypso_node_size(contract_key, RavKavContractStructure) - 1;
+                        card->ravkav->contracts[i - 1].sale_device =
+                            bit_slice_to_dec(bit_representation, start, end);
+                    }
+
+                    // ContractSaleNumber
+                    contract_key = "ContractSaleNumber";
+                    if(is_calypso_node_present(
+                           bit_representation, contract_key, RavKavContractStructure)) {
+                        int positionOffset = get_calypso_node_offset(
+                            bit_representation, contract_key, RavKavContractStructure);
+                        int start = positionOffset,
+                            end = positionOffset +
+                                  get_calypso_node_size(contract_key, RavKavContractStructure) - 1;
+                        card->ravkav->contracts[i - 1].sale_number =
+                            bit_slice_to_dec(bit_representation, start, end);
+                    }
+
+                    // ContractInterchange
+                    contract_key = "ContractInterchange";
+                    if(is_calypso_node_present(
+                           bit_representation, contract_key, RavKavContractStructure)) {
+                        int positionOffset = get_calypso_node_offset(
+                            bit_representation, contract_key, RavKavContractStructure);
+                        int start = positionOffset,
+                            end = positionOffset +
+                                  get_calypso_node_size(contract_key, RavKavContractStructure) - 1;
+                        card->ravkav->contracts[i - 1].interchange =
+                            bit_slice_to_dec(bit_representation, start, end);
+                    }
+
+                    // ContractInterchange
+                    contract_key = "ContractRestrictCode";
+                    if(is_calypso_node_present(
+                           bit_representation, contract_key, RavKavContractStructure)) {
+                        int positionOffset = get_calypso_node_offset(
+                            bit_representation, contract_key, RavKavContractStructure);
+                        int start = positionOffset,
+                            end = positionOffset +
+                                  get_calypso_node_size(contract_key, RavKavContractStructure) - 1;
+                        card->ravkav->contracts[i - 1].restrict_code_available = true;
+                        card->ravkav->contracts[i - 1].restrict_code =
+                            bit_slice_to_dec(bit_representation, start, end);
+                    }
+
+                    // ContractRestrictDuration
+                    contract_key = "ContractRestrictDuration";
+                    if(is_calypso_node_present(
+                           bit_representation, contract_key, RavKavContractStructure)) {
+                        int positionOffset = get_calypso_node_offset(
+                            bit_representation, contract_key, RavKavContractStructure);
+                        int start = positionOffset,
+                            end = positionOffset +
+                                  get_calypso_node_size(contract_key, RavKavContractStructure) - 1;
+                        card->ravkav->contracts[i - 1].restrict_duration_available = true;
+                        if(card->ravkav->contracts[i - 1].restrict_code == 16) {
+                            card->ravkav->contracts[i - 1].restrict_duration =
+                                bit_slice_to_dec(bit_representation, start, end) * 5;
+                        } else {
+                            card->ravkav->contracts[i - 1].restrict_duration =
+                                bit_slice_to_dec(bit_representation, start, end) * 30;
                         }
                     }
 
-                    // Free the calypso structure
-                    free_calypso_structure(IntercodeContractStructure);
+                    // ContractEndDate
+                    contract_key = "ContractEndDate";
+                    if(is_calypso_node_present(
+                           bit_representation, contract_key, RavKavContractStructure)) {
+                        int positionOffset = get_calypso_node_offset(
+                            bit_representation, contract_key, RavKavContractStructure);
+                        int start = positionOffset,
+                            end = positionOffset +
+                                  get_calypso_node_size(contract_key, RavKavContractStructure) - 1;
+                        card->ravkav->contracts[i - 1].end_date_available = true;
+                        int end_date_timestamp =
+                            (bit_slice_to_dec(bit_representation, start, end) * 3600 * 24) +
+                            epoch + 3600;
 
-                    // Select app for counters (remaining tickets on Navigo Easy)
-                    error = select_new_app(
-                        0x20, 0x69, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
-                    if(error != 0) {
-                        break;
+                        datetime_timestamp_to_datetime(
+                            end_date_timestamp, &card->ravkav->contracts[i - 1].end_date);
                     }
+                }
 
-                    // Check the response after selecting app
-                    if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
-                        break;
-                    }
+                // Free the calypso structure
+                free_calypso_structure(RavKavContractStructure);
 
-                    // read file 1
+                error = select_new_app(
+                    0x20, 0x01, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+                if(error != 0) {
+                    FURI_LOG_E(TAG, "Failed to select app for environment");
+                    break;
+                }
+
+                // Check the response after selecting app
+                if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
+                    FURI_LOG_E(
+                        TAG, "Failed to check response after selecting app for environment");
+                    break;
+                }
+
+                // Prepare calypso structure
+
+                CalypsoApp* RavKavEnvStructure = get_ravkav_env_holder_structure();
+                if(!RavKavEnvStructure) {
+                    FURI_LOG_E(TAG, "Failed to load RavKav environment structure");
+                    break;
+                }
+
+                // Now send the read command for environment
+
+                error = read_new_file(
+                    "2001", "01", 1, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+                if(error != 0) {
+                    view_dispatcher_send_custom_event(
+                        app->view_dispatcher, MetroflipCustomEventPollerFail);
+                    FURI_LOG_E(TAG, "Failed to read environment");
+                    break;
+                }
+
+                // Check the response after reading the file
+                if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
+                    FURI_LOG_E(TAG, "Failed to check response after reading environment");
+                    break;
+                }
+
+                char env_bit_representation[29 * 8 + 1];
+                env_bit_representation[0] = '\0';
+                size_t ravkav_env_copy_length = response_length > 29 ? 29 : response_length;
+                for(size_t i = 0; i < ravkav_env_copy_length; i++) {
+                    char bits[9];
+                    uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
+                    byte_to_binary(byte, bits);
+                    strlcat(env_bit_representation, bits, sizeof(env_bit_representation));
+                }
+                env_bit_representation[ravkav_env_copy_length * 8] = '\0';
+
+                // EnvApplicationVersionNumber
+                char* env_key = "EnvApplicationVersionNumber";
+                if(is_calypso_node_present(env_bit_representation, env_key, RavKavEnvStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        env_bit_representation, env_key, RavKavEnvStructure);
+                    int start = positionOffset,
+                        end = positionOffset + get_calypso_node_size(env_key, RavKavEnvStructure) -
+                              1;
+                    card->ravkav->environment.app_num =
+                        bit_slice_to_dec(env_bit_representation, start, end);
+                }
+
+                // EnvApplicationNumber
+                env_key = "EnvApplicationNumber";
+                if(is_calypso_node_present(env_bit_representation, env_key, RavKavEnvStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        env_bit_representation, env_key, RavKavEnvStructure);
+                    int start = positionOffset,
+                        end = positionOffset + get_calypso_node_size(env_key, RavKavEnvStructure) -
+                              1;
+                    card->ravkav->environment.app_num =
+                        bit_slice_to_dec(env_bit_representation, start, end);
+                }
+
+                // EnvDateOfIssue
+                env_key = "EnvDateOfIssue";
+                if(is_calypso_node_present(env_bit_representation, env_key, RavKavEnvStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        env_bit_representation, env_key, RavKavEnvStructure);
+                    int start = positionOffset,
+                        end = positionOffset + get_calypso_node_size(env_key, RavKavEnvStructure) -
+                              1;
+
+                    uint64_t issue_date_timestamp =
+                        (bit_slice_to_dec(env_bit_representation, start, end) * 3600 * 24) +
+                        (float)epoch + 3600;
+                    datetime_timestamp_to_datetime(
+                        issue_date_timestamp, &card->ravkav->environment.issue_dt);
+                }
+
+                // EnvEndValidity
+                env_key = "EnvEndValidity";
+                if(is_calypso_node_present(env_bit_representation, env_key, RavKavEnvStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        env_bit_representation, env_key, RavKavEnvStructure);
+                    int start = positionOffset,
+                        end = positionOffset + get_calypso_node_size(env_key, RavKavEnvStructure) -
+                              1;
+
+                    uint64_t end_date_timestamp =
+                        (bit_slice_to_dec(env_bit_representation, start, end) * 3600 * 24) +
+                        (float)epoch + 3600;
+                    datetime_timestamp_to_datetime(
+                        end_date_timestamp, &card->ravkav->environment.end_dt);
+                }
+
+                // EnvPayMethod
+                env_key = "EnvPayMethod";
+                if(is_calypso_node_present(env_bit_representation, env_key, RavKavEnvStructure)) {
+                    int positionOffset = get_calypso_node_offset(
+                        env_bit_representation, env_key, RavKavEnvStructure);
+                    int start = positionOffset,
+                        end = positionOffset + get_calypso_node_size(env_key, RavKavEnvStructure) -
+                              1;
+                    card->ravkav->environment.pay_method =
+                        bit_slice_to_dec(env_bit_representation, start, end);
+                }
+
+                free_calypso_structure(RavKavEnvStructure);
+
+                // Select app for events
+                error = select_new_app(
+                    0x20, 0x10, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+                if(error != 0) {
+                    break;
+                }
+
+                // Check the response after selecting app
+                if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
+                    break;
+                }
+
+                // Load the calypso structure for events
+                CalypsoApp* RavKavEventStructure = get_ravkav_event_structure();
+                if(!RavKavEventStructure) {
+                    FURI_LOG_E(TAG, "Failed to load Opus Event structure");
+                    break;
+                }
+
+                // Now send the read command for events
+                for(size_t i = 1; i < 4; i++) {
+                    char FID_buf[3];
+                    snprintf(FID_buf, sizeof(FID_buf), "%02X", i);
+                    const char* FID = FID_buf;
                     error = read_new_file(
-                        "2069", "01", 1, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
+                        "2010", FID, i, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
                     if(error != 0) {
                         view_dispatcher_send_custom_event(
                             app->view_dispatcher, MetroflipCustomEventPollerFail);
@@ -1060,1669 +2341,222 @@ static bool calypso_read_card(Metroflip* app, Iso14443_4bPoller* iso14443_4b_pol
                         break;
                     }
 
-                    char counter_bit_representation[29 * 8 + 1];
-                    counter_bit_representation[0] = '\0';
-                    size_t counter_copy_length = response_length > 29 ? 29 : response_length;
-                    for(size_t i = 0; i < counter_copy_length; i++) {
+                    char event_bit_representation[29 * 8 + 1];
+                    event_bit_representation[0] = '\0';
+                    size_t ravkav_event_copy_length = response_length > 29 ? 29 : response_length;
+                    for(size_t i = 0; i < ravkav_event_copy_length; i++) {
                         char bits[9];
                         uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
                         byte_to_binary(byte, bits);
-                        strlcat(
-                            counter_bit_representation, bits, sizeof(counter_bit_representation));
+                        strlcat(event_bit_representation, bits, sizeof(event_bit_representation));
                     }
-                    // FURI_LOG_I(TAG, "Counter bit_representation: %s", counter_bit_representation);
-
-                    // Ticket counts (contracts 1-4)
-                    for(int i = 0; i < 4; i++) {
-                        if(card->navigo->contracts[i].present == 0) {
-                            continue;
-                        }
-                        if(card->navigo->contracts[i].counter_present == 0) {
-                            continue;
-                        }
-                        start = 0;
-                        end = 5;
-                        card->navigo->contracts[i].counter.count = bit_slice_to_dec(
-                            counter_bit_representation, 24 * i + start, 24 * i + end);
-
-                        start = 6;
-                        end = 23;
-                        card->navigo->contracts[i].counter.relative_first_stamp_15mn =
-                            bit_slice_to_dec(
-                                counter_bit_representation, 24 * i + start, 24 * i + end);
-                    }
-
-                    // Select app for events
-                    error = select_new_app(
-                        0x20, 0x10, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
-                    if(error != 0) {
-                        break;
-                    }
-
-                    // Check the response after selecting app
-                    if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
-                        break;
-                    }
-
-                    // Load the calypso structure for events
-                    CalypsoApp* IntercodeEventStructure = get_intercode_structure_event();
-                    if(!IntercodeEventStructure) {
-                        FURI_LOG_E(TAG, "Failed to load Intercode Event structure");
-                        break;
-                    }
-
-                    // furi_string_cat_printf(parsed_data, "\e#Events :\n");
-                    // Now send the read command for events
-                    for(size_t i = 1; i < 4; i++) {
-                        char FID_buf[3];
-                        snprintf(FID_buf, sizeof(FID_buf), "%02X", i);
-                        const char* FID = FID_buf;
-                        error = read_new_file(
-                            "2010", FID, i, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
-                        if(error != 0) {
-                            view_dispatcher_send_custom_event(
-                                app->view_dispatcher, MetroflipCustomEventPollerFail);
-                            break;
-                        }
-
-                        // Check the response after reading the file
-                        if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
-                            break;
-                        }
-
-                        char event_bit_representation[29 * 8 + 1];
-                        event_bit_representation[0] = '\0';
-                        size_t event_copy_length = response_length > 29 ? 29 : response_length;
-                        for(size_t i = 0; i < event_copy_length; i++) {
-                            char bits[9];
-                            uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
-                            byte_to_binary(byte, bits);
-                            strlcat(
-                                event_bit_representation, bits, sizeof(event_bit_representation));
-                        }
-
-                        // 2. EventCode
-                        const char* event_key = "EventCode";
-                        if(is_calypso_node_present(
-                               event_bit_representation, event_key, IntercodeEventStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                event_bit_representation, event_key, IntercodeEventStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(event_key, IntercodeEventStructure) -
-                                      1;
-                            int decimal_value =
-                                bit_slice_to_dec(event_bit_representation, start, end);
-                            card->navigo->events[i - 1].transport_type = decimal_value >> 4;
-                            card->navigo->events[i - 1].transition = decimal_value & 15;
-                        }
-
-                        // 4. EventServiceProvider
-                        event_key = "EventServiceProvider";
-                        if(is_calypso_node_present(
-                               event_bit_representation, event_key, IntercodeEventStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                event_bit_representation, event_key, IntercodeEventStructure);
-                            start = positionOffset,
-                            end = positionOffset +
-                                  get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
-                            card->navigo->events[i - 1].service_provider =
-                                bit_slice_to_dec(event_bit_representation, start, end);
-                        }
-
-                        // 8. EventLocationId
-                        event_key = "EventLocationId";
-                        if(is_calypso_node_present(
-                               event_bit_representation, event_key, IntercodeEventStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                event_bit_representation, event_key, IntercodeEventStructure);
-                            start = positionOffset,
-                            end = positionOffset +
-                                  get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
-                            int decimal_value =
-                                bit_slice_to_dec(event_bit_representation, start, end);
-                            card->navigo->events[i - 1].station_group_id = decimal_value >> 9;
-                            card->navigo->events[i - 1].station_id = (decimal_value >> 4) & 31;
-                            card->navigo->events[i - 1].station_sub_id = decimal_value & 15;
-                        }
-
-                        // 9. EventLocationGate
-                        event_key = "EventLocationGate";
-                        if(is_calypso_node_present(
-                               event_bit_representation, event_key, IntercodeEventStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                event_bit_representation, event_key, IntercodeEventStructure);
-                            start = positionOffset,
-                            end = positionOffset +
-                                  get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
-                            card->navigo->events[i - 1].location_gate =
-                                bit_slice_to_dec(event_bit_representation, start, end);
-                            card->navigo->events[i - 1].location_gate_available = true;
-                        }
-
-                        // 10. EventDevice
-                        event_key = "EventDevice";
-                        if(is_calypso_node_present(
-                               event_bit_representation, event_key, IntercodeEventStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                event_bit_representation, event_key, IntercodeEventStructure);
-                            start = positionOffset,
-                            end = positionOffset +
-                                  get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
-                            int decimal_value =
-                                bit_slice_to_dec(event_bit_representation, start, end);
-                            card->navigo->events[i - 1].device = decimal_value;
-                            int bus_device = decimal_value >> 8;
-                            card->navigo->events[i - 1].door = bus_device / 2 + 1;
-                            card->navigo->events[i - 1].side = bus_device % 2;
-                            card->navigo->events[i - 1].device_available = true;
-                        }
-
-                        // 11. EventRouteNumber
-                        event_key = "EventRouteNumber";
-                        if(is_calypso_node_present(
-                               event_bit_representation, event_key, IntercodeEventStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                event_bit_representation, event_key, IntercodeEventStructure);
-                            start = positionOffset,
-                            end = positionOffset +
-                                  get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
-                            card->navigo->events[i - 1].route_number =
-                                bit_slice_to_dec(event_bit_representation, start, end);
-                            card->navigo->events[i - 1].route_number_available = true;
-                        }
-
-                        // 13. EventJourneyRun
-                        event_key = "EventJourneyRun";
-                        if(is_calypso_node_present(
-                               event_bit_representation, event_key, IntercodeEventStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                event_bit_representation, event_key, IntercodeEventStructure);
-                            start = positionOffset,
-                            end = positionOffset +
-                                  get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
-                            card->navigo->events[i - 1].mission =
-                                bit_slice_to_dec(event_bit_representation, start, end);
-                            card->navigo->events[i - 1].mission_available = true;
-                        }
-
-                        // 14. EventVehicleId
-                        event_key = "EventVehicleId";
-                        if(is_calypso_node_present(
-                               event_bit_representation, event_key, IntercodeEventStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                event_bit_representation, event_key, IntercodeEventStructure);
-                            start = positionOffset,
-                            end = positionOffset +
-                                  get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
-                            card->navigo->events[i - 1].vehicle_id =
-                                bit_slice_to_dec(event_bit_representation, start, end);
-                            card->navigo->events[i - 1].vehicle_id_available = true;
-                        }
-
-                        // 25. EventContractPointer
-                        event_key = "EventContractPointer";
-                        if(is_calypso_node_present(
-                               event_bit_representation, event_key, IntercodeEventStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                event_bit_representation, event_key, IntercodeEventStructure);
-                            start = positionOffset,
-                            end = positionOffset +
-                                  get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
-                            card->navigo->events[i - 1].used_contract =
-                                bit_slice_to_dec(event_bit_representation, start, end);
-                            card->navigo->events[i - 1].used_contract_available = true;
-                            if(card->navigo->events[i - 1].used_contract > 0) {
-                                card->events_count++;
-                            }
-                        }
-
-                        // EventDateStamp
-                        event_key = "EventDateStamp";
+                    FURI_LOG_I(TAG, "event bit repr %s", event_bit_representation);
+                    // EventVersion
+                    const char* event_key = "EventVersion";
+                    if(is_calypso_node_present(
+                           event_bit_representation, event_key, RavKavEventStructure)) {
                         int positionOffset = get_calypso_node_offset(
-                            event_bit_representation, event_key, IntercodeEventStructure);
-                        start = positionOffset,
-                        end = positionOffset +
-                              get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
-                        int decimal_value = bit_slice_to_dec(event_bit_representation, start, end);
-                        uint64_t date_timestamp = (decimal_value * 24 * 3600) + epoch + 3600;
-                        datetime_timestamp_to_datetime(
-                            date_timestamp, &card->navigo->events[i - 1].date);
-
-                        // EventTimeStamp
-                        event_key = "EventTimeStamp";
-                        positionOffset = get_calypso_node_offset(
-                            event_bit_representation, event_key, IntercodeEventStructure);
-                        start = positionOffset,
-                        end = positionOffset +
-                              get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
-                        decimal_value = bit_slice_to_dec(event_bit_representation, start, end);
-                        card->navigo->events[i - 1].date.hour = (decimal_value * 60) / 3600;
-                        card->navigo->events[i - 1].date.minute =
-                            ((decimal_value * 60) % 3600) / 60;
-                        card->navigo->events[i - 1].date.second =
-                            ((decimal_value * 60) % 3600) % 60;
-                    }
-
-                    // Select app for special events
-                    error = select_new_app(
-                        0x20, 0x40, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
-                    if(error != 0) {
-                        break;
-                    }
-
-                    // Check the response after selecting app
-                    if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
-                        break;
-                    }
-
-                    // Now send the read command for special events
-                    for(size_t i = 1; i < 4; i++) {
-                        char FID_buf[3];
-                        snprintf(FID_buf, sizeof(FID_buf), "%02X", i);
-                        const char* FID = FID_buf;
-                        error = read_new_file(
-                            "2040", FID, i, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
-                        if(error != 0) {
-                            view_dispatcher_send_custom_event(
-                                app->view_dispatcher, MetroflipCustomEventPollerFail);
-                            break;
-                        }
-
-                        // Check the response after reading the file
-                        if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
-                            break;
-                        }
-
-                        char event_bit_representation[29 * 8 + 1];
-                        event_bit_representation[0] = '\0';
-                        size_t special_event_copy_length =
-                            response_length > 29 ? 29 : response_length;
-                        for(size_t i = 0; i < special_event_copy_length; i++) {
-                            char bits[9];
-                            uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
-                            byte_to_binary(byte, bits);
-                            strlcat(
-                                event_bit_representation, bits, sizeof(event_bit_representation));
-                        }
-
-                        if(bit_slice_to_dec(
-                               event_bit_representation,
-                               0,
-                               IntercodeEventStructure->container->elements[0].bitmap->size - 1) ==
-                           0) {
-                            break;
-                        } else {
-                            card->special_events_count++;
-                        }
-
-                        // 2. EventCode
-                        const char* event_key = "EventCode";
-                        if(is_calypso_node_present(
-                               event_bit_representation, event_key, IntercodeEventStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                event_bit_representation, event_key, IntercodeEventStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(event_key, IntercodeEventStructure) -
-                                      1;
-                            int decimal_value =
-                                bit_slice_to_dec(event_bit_representation, start, end);
-                            card->navigo->special_events[i - 1].transport_type = decimal_value >>
-                                                                                 4;
-                            card->navigo->special_events[i - 1].transition = decimal_value & 15;
-                        }
-
-                        // 3. EventResult
-                        event_key = "EventResult";
-                        if(is_calypso_node_present(
-                               event_bit_representation, event_key, IntercodeEventStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                event_bit_representation, event_key, IntercodeEventStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(event_key, IntercodeEventStructure) -
-                                      1;
-                            card->navigo->special_events[i - 1].result =
-                                bit_slice_to_dec(event_bit_representation, start, end);
-                        }
-
-                        // 4. EventServiceProvider
-                        event_key = "EventServiceProvider";
-                        if(is_calypso_node_present(
-                               event_bit_representation, event_key, IntercodeEventStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                event_bit_representation, event_key, IntercodeEventStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(event_key, IntercodeEventStructure) -
-                                      1;
-                            card->navigo->special_events[i - 1].service_provider =
-                                bit_slice_to_dec(event_bit_representation, start, end);
-                        }
-
-                        // 8. EventLocationId
-                        event_key = "EventLocationId";
-                        if(is_calypso_node_present(
-                               event_bit_representation, event_key, IntercodeEventStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                event_bit_representation, event_key, IntercodeEventStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(event_key, IntercodeEventStructure) -
-                                      1;
-                            int decimal_value =
-                                bit_slice_to_dec(event_bit_representation, start, end);
-                            card->navigo->special_events[i - 1].station_group_id = decimal_value >>
-                                                                                   9;
-                            card->navigo->special_events[i - 1].station_id = (decimal_value >> 4) &
-                                                                             31;
-                            card->navigo->special_events[i - 1].station_sub_id = decimal_value &
-                                                                                 15;
-                        }
-
-                        // 10. EventDevice
-                        event_key = "EventDevice";
-                        if(is_calypso_node_present(
-                               event_bit_representation, event_key, IntercodeEventStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                event_bit_representation, event_key, IntercodeEventStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(event_key, IntercodeEventStructure) -
-                                      1;
-                            int decimal_value =
-                                bit_slice_to_dec(event_bit_representation, start, end);
-                            card->navigo->special_events[i - 1].device = decimal_value;
-                        }
-
-                        // 11. EventRouteNumber
-                        event_key = "EventRouteNumber";
-                        if(is_calypso_node_present(
-                               event_bit_representation, event_key, IntercodeEventStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                event_bit_representation, event_key, IntercodeEventStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(event_key, IntercodeEventStructure) -
-                                      1;
-                            card->navigo->special_events[i - 1].route_number =
-                                bit_slice_to_dec(event_bit_representation, start, end);
-                            card->navigo->special_events[i - 1].route_number_available = true;
-                        }
-
-                        // EventDateStamp
-                        event_key = "EventDateStamp";
-                        int positionOffset = get_calypso_node_offset(
-                            event_bit_representation, event_key, IntercodeEventStructure);
+                            event_bit_representation, event_key, RavKavEventStructure);
                         int start = positionOffset,
                             end = positionOffset +
-                                  get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
-                        int decimal_value = bit_slice_to_dec(event_bit_representation, start, end);
-                        uint64_t date_timestamp = (decimal_value * 24 * 3600) + epoch + 3600;
-                        datetime_timestamp_to_datetime(
-                            date_timestamp, &card->navigo->special_events[i - 1].date);
-
-                        // EventTimeStamp
-                        event_key = "EventTimeStamp";
-                        positionOffset = get_calypso_node_offset(
-                            event_bit_representation, event_key, IntercodeEventStructure);
-                        start = positionOffset,
-                        end = positionOffset +
-                              get_calypso_node_size(event_key, IntercodeEventStructure) - 1;
-                        decimal_value = bit_slice_to_dec(event_bit_representation, start, end);
-                        card->navigo->special_events[i - 1].date.hour =
-                            (decimal_value * 60) / 3600;
-                        card->navigo->special_events[i - 1].date.minute =
-                            ((decimal_value * 60) % 3600) / 60;
-                        card->navigo->special_events[i - 1].date.second =
-                            ((decimal_value * 60) % 3600) % 60;
+                                  get_calypso_node_size(event_key, RavKavEventStructure) - 1;
+                        card->ravkav->events[i - 1].event_version =
+                            bit_slice_to_dec(event_bit_representation, start, end);
                     }
 
-                    // Free the calypso structure
-                    free_calypso_structure(IntercodeEventStructure);
-                    break;
-                }
-                case CALYPSO_CARD_OPUS: {
-                    card->opus = malloc(sizeof(OpusCardData));
-                    if(!card->opus) {
-                        stage = MetroflipPollerEventTypeFail;
-                        view_dispatcher_send_custom_event(
-                            app->view_dispatcher, MetroflipCustomEventPollerFail);
-                        break;
-                    }
-                    /* Zero unread contract/event slots so the display (which
-                     * iterates by .present / *_count) never reads heap garbage. */
-                    memset(card->opus, 0, sizeof(OpusCardData));
-
-                    card->opus->environment.country_num = card->country_num;
-                    card->opus->environment.network_num = card->network_num;
-
-                    CalypsoApp* OpusEnvHolderStructure = get_opus_env_holder_structure();
-
-                    // EnvApplicationVersionNumber
-                    const char* env_key = "EnvApplicationVersionNumber";
-                    int positionOffset = get_calypso_node_offset(
-                        environment_bit_representation, env_key, OpusEnvHolderStructure);
-                    int start = positionOffset,
-                        end = positionOffset +
-                              get_calypso_node_size(env_key, OpusEnvHolderStructure) - 1;
-                    card->opus->environment.app_version =
-                        bit_slice_to_dec(environment_bit_representation, start, end);
-
-                    // EnvApplicationIssuerId
-                    env_key = "EnvApplicationIssuerId";
-                    positionOffset = get_calypso_node_offset(
-                        environment_bit_representation, env_key, OpusEnvHolderStructure);
-                    start = positionOffset,
-                    end = positionOffset + get_calypso_node_size(env_key, OpusEnvHolderStructure) -
-                          1;
-                    card->opus->environment.issuer_id =
-                        bit_slice_to_dec(environment_bit_representation, start, end);
-
-                    // EnvApplicationValidityEndDate
-                    env_key = "EnvApplicationValidityEndDate";
-                    positionOffset = get_calypso_node_offset(
-                        environment_bit_representation, env_key, OpusEnvHolderStructure);
-                    start = positionOffset,
-                    end = positionOffset + get_calypso_node_size(env_key, OpusEnvHolderStructure) -
-                          1;
-                    float decimal_value =
-                        bit_slice_to_dec(environment_bit_representation, start, end);
-                    uint64_t end_validity_timestamp =
-                        (decimal_value * 24 * 3600) + (float)epoch + 3600;
-                    datetime_timestamp_to_datetime(
-                        end_validity_timestamp, &card->opus->environment.end_dt);
-
-                    // EnvDataCardStatus
-                    env_key = "EnvDataCardStatus";
-                    positionOffset = get_calypso_node_offset(
-                        environment_bit_representation, env_key, OpusEnvHolderStructure);
-                    start = positionOffset,
-                    end = positionOffset + get_calypso_node_size(env_key, OpusEnvHolderStructure) -
-                          1;
-                    card->opus->environment.card_status =
-                        bit_slice_to_dec(environment_bit_representation, start, end);
-
-                    // EnvData_CardUtilisation
-                    env_key = "EnvData_CardUtilisation";
-                    positionOffset = get_calypso_node_offset(
-                        environment_bit_representation, env_key, OpusEnvHolderStructure);
-                    start = positionOffset,
-                    end = positionOffset + get_calypso_node_size(env_key, OpusEnvHolderStructure) -
-                          1;
-                    card->opus->environment.card_utilisation =
-                        bit_slice_to_dec(environment_bit_representation, start, end);
-
-                    // HolderBirthDate
-                    env_key = "HolderBirthDate";
-                    positionOffset = get_calypso_node_offset(
-                        environment_bit_representation, env_key, OpusEnvHolderStructure);
-                    start = positionOffset, end = positionOffset + 3;
-                    card->opus->holder.birth_date.year =
-                        bit_slice_to_dec(environment_bit_representation, start, end) * 1000 +
-                        bit_slice_to_dec(environment_bit_representation, start + 4, end + 4) *
-                            100 +
-                        bit_slice_to_dec(environment_bit_representation, start + 8, end + 8) * 10 +
-                        bit_slice_to_dec(environment_bit_representation, start + 12, end + 12);
-                    start += 16, end += 16;
-                    card->opus->holder.birth_date.month =
-                        bit_slice_to_dec(environment_bit_representation, start, end) * 10 +
-                        bit_slice_to_dec(environment_bit_representation, start + 4, end + 4);
-                    start += 8, end += 8;
-                    card->opus->holder.birth_date.day =
-                        bit_slice_to_dec(environment_bit_representation, start, end) * 10 +
-                        bit_slice_to_dec(environment_bit_representation, start + 4, end + 4);
-
-                    // Free the calypso structure
-                    free_calypso_structure(OpusEnvHolderStructure);
-
-                    // Select app for contracts
-                    error = select_new_app(
-                        0x20, 0x20, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
-                    if(error != 0) {
-                        FURI_LOG_E(TAG, "Failed to select app for contracts");
-                        break;
-                    }
-
-                    // Check the response after selecting app
-                    if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
-                        FURI_LOG_E(
-                            TAG, "Failed to check response after selecting app for contracts");
-                        break;
-                    }
-
-                    // Prepare calypso structure
-                    CalypsoApp* OpusContractStructure = get_opus_contract_structure();
-                    if(!OpusContractStructure) {
-                        FURI_LOG_E(TAG, "Failed to load Opus Contract structure");
-                        break;
-                    }
-
-                    // Now send the read command for contracts
-                    for(size_t i = 1; i < 5; i++) {
-                        char FID_buf[3];
-                        snprintf(FID_buf, sizeof(FID_buf), "%02X", i);
-                        const char* FID = FID_buf;
-                        error = read_new_file(
-                            "2020", FID, i, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
-                        if(error != 0) {
-                            view_dispatcher_send_custom_event(
-                                app->view_dispatcher, MetroflipCustomEventPollerFail);
-                            FURI_LOG_E(TAG, "Failed to read contract %d", i);
-                            break;
-                        }
-
-                        // Check the response after reading the file
-                        if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
-                            FURI_LOG_E(
-                                TAG, "Failed to check response after reading contract %d", i);
-                            break;
-                        }
-
-                        char bit_representation[29 * 8 + 1];
-                        bit_representation[0] = '\0';
-                        size_t opus_contract_copy_length =
-                            response_length > 29 ? 29 : response_length;
-                        for(size_t i = 0; i < opus_contract_copy_length; i++) {
-                            char bits[9];
-                            uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
-                            byte_to_binary(byte, bits);
-                            strlcat(bit_representation, bits, sizeof(bit_representation));
-                        }
-                        bit_representation[opus_contract_copy_length * 8] = '\0';
-
-                        if(bit_slice_to_dec(
-                               bit_representation,
-                               0,
-                               OpusContractStructure->container->elements[0].bitmap->size - 1) ==
-                           0) {
-                            break;
-                        }
-
-                        card->opus->contracts[i - 1].present = 1;
-                        card->contracts_count++;
-
-                        // ContractProvider
-                        const char* contract_key = "ContractProvider";
-                        if(is_calypso_node_present(
-                               bit_representation, contract_key, OpusContractStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                bit_representation, contract_key, OpusContractStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(contract_key, OpusContractStructure) -
-                                      1;
-                            card->opus->contracts[i - 1].provider =
-                                bit_slice_to_dec(bit_representation, start, end);
-                        }
-
-                        // ContractTariff
-                        contract_key = "ContractTariff";
-                        if(is_calypso_node_present(
-                               bit_representation, contract_key, OpusContractStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                bit_representation, contract_key, OpusContractStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(contract_key, OpusContractStructure) -
-                                      1;
-                            card->opus->contracts[i - 1].tariff =
-                                bit_slice_to_dec(bit_representation, start, end);
-                        }
-
-                        // ContractValidityStartDate
-                        contract_key = "ContractValidityStartDate";
-                        if(is_calypso_node_present(
-                               bit_representation, contract_key, OpusContractStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                bit_representation, contract_key, OpusContractStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(contract_key, OpusContractStructure) -
-                                      1;
-                            float decimal_value =
-                                bit_slice_to_dec(bit_representation, start, end) * 24 * 3600;
-                            uint64_t start_validity_timestamp =
-                                (decimal_value + (float)epoch) + 3600;
-                            datetime_timestamp_to_datetime(
-                                start_validity_timestamp,
-                                &card->opus->contracts[i - 1].start_date);
-                        }
-
-                        // ContractValidityEndDate
-                        contract_key = "ContractValidityEndDate";
-                        if(is_calypso_node_present(
-                               bit_representation, contract_key, OpusContractStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                bit_representation, contract_key, OpusContractStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(contract_key, OpusContractStructure) -
-                                      1;
-                            float decimal_value =
-                                bit_slice_to_dec(bit_representation, start, end) * 24 * 3600;
-                            uint64_t end_validity_timestamp =
-                                (decimal_value + (float)epoch) + 3600;
-                            datetime_timestamp_to_datetime(
-                                end_validity_timestamp, &card->opus->contracts[i - 1].end_date);
-                        }
-
-                        // ContractDataSaleAgent
-                        contract_key = "ContractDataSaleAgent";
-                        if(is_calypso_node_present(
-                               bit_representation, contract_key, OpusContractStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                bit_representation, contract_key, OpusContractStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(contract_key, OpusContractStructure) -
-                                      1;
-                            card->opus->contracts[i - 1].sale_agent =
-                                bit_slice_to_dec(bit_representation, start, end);
-                        }
-
-                        // ContractDataSaleDate + ContractDataSaleTime
-                        contract_key = "ContractDataSaleDate";
+                    // EventServiceProvider
+                    event_key = "EventServiceProvider";
+                    if(is_calypso_node_present(
+                           event_bit_representation, event_key, RavKavEventStructure)) {
                         int positionOffset = get_calypso_node_offset(
-                            bit_representation, contract_key, OpusContractStructure);
-                        FURI_LOG_I(TAG, "ContractDataSaleDate positionOffset: %d", positionOffset);
+                            event_bit_representation, event_key, RavKavEventStructure);
                         int start = positionOffset,
                             end = positionOffset +
-                                  get_calypso_node_size(contract_key, OpusContractStructure) - 1;
+                                  get_calypso_node_size(event_key, RavKavEventStructure) - 1;
+                        FURI_LOG_I(TAG, "service provider: start: %d, end %d", start, end);
+                        card->ravkav->events[i - 1].service_provider =
+                            bit_slice_to_dec(event_bit_representation, start, end);
+                    }
+
+                    // EventContractID
+                    event_key = "EventContractID";
+                    if(is_calypso_node_present(
+                           event_bit_representation, event_key, RavKavEventStructure)) {
+                        int positionOffset = get_calypso_node_offset(
+                            event_bit_representation, event_key, RavKavEventStructure);
+                        int start = positionOffset,
+                            end = positionOffset +
+                                  get_calypso_node_size(event_key, RavKavEventStructure) - 1;
+                        card->ravkav->events[i - 1].contract_id =
+                            bit_slice_to_dec(event_bit_representation, start, end);
+                        FURI_LOG_I(TAG, "2: start: %d, end %d", start, end);
+                    }
+
+                    // EventAreaID
+                    event_key = "EventAreaID";
+                    if(is_calypso_node_present(
+                           event_bit_representation, event_key, RavKavEventStructure)) {
+                        int positionOffset = get_calypso_node_offset(
+                            event_bit_representation, event_key, RavKavEventStructure);
+                        int start = positionOffset,
+                            end = positionOffset +
+                                  get_calypso_node_size(event_key, RavKavEventStructure) - 1;
+                        card->ravkav->events[i - 1].area_id =
+                            bit_slice_to_dec(event_bit_representation, start, end);
+                        FURI_LOG_I(TAG, "3: start: %d, end %d", start, end);
+                    }
+
+                    // EventType
+                    event_key = "EventType";
+                    if(is_calypso_node_present(
+                           event_bit_representation, event_key, RavKavEventStructure)) {
+                        int positionOffset = get_calypso_node_offset(
+                            event_bit_representation, event_key, RavKavEventStructure);
+                        int start = positionOffset,
+                            end = positionOffset +
+                                  get_calypso_node_size(event_key, RavKavEventStructure) - 1;
+                        card->ravkav->events[i - 1].type =
+                            bit_slice_to_dec(event_bit_representation, start, end);
+                        FURI_LOG_I(TAG, "4: start: %d, end %d", start, end);
+                    }
+
+                    // EventRouteNumber
+                    event_key = "EventExtension";
+                    if(is_calypso_node_present(
+                           event_bit_representation, event_key, RavKavEventStructure)) {
+                        int positionOffset = get_calypso_node_offset(
+                            event_bit_representation, event_key, RavKavEventStructure);
+                        int start = positionOffset,
+                            end = positionOffset +
+                                  get_calypso_node_size(event_key, RavKavEventStructure) - 1;
+                        FURI_LOG_I(TAG, "event extension : start: %d, end %d", start, end);
                         FURI_LOG_I(
                             TAG,
-                            "ContractDataSaleDate: %d",
-                            bit_slice_to_dec(bit_representation, start, end));
-                        uint64_t sale_date_timestamp =
-                            ((bit_slice_to_dec(bit_representation, start, end) * 24 * 3600) +
-                             (float)epoch) +
-                            3600;
-                        ;
-                        datetime_timestamp_to_datetime(
-                            sale_date_timestamp, &card->opus->contracts[i - 1].sale_date);
-
-                        contract_key = "ContractDataSaleTime";
-                        positionOffset = get_calypso_node_offset(
-                            bit_representation, contract_key, OpusContractStructure);
-                        start = positionOffset,
-                        end = positionOffset +
-                              get_calypso_node_size(contract_key, OpusContractStructure) - 1;
-                        int decimal_value = bit_slice_to_dec(bit_representation, start, end);
-                        card->opus->contracts[i - 1].sale_date.hour = (decimal_value * 60) / 3600;
-                        card->opus->contracts[i - 1].sale_date.minute =
-                            ((decimal_value * 60) % 3600) / 60;
-                        card->opus->contracts[i - 1].sale_date.second =
-                            ((decimal_value * 60) % 3600) % 60;
-
-                        // ContractDataInhibition
-                        contract_key = "ContractDataInhibition";
-                        if(is_calypso_node_present(
-                               bit_representation, contract_key, OpusContractStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                bit_representation, contract_key, OpusContractStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(contract_key, OpusContractStructure) -
-                                      1;
-                            card->opus->contracts[i - 1].inhibition =
-                                bit_slice_to_dec(bit_representation, start, end);
-                        }
-
-                        // ContractDataUsed
-                        contract_key = "ContractDataUsed";
-                        if(is_calypso_node_present(
-                               bit_representation, contract_key, OpusContractStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                bit_representation, contract_key, OpusContractStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(contract_key, OpusContractStructure) -
-                                      1;
-                            card->opus->contracts[i - 1].used =
-                                bit_slice_to_dec(bit_representation, start, end);
-                        }
+                            "event extension bitmap: %d",
+                            bit_slice_to_dec(event_bit_representation, start, end));
                     }
 
-                    // Free the calypso structure
-                    free_calypso_structure(OpusContractStructure);
-
-                    // Select app for events
-                    error = select_new_app(
-                        0x20, 0x10, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
-                    if(error != 0) {
-                        break;
-                    }
-
-                    // Check the response after selecting app
-                    if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
-                        break;
-                    }
-
-                    // Load the calypso structure for events
-                    CalypsoApp* OpusEventStructure = get_opus_event_structure();
-                    if(!OpusEventStructure) {
-                        FURI_LOG_E(TAG, "Failed to load Opus Event structure");
-                        break;
-                    }
-
-                    // Now send the read command for events
-                    for(size_t i = 1; i < 4; i++) {
-                        char FID_buf[3];
-                        snprintf(FID_buf, sizeof(FID_buf), "%02X", i);
-                        const char* FID = FID_buf;
-                        error = read_new_file(
-                            "2010", FID, i, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
-                        if(error != 0) {
-                            view_dispatcher_send_custom_event(
-                                app->view_dispatcher, MetroflipCustomEventPollerFail);
-                            break;
-                        }
-
-                        // Check the response after reading the file
-                        if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
-                            break;
-                        }
-
-                        char event_bit_representation[29 * 8 + 1];
-                        event_bit_representation[0] = '\0';
-                        size_t opus_event_copy_length = response_length > 29 ? 29 : response_length;
-                        for(size_t i = 0; i < opus_event_copy_length; i++) {
-                            char bits[9];
-                            uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
-                            byte_to_binary(byte, bits);
-                            strlcat(
-                                event_bit_representation, bits, sizeof(event_bit_representation));
-                        }
-
-                        // EventResult
-                        const char* event_key = "EventResult";
-                        if(is_calypso_node_present(
-                               event_bit_representation, event_key, OpusEventStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                event_bit_representation, event_key, OpusEventStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(event_key, OpusEventStructure) - 1;
-                            card->opus->events[i - 1].result =
-                                bit_slice_to_dec(event_bit_representation, start, end);
-                        }
-
-                        // EventServiceProvider
-                        event_key = "EventServiceProvider";
-                        if(is_calypso_node_present(
-                               event_bit_representation, event_key, OpusEventStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                event_bit_representation, event_key, OpusEventStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(event_key, OpusEventStructure) - 1;
-                            card->opus->events[i - 1].service_provider =
-                                bit_slice_to_dec(event_bit_representation, start, end);
-                        }
-
-                        // EventLocationId
-                        event_key = "EventLocationId";
-                        if(is_calypso_node_present(
-                               event_bit_representation, event_key, OpusEventStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                event_bit_representation, event_key, OpusEventStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(event_key, OpusEventStructure) - 1;
-                            card->opus->events[i - 1].location_id =
-                                bit_slice_to_dec(event_bit_representation, start, end);
-                        }
-
-                        // EventRouteNumber
-                        event_key = "EventRouteNumber";
-                        if(is_calypso_node_present(
-                               event_bit_representation, event_key, OpusEventStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                event_bit_representation, event_key, OpusEventStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(event_key, OpusEventStructure) - 1;
-                            card->opus->events[i - 1].route_number =
-                                bit_slice_to_dec(event_bit_representation, start, end);
-                        }
-
-                        // EventContractPointer
-                        event_key = "EventContractPointer";
-                        if(is_calypso_node_present(
-                               event_bit_representation, event_key, OpusEventStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                event_bit_representation, event_key, OpusEventStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(event_key, OpusEventStructure) - 1;
-                            card->opus->events[i - 1].used_contract =
-                                bit_slice_to_dec(event_bit_representation, start, end);
-                            if(card->opus->events[i - 1].used_contract > 0) {
-                                card->events_count++;
-                            }
-                        }
-
-                        // EventDataSimulation
-                        event_key = "EventDataSimulation";
-                        if(is_calypso_node_present(
-                               event_bit_representation, event_key, OpusEventStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                event_bit_representation, event_key, OpusEventStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(event_key, OpusEventStructure) - 1;
-                            card->opus->events[i - 1].simulation =
-                                bit_slice_to_dec(event_bit_representation, start, end);
-                        }
-
-                        // EventDataRouteDirection
-                        event_key = "EventDataRouteDirection";
-                        if(is_calypso_node_present(
-                               event_bit_representation, event_key, OpusEventStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                event_bit_representation, event_key, OpusEventStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(event_key, OpusEventStructure) - 1;
-                            card->opus->events[i - 1].route_direction =
-                                bit_slice_to_dec(event_bit_representation, start, end);
-                        }
-
-                        // EventDateStamp
-                        event_key = "EventDateStamp";
+                    // EventTime
+                    event_key = "EventTime";
+                    if(is_calypso_node_present(
+                           event_bit_representation, event_key, RavKavEventStructure)) {
                         int positionOffset = get_calypso_node_offset(
-                            event_bit_representation, event_key, OpusEventStructure);
+                            event_bit_representation, event_key, RavKavEventStructure);
                         int start = positionOffset,
                             end = positionOffset +
-                                  get_calypso_node_size(event_key, OpusEventStructure) - 1;
-                        int decimal_value = bit_slice_to_dec(event_bit_representation, start, end);
-                        uint64_t date_timestamp = (decimal_value * 24 * 3600) + epoch + 3600;
+                                  get_calypso_node_size(event_key, RavKavEventStructure) - 1;
+                        uint64_t event_timestamp =
+                            bit_slice_to_dec(event_bit_representation, start, end) + (float)epoch +
+                            3600;
                         datetime_timestamp_to_datetime(
-                            date_timestamp, &card->opus->events[i - 1].date);
-
-                        // EventTimeStamp
-                        event_key = "EventTimeStamp";
-                        positionOffset = get_calypso_node_offset(
-                            event_bit_representation, event_key, OpusEventStructure);
-                        start = positionOffset,
-                        end = positionOffset +
-                              get_calypso_node_size(event_key, OpusEventStructure) - 1;
-                        decimal_value = bit_slice_to_dec(event_bit_representation, start, end);
-                        card->opus->events[i - 1].date.hour = (decimal_value * 60) / 3600;
-                        card->opus->events[i - 1].date.minute = ((decimal_value * 60) % 3600) / 60;
-                        card->opus->events[i - 1].date.second = ((decimal_value * 60) % 3600) % 60;
-
-                        // EventDataDateFirstStamp
-                        event_key = "EventDataDateFirstStamp";
-                        positionOffset = get_calypso_node_offset(
-                            event_bit_representation, event_key, OpusEventStructure);
-                        start = positionOffset,
-                        end = positionOffset +
-                              get_calypso_node_size(event_key, OpusEventStructure) - 1;
-                        decimal_value = bit_slice_to_dec(event_bit_representation, start, end);
-                        uint64_t first_date_timestamp = (decimal_value * 24 * 3600) + epoch + 3600;
-                        datetime_timestamp_to_datetime(
-                            first_date_timestamp, &card->opus->events[i - 1].first_stamp_date);
-
-                        // EventDataTimeFirstStamp
-                        event_key = "EventDataTimeFirstStamp";
-                        positionOffset = get_calypso_node_offset(
-                            event_bit_representation, event_key, OpusEventStructure);
-                        start = positionOffset,
-                        end = positionOffset +
-                              get_calypso_node_size(event_key, OpusEventStructure) - 1;
-                        decimal_value = bit_slice_to_dec(event_bit_representation, start, end);
-                        card->opus->events[i - 1].first_stamp_date.hour =
-                            (decimal_value * 60) / 3600;
-                        card->opus->events[i - 1].first_stamp_date.minute =
-                            ((decimal_value * 60) % 3600) / 60;
-                        card->opus->events[i - 1].first_stamp_date.second =
-                            ((decimal_value * 60) % 3600) % 60;
+                            event_timestamp, &card->ravkav->events[i - 1].time);
+                        FURI_LOG_I(TAG, "5: start: %d, end %d", start, end);
                     }
 
-                    // Free the calypso structure
-                    free_calypso_structure(OpusEventStructure);
-
-                    break;
-                }
-                case CALYPSO_CARD_UNKNOWN: {
-                    start = 3;
-                    end = 6;
-                    int country_num =
-                        bit_slice_to_dec(environment_bit_representation, start, end) * 100 +
-                        bit_slice_to_dec(environment_bit_representation, start + 4, end + 4) * 10 +
-                        bit_slice_to_dec(environment_bit_representation, start + 8, end + 8);
-                    start = 15;
-                    end = 18;
-                    int network_num =
-                        bit_slice_to_dec(environment_bit_representation, start, end) * 100 +
-                        bit_slice_to_dec(environment_bit_representation, start + 4, end + 4) * 10 +
-                        bit_slice_to_dec(environment_bit_representation, start + 8, end + 8);
-                    card->card_type = guess_card_type(country_num, network_num);
-                    FURI_LOG_I(TAG, "card type again: %d", card->card_type);
-                    if(card->card_type == CALYPSO_CARD_RAVKAV) {
-                        card->ravkav = malloc(sizeof(RavKavCardData));
-                        if(!card->ravkav) {
-                            stage = MetroflipPollerEventTypeFail;
-                            view_dispatcher_send_custom_event(
-                                app->view_dispatcher, MetroflipCustomEventPollerFail);
-                            break;
-                        }
-                        /* Zero it: only the contracts/events actually read get
-                         * populated, and the display iterates contracts[0..3]
-                         * by their .present flag and events[0..count]. Without
-                         * this, unread slots hold heap garbage (non-zero after a
-                         * save->load cycle), and get_ravkav_issuer() then indexes
-                         * its list with a garbage provider -> MPU fault. */
-                        memset(card->ravkav, 0, sizeof(RavKavCardData));
-
-                        // Prepare calypso structure
-
-                        CalypsoApp* RavKavContractStructure = get_ravkav_contract_structure();
-                        if(!RavKavContractStructure) {
-                            FURI_LOG_E(TAG, "Failed to load RavKav Contract structure");
-                            break;
-                        }
-
-                        //get balance
-                        error = select_new_app(
-                            0x20, 0x2A, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
-                        if(error != 0) {
-                            FURI_LOG_E(TAG, "Failed to select app for contracts");
-                            break;
-                        }
-
-                        // Check the response after selecting app
-                        if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
-                            FURI_LOG_E(
-                                TAG, "Failed to check response after selecting app for counter");
-                            break;
-                        }
-
-                        error = read_new_file(
-                            "202A", "01", 1, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
-                        if(error != 0) {
-                            view_dispatcher_send_custom_event(
-                                app->view_dispatcher, MetroflipCustomEventPollerFail);
-                            FURI_LOG_E(TAG, "Failed to read counter %d", 1);
-                            break;
-                        }
-
-                        // Check the response after reading the file
-                        if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
-                            FURI_LOG_E(
-                                TAG, "Failed to check response after reading counter %d", 1);
-                            break;
-                        }
-
-                        uint32_t value = 0;
-                        for(uint8_t i = 0; i < 3; i++) {
-                            value = (value << 8) | bit_buffer_get_byte(rx_buffer, i);
-                        }
-                        float result = value / 100.0f;
-                        FURI_LOG_I(TAG, "Value: %.2f ILS", (double)result);
-
-                        card->ravkav->contracts[0].balance = result;
-
-                        error = select_new_app(
-                            0x20, 0x20, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
-                        if(error != 0) {
-                            FURI_LOG_E(TAG, "Failed to select app for contracts");
-                            break;
-                        }
-
-                        // Check the response after selecting app
-                        if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
-                            FURI_LOG_E(
-                                TAG, "Failed to check response after selecting app for contracts");
-                            break;
-                        }
-
-                        // Now send the read command for contracts
-                        for(size_t i = 1; i < 2; i++) {
-                            char FID_buf[3];
-                            snprintf(FID_buf, sizeof(FID_buf), "%02X", i);
-                            const char* FID = FID_buf;
-                            error = read_new_file(
-                                "2020",
-                                FID,
-                                i,
-                                tx_buffer,
-                                rx_buffer,
-                                iso14443_4b_poller,
-                                app,
-                                &stage);
-                            if(error != 0) {
-                                view_dispatcher_send_custom_event(
-                                    app->view_dispatcher, MetroflipCustomEventPollerFail);
-                                FURI_LOG_E(TAG, "Failed to read contract %d", i);
-                                break;
-                            }
-
-                            // Check the response after reading the file
-                            if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
-                                FURI_LOG_E(
-                                    TAG, "Failed to check response after reading contract %d", i);
-                                break;
-                            }
-
-                            char bit_representation[29 * 8 + 1];
-                            bit_representation[0] = '\0';
-                            size_t ravkav_contract_copy_length =
-                                response_length > 29 ? 29 : response_length;
-                            for(size_t i = 0; i < ravkav_contract_copy_length; i++) {
-                                char bits[9];
-                                uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
-                                byte_to_binary(byte, bits);
-                                strlcat(bit_representation, bits, sizeof(bit_representation));
-                            }
-                            bit_representation[ravkav_contract_copy_length * 8] = '\0';
-                            card->ravkav->contracts[i - 1].present = 1;
-                            card->contracts_count++;
-
-                            // ContractVersion
-
-                            const char* contract_key = "ContractVersion";
-
-                            if(is_calypso_node_present(
-                                   bit_representation, contract_key, RavKavContractStructure)) {
-                                int positionOffset = get_calypso_node_offset(
-                                    bit_representation, contract_key, RavKavContractStructure);
-
-                                int start = positionOffset,
-                                    end = positionOffset +
-                                          get_calypso_node_size(
-                                              contract_key, RavKavContractStructure) -
-                                          1;
-
-                                card->ravkav->contracts[i - 1].version =
-                                    bit_slice_to_dec(bit_representation, start, end);
-                            }
-
-                            // ContractStartDate
-                            contract_key = "ContractStartDate";
-                            if(is_calypso_node_present(
-                                   bit_representation, contract_key, RavKavContractStructure)) {
-                                int positionOffset = get_calypso_node_offset(
-                                    bit_representation, contract_key, RavKavContractStructure);
-                                int start = positionOffset,
-                                    end = positionOffset +
-                                          get_calypso_node_size(
-                                              contract_key, RavKavContractStructure) -
-                                          1;
-                                int decimal_value =
-                                    bit_slice_to_dec(bit_representation, start, end);
-                                uint32_t invertedDays = decimal_value ^ 0x3FFF;
-
-                                int start_validity_timestamp =
-                                    (invertedDays * 3600 * 24) + epoch + 3600;
-
-                                datetime_timestamp_to_datetime(
-                                    start_validity_timestamp,
-                                    &card->ravkav->contracts[i - 1].start_date);
-                            }
-
-                            // ContractProvider
-                            contract_key = "ContractProvider";
-                            if(is_calypso_node_present(
-                                   bit_representation, contract_key, RavKavContractStructure)) {
-                                int positionOffset = get_calypso_node_offset(
-                                    bit_representation, contract_key, RavKavContractStructure);
-                                int start = positionOffset,
-                                    end = positionOffset +
-                                          get_calypso_node_size(
-                                              contract_key, RavKavContractStructure) -
-                                          1;
-                                card->ravkav->contracts[i - 1].provider =
-                                    bit_slice_to_dec(bit_representation, start, end);
-                                FURI_LOG_I(
-                                    TAG,
-                                    "issuer number: %d",
-                                    card->ravkav->contracts[i - 1].provider);
-                            }
-
-                            // ContractTariff
-                            contract_key = "ContractTariff";
-                            if(is_calypso_node_present(
-                                   bit_representation, contract_key, RavKavContractStructure)) {
-                                int positionOffset = get_calypso_node_offset(
-                                    bit_representation, contract_key, RavKavContractStructure);
-                                int start = positionOffset,
-                                    end = positionOffset +
-                                          get_calypso_node_size(
-                                              contract_key, RavKavContractStructure) -
-                                          1;
-                                card->ravkav->contracts[i - 1].tariff =
-                                    bit_slice_to_dec(bit_representation, start, end);
-                            }
-
-                            // ContractSaleDate
-                            contract_key = "ContractSaleDate";
-                            int positionOffset = get_calypso_node_offset(
-                                bit_representation, contract_key, RavKavContractStructure);
-                            int start = positionOffset,
-                                end =
-                                    positionOffset +
-                                    get_calypso_node_size(contract_key, RavKavContractStructure) -
-                                    1;
-                            uint64_t sale_date_timestamp =
-                                (bit_slice_to_dec(bit_representation, start, end) * 3600 * 24) +
-                                (float)epoch + 3600;
-                            datetime_timestamp_to_datetime(
-                                sale_date_timestamp, &card->ravkav->contracts[i - 1].sale_date);
-
-                            // ContractSaleDevice
-                            contract_key = "ContractSaleDevice";
-                            if(is_calypso_node_present(
-                                   bit_representation, contract_key, RavKavContractStructure)) {
-                                int positionOffset = get_calypso_node_offset(
-                                    bit_representation, contract_key, RavKavContractStructure);
-                                int start = positionOffset,
-                                    end = positionOffset +
-                                          get_calypso_node_size(
-                                              contract_key, RavKavContractStructure) -
-                                          1;
-                                card->ravkav->contracts[i - 1].sale_device =
-                                    bit_slice_to_dec(bit_representation, start, end);
-                            }
-
-                            // ContractSaleNumber
-                            contract_key = "ContractSaleNumber";
-                            if(is_calypso_node_present(
-                                   bit_representation, contract_key, RavKavContractStructure)) {
-                                int positionOffset = get_calypso_node_offset(
-                                    bit_representation, contract_key, RavKavContractStructure);
-                                int start = positionOffset,
-                                    end = positionOffset +
-                                          get_calypso_node_size(
-                                              contract_key, RavKavContractStructure) -
-                                          1;
-                                card->ravkav->contracts[i - 1].sale_number =
-                                    bit_slice_to_dec(bit_representation, start, end);
-                            }
-
-                            // ContractInterchange
-                            contract_key = "ContractInterchange";
-                            if(is_calypso_node_present(
-                                   bit_representation, contract_key, RavKavContractStructure)) {
-                                int positionOffset = get_calypso_node_offset(
-                                    bit_representation, contract_key, RavKavContractStructure);
-                                int start = positionOffset,
-                                    end = positionOffset +
-                                          get_calypso_node_size(
-                                              contract_key, RavKavContractStructure) -
-                                          1;
-                                card->ravkav->contracts[i - 1].interchange =
-                                    bit_slice_to_dec(bit_representation, start, end);
-                            }
-
-                            // ContractInterchange
-                            contract_key = "ContractRestrictCode";
-                            if(is_calypso_node_present(
-                                   bit_representation, contract_key, RavKavContractStructure)) {
-                                int positionOffset = get_calypso_node_offset(
-                                    bit_representation, contract_key, RavKavContractStructure);
-                                int start = positionOffset,
-                                    end = positionOffset +
-                                          get_calypso_node_size(
-                                              contract_key, RavKavContractStructure) -
-                                          1;
-                                card->ravkav->contracts[i - 1].restrict_code_available = true;
-                                card->ravkav->contracts[i - 1].restrict_code =
-                                    bit_slice_to_dec(bit_representation, start, end);
-                            }
-
-                            // ContractRestrictDuration
-                            contract_key = "ContractRestrictDuration";
-                            if(is_calypso_node_present(
-                                   bit_representation, contract_key, RavKavContractStructure)) {
-                                int positionOffset = get_calypso_node_offset(
-                                    bit_representation, contract_key, RavKavContractStructure);
-                                int start = positionOffset,
-                                    end = positionOffset +
-                                          get_calypso_node_size(
-                                              contract_key, RavKavContractStructure) -
-                                          1;
-                                card->ravkav->contracts[i - 1].restrict_duration_available = true;
-                                if(card->ravkav->contracts[i - 1].restrict_code == 16) {
-                                    card->ravkav->contracts[i - 1].restrict_duration =
-                                        bit_slice_to_dec(bit_representation, start, end) * 5;
-                                } else {
-                                    card->ravkav->contracts[i - 1].restrict_duration =
-                                        bit_slice_to_dec(bit_representation, start, end) * 30;
-                                }
-                            }
-
-                            // ContractEndDate
-                            contract_key = "ContractEndDate";
-                            if(is_calypso_node_present(
-                                   bit_representation, contract_key, RavKavContractStructure)) {
-                                int positionOffset = get_calypso_node_offset(
-                                    bit_representation, contract_key, RavKavContractStructure);
-                                int start = positionOffset,
-                                    end = positionOffset +
-                                          get_calypso_node_size(
-                                              contract_key, RavKavContractStructure) -
-                                          1;
-                                card->ravkav->contracts[i - 1].end_date_available = true;
-                                int end_date_timestamp =
-                                    (bit_slice_to_dec(bit_representation, start, end) * 3600 *
-                                     24) +
-                                    epoch + 3600;
-
-                                datetime_timestamp_to_datetime(
-                                    end_date_timestamp, &card->ravkav->contracts[i - 1].end_date);
-                            }
-                        }
-
-                        // Free the calypso structure
-                        free_calypso_structure(RavKavContractStructure);
-
-                        error = select_new_app(
-                            0x20, 0x01, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
-                        if(error != 0) {
-                            FURI_LOG_E(TAG, "Failed to select app for environment");
-                            break;
-                        }
-
-                        // Check the response after selecting app
-                        if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
-                            FURI_LOG_E(
-                                TAG,
-                                "Failed to check response after selecting app for environment");
-                            break;
-                        }
-
-                        // Prepare calypso structure
-
-                        CalypsoApp* RavKavEnvStructure = get_ravkav_env_holder_structure();
-                        if(!RavKavEnvStructure) {
-                            FURI_LOG_E(TAG, "Failed to load RavKav environment structure");
-                            break;
-                        }
-
-                        // Now send the read command for environment
-
-                        error = read_new_file(
-                            "2001", "01", 1, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
-                        if(error != 0) {
-                            view_dispatcher_send_custom_event(
-                                app->view_dispatcher, MetroflipCustomEventPollerFail);
-                            FURI_LOG_E(TAG, "Failed to read environment");
-                            break;
-                        }
-
-                        // Check the response after reading the file
-                        if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
-                            FURI_LOG_E(TAG, "Failed to check response after reading environment");
-                            break;
-                        }
-
-                        char env_bit_representation[29 * 8 + 1];
-                        env_bit_representation[0] = '\0';
-                        size_t ravkav_env_copy_length = response_length > 29 ? 29 : response_length;
-                        for(size_t i = 0; i < ravkav_env_copy_length; i++) {
-                            char bits[9];
-                            uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
-                            byte_to_binary(byte, bits);
-                            strlcat(env_bit_representation, bits, sizeof(env_bit_representation));
-                        }
-                        env_bit_representation[ravkav_env_copy_length * 8] = '\0';
-
-                        // EnvApplicationVersionNumber
-                        char* env_key = "EnvApplicationVersionNumber";
-                        if(is_calypso_node_present(
-                               env_bit_representation, env_key, RavKavEnvStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                env_bit_representation, env_key, RavKavEnvStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(env_key, RavKavEnvStructure) - 1;
-                            card->ravkav->environment.app_num =
-                                bit_slice_to_dec(env_bit_representation, start, end);
-                        }
-
-                        // EnvApplicationNumber
-                        env_key = "EnvApplicationNumber";
-                        if(is_calypso_node_present(
-                               env_bit_representation, env_key, RavKavEnvStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                env_bit_representation, env_key, RavKavEnvStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(env_key, RavKavEnvStructure) - 1;
-                            card->ravkav->environment.app_num =
-                                bit_slice_to_dec(env_bit_representation, start, end);
-                        }
-
-                        // EnvDateOfIssue
-                        env_key = "EnvDateOfIssue";
-                        if(is_calypso_node_present(
-                               env_bit_representation, env_key, RavKavEnvStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                env_bit_representation, env_key, RavKavEnvStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(env_key, RavKavEnvStructure) - 1;
-
-                            uint64_t issue_date_timestamp =
-                                (bit_slice_to_dec(env_bit_representation, start, end) * 3600 *
-                                 24) +
-                                (float)epoch + 3600;
-                            datetime_timestamp_to_datetime(
-                                issue_date_timestamp, &card->ravkav->environment.issue_dt);
-                        }
-
-                        // EnvEndValidity
-                        env_key = "EnvEndValidity";
-                        if(is_calypso_node_present(
-                               env_bit_representation, env_key, RavKavEnvStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                env_bit_representation, env_key, RavKavEnvStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(env_key, RavKavEnvStructure) - 1;
-
-                            uint64_t end_date_timestamp =
-                                (bit_slice_to_dec(env_bit_representation, start, end) * 3600 *
-                                 24) +
-                                (float)epoch + 3600;
-                            datetime_timestamp_to_datetime(
-                                end_date_timestamp, &card->ravkav->environment.end_dt);
-                        }
-
-                        // EnvPayMethod
-                        env_key = "EnvPayMethod";
-                        if(is_calypso_node_present(
-                               env_bit_representation, env_key, RavKavEnvStructure)) {
-                            int positionOffset = get_calypso_node_offset(
-                                env_bit_representation, env_key, RavKavEnvStructure);
-                            int start = positionOffset,
-                                end = positionOffset +
-                                      get_calypso_node_size(env_key, RavKavEnvStructure) - 1;
-                            card->ravkav->environment.pay_method =
-                                bit_slice_to_dec(env_bit_representation, start, end);
-                        }
-
-                        free_calypso_structure(RavKavEnvStructure);
-
-                        // Select app for events
-                        error = select_new_app(
-                            0x20, 0x10, tx_buffer, rx_buffer, iso14443_4b_poller, app, &stage);
-                        if(error != 0) {
-                            break;
-                        }
-
-                        // Check the response after selecting app
-                        if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
-                            break;
-                        }
-
-                        // Load the calypso structure for events
-                        CalypsoApp* RavKavEventStructure = get_ravkav_event_structure();
-                        if(!RavKavEventStructure) {
-                            FURI_LOG_E(TAG, "Failed to load Opus Event structure");
-                            break;
-                        }
-
-                        // Now send the read command for events
-                        for(size_t i = 1; i < 4; i++) {
-                            char FID_buf[3];
-                            snprintf(FID_buf, sizeof(FID_buf), "%02X", i);
-                            const char* FID = FID_buf;
-                            error = read_new_file(
-                                "2010",
-                                FID,
-                                i,
-                                tx_buffer,
-                                rx_buffer,
-                                iso14443_4b_poller,
-                                app,
-                                &stage);
-                            if(error != 0) {
-                                view_dispatcher_send_custom_event(
-                                    app->view_dispatcher, MetroflipCustomEventPollerFail);
-                                break;
-                            }
-
-                            // Check the response after reading the file
-                            if(check_response(rx_buffer, app, &stage, &response_length) != 0) {
-                                break;
-                            }
-
-                            char event_bit_representation[29 * 8 + 1];
-                            event_bit_representation[0] = '\0';
-                            size_t ravkav_event_copy_length =
-                                response_length > 29 ? 29 : response_length;
-                            for(size_t i = 0; i < ravkav_event_copy_length; i++) {
-                                char bits[9];
-                                uint8_t byte = bit_buffer_get_byte(rx_buffer, i);
-                                byte_to_binary(byte, bits);
-                                strlcat(
-                                    event_bit_representation,
-                                    bits,
-                                    sizeof(event_bit_representation));
-                            }
-                            FURI_LOG_I(TAG, "event bit repr %s", event_bit_representation);
-                            // EventVersion
-                            const char* event_key = "EventVersion";
-                            if(is_calypso_node_present(
-                                   event_bit_representation, event_key, RavKavEventStructure)) {
-                                int positionOffset = get_calypso_node_offset(
-                                    event_bit_representation, event_key, RavKavEventStructure);
-                                int start = positionOffset,
-                                    end = positionOffset +
-                                          get_calypso_node_size(event_key, RavKavEventStructure) -
-                                          1;
-                                card->ravkav->events[i - 1].event_version =
-                                    bit_slice_to_dec(event_bit_representation, start, end);
-                            }
-
-                            // EventServiceProvider
-                            event_key = "EventServiceProvider";
-                            if(is_calypso_node_present(
-                                   event_bit_representation, event_key, RavKavEventStructure)) {
-                                int positionOffset = get_calypso_node_offset(
-                                    event_bit_representation, event_key, RavKavEventStructure);
-                                int start = positionOffset,
-                                    end = positionOffset +
-                                          get_calypso_node_size(event_key, RavKavEventStructure) -
-                                          1;
-                                FURI_LOG_I(TAG, "service provider: start: %d, end %d", start, end);
-                                card->ravkav->events[i - 1].service_provider =
-                                    bit_slice_to_dec(event_bit_representation, start, end);
-                            }
-
-                            // EventContractID
-                            event_key = "EventContractID";
-                            if(is_calypso_node_present(
-                                   event_bit_representation, event_key, RavKavEventStructure)) {
-                                int positionOffset = get_calypso_node_offset(
-                                    event_bit_representation, event_key, RavKavEventStructure);
-                                int start = positionOffset,
-                                    end = positionOffset +
-                                          get_calypso_node_size(event_key, RavKavEventStructure) -
-                                          1;
-                                card->ravkav->events[i - 1].contract_id =
-                                    bit_slice_to_dec(event_bit_representation, start, end);
-                                FURI_LOG_I(TAG, "2: start: %d, end %d", start, end);
-                            }
-
-                            // EventAreaID
-                            event_key = "EventAreaID";
-                            if(is_calypso_node_present(
-                                   event_bit_representation, event_key, RavKavEventStructure)) {
-                                int positionOffset = get_calypso_node_offset(
-                                    event_bit_representation, event_key, RavKavEventStructure);
-                                int start = positionOffset,
-                                    end = positionOffset +
-                                          get_calypso_node_size(event_key, RavKavEventStructure) -
-                                          1;
-                                card->ravkav->events[i - 1].area_id =
-                                    bit_slice_to_dec(event_bit_representation, start, end);
-                                FURI_LOG_I(TAG, "3: start: %d, end %d", start, end);
-                            }
-
-                            // EventType
-                            event_key = "EventType";
-                            if(is_calypso_node_present(
-                                   event_bit_representation, event_key, RavKavEventStructure)) {
-                                int positionOffset = get_calypso_node_offset(
-                                    event_bit_representation, event_key, RavKavEventStructure);
-                                int start = positionOffset,
-                                    end = positionOffset +
-                                          get_calypso_node_size(event_key, RavKavEventStructure) -
-                                          1;
-                                card->ravkav->events[i - 1].type =
-                                    bit_slice_to_dec(event_bit_representation, start, end);
-                                FURI_LOG_I(TAG, "4: start: %d, end %d", start, end);
-                            }
-
-                            // EventRouteNumber
-                            event_key = "EventExtension";
-                            if(is_calypso_node_present(
-                                   event_bit_representation, event_key, RavKavEventStructure)) {
-                                int positionOffset = get_calypso_node_offset(
-                                    event_bit_representation, event_key, RavKavEventStructure);
-                                int start = positionOffset,
-                                    end = positionOffset +
-                                          get_calypso_node_size(event_key, RavKavEventStructure) -
-                                          1;
-                                FURI_LOG_I(TAG, "event extension : start: %d, end %d", start, end);
-                                FURI_LOG_I(
-                                    TAG,
-                                    "event extension bitmap: %d",
-                                    bit_slice_to_dec(event_bit_representation, start, end));
-                            }
-
-                            // EventTime
-                            event_key = "EventTime";
-                            if(is_calypso_node_present(
-                                   event_bit_representation, event_key, RavKavEventStructure)) {
-                                int positionOffset = get_calypso_node_offset(
-                                    event_bit_representation, event_key, RavKavEventStructure);
-                                int start = positionOffset,
-                                    end = positionOffset +
-                                          get_calypso_node_size(event_key, RavKavEventStructure) -
-                                          1;
-                                uint64_t event_timestamp =
-                                    bit_slice_to_dec(event_bit_representation, start, end) +
-                                    (float)epoch + 3600;
-                                datetime_timestamp_to_datetime(
-                                    event_timestamp, &card->ravkav->events[i - 1].time);
-                                FURI_LOG_I(TAG, "5: start: %d, end %d", start, end);
-                            }
-
-                            // EventInterchangeFlag
-                            event_key = "EventInterchangeFlag";
-                            if(is_calypso_node_present(
-                                   event_bit_representation, event_key, RavKavEventStructure)) {
-                                int positionOffset = get_calypso_node_offset(
-                                    event_bit_representation, event_key, RavKavEventStructure);
-                                int start = positionOffset,
-                                    end = positionOffset +
-                                          get_calypso_node_size(event_key, RavKavEventStructure) -
-                                          1;
-                                card->ravkav->events[i - 1].interchange_flag =
-                                    bit_slice_to_dec(event_bit_representation, start, end);
-                                FURI_LOG_I(TAG, "6: start: %d, end %d", start, end);
-                            }
-
-                            // EventRouteNumber
-                            event_key = "EventRouteNumber";
-                            if(is_calypso_node_present(
-                                   event_bit_representation, event_key, RavKavEventStructure)) {
-                                int positionOffset = get_calypso_node_offset(
-                                    event_bit_representation, event_key, RavKavEventStructure);
-                                int start = positionOffset,
-                                    end = positionOffset +
-                                          get_calypso_node_size(event_key, RavKavEventStructure) -
-                                          1;
-                                card->ravkav->events[i - 1].route_number =
-                                    bit_slice_to_dec(event_bit_representation, start, end);
-                                card->ravkav->events[i - 1].route_number_available = true;
-                                FURI_LOG_I(TAG, "7: start: %d, end %d", start, end);
-                            }
-
-                            // EventRouteNumber
-                            event_key = "EventfareCode";
-                            if(is_calypso_node_present(
-                                   event_bit_representation, event_key, RavKavEventStructure)) {
-                                int positionOffset = get_calypso_node_offset(
-                                    event_bit_representation, event_key, RavKavEventStructure);
-                                int start = positionOffset,
-                                    end = positionOffset +
-                                          get_calypso_node_size(event_key, RavKavEventStructure) -
-                                          1;
-                                card->ravkav->events[i - 1].fare_code =
-                                    bit_slice_to_dec(event_bit_representation, start, end);
-                                card->ravkav->events[i - 1].fare_code = true;
-                                FURI_LOG_I(TAG, "8: start: %d, end %d", start, end);
-                            }
-
-                            // EventRouteNumber
-                            event_key = "EventDebitAmount";
-                            if(is_calypso_node_present(
-                                   event_bit_representation, event_key, RavKavEventStructure)) {
-                                int positionOffset = get_calypso_node_offset(
-                                    event_bit_representation, event_key, RavKavEventStructure);
-                                int start = positionOffset,
-                                    end = positionOffset +
-                                          get_calypso_node_size(event_key, RavKavEventStructure) -
-                                          1;
-                                card->ravkav->events[i - 1].debit_amount =
-                                    bit_slice_to_dec(event_bit_representation, start, end) / 100.0;
-                                card->ravkav->events[i - 1].debit_amount_available = true;
-                                FURI_LOG_I(TAG, "9: start: %d, end %d", start, end);
-                            }
-
-                            // EventRouteNumber
-                            event_key = "Location";
-                            if(is_calypso_node_present(
-                                   event_bit_representation, event_key, RavKavEventStructure)) {
-                                int positionOffset = get_calypso_node_offset(
-                                    event_bit_representation, event_key, RavKavEventStructure);
-                                int start = positionOffset,
-                                    end = positionOffset +
-                                          get_calypso_node_size(event_key, RavKavEventStructure) -
-                                          1;
-                                FURI_LOG_I(TAG, "location : start: %d, end %d", start, end);
-                                FURI_LOG_I(
-                                    TAG,
-                                    "locatrion bitmap: %d",
-                                    bit_slice_to_dec(event_bit_representation, start, end));
-                            }
-
-                            /* This event slot (events[i-1]) is now populated -
+                    // EventInterchangeFlag
+                    event_key = "EventInterchangeFlag";
+                    if(is_calypso_node_present(
+                           event_bit_representation, event_key, RavKavEventStructure)) {
+                        int positionOffset = get_calypso_node_offset(
+                            event_bit_representation, event_key, RavKavEventStructure);
+                        int start = positionOffset,
+                            end = positionOffset +
+                                  get_calypso_node_size(event_key, RavKavEventStructure) - 1;
+                        card->ravkav->events[i - 1].interchange_flag =
+                            bit_slice_to_dec(event_bit_representation, start, end);
+                        FURI_LOG_I(TAG, "6: start: %d, end %d", start, end);
+                    }
+
+                    // EventRouteNumber
+                    event_key = "EventRouteNumber";
+                    if(is_calypso_node_present(
+                           event_bit_representation, event_key, RavKavEventStructure)) {
+                        int positionOffset = get_calypso_node_offset(
+                            event_bit_representation, event_key, RavKavEventStructure);
+                        int start = positionOffset,
+                            end = positionOffset +
+                                  get_calypso_node_size(event_key, RavKavEventStructure) - 1;
+                        card->ravkav->events[i - 1].route_number =
+                            bit_slice_to_dec(event_bit_representation, start, end);
+                        card->ravkav->events[i - 1].route_number_available = true;
+                        FURI_LOG_I(TAG, "7: start: %d, end %d", start, end);
+                    }
+
+                    // EventRouteNumber
+                    event_key = "EventfareCode";
+                    if(is_calypso_node_present(
+                           event_bit_representation, event_key, RavKavEventStructure)) {
+                        int positionOffset = get_calypso_node_offset(
+                            event_bit_representation, event_key, RavKavEventStructure);
+                        int start = positionOffset,
+                            end = positionOffset +
+                                  get_calypso_node_size(event_key, RavKavEventStructure) - 1;
+                        card->ravkav->events[i - 1].fare_code =
+                            bit_slice_to_dec(event_bit_representation, start, end);
+                        card->ravkav->events[i - 1].fare_code = true;
+                        FURI_LOG_I(TAG, "8: start: %d, end %d", start, end);
+                    }
+
+                    // EventRouteNumber
+                    event_key = "EventDebitAmount";
+                    if(is_calypso_node_present(
+                           event_bit_representation, event_key, RavKavEventStructure)) {
+                        int positionOffset = get_calypso_node_offset(
+                            event_bit_representation, event_key, RavKavEventStructure);
+                        int start = positionOffset,
+                            end = positionOffset +
+                                  get_calypso_node_size(event_key, RavKavEventStructure) - 1;
+                        card->ravkav->events[i - 1].debit_amount =
+                            bit_slice_to_dec(event_bit_representation, start, end) / 100.0;
+                        card->ravkav->events[i - 1].debit_amount_available = true;
+                        FURI_LOG_I(TAG, "9: start: %d, end %d", start, end);
+                    }
+
+                    // EventRouteNumber
+                    event_key = "Location";
+                    if(is_calypso_node_present(
+                           event_bit_representation, event_key, RavKavEventStructure)) {
+                        int positionOffset = get_calypso_node_offset(
+                            event_bit_representation, event_key, RavKavEventStructure);
+                        int start = positionOffset,
+                            end = positionOffset +
+                                  get_calypso_node_size(event_key, RavKavEventStructure) - 1;
+                        FURI_LOG_I(TAG, "location : start: %d, end %d", start, end);
+                        FURI_LOG_I(
+                            TAG,
+                            "locatrion bitmap: %d",
+                            bit_slice_to_dec(event_bit_representation, start, end));
+                    }
+
+                    /* This event slot (events[i-1]) is now populated -
                              * record the real count so the display doesn't show
                              * empty/garbage event pages. */
-                            card->events_count = i;
-                        }
-
-                        // Free the calypso structure
-                        free_calypso_structure(RavKavEventStructure);
-
-                        break;
-                    }
-                }
-                default:
-                    break;
+                    card->events_count = i;
                 }
 
-                CalypsoContext* context = malloc(sizeof(CalypsoContext));
-                if(!context) {
-                    stage = MetroflipPollerEventTypeFail;
-                    view_dispatcher_send_custom_event(
-                        app->view_dispatcher, MetroflipCustomEventPollerFail);
-                    break;
-                }
-                context->card = card;
-                context->page_id = 0;
-                context->mutex = NULL;
-                app->calypso_context = context;
+                // Free the calypso structure
+                free_calypso_structure(RavKavEventStructure);
 
-                stage = MetroflipPollerEventTypeSuccess;
+                break;
+            }
+        }
+        default:
+            break;
+        }
+
+        CalypsoContext* context = malloc(sizeof(CalypsoContext));
+        if(!context) {
+            stage = MetroflipPollerEventTypeFail;
+            view_dispatcher_send_custom_event(
+                app->view_dispatcher, MetroflipCustomEventPollerFail);
+            break;
+        }
+        context->card = card;
+        context->page_id = 0;
+        context->mutex = NULL;
+        app->calypso_context = context;
+
+        stage = MetroflipPollerEventTypeSuccess;
     } while(false);
 
     if(stage != MetroflipPollerEventTypeSuccess) {

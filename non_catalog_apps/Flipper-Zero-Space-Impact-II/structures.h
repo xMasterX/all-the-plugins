@@ -18,44 +18,61 @@ typedef enum {
 /** Graphics: Objektumok azonosítói **/
 typedef enum {
     /* Számok, 3*5-ös méretben */
-    gNum0 = 0, gNum1, gNum2, gNum3, gNum4, gNum5, gNum6, gNum7, gNum8, gNum9,
+    gNum0 = 0,
+    gNum1,
+    gNum2,
+    gNum3,
+    gNum4,
+    gNum5,
+    gNum6,
+    gNum7,
+    gNum8,
+    gNum9,
     /* Menüelemek */
-    gSpace, gIntro, gImpact, gScrollMark, gDotEmpty, gDotFull,
+    gSpace,
+    gIntro,
+    gImpact,
+    gScrollMark,
+    gDotEmpty,
+    gDotFull,
     /* Játékosssal kapcsolatos modellek és ikonok */
     gLife, /* Életjel */
     gMissileIcon, /* Rakéta ikonja */
-    gBeamIcon,/* Sugár ikonja */
+    gBeamIcon, /* Sugár ikonja */
     gWallIcon, /* Fal ikonja */
     gShot, /* Lövés */
-    gExplosionA1, gExplosionA2 /* Robbanás animáció 2 lépése */
+    gExplosionA1,
+    gExplosionA2 /* Robbanás animáció 2 lépése */
 } Graphics;
 
 /* Fájlba áthelyezett objektumok */
 #define G_PROTECTION_A1 256 + 250
 #define G_PROTECTION_A2 256 + 251
-#define G_MISSILE 256 + 252
-#define G_BEAM 256 + 253
-#define G_WALL 256 + 254
-#define G_PLAYER 256 + 255
+#define G_MISSILE       256 + 252
+#define G_BEAM          256 + 253
+#define G_WALL          256 + 254
+#define G_PLAYER        256 + 255
 
 /** Struktúrák **/
 
 /** Vec2: Kétdimenziós vektor, hosszúságot és szélességet tárol **/
 typedef struct Vec2 {
-    Sint16 x, y; /* Azért elõjeles, mert lehet a képernyõrõl balra kiment lövedék, vagy felülrõl beúszó ellenség is */
+    Sint16 x,
+        y; /* Azért elõjeles, mert lehet a képernyõrõl balra kiment lövedék, vagy felülrõl beúszó ellenség is */
 } Vec2;
 
 /** Object: Objektumokat tárol, a képméretet, valamint egy kétdimenziós tömböt a pixelekkel (0 - inaktív, 1 - aktív) **/
 typedef struct Object {
     Vec2 Size; /* Az objektum mérete */
-    Uint8 *Samples; /* Size.x * Size.y méretû tömb az objektum képpontjaihoz */
+    Uint8* Samples; /* Size.x * Size.y méretû tömb az objektum képpontjaihoz */
 } Object;
 
 /** PlayerObject: A játékos objektuma **/
 typedef struct PlayerObject {
     Vec2 Pos; /* Bal felső sarkának pozíciója a képernyőn */
     Uint8 Lives; /* Életek, egy élet = egy találat */
-    Uint16 Score; /* Pontszám: bár a kijelző 99999-ig tud mutatni eredményt, az Uint16 maximumának elérése lehetetlen */
+    Uint16
+        Score; /* Pontszám: bár a kijelző 99999-ig tud mutatni eredményt, az Uint16 maximumának elérése lehetetlen */
     Uint8 Bonus; /* Hátralévõ bónuszfegyveres támadások */
     WeaponKind Weapon; /* Aktuális bónuszfegyver */
     Uint8 Protection; /* Hány képkocka sebzésvédelem van hátra */
@@ -84,7 +101,7 @@ typedef struct EnemyList {
     Sint8 Lives; /* Életpontok, ennyi lövést él még túl */
     Sint8 MoveDir; /* Indulási mozgásirány, 1: fel, -1: le */
     Uint8 Cooldown; /* Fegyver kihűlése */
-    struct EnemyList *Next; /* Következõ elem */
+    struct EnemyList* Next; /* Következõ elem */
 } EnemyList, *EnemyListStart;
 
 /** Lövések láncolt listája **/
@@ -95,14 +112,14 @@ typedef struct Shot {
     WeaponKind Kind; /* A lövés típusa */
     Uint8 Damage; /* Ha bónuszfegyver, akkor van egy sebzése, amit ellenségek közt el tud osztani */
     Vec2 Size; /* A kilõtt objektum mérete */
-    struct Shot *Next; /* Következõ elem */
+    struct Shot* Next; /* Következõ elem */
 } Shot, *ShotList;
 
 /** A táj láncolt listája **/
 typedef struct Scenery {
     Uint16 Model; /* Grafikai objektum azonosítója */
     Vec2 Pos; /* Hely a szinten */
-    struct Scenery *Next; /* Következõ elem */
+    struct Scenery* Next; /* Következõ elem */
 } Scenery, *SceneryList;
 
 #endif /* STRUCTURES_H */

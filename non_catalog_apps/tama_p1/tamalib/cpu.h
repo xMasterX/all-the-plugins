@@ -24,14 +24,14 @@
 
 #define MEMORY_SIZE 4096 // 4096 x 4 bits (640 x 4 bits of RAM)
 
-#define MEM_RAM_ADDR 0x000
-#define MEM_RAM_SIZE 0x280
+#define MEM_RAM_ADDR      0x000
+#define MEM_RAM_SIZE      0x280
 #define MEM_DISPLAY1_ADDR 0xE00
 #define MEM_DISPLAY1_SIZE 0x050
 #define MEM_DISPLAY2_ADDR 0xE80
 #define MEM_DISPLAY2_SIZE 0x050
-#define MEM_IO_ADDR 0xF00
-#define MEM_IO_SIZE 0x080
+#define MEM_IO_ADDR       0xF00
+#define MEM_IO_SIZE       0x080
 
 /* Define this if you want to reduce the footprint of the memory buffer from 4096 u4_t (most likely bytes)
  * to 464 u8_t (bytes for sure), while increasing slightly the number of operations needed to read/write from/to it.
@@ -43,7 +43,7 @@
 #define MEM_BUFFER_SIZE (MEM_RAM_SIZE + MEM_DISPLAY1_SIZE + MEM_DISPLAY2_SIZE + MEM_IO_SIZE) / 2
 
 /* Maps the CPU memory to the memory buffer */
-#define RAM_TO_MEMORY(n) ((n - MEM_RAM_ADDR) / 2)
+#define RAM_TO_MEMORY(n)   ((n - MEM_RAM_ADDR) / 2)
 #define DISP1_TO_MEMORY(n) ((n - MEM_DISPLAY1_ADDR + MEM_RAM_SIZE) / 2)
 #define DISP2_TO_MEMORY(n) ((n - MEM_DISPLAY2_ADDR + MEM_RAM_SIZE + MEM_DISPLAY1_SIZE) / 2)
 #define IO_TO_MEMORY(n) \
@@ -52,22 +52,22 @@
 #define SET_RAM_MEMORY(buffer, n, v)                                                         \
     {                                                                                        \
         buffer[RAM_TO_MEMORY(n)] = (buffer[RAM_TO_MEMORY(n)] & ~(0xF << (((n) % 2) << 2))) | \
-                                   ((v)&0xF) << (((n) % 2) << 2);                            \
+                                   ((v) & 0xF) << (((n) % 2) << 2);                          \
     }
 #define SET_DISP1_MEMORY(buffer, n, v)                                                           \
     {                                                                                            \
         buffer[DISP1_TO_MEMORY(n)] = (buffer[DISP1_TO_MEMORY(n)] & ~(0xF << (((n) % 2) << 2))) | \
-                                     ((v)&0xF) << (((n) % 2) << 2);                              \
+                                     ((v) & 0xF) << (((n) % 2) << 2);                            \
     }
 #define SET_DISP2_MEMORY(buffer, n, v)                                                           \
     {                                                                                            \
         buffer[DISP2_TO_MEMORY(n)] = (buffer[DISP2_TO_MEMORY(n)] & ~(0xF << (((n) % 2) << 2))) | \
-                                     ((v)&0xF) << (((n) % 2) << 2);                              \
+                                     ((v) & 0xF) << (((n) % 2) << 2);                            \
     }
 #define SET_IO_MEMORY(buffer, n, v)                                                        \
     {                                                                                      \
         buffer[IO_TO_MEMORY(n)] = (buffer[IO_TO_MEMORY(n)] & ~(0xF << (((n) % 2) << 2))) | \
-                                  ((v)&0xF) << (((n) % 2) << 2);                           \
+                                  ((v) & 0xF) << (((n) % 2) << 2);                         \
     }
 #define SET_MEMORY(buffer, n, v)                                   \
     {                                                              \
@@ -90,10 +90,10 @@
         }                                                          \
     }
 
-#define GET_RAM_MEMORY(buffer, n) ((buffer[RAM_TO_MEMORY(n)] >> (((n) % 2) << 2)) & 0xF)
+#define GET_RAM_MEMORY(buffer, n)   ((buffer[RAM_TO_MEMORY(n)] >> (((n) % 2) << 2)) & 0xF)
 #define GET_DISP1_MEMORY(buffer, n) ((buffer[DISP1_TO_MEMORY(n)] >> (((n) % 2) << 2)) & 0xF)
 #define GET_DISP2_MEMORY(buffer, n) ((buffer[DISP2_TO_MEMORY(n)] >> (((n) % 2) << 2)) & 0xF)
-#define GET_IO_MEMORY(buffer, n) ((buffer[IO_TO_MEMORY(n)] >> (((n) % 2) << 2)) & 0xF)
+#define GET_IO_MEMORY(buffer, n)    ((buffer[IO_TO_MEMORY(n)] >> (((n) % 2) << 2)) & 0xF)
 #define GET_MEMORY(buffer, n)                                                     \
     ((buffer                                                                      \
           [((n) < (MEM_RAM_ADDR + MEM_RAM_SIZE))           ? RAM_TO_MEMORY(n) :   \
@@ -113,16 +113,16 @@
 
 #define SET_MEMORY(buffer, n, v) \
     { buffer[n] = v; }
-#define SET_RAM_MEMORY(buffer, n, v) SET_MEMORY(buffer, n, v)
+#define SET_RAM_MEMORY(buffer, n, v)   SET_MEMORY(buffer, n, v)
 #define SET_DISP1_MEMORY(buffer, n, v) SET_MEMORY(buffer, n, v)
 #define SET_DISP2_MEMORY(buffer, n, v) SET_MEMORY(buffer, n, v)
-#define SET_IO_MEMORY(buffer, n, v) SET_MEMORY(buffer, n, v)
+#define SET_IO_MEMORY(buffer, n, v)    SET_MEMORY(buffer, n, v)
 
-#define GET_MEMORY(buffer, n) (buffer[n])
-#define GET_RAM_MEMORY(buffer, n) GET_MEMORY(buffer, n)
+#define GET_MEMORY(buffer, n)       (buffer[n])
+#define GET_RAM_MEMORY(buffer, n)   GET_MEMORY(buffer, n)
 #define GET_DISP1_MEMORY(buffer, n) GET_MEMORY(buffer, n)
 #define GET_DISP2_MEMORY(buffer, n) GET_MEMORY(buffer, n)
-#define GET_IO_MEMORY(buffer, n) GET_MEMORY(buffer, n)
+#define GET_IO_MEMORY(buffer, n)    GET_MEMORY(buffer, n)
 
 #define MEM_BUFFER_TYPE u4_t
 #endif

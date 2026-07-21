@@ -1,7 +1,7 @@
 // List of compatible firmwares
 #define TOTP_FIRMWARE_OFFICIAL_STABLE (1)
-#define TOTP_FIRMWARE_OFFICIAL_DEV (2)
-#define TOTP_FIRMWARE_XTREME_UL (3)
+#define TOTP_FIRMWARE_OFFICIAL_DEV    (2)
+#define TOTP_FIRMWARE_XTREME_UL       (3)
 // End of list
 
 #if __has_include("ufbt_def.h")

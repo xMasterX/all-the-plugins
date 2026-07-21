@@ -32,18 +32,17 @@ void scene_file_browser_select(
     SubGhzPlaylistCreator* app,
     const char* start_dir,
     const char* extension,
-    SceneFileBrowserSelectCallback on_select
-) {
+    SceneFileBrowserSelectCallback on_select) {
     app->file_browser_select_cb = on_select;
     furi_string_set(app->file_browser_result, start_dir);
     file_browser_configure(
         app->file_browser,
         extension,
         start_dir,
-        false,  // skip_assets
-        true,   // hide_dot_files
-        NULL,   // file_icon
-        false   // hide_ext
+        false, // skip_assets
+        true, // hide_dot_files
+        NULL, // file_icon
+        false // hide_ext
     );
     file_browser_set_callback(app->file_browser, file_browser_scene_callback, app);
     file_browser_start(app->file_browser, app->file_browser_result);
@@ -60,4 +59,4 @@ void scene_file_browser_init_view(SubGhzPlaylistCreator* app) {
     // The view is allocated in subghz_playlist_creator_alloc and added to the dispatcher there.
     // This function can remain empty for now.
     UNUSED(app);
-} 
+}

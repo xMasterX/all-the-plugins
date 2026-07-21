@@ -123,9 +123,8 @@ bool dashboard_bittrack_input(App* app, const InputEvent* event) {
         return false;
     }
 
-    if(
-        event->type != InputTypePress && event->type != InputTypeShort &&
-        event->type != InputTypeRelease) {
+    if(event->type != InputTypePress && event->type != InputTypeShort &&
+       event->type != InputTypeRelease) {
         return false;
     }
 

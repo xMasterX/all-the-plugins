@@ -15,24 +15,24 @@
 #include <notification/notification_messages.h>
 #include <asteroids_icons.h>
 
-#define TAG "Asteroids" // Used for logging
-#define DEBUG_MSG 0
-#define SCREEN_XRES 128
-#define SCREEN_YRES 64
-#define GAME_START_LIVES 3
-#define MAXLIVES 5 /* Max bonus lives allowed. */
-#define TTLBUL 30 /* Bullet time to live, in ticks. */
-#define MAXBUL 50 /* Max bullets on the screen. */
+#define TAG                    "Asteroids" // Used for logging
+#define DEBUG_MSG              0
+#define SCREEN_XRES            128
+#define SCREEN_YRES            64
+#define GAME_START_LIVES       3
+#define MAXLIVES               5 /* Max bonus lives allowed. */
+#define TTLBUL                 30 /* Bullet time to live, in ticks. */
+#define MAXBUL                 50 /* Max bullets on the screen. */
 //@todo MAX Asteroids
-#define MAXAST 32 /* Max asteroids on the screen. */
-#define MAXPOWERUPS 3 /* Max powerups allowed on screen */
-#define POWERUPSTTL 400 /* Max powerup time to live, in ticks. */
-#define MAXDRONES 1 /* Max drone buddies allowed */
-#define DRONE_TTL 300 /* Drone time to live, in ticks. */
-#define DRONE_FIRE_RATE 20 /* Drone fire rate in ticks. */
+#define MAXAST                 32 /* Max asteroids on the screen. */
+#define MAXPOWERUPS            3 /* Max powerups allowed on screen */
+#define POWERUPSTTL            400 /* Max powerup time to live, in ticks. */
+#define MAXDRONES              1 /* Max drone buddies allowed */
+#define DRONE_TTL              300 /* Drone time to live, in ticks. */
+#define DRONE_FIRE_RATE        20 /* Drone fire rate in ticks. */
 #define SHIP_HIT_ANIMATION_LEN 15
-#define SAVING_DIRECTORY STORAGE_APP_DATA_PATH_PREFIX
-#define SAVING_FILENAME SAVING_DIRECTORY "/game_asteroids.save"
+#define SAVING_DIRECTORY       STORAGE_APP_DATA_PATH_PREFIX
+#define SAVING_FILENAME        SAVING_DIRECTORY "/game_asteroids.save"
 #define SPLASH_SCREEN_DURATION 3000 /* Splash screen duration in milliseconds */
 #ifndef PI
 #define PI 3.14159265358979f
@@ -318,7 +318,8 @@ void draw_poly(Canvas* const canvas, Poly* poly, int x, int y, float a) {
         int y2 = clamp_coordinate(y + rot.y[b], 0, SCREEN_YRES - 1);
 
         /* Only draw if coordinates are reasonable (prevent extreme off-screen rendering) */
-        if(abs(x - SCREEN_XRES/2) < SCREEN_XRES * 2 && abs(y - SCREEN_YRES/2) < SCREEN_YRES * 2) {
+        if(abs(x - SCREEN_XRES / 2) < SCREEN_XRES * 2 &&
+           abs(y - SCREEN_YRES / 2) < SCREEN_YRES * 2) {
             canvas_draw_line(canvas, x1, y1, x2, y2);
         }
     }
@@ -357,7 +358,8 @@ void draw_bullet(Canvas* const canvas, Bullet* b) {
 void draw_asteroid(Canvas* const canvas, Asteroid* ast) {
     /* Safety check for asteroid coordinates */
     if(!is_coordinate_safe(ast->x, ast->y)) {
-        FURI_LOG_W(TAG, "Unsafe asteroid coordinates: x=%.2f, y=%.2f", (double)ast->x, (double)ast->y);
+        FURI_LOG_W(
+            TAG, "Unsafe asteroid coordinates: x=%.2f, y=%.2f", (double)ast->x, (double)ast->y);
         return;
     }
 
@@ -542,7 +544,8 @@ void draw_shield(Canvas* const canvas, AsteroidsApp* app) {
 void draw_drone(Canvas* const canvas, Drone* drone) {
     /* Safety check for drone coordinates */
     if(!is_coordinate_safe(drone->x, drone->y)) {
-        FURI_LOG_W(TAG, "Unsafe drone coordinates: x=%.2f, y=%.2f", (double)drone->x, (double)drone->y);
+        FURI_LOG_W(
+            TAG, "Unsafe drone coordinates: x=%.2f, y=%.2f", (double)drone->x, (double)drone->y);
         return;
     }
 
@@ -573,16 +576,19 @@ void render_splash_screen(Canvas* const canvas, AsteroidsApp* app) {
 
     /* Draw credits section */
     canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str_aligned(canvas, SCREEN_XRES / 2, 26, AlignCenter, AlignCenter, "Designed and Developed by");
+    canvas_draw_str_aligned(
+        canvas, SCREEN_XRES / 2, 26, AlignCenter, AlignCenter, "Designed and Developed by");
 
     /* Draw developer credits */
     canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str_aligned(canvas, SCREEN_XRES / 2, 38, AlignCenter, AlignCenter, "SimplyMinimal");
+    canvas_draw_str_aligned(
+        canvas, SCREEN_XRES / 2, 38, AlignCenter, AlignCenter, "SimplyMinimal");
     canvas_draw_str_aligned(canvas, SCREEN_XRES / 2, 48, AlignCenter, AlignCenter, "& AntiRez");
 
     /* Draw skip instruction */
     canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str_aligned(canvas, SCREEN_XRES / 2, 60, AlignCenter, AlignCenter, "Press any key to skip");
+    canvas_draw_str_aligned(
+        canvas, SCREEN_XRES / 2, 60, AlignCenter, AlignCenter, "Press any key to skip");
 }
 
 /* Render the current game screen. */
@@ -612,7 +618,11 @@ void render_callback(Canvas* const canvas, void* ctx) {
     /* Draw ship, asteroids, bullets. */
     /* Safety check for ship coordinates before rendering */
     if(!is_coordinate_safe(app->ship.x, app->ship.y)) {
-        FURI_LOG_E(TAG, "Ship coordinate corruption detected: x=%.2f, y=%.2f", (double)app->ship.x, (double)app->ship.y);
+        FURI_LOG_E(
+            TAG,
+            "Ship coordinate corruption detected: x=%.2f, y=%.2f",
+            (double)app->ship.x,
+            (double)app->ship.y);
         /* Emergency reset ship to center */
         app->ship.x = SCREEN_XRES / 2;
         app->ship.y = SCREEN_YRES / 2;
@@ -630,9 +640,11 @@ void render_callback(Canvas* const canvas, void* ctx) {
         draw_poly(canvas, &ShipFirePoly, app->ship.x, app->ship.y, app->ship.rot);
     }
 
-    for(int j = 0; j < app->bullets_num; j++) draw_bullet(canvas, &app->bullets[j]);
+    for(int j = 0; j < app->bullets_num; j++)
+        draw_bullet(canvas, &app->bullets[j]);
 
-    for(int j = 0; j < app->asteroids_num; j++) draw_asteroid(canvas, &app->asteroids[j]);
+    for(int j = 0; j < app->asteroids_num; j++)
+        draw_asteroid(canvas, &app->asteroids[j]);
 
     /* Draw active drones */
     for(int j = 0; j < app->drones_num; j++) {

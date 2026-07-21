@@ -3,17 +3,17 @@
 #include "protocols_common.h"
 #include <string.h>
 
-#define FORD_V3_TE_SHORT       240U
-#define FORD_V3_TE_LONG        480U
-#define FORD_V3_TE_DELTA       60U
-#define FORD_V3_CELL_TE_DELTA  120U
-#define FORD_V3_DATA_BITS      104U
-#define FORD_V3_DATA_BYTES     13U
-#define FORD_V3_PREAMBLE_MIN   30U
-#define FORD_V3_CELL_CAP       320U
-#define FORD_V3_CELL_MIN       200U
-#define FORD_V3_CELL_MIN_BITS  100U
-#define FORD_V3_FF_VARIANT     "Variant"
+#define FORD_V3_TE_SHORT      240U
+#define FORD_V3_TE_LONG       480U
+#define FORD_V3_TE_DELTA      60U
+#define FORD_V3_CELL_TE_DELTA 120U
+#define FORD_V3_DATA_BITS     104U
+#define FORD_V3_DATA_BYTES    13U
+#define FORD_V3_PREAMBLE_MIN  30U
+#define FORD_V3_CELL_CAP      320U
+#define FORD_V3_CELL_MIN      200U
+#define FORD_V3_CELL_MIN_BITS 100U
+#define FORD_V3_FF_VARIANT    "Variant"
 
 #define FORD_V3_BTN_LOCK   0x01U
 #define FORD_V3_BTN_UNLOCK 0x02U
@@ -76,7 +76,8 @@ static bool ford_v3_commit_frame(
     uint8_t variant);
 static void ford_v3_manchester_emit_if_ready(SubGhzProtocolDecoderFordV3* instance);
 static void ford_v3_cell_process(SubGhzProtocolDecoderFordV3* instance);
-static void ford_v3_cell_feed(SubGhzProtocolDecoderFordV3* instance, bool level, uint32_t duration);
+static void
+    ford_v3_cell_feed(SubGhzProtocolDecoderFordV3* instance, bool level, uint32_t duration);
 static void
     ford_v3_manchester_feed(SubGhzProtocolDecoderFordV3* instance, bool level, uint32_t duration);
 static const char* ford_v3_button_name(uint8_t btn, uint8_t variant);
@@ -185,7 +186,8 @@ static bool ford_v3_commit_frame(
     SubGhzProtocolDecoderFordV3* instance,
     const uint8_t* raw,
     uint8_t variant) {
-    if(instance->last_raw_valid && memcmp(instance->last_raw_bytes, raw, FORD_V3_DATA_BYTES) == 0) {
+    if(instance->last_raw_valid &&
+       memcmp(instance->last_raw_bytes, raw, FORD_V3_DATA_BYTES) == 0) {
         return true;
     }
 
@@ -219,7 +221,8 @@ static bool ford_v3_cell_decode(const uint8_t* cells, uint16_t cell_count, uint8
 
         int bit_count = 0;
         bool ok = true;
-        for(int i = phase; (i + 1) < (int)cell_count && bit_count < (int)FORD_V3_DATA_BITS; i += 2) {
+        for(int i = phase; (i + 1) < (int)cell_count && bit_count < (int)FORD_V3_DATA_BITS;
+            i += 2) {
             const uint8_t first = cells[i];
             const uint8_t second = cells[i + 1];
             if(first == second) {
@@ -259,7 +262,8 @@ static void ford_v3_cell_process(SubGhzProtocolDecoderFordV3* instance) {
     (void)ford_v3_commit_frame(instance, raw, FORD_V3_VARIANT_US);
 }
 
-static void ford_v3_cell_feed(SubGhzProtocolDecoderFordV3* instance, bool level, uint32_t duration) {
+static void
+    ford_v3_cell_feed(SubGhzProtocolDecoderFordV3* instance, bool level, uint32_t duration) {
     if(pp_is_short(duration, &subghz_protocol_ford_v3_cell_const)) {
         if(instance->cell_count < FORD_V3_CELL_CAP) {
             instance->cells[instance->cell_count++] = level ? 1U : 0U;
@@ -552,14 +556,14 @@ const SubGhzProtocol ford_protocol_v3 = {
     .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM |
             SubGhzProtocolFlag_FM | SubGhzProtocolFlag_Decodable | SubGhzProtocolFlag_Load |
             SubGhzProtocolFlag_Save,
-    #if PROTOPIRATE_WITH_DECODER
+#if PROTOPIRATE_WITH_DECODER
     .decoder = &subghz_protocol_ford_v3_decoder,
-    #else
+#else
     .decoder = NULL,
-    #endif
-    #if PROTOPIRATE_WITH_ENCODER
+#endif
+#if PROTOPIRATE_WITH_ENCODER
     .encoder = &subghz_protocol_ford_v3_encoder,
-    #else
+#else
     .encoder = NULL,
-    #endif
+#endif
 };

@@ -17,9 +17,9 @@
 
 #include "includes/game_state.h"
 
-#define TAG "Jetpack Joyride"
+#define TAG              "Jetpack Joyride"
 #define SAVING_DIRECTORY "/ext/apps/Games"
-#define SAVING_FILENAME SAVING_DIRECTORY "/jetpack.save"
+#define SAVING_FILENAME  SAVING_DIRECTORY "/jetpack.save"
 static GameState* global_state;
 
 typedef enum {

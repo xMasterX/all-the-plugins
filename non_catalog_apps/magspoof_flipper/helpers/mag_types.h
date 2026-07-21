@@ -1,8 +1,8 @@
 #pragma once
 
 #define MAG_VERSION_APP FAP_VERSION
-#define MAG_DEVELOPER "Zachary Weiss"
-#define MAG_GITHUB "github.com/zacharyweiss/magspoof_flipper"
+#define MAG_DEVELOPER   "Zachary Weiss"
+#define MAG_GITHUB      "github.com/zacharyweiss/magspoof_flipper"
 
 typedef enum {
     MagReverseStateOff,
@@ -37,17 +37,17 @@ typedef enum {
     MagPinC0,
 } MagPin;
 
-#define MAG_STATE_DEFAULT_REVERSE MagReverseStateOff
-#define MAG_STATE_DEFAULT_TRACK MagTrackStateOneAndTwo
-#define MAG_STATE_DEFAULT_TX MagTxStateGPIO
-#define MAG_STATE_DEFAULT_US_CLOCK 240
+#define MAG_STATE_DEFAULT_REVERSE        MagReverseStateOff
+#define MAG_STATE_DEFAULT_TRACK          MagTrackStateOneAndTwo
+#define MAG_STATE_DEFAULT_TX             MagTxStateGPIO
+#define MAG_STATE_DEFAULT_US_CLOCK       240
 #define MAG_STATE_DEFAULT_US_INTERPACKET 10
-#define MAG_STATE_DEFAULT_PIN_INPUT MagPinA7
-#define MAG_STATE_DEFAULT_PIN_OUTPUT MagPinA6
-#define MAG_STATE_DEFAULT_PIN_ENABLE MagPinA4
-#define MAG_STATE_DEFAULT_ALLOW_UART false
-#define MAG_STATE_DEFAULT_N_REPEATS 3
-#define MAG_STATE_DEFAULT_REPEAT_MODE true
+#define MAG_STATE_DEFAULT_PIN_INPUT      MagPinA7
+#define MAG_STATE_DEFAULT_PIN_OUTPUT     MagPinA6
+#define MAG_STATE_DEFAULT_PIN_ENABLE     MagPinA4
+#define MAG_STATE_DEFAULT_ALLOW_UART     false
+#define MAG_STATE_DEFAULT_N_REPEATS      3
+#define MAG_STATE_DEFAULT_REPEAT_MODE    true
 
 typedef enum {
     MagViewSubmenu,

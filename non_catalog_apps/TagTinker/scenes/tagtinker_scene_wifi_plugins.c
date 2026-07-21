@@ -21,15 +21,15 @@
 #include <string.h>
 #include <stdio.h>
 
-#define EVT_PLUGIN_BASE   0x100u
-#define EVT_WIFI_SETUP    0x001u
-#define EVT_WIFI_FORGET   0x002u
-#define EVT_WIFI_REFRESH  0x003u
+#define EVT_PLUGIN_BASE  0x100u
+#define EVT_WIFI_SETUP   0x001u
+#define EVT_WIFI_FORGET  0x002u
+#define EVT_WIFI_REFRESH 0x003u
 
-#define EVT_LINK_LIST_DONE   0x200u
-#define EVT_LINK_STATUS      0x201u
-#define EVT_LINK_LOST        0x202u
-#define EVT_LINK_HELLO       0x203u
+#define EVT_LINK_LIST_DONE 0x200u
+#define EVT_LINK_STATUS    0x201u
+#define EVT_LINK_LOST      0x202u
+#define EVT_LINK_HELLO     0x203u
 
 static TagTinkerWifiPlugin* plugin_array(TagTinkerApp* app) {
     return (TagTinkerWifiPlugin*)app->wifi_plugins;
@@ -45,7 +45,7 @@ static void wifi_plugins_event_cb(const TtWifiEvent* e, void* user) {
         app->wifi_link_state = (uint8_t)e->u0;
         app->wifi_rssi = (int8_t)e->i1;
         strncpy(app->wifi_ssid, e->str0 ? e->str0 : "", sizeof(app->wifi_ssid) - 1);
-        strncpy(app->wifi_ip,   e->str1 ? e->str1 : "", sizeof(app->wifi_ip) - 1);
+        strncpy(app->wifi_ip, e->str1 ? e->str1 : "", sizeof(app->wifi_ip) - 1);
         view_dispatcher_send_custom_event(app->view_dispatcher, EVT_LINK_STATUS);
         break;
     case TtWifiEvtPlugin:
@@ -59,7 +59,8 @@ static void wifi_plugins_event_cb(const TtWifiEvent* e, void* user) {
     case TtWifiEvtLinkLost:
         view_dispatcher_send_custom_event(app->view_dispatcher, EVT_LINK_LOST);
         break;
-    default: break; /* progress/result/error are handled by the run scene */
+    default:
+        break; /* progress/result/error are handled by the run scene */
     }
 }
 
@@ -75,11 +76,21 @@ static void refresh_header(TagTinkerApp* app) {
     char hdr[40];
     const char* badge = "...";
     switch(app->wifi_link_state) {
-    case TT_WIFI_DISCONNECTED: badge = "off";   break;
-    case TT_WIFI_CONNECTING:   badge = "...";   break;
-    case TT_WIFI_CONNECTED:    badge = "OK";    break;
-    case TT_WIFI_AUTH_FAILED:  badge = "auth!"; break;
-    case TT_WIFI_NO_AP:        badge = "no AP"; break;
+    case TT_WIFI_DISCONNECTED:
+        badge = "off";
+        break;
+    case TT_WIFI_CONNECTING:
+        badge = "...";
+        break;
+    case TT_WIFI_CONNECTED:
+        badge = "OK";
+        break;
+    case TT_WIFI_AUTH_FAILED:
+        badge = "auth!";
+        break;
+    case TT_WIFI_NO_AP:
+        badge = "no AP";
+        break;
     }
     snprintf(hdr, sizeof(hdr), "WiFi Plugins [%s]", badge);
     submenu_set_header(app->submenu, hdr);
@@ -93,24 +104,21 @@ static void rebuild_submenu(TagTinkerApp* app) {
     refresh_header(app);
 
     if(app->wifi_plugin_count == 0) {
-        const char* placeholder = app->wifi_plugins_loading
-                                      ? "Loading plugins..."
-                                      : "(no plugins yet)";
-        submenu_add_item(app->submenu, placeholder, EVT_WIFI_REFRESH,
-                         wifi_plugins_submenu_cb, app);
+        const char* placeholder = app->wifi_plugins_loading ? "Loading plugins..." :
+                                                              "(no plugins yet)";
+        submenu_add_item(
+            app->submenu, placeholder, EVT_WIFI_REFRESH, wifi_plugins_submenu_cb, app);
     } else {
         for(uint8_t i = 0; i < app->wifi_plugin_count; i++) {
             const TagTinkerWifiPlugin* p = &plugin_array(app)[i];
-            submenu_add_item(app->submenu, p->name, EVT_PLUGIN_BASE + i,
-                             wifi_plugins_submenu_cb, app);
+            submenu_add_item(
+                app->submenu, p->name, EVT_PLUGIN_BASE + i, wifi_plugins_submenu_cb, app);
         }
     }
-    submenu_add_item(app->submenu, "WiFi Setup", EVT_WIFI_SETUP,
-                     wifi_plugins_submenu_cb, app);
-    submenu_add_item(app->submenu, "Forget WiFi", EVT_WIFI_FORGET,
-                     wifi_plugins_submenu_cb, app);
-    submenu_add_item(app->submenu, "Refresh Plugins", EVT_WIFI_REFRESH,
-                     wifi_plugins_submenu_cb, app);
+    submenu_add_item(app->submenu, "WiFi Setup", EVT_WIFI_SETUP, wifi_plugins_submenu_cb, app);
+    submenu_add_item(app->submenu, "Forget WiFi", EVT_WIFI_FORGET, wifi_plugins_submenu_cb, app);
+    submenu_add_item(
+        app->submenu, "Refresh Plugins", EVT_WIFI_REFRESH, wifi_plugins_submenu_cb, app);
 
     submenu_set_selected_item(app->submenu, saved);
 }

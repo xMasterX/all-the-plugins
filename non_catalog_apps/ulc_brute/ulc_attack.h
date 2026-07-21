@@ -24,12 +24,12 @@
 bool test_next_key(FuriHalSpiBusHandle* handle, AppContext* app) {
     // Pre-declare all variables at the top to avoid stack reallocations
     size_t rx_bits = 0;
-    uint8_t read_page_cmd[2] = {ULC_CMD_READ, 0x00};    // Command to read page 0
-    uint8_t auth1_cmd[2] = {ULC_CMD_AUTH1, 0x00};       // First authentication step
+    uint8_t read_page_cmd[2] = {ULC_CMD_READ, 0x00}; // Command to read page 0
+    uint8_t auth1_cmd[2] = {ULC_CMD_AUTH1, 0x00}; // First authentication step
     static uint8_t auth2_cmd[17] = {ULC_CMD_AUTH2}; // Second auth with alignment
-    uint8_t rnd_b[8];        // Storage for random B from card
-    uint8_t iv[8] = {0};     // Initialization vector (zeros)
-    uint8_t enc_rnd_b[8];    // Storage for encrypted random B
+    uint8_t rnd_b[8]; // Storage for random B from card
+    uint8_t iv[8] = {0}; // Initialization vector (zeros)
+    uint8_t enc_rnd_b[8]; // Storage for encrypted random B
 
     // Step 1: Wake up card with WUPA command
     // Note: WUPA only needs to be called once per attempt

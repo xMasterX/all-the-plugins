@@ -4,11 +4,11 @@
 #include <furi_hal.h>
 
 #define TPMS_VERSION_APP "0.1"
-#define TPMS_DEVELOPED "wosk"
-#define TPMS_GITHUB "https://github.com/beewosk/flipperzero-tpms"
+#define TPMS_DEVELOPED   "wosk"
+#define TPMS_GITHUB      "https://github.com/beewosk/flipperzero-tpms"
 
 #define TPMS_KEY_FILE_VERSION 1
-#define TPMS_KEY_FILE_TYPE "Flipper Tire Pressure Monitoring System Key File"
+#define TPMS_KEY_FILE_TYPE    "Flipper Tire Pressure Monitoring System Key File"
 
 /** TPMSRxKeyState state */
 typedef enum {

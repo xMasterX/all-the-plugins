@@ -2,7 +2,7 @@
 #include <furi_hal.h>
 #include <storage/storage.h>
 
-#define TAG "WIFI_MAP"
+#define TAG       "WIFI_MAP"
 #define FILE_NAME "wifi_map_data.csv"
 
 #include <gui/gui.h>
@@ -13,8 +13,8 @@
 #include <gui/modules/dialog_ex.h>
 #include <expansion/expansion.h>
 
-#define LINES_ON_SCREEN 6
-#define COLUMNS_ON_SCREEN 21
+#define LINES_ON_SCREEN    6
+#define COLUMNS_ON_SCREEN  21
 #define WORKER_EVENTS_MASK (WorkerEventStop | WorkerEventRx)
 
 typedef struct UartDumpModel UartDumpModel;
@@ -208,8 +208,7 @@ static int32_t uart_echo_worker(void* context) {
             } while(length > 0);
 
             notification_message(app->notification, &sequence_notification);
-            with_view_model(
-                app->view, UartDumpModel * model, { UNUSED(model); }, true);
+            with_view_model(app->view, UartDumpModel * model, { UNUSED(model); }, true);
         }
     }
 
@@ -229,7 +228,7 @@ static WiFiMapApp* uart_echo_app_alloc() {
 
     // View dispatcher
     app->view_dispatcher = view_dispatcher_alloc();
-    
+
     view_dispatcher_attach_to_gui(app->view_dispatcher, app->gui, ViewDispatcherTypeFullscreen);
 
     // Views
@@ -311,7 +310,7 @@ int32_t wifi_map_app(void* p) {
     // Disable expansion protocol to avoid interference with UART Handle
     Expansion* expansion = furi_record_open(RECORD_EXPANSION);
     expansion_disable(expansion);
-    
+
     FURI_LOG_D(TAG, "wifi_map_app");
     WiFiMapApp* app = uart_echo_app_alloc();
     view_dispatcher_run(app->view_dispatcher);

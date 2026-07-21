@@ -17,10 +17,10 @@
 
 // Set or clear one bit in a 64-bit (8-byte) CAN data field. Out-of-range no-op.
 static inline void tesla_set_bit(uint8_t* data, int bit, bool value) {
-    if (bit < 0 || bit >= 64) return;
+    if(bit < 0 || bit >= 64) return;
     int byte_idx = bit / 8;
     uint8_t mask = (uint8_t)(1u << (bit % 8));
-    if (value)
+    if(value)
         data[byte_idx] |= mask;
     else
         data[byte_idx] &= (uint8_t)(~mask);
@@ -34,9 +34,9 @@ static inline uint8_t tesla_read_mux(const uint8_t* data) {
 // UI "FSD selected" flag from DAS_autopilotControl byte 4 bit 6.
 // force_fsd / china_mode bypass the UI check (china_mode is ESP32-only today;
 // Flipper passes false).
-static inline bool tesla_is_fsd_selected(const uint8_t* data, uint8_t dlc, bool force_fsd,
-                                         bool china_mode) {
-    if (force_fsd || china_mode) return true;
-    if (dlc < 5) return false;
+static inline bool
+    tesla_is_fsd_selected(const uint8_t* data, uint8_t dlc, bool force_fsd, bool china_mode) {
+    if(force_fsd || china_mode) return true;
+    if(dlc < 5) return false;
     return (data[4] >> 6) & 0x01u;
 }

@@ -63,7 +63,8 @@ private:
         forward_list<NamedPagerData> stations;
         bool withNames = config->SavedStrategy == SHOW_NAME;
 
-        size_t count = appFilesystem.GetStationsFromDirectory(&stations, this, User, userCategory, withNames);
+        size_t count =
+            appFilesystem.GetStationsFromDirectory(&stations, this, User, userCategory, withNames);
 
         knownStations = new KnownStationData[count];
         for(size_t i = 0; i < count; i++) {
@@ -193,13 +194,13 @@ public:
     void LoadStationsFromDirectory(
         CategoryType categoryType,
         const char* category,
-        function<void(ReceivedPagerData*)> pagerHandler
-    ) {
+        function<void(ReceivedPagerData*)> pagerHandler) {
         AppFileSysytem appFilesystem;
         forward_list<NamedPagerData> stations;
         bool withNames = !knownStationsLoaded && config->SavedStrategy == SHOW_NAME;
 
-        int count = appFilesystem.GetStationsFromDirectory(&stations, this, categoryType, category, withNames);
+        int count = appFilesystem.GetStationsFromDirectory(
+            &stations, this, categoryType, category, withNames);
 
         delete[] pagers;
         pagers = new StoredPagerData[count];
@@ -276,7 +277,8 @@ public:
         bool isNew = index < 0;
         if(isNew) {
             if(data->GetFrequency() != lastFrequency) {
-                lastFrequencyIndex = FrequencyManager::GetInstance()->GetFrequencyIndex(data->GetFrequency());
+                lastFrequencyIndex =
+                    FrequencyManager::GetInstance()->GetFrequencyIndex(data->GetFrequency());
                 lastFrequency = data->GetFrequency();
             }
 
@@ -294,7 +296,8 @@ public:
             }
 
             if(config->AutosaveFoundSignals) {
-                AppFileSysytem().AutoSave(&storedData, decoders[storedData.decoder], protocol, lastFrequency);
+                AppFileSysytem().AutoSave(
+                    &storedData, decoders[storedData.decoder], protocol, lastFrequency);
             }
 
             index = nextPagerIndex;

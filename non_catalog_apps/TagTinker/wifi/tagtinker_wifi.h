@@ -28,17 +28,17 @@ typedef struct TagTinkerWifi TagTinkerWifi;
 
 /* Event types delivered to the user callback. */
 typedef enum {
-    TtWifiEvtHello,         /* HELLO received, fw_name in str0 */
-    TtWifiEvtWifiStatus,    /* state in u0, rssi in i1, ssid in str0, ip in str1 */
-    TtWifiEvtPlugin,        /* one parsed manifest (see TagTinkerWifiPlugin*) */
+    TtWifiEvtHello, /* HELLO received, fw_name in str0 */
+    TtWifiEvtWifiStatus, /* state in u0, rssi in i1, ssid in str0, ip in str1 */
+    TtWifiEvtPlugin, /* one parsed manifest (see TagTinkerWifiPlugin*) */
     TtWifiEvtPluginsEnd,
-    TtWifiEvtProgress,      /* percent in u0, message in str0 */
-    TtWifiEvtResultBegin,   /* width in u0(low16), height in u0(high16),
+    TtWifiEvtProgress, /* percent in u0, message in str0 */
+    TtWifiEvtResultBegin, /* width in u0(low16), height in u0(high16),
                              * planes in u1, total_bytes in u2 */
-    TtWifiEvtResultChunk,   /* chunk bytes in data/data_len */
+    TtWifiEvtResultChunk, /* chunk bytes in data/data_len */
     TtWifiEvtResultEnd,
-    TtWifiEvtError,         /* message in str0 */
-    TtWifiEvtLinkLost,      /* dev board went silent (>3s) */
+    TtWifiEvtError, /* message in str0 */
+    TtWifiEvtLinkLost, /* dev board went silent (>3s) */
 } TtWifiEventType;
 
 /* Param specifications mirror what the ESP advertised. */
@@ -53,42 +53,43 @@ typedef enum {
 #define TT_WIFI_MAX_FAP_PLUGINS 8
 
 typedef struct {
-    char        key[24];
-    char        label[24];
-    uint8_t     type;        /* TT_PARAM_* */
-    char        default_value[64];
-    uint8_t     option_count;
-    char        options[TT_WIFI_MAX_OPTIONS][24];
-    int32_t     int_min;
-    int32_t     int_max;
+    char key[24];
+    char label[24];
+    uint8_t type; /* TT_PARAM_* */
+    char default_value[64];
+    uint8_t option_count;
+    char options[TT_WIFI_MAX_OPTIONS][24];
+    int32_t int_min;
+    int32_t int_max;
 } TtWifiParam;
 
 typedef struct {
-    uint8_t     index;
-    char        id[24];
-    char        name[40];
-    char        description[64];
-    uint8_t     accent_modes;
-    uint8_t     param_count;
+    uint8_t index;
+    char id[24];
+    char name[40];
+    char description[64];
+    uint8_t accent_modes;
+    uint8_t param_count;
     TtWifiParam params[TT_WIFI_MAX_PARAMS];
 } TagTinkerWifiPlugin;
 
 typedef struct {
     TtWifiEventType type;
-    uint32_t   u0, u1, u2;
-    int32_t    i1;
+    uint32_t u0, u1, u2;
+    int32_t i1;
     const char* str0;
     const char* str1;
-    const TagTinkerWifiPlugin* plugin;     /* TtWifiEvtPlugin only */
-    const uint8_t* data; uint16_t data_len; /* TtWifiEvtResultChunk only */
+    const TagTinkerWifiPlugin* plugin; /* TtWifiEvtPlugin only */
+    const uint8_t* data;
+    uint16_t data_len; /* TtWifiEvtResultChunk only */
 } TtWifiEvent;
 
 typedef void (*TtWifiEventCb)(const TtWifiEvent* e, void* user);
 
 TagTinkerWifi* tagtinker_wifi_alloc(TtWifiEventCb cb, void* user);
-void           tagtinker_wifi_free (TagTinkerWifi* w);
+void tagtinker_wifi_free(TagTinkerWifi* w);
 
-bool tagtinker_wifi_open (TagTinkerWifi* w);
+bool tagtinker_wifi_open(TagTinkerWifi* w);
 void tagtinker_wifi_close(TagTinkerWifi* w);
 
 /* Hot-swap the event callback. Used so the WiFi-Plugins scene and the
@@ -96,23 +97,29 @@ void tagtinker_wifi_close(TagTinkerWifi* w);
  * UART. The previous callback is returned in `out_prev_*` if non-NULL. */
 void tagtinker_wifi_set_callback(
     TagTinkerWifi* w,
-    TtWifiEventCb new_cb, void* new_user,
-    TtWifiEventCb* out_prev_cb, void** out_prev_user);
+    TtWifiEventCb new_cb,
+    void* new_user,
+    TtWifiEventCb* out_prev_cb,
+    void** out_prev_user);
 
-void tagtinker_wifi_ping        (TagTinkerWifi* w);
-void tagtinker_wifi_set_creds   (TagTinkerWifi* w, const char* ssid, const char* pwd);
-void tagtinker_wifi_forget      (TagTinkerWifi* w);
+void tagtinker_wifi_ping(TagTinkerWifi* w);
+void tagtinker_wifi_set_creds(TagTinkerWifi* w, const char* ssid, const char* pwd);
+void tagtinker_wifi_forget(TagTinkerWifi* w);
 void tagtinker_wifi_query_status(TagTinkerWifi* w);
 void tagtinker_wifi_list_plugins(TagTinkerWifi* w);
 
 /* Param values is an array of {key, value} pairs; both NUL-terminated. */
-typedef struct { const char* key; const char* value; } TtWifiKV;
+typedef struct {
+    const char* key;
+    const char* value;
+} TtWifiKV;
 void tagtinker_wifi_run_plugin(
     TagTinkerWifi* w,
     uint8_t plugin_index,
     uint16_t target_w,
     uint16_t target_h,
     uint8_t accent,
-    const TtWifiKV* params, uint8_t n_params);
+    const TtWifiKV* params,
+    uint8_t n_params);
 
 #endif /* TAGTINKER_WIFI_H */

@@ -23,8 +23,8 @@ void (*const nfc_comparator_on_exit_handlers[])(void* context) = {
 
 // Initialize scene handlers configuration structure
 const SceneManagerHandlers nfc_comparator_scene_handlers = {
-   .on_enter_handlers = nfc_comparator_on_enter_handlers,
-   .on_event_handlers = nfc_comparator_on_event_handlers,
-   .on_exit_handlers = nfc_comparator_on_exit_handlers,
-   .scene_num = NfcComparatorScene_Count,
+    .on_enter_handlers = nfc_comparator_on_enter_handlers,
+    .on_event_handlers = nfc_comparator_on_event_handlers,
+    .on_exit_handlers = nfc_comparator_on_exit_handlers,
+    .scene_num = NfcComparatorScene_Count,
 };

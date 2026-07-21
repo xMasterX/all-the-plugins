@@ -16,10 +16,10 @@ typedef struct {
     uint8_t field;
 } Dcf77ExperimentalTimeInputModel;
 
-#define DCF77_EXPERIMENTAL_TIME_INPUT_FIELD_COUNT 6U
-#define DCF77_EXPERIMENTAL_TIME_INPUT_VALUE_HEIGHT 18U
-#define DCF77_EXPERIMENTAL_TIME_INPUT_DATE_Y 5U
-#define DCF77_EXPERIMENTAL_TIME_INPUT_TIME_Y 39U
+#define DCF77_EXPERIMENTAL_TIME_INPUT_FIELD_COUNT    6U
+#define DCF77_EXPERIMENTAL_TIME_INPUT_VALUE_HEIGHT   18U
+#define DCF77_EXPERIMENTAL_TIME_INPUT_DATE_Y         5U
+#define DCF77_EXPERIMENTAL_TIME_INPUT_TIME_Y         39U
 #define DCF77_EXPERIMENTAL_TIME_INPUT_TIME_BOX_WIDTH 28U
 
 static uint8_t dcf77_experimental_time_input_days_per_month(uint8_t month, uint16_t year) {
@@ -43,7 +43,8 @@ static void dcf77_experimental_time_input_normalize_date(DateTime* datetime) {
         datetime->month = 12U;
     }
 
-    const uint8_t max_day = dcf77_experimental_time_input_days_per_month(datetime->month, datetime->year);
+    const uint8_t max_day =
+        dcf77_experimental_time_input_days_per_month(datetime->month, datetime->year);
     if(datetime->day < 1U) {
         datetime->day = 1U;
     } else if(datetime->day > max_day) {
@@ -83,13 +84,19 @@ static void dcf77_experimental_time_input_draw_value(
     }
 }
 
-static void dcf77_experimental_time_input_draw_triangle_up(Canvas* canvas, int32_t center_x, int32_t base_y) {
+static void dcf77_experimental_time_input_draw_triangle_up(
+    Canvas* canvas,
+    int32_t center_x,
+    int32_t base_y) {
     canvas_draw_line(canvas, center_x, base_y - 2, center_x, base_y - 2);
     canvas_draw_line(canvas, center_x - 1, base_y - 1, center_x + 1, base_y - 1);
     canvas_draw_line(canvas, center_x - 2, base_y, center_x + 2, base_y);
 }
 
-static void dcf77_experimental_time_input_draw_triangle_down(Canvas* canvas, int32_t center_x, int32_t top_y) {
+static void dcf77_experimental_time_input_draw_triangle_down(
+    Canvas* canvas,
+    int32_t center_x,
+    int32_t top_y) {
     canvas_draw_line(canvas, center_x - 2, top_y, center_x + 2, top_y);
     canvas_draw_line(canvas, center_x - 1, top_y + 1, center_x + 1, top_y + 1);
     canvas_draw_line(canvas, center_x, top_y + 2, center_x, top_y + 2);
@@ -112,7 +119,8 @@ static void dcf77_experimental_time_input_draw_focus(
 }
 
 static void dcf77_experimental_time_input_draw_callback(Canvas* canvas, void* context) {
-    static const char* const weekday_labels[] = {"?", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
+    static const char* const weekday_labels[] = {
+        "?", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
     static const char* const month_labels[] = {
         "?", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
     Dcf77ExperimentalTimeInputModel* model = context;
@@ -204,8 +212,8 @@ static bool dcf77_experimental_time_input_step_field(
     Dcf77ExperimentalTimeInputModel* model,
     bool increment) {
     if(model->field == 0U) {
-        const uint8_t max_day =
-            dcf77_experimental_time_input_days_per_month(model->datetime.month, model->datetime.year);
+        const uint8_t max_day = dcf77_experimental_time_input_days_per_month(
+            model->datetime.month, model->datetime.year);
         if(increment) {
             model->datetime.day = (model->datetime.day >= max_day) ? 1U : model->datetime.day + 1U;
         } else {
@@ -216,9 +224,11 @@ static bool dcf77_experimental_time_input_step_field(
 
     if(model->field == 1U) {
         if(increment) {
-            model->datetime.month = (model->datetime.month >= 12U) ? 1U : model->datetime.month + 1U;
+            model->datetime.month = (model->datetime.month >= 12U) ? 1U :
+                                                                     model->datetime.month + 1U;
         } else {
-            model->datetime.month = (model->datetime.month <= 1U) ? 12U : model->datetime.month - 1U;
+            model->datetime.month = (model->datetime.month <= 1U) ? 12U :
+                                                                    model->datetime.month - 1U;
         }
         dcf77_experimental_time_input_normalize_date(&model->datetime);
         return true;
@@ -226,9 +236,11 @@ static bool dcf77_experimental_time_input_step_field(
 
     if(model->field == 2U) {
         if(increment) {
-            model->datetime.year = (model->datetime.year >= 2069U) ? 2000U : model->datetime.year + 1U;
+            model->datetime.year = (model->datetime.year >= 2069U) ? 2000U :
+                                                                     model->datetime.year + 1U;
         } else {
-            model->datetime.year = (model->datetime.year <= 2000U) ? 2069U : model->datetime.year - 1U;
+            model->datetime.year = (model->datetime.year <= 2000U) ? 2069U :
+                                                                     model->datetime.year - 1U;
         }
         dcf77_experimental_time_input_normalize_date(&model->datetime);
         return true;
@@ -245,18 +257,22 @@ static bool dcf77_experimental_time_input_step_field(
 
     if(model->field == 4U) {
         if(increment) {
-            model->datetime.minute = (model->datetime.minute >= 59U) ? 0U : model->datetime.minute + 1U;
+            model->datetime.minute = (model->datetime.minute >= 59U) ? 0U :
+                                                                       model->datetime.minute + 1U;
         } else {
-            model->datetime.minute = (model->datetime.minute == 0U) ? 59U : model->datetime.minute - 1U;
+            model->datetime.minute = (model->datetime.minute == 0U) ? 59U :
+                                                                      model->datetime.minute - 1U;
         }
         return true;
     }
 
     if(model->field == 5U) {
         if(increment) {
-            model->datetime.second = (model->datetime.second >= 59U) ? 0U : model->datetime.second + 1U;
+            model->datetime.second = (model->datetime.second >= 59U) ? 0U :
+                                                                       model->datetime.second + 1U;
         } else {
-            model->datetime.second = (model->datetime.second == 0U) ? 59U : model->datetime.second - 1U;
+            model->datetime.second = (model->datetime.second == 0U) ? 59U :
+                                                                      model->datetime.second - 1U;
         }
         return true;
     }
@@ -385,9 +401,7 @@ void dcf77_experimental_time_input_set(
         true);
 }
 
-bool dcf77_experimental_time_input_get(
-    Dcf77ExperimentalTimeInput* instance,
-    DateTime* datetime) {
+bool dcf77_experimental_time_input_get(Dcf77ExperimentalTimeInput* instance, DateTime* datetime) {
     if(instance == NULL || datetime == NULL) {
         return false;
     }

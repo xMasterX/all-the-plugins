@@ -11,8 +11,8 @@
 #include <furi_hal_gpio.h>
 #include <furi_hal_resources.h>
 
-#define SPEAKER_PWM_TIMER TIM16
-#define SAMPLE_RATE_TIMER TIM1
+#define SPEAKER_PWM_TIMER    TIM16
+#define SAMPLE_RATE_TIMER    TIM1
 #define TRACKER_ENGINE_TIMER TIM2
 
 #define SPEAKER_PWM_TIMER_CHANNEL LL_TIM_CHANNEL_CH1

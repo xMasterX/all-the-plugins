@@ -12,7 +12,7 @@ typedef enum MifareFuzzerWorkerState {
     MifareFuzzerWorkerStateStop,
 } MifareFuzzerWorkerState;
 
-#define UID_LEN 7
+#define UID_LEN  7
 #define ATQA_LEN 2
 
 typedef struct MifareFuzzerWorker {

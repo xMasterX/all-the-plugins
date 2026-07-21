@@ -7,13 +7,13 @@
 #include <stdlib.h>
 #include <passgen_icons.h>
 
-#define PASSGEN_MAX_LENGTH 16
+#define PASSGEN_MAX_LENGTH        16
 #define PASSGEN_CHARACTERS_LENGTH (26 * 4)
 
-#define PASSGEN_DIGITS "0123456789"
+#define PASSGEN_DIGITS      "0123456789"
 #define PASSGEN_LETTERS_LOW "abcdefghijklmnopqrstuvwxyz"
-#define PASSGEN_LETTERS_UP "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-#define PASSGEN_SPECIAL "!#$%^&*.-_"
+#define PASSGEN_LETTERS_UP  "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+#define PASSGEN_SPECIAL     "!#$%^&*.-_"
 
 typedef enum PassGen_Alphabet {
     Digits = 1,

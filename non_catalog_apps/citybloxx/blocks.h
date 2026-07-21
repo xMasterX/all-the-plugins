@@ -2,8 +2,8 @@
 #include <stdint.h>
 #include "types.h"
 
-#define HOUSE_LINE_CO 11
-#define CRANE_LINE_CO 1
+#define HOUSE_LINE_CO  11
+#define CRANE_LINE_CO  1
 #define GROUND_LINE_CO 2
 
 typedef struct {

@@ -6,7 +6,7 @@
 #include <toolbox/stream/stream.h>
 #include <toolbox/stream/file_stream.h>
 
-#define FONT_BASE_PATH EXT_PATH("apps_assets/totp/fonts")
+#define FONT_BASE_PATH      EXT_PATH("apps_assets/totp/fonts")
 #define FONT_FILE_EXTENSION ".font"
 
 size_t totp_font_provider_get_fonts_count() {

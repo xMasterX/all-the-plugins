@@ -51,29 +51,29 @@ LGPL License Terms @ref lgpl_license
 #define USB_CLASS_AUDIO 0x01
 
 /* Table A-2: Audio Interface Subclass Codes */
-#define USB_AUDIO_SUBCLASS_UNDEFINED 0x00
-#define USB_AUDIO_SUBCLASS_CONTROL 0x01
+#define USB_AUDIO_SUBCLASS_UNDEFINED      0x00
+#define USB_AUDIO_SUBCLASS_CONTROL        0x01
 #define USB_AUDIO_SUBCLASS_AUDIOSTREAMING 0x02
-#define USB_AUDIO_SUBCLASS_MIDISTREAMING 0x03
+#define USB_AUDIO_SUBCLASS_MIDISTREAMING  0x03
 
 /* Table A-4: Audio Class-specific Descriptor Types */
-#define USB_AUDIO_DT_CS_UNDEFINED 0x20
-#define USB_AUDIO_DT_CS_DEVICE 0x21
+#define USB_AUDIO_DT_CS_UNDEFINED     0x20
+#define USB_AUDIO_DT_CS_DEVICE        0x21
 #define USB_AUDIO_DT_CS_CONFIGURATION 0x22
-#define USB_AUDIO_DT_CS_STRING 0x23
-#define USB_AUDIO_DT_CS_INTERFACE 0x24
-#define USB_AUDIO_DT_CS_ENDPOINT 0x25
+#define USB_AUDIO_DT_CS_STRING        0x23
+#define USB_AUDIO_DT_CS_INTERFACE     0x24
+#define USB_AUDIO_DT_CS_ENDPOINT      0x25
 
 /* Table A-5: Audio Class-Specific AC Interface Descriptor Subtypes */
 #define USB_AUDIO_TYPE_AC_DESCRIPTOR_UNDEFINED 0x00
-#define USB_AUDIO_TYPE_HEADER 0x01
-#define USB_AUDIO_TYPE_INPUT_TERMINAL 0x02
-#define USB_AUDIO_TYPE_OUTPUT_TERMINAL 0x03
-#define USB_AUDIO_TYPE_MIXER_UNIT 0x04
-#define USB_AUDIO_TYPE_SELECTOR_UNIT 0x05
-#define USB_AUDIO_TYPE_FEATURE_UNIT 0x06
-#define USB_AUDIO_TYPE_PROCESSING_UNIT 0x07
-#define USB_AUDIO_TYPE_EXTENSION_UNIT 0x08
+#define USB_AUDIO_TYPE_HEADER                  0x01
+#define USB_AUDIO_TYPE_INPUT_TERMINAL          0x02
+#define USB_AUDIO_TYPE_OUTPUT_TERMINAL         0x03
+#define USB_AUDIO_TYPE_MIXER_UNIT              0x04
+#define USB_AUDIO_TYPE_SELECTOR_UNIT           0x05
+#define USB_AUDIO_TYPE_FEATURE_UNIT            0x06
+#define USB_AUDIO_TYPE_PROCESSING_UNIT         0x07
+#define USB_AUDIO_TYPE_EXTENSION_UNIT          0x08
 
 /* Table 4-2: Class-Specific AC Interface Header Descriptor (head) */
 struct usb_audio_header_descriptor_head {

@@ -28,8 +28,8 @@ typedef enum {
 /* Holds a pointer to a key candidate + where it came from, so we can
  * remember the last successful match across sectors. */
 typedef struct {
-    int      idx;           /* -1 = no value yet */
-    bool     from_default;
+    int idx; /* -1 = no value yet */
+    bool from_default;
 } LastKeyRef;
 
 /* Try one (sector, key_type, key) combination. Returns:
@@ -61,8 +61,11 @@ static NfcCommand mfp_read_all_poller_cb(NfcGenericEvent event, void* ctx) {
     MfpCardSize card_size = app->version.size;
     uint8_t total = mfp_sector_count(card_size);
 
-    FURI_LOG_I(TAG, "Scan start: %d sectors, %lu dict keys",
-        (int)total, (unsigned long)app->dict_key_count);
+    FURI_LOG_I(
+        TAG,
+        "Scan start: %d sectors, %lu dict keys",
+        (int)total,
+        (unsigned long)app->dict_key_count);
 
     app->scan_total_sectors = total;
     app->scan_sectors_done = 0;
@@ -86,52 +89,49 @@ static NfcCommand mfp_read_all_poller_cb(NfcGenericEvent event, void* ctx) {
         /* Macro-esque helper: try a (sector, key_type, key) and on success
          * store into the result + update the "last successful" ref so the
          * next sector tries the same key first. Returns -1 on comm error. */
-#define TRY_AND_STORE(kt_expr, key_ptr, from_def, idx_val)                  \
-    do {                                                                    \
-        MfpKeyType _kt = (kt_expr);                                         \
-        const uint8_t* _k = (key_ptr);                                      \
-        int _rc = try_auth(poller, app, sector, _kt, _k);                   \
-        if(_rc < 0) {                                                       \
-            app->scan_sectors_done = sector;                                \
-            view_dispatcher_send_custom_event(                              \
-                app->view_dispatcher, ReadAllEventCardLost);                \
-            return NfcCommandStop;                                          \
-        }                                                                   \
-        if(_rc > 0) {                                                       \
-            if(_kt == MfpKeyA && !r->key_a_found) {                         \
-                memcpy(r->key_a, _k, MFP_AES_KEY_SIZE);                     \
-                r->key_a_found = true;                                      \
-                last_a.idx = (idx_val);                                     \
-                last_a.from_default = (from_def);                           \
-            } else if(_kt == MfpKeyB && !r->key_b_found) {                  \
-                memcpy(r->key_b, _k, MFP_AES_KEY_SIZE);                     \
-                r->key_b_found = true;                                      \
-                last_b.idx = (idx_val);                                     \
-                last_b.from_default = (from_def);                           \
-            }                                                               \
-        }                                                                   \
+#define TRY_AND_STORE(kt_expr, key_ptr, from_def, idx_val)                                 \
+    do {                                                                                   \
+        MfpKeyType _kt = (kt_expr);                                                        \
+        const uint8_t* _k = (key_ptr);                                                     \
+        int _rc = try_auth(poller, app, sector, _kt, _k);                                  \
+        if(_rc < 0) {                                                                      \
+            app->scan_sectors_done = sector;                                               \
+            view_dispatcher_send_custom_event(app->view_dispatcher, ReadAllEventCardLost); \
+            return NfcCommandStop;                                                         \
+        }                                                                                  \
+        if(_rc > 0) {                                                                      \
+            if(_kt == MfpKeyA && !r->key_a_found) {                                        \
+                memcpy(r->key_a, _k, MFP_AES_KEY_SIZE);                                    \
+                r->key_a_found = true;                                                     \
+                last_a.idx = (idx_val);                                                    \
+                last_a.from_default = (from_def);                                          \
+            } else if(_kt == MfpKeyB && !r->key_b_found) {                                 \
+                memcpy(r->key_b, _k, MFP_AES_KEY_SIZE);                                    \
+                r->key_b_found = true;                                                     \
+                last_b.idx = (idx_val);                                                    \
+                last_b.from_default = (from_def);                                          \
+            }                                                                              \
+        }                                                                                  \
     } while(0)
 
         /* Phase 0: try last successful keys first (separately for A and B).
          * Index -1 means "no last key yet". */
         if(last_a.idx >= 0) {
-            const uint8_t* lk = last_a.from_default
-                                    ? mfp_default_keys[last_a.idx]
-                                    : app->dict_buf + last_a.idx * MFP_AES_KEY_SIZE;
+            const uint8_t* lk = last_a.from_default ?
+                                    mfp_default_keys[last_a.idx] :
+                                    app->dict_buf + last_a.idx * MFP_AES_KEY_SIZE;
             TRY_AND_STORE(MfpKeyA, lk, last_a.from_default, last_a.idx);
         }
         if(last_b.idx >= 0 && !r->key_b_found) {
-            const uint8_t* lk = last_b.from_default
-                                    ? mfp_default_keys[last_b.idx]
-                                    : app->dict_buf + last_b.idx * MFP_AES_KEY_SIZE;
+            const uint8_t* lk = last_b.from_default ?
+                                    mfp_default_keys[last_b.idx] :
+                                    app->dict_buf + last_b.idx * MFP_AES_KEY_SIZE;
             TRY_AND_STORE(MfpKeyB, lk, last_b.from_default, last_b.idx);
         }
 
         /* Phase 1: hardcoded defaults — try each as A then as B until we
          * have BOTH keys for this sector. */
-        for(int ki = 0;
-            ki < MFP_DEFAULT_KEY_COUNT && !(r->key_a_found && r->key_b_found);
-            ki++) {
+        for(int ki = 0; ki < MFP_DEFAULT_KEY_COUNT && !(r->key_a_found && r->key_b_found); ki++) {
             if(!r->key_a_found) {
                 TRY_AND_STORE(MfpKeyA, mfp_default_keys[ki], true, ki);
             }
@@ -142,8 +142,7 @@ static NfcCommand mfp_read_all_poller_cb(NfcGenericEvent event, void* ctx) {
 
         /* Phase 2: user dictionary. */
         if(!(r->key_a_found && r->key_b_found) && app->dict_buf && app->dict_key_count > 0) {
-            for(uint32_t ki = 0;
-                ki < app->dict_key_count && !(r->key_a_found && r->key_b_found);
+            for(uint32_t ki = 0; ki < app->dict_key_count && !(r->key_a_found && r->key_b_found);
                 ki++) {
                 const uint8_t* dk = app->dict_buf + ki * MFP_AES_KEY_SIZE;
                 if(!r->key_a_found) {
@@ -165,20 +164,17 @@ static NfcCommand mfp_read_all_poller_cb(NfcGenericEvent event, void* ctx) {
             const uint8_t* use_key = r->key_a_found ? r->key_a : r->key_b;
             /* Re-auth to get a fresh session (the last scan attempt may
              * have left a stale session from a failed try_auth call). */
-            MfpError auth_err =
-                mfp_poller_auth(poller, sector, use_kt, use_key, &app->session);
+            MfpError auth_err = mfp_poller_auth(poller, sector, use_kt, use_key, &app->session);
             if(auth_err == MfpErrorComm) {
                 app->scan_sectors_done = sector;
-                view_dispatcher_send_custom_event(
-                    app->view_dispatcher, ReadAllEventCardLost);
+                view_dispatcher_send_custom_event(app->view_dispatcher, ReadAllEventCardLost);
                 return NfcCommandStop;
             }
             if(auth_err != MfpOk) {
                 /* Shouldn't happen — we just validated this key. */
                 r->status = MfpSectorReadFail;
                 app->scan_sectors_done = sector + 1;
-                view_dispatcher_send_custom_event(
-                    app->view_dispatcher, ReadAllEventProgress);
+                view_dispatcher_send_custom_event(app->view_dispatcher, ReadAllEventProgress);
                 continue;
             }
 
@@ -210,8 +206,8 @@ static NfcCommand mfp_read_all_poller_cb(NfcGenericEvent event, void* ctx) {
         view_dispatcher_send_custom_event(app->view_dispatcher, ReadAllEventProgress);
     }
 
-    FURI_LOG_I(TAG, "Scan done: %d/%d OK",
-        (int)app->scan_sectors_ok, (int)app->scan_total_sectors);
+    FURI_LOG_I(
+        TAG, "Scan done: %d/%d OK", (int)app->scan_sectors_ok, (int)app->scan_total_sectors);
     view_dispatcher_send_custom_event(app->view_dispatcher, ReadAllEventComplete);
     return NfcCommandStop;
 }
@@ -239,8 +235,8 @@ void mfp_scene_read_all_on_enter(void* ctx) {
      *  - empty string → only hardcoded defaults
      *  - non-empty    → load that .dic file */
     if(!furi_string_empty(app->dict_path)) {
-        app->dict_key_count = mfp_keys_load_dict(
-            app->storage, furi_string_get_cstr(app->dict_path), &app->dict_buf);
+        app->dict_key_count =
+            mfp_keys_load_dict(app->storage, furi_string_get_cstr(app->dict_path), &app->dict_buf);
     }
 
     /* Seed the custom dump view with card info + key counts */
@@ -268,8 +264,7 @@ bool mfp_scene_read_all_on_event(void* ctx, SceneManagerEvent event) {
          * would otherwise restart card detection / dict choice on
          * their on_enter. on_exit will still drain the NFC thread. */
         app->scan_cancel_requested = true;
-        scene_manager_search_and_switch_to_previous_scene(
-            app->scene_manager, MfpSceneStart);
+        scene_manager_search_and_switch_to_previous_scene(app->scene_manager, MfpSceneStart);
         return true;
     }
 
@@ -290,8 +285,8 @@ bool mfp_scene_read_all_on_event(void* ctx, SceneManagerEvent event) {
             notification_message(app->notifications, &sequence_error);
             mfp_dump_view_set_state(
                 app->dump_view,
-                (event.event == ReadAllEventCardLost) ? MfpDumpViewStateCardLost
-                                                      : MfpDumpViewStateNoKeys);
+                (event.event == ReadAllEventCardLost) ? MfpDumpViewStateCardLost :
+                                                        MfpDumpViewStateNoKeys);
         }
         return true;
     }

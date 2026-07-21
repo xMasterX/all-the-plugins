@@ -6,7 +6,7 @@
 #include <string.h>
 
 #define ZF_AUTO_ACCEPT_REQUESTS 1
-#define ZF_DEV_FIDO2_1 1
+#define ZF_DEV_FIDO2_1          1
 
 #include "furi.h"
 #include "furi_hal.h"
@@ -36,20 +36,20 @@
  * tested as compiled C on the workstation.
  */
 
-#define FURI_PACKED __attribute__((packed))
+#define FURI_PACKED               __attribute__((packed))
 #define FURI_LOG_E(tag, fmt, ...) ((void)0)
 #define FURI_LOG_W(tag, fmt, ...) ((void)0)
 #define FURI_LOG_D(tag, fmt, ...) ((void)0)
-#define furi_assert(expr) ((void)(expr))
+#define furi_assert(expr)         ((void)(expr))
 
-static void test_furi_log_i(const char *tag, const char *fmt, ...);
+static void test_furi_log_i(const char* tag, const char* fmt, ...);
 #define FURI_LOG_I test_furi_log_i
 
 typedef int FuriStatus;
 typedef struct ZerofidoApp ZerofidoApp;
-static bool test_transport_auto_accept_enabled(const ZerofidoApp *app);
-static size_t test_nfc_requeue_during_ctap2(ZerofidoApp *app, uint8_t *response,
-                                            size_t response_capacity);
+static bool test_transport_auto_accept_enabled(const ZerofidoApp* app);
+static size_t
+    test_nfc_requeue_during_ctap2(ZerofidoApp* app, uint8_t* response, size_t response_capacity);
 
 struct Storage {
     int unused;
@@ -80,7 +80,7 @@ struct FuriHalUsbInterface {
 
 struct FuriThread {
     FuriThreadCallback callback;
-    void *context;
+    void* context;
     size_t stack_size;
     FuriThreadPriority priority;
     bool started;
@@ -94,7 +94,7 @@ struct FuriSemaphore {
 
 struct FuriTimer {
     FuriTimerCallback callback;
-    void *context;
+    void* context;
     FuriTimerType type;
     uint32_t last_timeout;
     size_t start_count;
@@ -107,15 +107,15 @@ struct FuriMutex {
 };
 
 struct BitBuffer {
-    uint8_t *data;
+    uint8_t* data;
     size_t size_bits;
     size_t size_bytes;
     size_t capacity;
 };
 
 struct SimpleArray {
-    const SimpleArrayConfig *config;
-    uint8_t *data;
+    const SimpleArrayConfig* config;
+    uint8_t* data;
     uint32_t count;
 };
 
@@ -132,11 +132,11 @@ struct Nfc {
 };
 
 struct NfcListener {
-    Nfc *nfc;
+    Nfc* nfc;
     NfcGenericCallback callback;
-    void *context;
+    void* context;
     NfcProtocol protocol;
-    const NfcDeviceData *data;
+    const NfcDeviceData* data;
     bool started;
     bool stopped;
 };
@@ -145,11 +145,11 @@ struct Iso14443_4aListener {
     int unused;
 };
 
-#define FuriStatusOk 0
-#define FuriFlagError 0x80000000U
+#define FuriStatusOk         0
+#define FuriFlagError        0x80000000U
 #define FuriFlagErrorTimeout 0xFFFFFFFEU
-#define FuriFlagWaitAny 0U
-#define FuriWaitForever 0U
+#define FuriFlagWaitAny      0U
+#define FuriWaitForever      0U
 
 static uint32_t g_fake_tick = 0;
 static uint32_t g_random_values[16];
@@ -165,11 +165,11 @@ static uint32_t g_last_thread_wait_timeout = 0;
 static size_t g_thread_flag_wait_call_count = 0;
 static uint32_t g_last_delay_ms = 0;
 static size_t g_delay_ms_count = 0;
-static FuriMutex *g_thread_start_observed_mutex = NULL;
+static FuriMutex* g_thread_start_observed_mutex = NULL;
 static size_t g_thread_start_observed_depth = 0;
 static size_t g_thread_join_count = 0;
 static size_t g_thread_free_count = 0;
-static FuriMutex *g_thread_join_observed_mutex = NULL;
+static FuriMutex* g_thread_join_observed_mutex = NULL;
 static size_t g_thread_join_observed_depth = 0;
 static FuriStatus g_semaphore_results[8];
 static size_t g_semaphore_result_count = 0;
@@ -228,7 +228,7 @@ static size_t g_hid_request_index = 0;
 static bool g_hid_connected = false;
 static bool g_usb_set_config_result = true;
 static size_t g_usb_set_config_count = 0;
-static const FuriHalUsbInterface *g_last_usb_set_config = NULL;
+static const FuriHalUsbInterface* g_last_usb_set_config = NULL;
 static FuriHalUsbInterface g_previous_usb_config = {1};
 static uint8_t g_sha256_trace[4096];
 static size_t g_sha256_trace_len = 0;
@@ -242,7 +242,7 @@ typedef struct {
 } TestStorageFile;
 static bool g_storage_root_exists = true;
 static bool g_storage_app_data_exists = true;
-static const char *g_storage_fail_write_match = NULL;
+static const char* g_storage_fail_write_match = NULL;
 static TestStorageFile g_storage_files[4];
 static FuriTimer g_timer_pool[8];
 static size_t g_timer_pool_count = 0;
@@ -254,14 +254,14 @@ const SimpleArrayConfig simple_array_config_uint8_t = {
     .type_size = sizeof(uint8_t),
 };
 
-static void expect(bool condition, const char *message) {
-    if (!condition) {
+static void expect(bool condition, const char* message) {
+    if(!condition) {
         fprintf(stderr, "FAIL: %s\n", message);
         exit(1);
     }
 }
 
-static void test_furi_log_i(const char *tag, const char *fmt, ...) {
+static void test_furi_log_i(const char* tag, const char* fmt, ...) {
     char line[192];
     size_t used = 0U;
     va_list args;
@@ -273,13 +273,13 @@ static void test_furi_log_i(const char *tag, const char *fmt, ...) {
 
     snprintf(g_last_log_text, sizeof(g_last_log_text), "%s", line);
     used = strlen(g_log_text);
-    if (used < sizeof(g_log_text) - 1U) {
+    if(used < sizeof(g_log_text) - 1U) {
         snprintf(&g_log_text[used], sizeof(g_log_text) - used, "%s%s", used ? "\n" : "", line);
     }
     g_log_i_count++;
 }
 
-static bool test_log_contains(const char *needle) {
+static bool test_log_contains(const char* needle) {
     return needle && strstr(g_log_text, needle) != NULL;
 }
 
@@ -378,18 +378,18 @@ uint32_t furi_get_tick(void) {
 }
 
 uint32_t furi_hal_random_get(void) {
-    if (g_random_index < g_random_count) {
+    if(g_random_index < g_random_count) {
         return g_random_values[g_random_index++];
     }
 
     return 0xA5A50000U + (uint32_t)g_random_index++;
 }
 
-void furi_hal_random_fill_buf(void *buffer, size_t size) {
+void furi_hal_random_fill_buf(void* buffer, size_t size) {
     memset(buffer, 0xA5, size);
 }
 
-bool furi_hal_crypto_enclave_load_key(uint8_t slot, const uint8_t *iv) {
+bool furi_hal_crypto_enclave_load_key(uint8_t slot, const uint8_t* iv) {
     UNUSED(slot);
     UNUSED(iv);
     return true;
@@ -404,7 +404,7 @@ void furi_hal_crypto_enclave_unload_key(uint8_t slot) {
     UNUSED(slot);
 }
 
-bool furi_hal_crypto_load_key(const uint8_t *key, const uint8_t *iv) {
+bool furi_hal_crypto_load_key(const uint8_t* key, const uint8_t* iv) {
     UNUSED(key);
     UNUSED(iv);
     return true;
@@ -414,12 +414,12 @@ bool furi_hal_crypto_unload_key(void) {
     return true;
 }
 
-bool furi_hal_crypto_encrypt(const uint8_t *input, uint8_t *output, size_t size) {
+bool furi_hal_crypto_encrypt(const uint8_t* input, uint8_t* output, size_t size) {
     memcpy(output, input, size);
     return true;
 }
 
-bool furi_hal_crypto_decrypt(const uint8_t *input, uint8_t *output, size_t size) {
+bool furi_hal_crypto_decrypt(const uint8_t* input, uint8_t* output, size_t size) {
     memcpy(output, input, size);
     return true;
 }
@@ -433,7 +433,7 @@ uint32_t furi_thread_get_stack_space(FuriThreadId thread_id) {
     return 4096U;
 }
 
-FuriThreadId furi_thread_get_id(FuriThread *thread) {
+FuriThreadId furi_thread_get_id(FuriThread* thread) {
     UNUSED(thread);
     return (FuriThreadId)0x2;
 }
@@ -459,17 +459,20 @@ uint32_t furi_thread_flags_wait(uint32_t flags, uint32_t options, uint32_t timeo
     UNUSED(options);
     g_last_thread_wait_timeout = timeout;
     g_thread_flag_wait_call_count++;
-    if (g_thread_flag_result_index < g_thread_flag_result_count) {
+    if(g_thread_flag_result_index < g_thread_flag_result_count) {
         return g_thread_flag_results[g_thread_flag_result_index++];
     }
     return FuriFlagErrorTimeout;
 }
 
-FuriThread *furi_thread_alloc_ex(const char *name, size_t stack_size, FuriThreadCallback callback,
-                                 void *context) {
-    FuriThread *thread = malloc(sizeof(*thread));
+FuriThread* furi_thread_alloc_ex(
+    const char* name,
+    size_t stack_size,
+    FuriThreadCallback callback,
+    void* context) {
+    FuriThread* thread = malloc(sizeof(*thread));
     UNUSED(name);
-    if (!thread) {
+    if(!thread) {
         return NULL;
     }
     memset(thread, 0, sizeof(*thread));
@@ -479,38 +482,38 @@ FuriThread *furi_thread_alloc_ex(const char *name, size_t stack_size, FuriThread
     return thread;
 }
 
-void furi_thread_set_appid(FuriThread *thread, const char *appid) {
+void furi_thread_set_appid(FuriThread* thread, const char* appid) {
     UNUSED(thread);
     UNUSED(appid);
 }
 
-void furi_thread_set_priority(FuriThread *thread, FuriThreadPriority priority) {
-    if (thread) {
+void furi_thread_set_priority(FuriThread* thread, FuriThreadPriority priority) {
+    if(thread) {
         thread->priority = priority;
     }
 }
 
-void furi_thread_start(FuriThread *thread) {
-    if (thread) {
-        if (g_thread_start_observed_mutex) {
+void furi_thread_start(FuriThread* thread) {
+    if(thread) {
+        if(g_thread_start_observed_mutex) {
             g_thread_start_observed_depth = g_thread_start_observed_mutex->depth;
         }
         thread->started = true;
     }
 }
 
-void furi_thread_join(FuriThread *thread) {
-    if (thread) {
+void furi_thread_join(FuriThread* thread) {
+    if(thread) {
         g_thread_join_count++;
-        if (g_thread_join_observed_mutex) {
+        if(g_thread_join_observed_mutex) {
             g_thread_join_observed_depth = g_thread_join_observed_mutex->depth;
         }
         thread->joined = true;
     }
 }
 
-void furi_thread_free(FuriThread *thread) {
-    if (thread) {
+void furi_thread_free(FuriThread* thread) {
+    if(thread) {
         g_thread_free_count++;
         thread->freed = true;
         free(thread);
@@ -522,42 +525,43 @@ void furi_delay_ms(uint32_t milliseconds) {
     g_delay_ms_count++;
 }
 
-FuriStatus furi_semaphore_acquire(FuriSemaphore *sem, uint32_t timeout) {
+FuriStatus furi_semaphore_acquire(FuriSemaphore* sem, uint32_t timeout) {
     UNUSED(sem);
     UNUSED(timeout);
-    if (g_semaphore_result_index < g_semaphore_result_count) {
+    if(g_semaphore_result_index < g_semaphore_result_count) {
         return g_semaphore_results[g_semaphore_result_index++];
     }
     return 1;
 }
 
-FuriStatus furi_semaphore_release(FuriSemaphore *sem) {
+FuriStatus furi_semaphore_release(FuriSemaphore* sem) {
     UNUSED(sem);
     return FuriStatusOk;
 }
 
-FuriStatus furi_mutex_acquire(FuriMutex *mutex, uint32_t timeout) {
+FuriStatus furi_mutex_acquire(FuriMutex* mutex, uint32_t timeout) {
     UNUSED(timeout);
-    if (mutex) {
+    if(mutex) {
         mutex->depth++;
-        if (mutex->depth > g_mutex_max_depth) {
+        if(mutex->depth > g_mutex_max_depth) {
             g_mutex_max_depth = mutex->depth;
         }
     }
     return FuriStatusOk;
 }
 
-void furi_mutex_release(FuriMutex *mutex) {
-    if (mutex && mutex->depth > 0U) {
+void furi_mutex_release(FuriMutex* mutex) {
+    if(mutex && mutex->depth > 0U) {
         mutex->depth--;
     }
 }
 
-FuriTimer *furi_timer_alloc(FuriTimerCallback callback, FuriTimerType type, void *context) {
-    FuriTimer *timer = NULL;
+FuriTimer* furi_timer_alloc(FuriTimerCallback callback, FuriTimerType type, void* context) {
+    FuriTimer* timer = NULL;
 
-    expect(g_timer_pool_count < (sizeof(g_timer_pool) / sizeof(g_timer_pool[0])),
-           "timer pool should have free slots");
+    expect(
+        g_timer_pool_count < (sizeof(g_timer_pool) / sizeof(g_timer_pool[0])),
+        "timer pool should have free slots");
     timer = &g_timer_pool[g_timer_pool_count++];
     memset(timer, 0, sizeof(*timer));
     timer->callback = callback;
@@ -566,27 +570,27 @@ FuriTimer *furi_timer_alloc(FuriTimerCallback callback, FuriTimerType type, void
     return timer;
 }
 
-void furi_timer_free(FuriTimer *timer) {
-    if (timer) {
+void furi_timer_free(FuriTimer* timer) {
+    if(timer) {
         timer->running = false;
     }
 }
 
-void furi_timer_start(FuriTimer *timer, uint32_t timeout) {
+void furi_timer_start(FuriTimer* timer, uint32_t timeout) {
     expect(timer != NULL, "timer start should receive a timer");
     timer->last_timeout = timeout;
     timer->start_count++;
     timer->running = true;
 }
 
-void furi_timer_stop(FuriTimer *timer) {
+void furi_timer_stop(FuriTimer* timer) {
     expect(timer != NULL, "timer stop should receive a timer");
     timer->stop_count++;
     timer->running = false;
 }
 
-BitBuffer *bit_buffer_alloc(size_t capacity) {
-    BitBuffer *buffer = malloc(sizeof(*buffer));
+BitBuffer* bit_buffer_alloc(size_t capacity) {
+    BitBuffer* buffer = malloc(sizeof(*buffer));
 
     expect(buffer != NULL, "bit buffer allocation should succeed");
     buffer->data = malloc(capacity);
@@ -597,55 +601,55 @@ BitBuffer *bit_buffer_alloc(size_t capacity) {
     return buffer;
 }
 
-void bit_buffer_free(BitBuffer *buffer) {
-    if (buffer) {
+void bit_buffer_free(BitBuffer* buffer) {
+    if(buffer) {
         free(buffer->data);
         free(buffer);
     }
 }
 
-void bit_buffer_reset(BitBuffer *buffer) {
+void bit_buffer_reset(BitBuffer* buffer) {
     expect(buffer != NULL, "bit buffer reset should receive a buffer");
-    if (g_bit_buffer_scrub_on_reset) {
+    if(g_bit_buffer_scrub_on_reset) {
         memset(buffer->data, 0xEE, buffer->capacity);
     }
     buffer->size_bits = 0;
     buffer->size_bytes = 0;
 }
 
-void bit_buffer_append_bytes(BitBuffer *buffer, const uint8_t *data, size_t size) {
+void bit_buffer_append_bytes(BitBuffer* buffer, const uint8_t* data, size_t size) {
     expect(buffer != NULL, "bit buffer append should receive a buffer");
     expect((buffer->size_bits % 8U) == 0U, "bit buffer byte append should be byte-aligned");
     expect(buffer->size_bytes + size <= buffer->capacity, "bit buffer append should fit capacity");
-    if (size > 0) {
+    if(size > 0) {
         memcpy(&buffer->data[buffer->size_bytes], data, size);
         buffer->size_bytes += size;
         buffer->size_bits = buffer->size_bytes * 8U;
     }
 }
 
-size_t bit_buffer_get_size(const BitBuffer *buffer) {
+size_t bit_buffer_get_size(const BitBuffer* buffer) {
     expect(buffer != NULL, "bit buffer bit size should receive a buffer");
     return buffer->size_bits;
 }
 
-size_t bit_buffer_get_size_bytes(const BitBuffer *buffer) {
+size_t bit_buffer_get_size_bytes(const BitBuffer* buffer) {
     expect(buffer != NULL, "bit buffer size should receive a buffer");
     return buffer->size_bytes;
 }
 
-uint8_t *bit_buffer_get_data(const BitBuffer *buffer) {
+uint8_t* bit_buffer_get_data(const BitBuffer* buffer) {
     expect(buffer != NULL, "bit buffer data should receive a buffer");
     return buffer->data;
 }
 
-void bit_buffer_set_byte(BitBuffer *buffer, size_t index, uint8_t byte) {
+void bit_buffer_set_byte(BitBuffer* buffer, size_t index, uint8_t byte) {
     expect(buffer != NULL, "bit buffer set byte should receive a buffer");
     expect(index < buffer->capacity, "bit buffer set byte should fit capacity");
     buffer->data[index] = byte;
 }
 
-void bit_buffer_set_size(BitBuffer *buffer, size_t size_bits) {
+void bit_buffer_set_size(BitBuffer* buffer, size_t size_bits) {
     size_t size_bytes = (size_bits + 7U) / 8U;
 
     expect(buffer != NULL, "bit buffer set size should receive a buffer");
@@ -654,58 +658,58 @@ void bit_buffer_set_size(BitBuffer *buffer, size_t size_bits) {
     buffer->size_bytes = size_bytes;
 }
 
-void iso14443_crc_append(Iso14443CrcType type, BitBuffer *buffer) {
+void iso14443_crc_append(Iso14443CrcType type, BitBuffer* buffer) {
     UNUSED(type);
     bit_buffer_append_bytes(buffer, (const uint8_t[]){0x00, 0x00}, 2);
 }
 
-bool iso14443_crc_check(Iso14443CrcType type, const BitBuffer *buffer) {
+bool iso14443_crc_check(Iso14443CrcType type, const BitBuffer* buffer) {
     UNUSED(type);
     return buffer && buffer->size_bytes >= 2;
 }
 
-void iso14443_crc_trim(BitBuffer *buffer) {
+void iso14443_crc_trim(BitBuffer* buffer) {
     expect(buffer != NULL, "crc trim should receive a buffer");
     expect(buffer->size_bytes >= 2, "crc trim should only run on frames with crc bytes");
     buffer->size_bytes -= 2;
     buffer->size_bits = buffer->size_bytes * 8U;
 }
 
-Nfc *nfc_alloc(void) {
-    if (!g_nfc_alloc_result) {
+Nfc* nfc_alloc(void) {
+    if(!g_nfc_alloc_result) {
         return NULL;
     }
 
-    Nfc *nfc = malloc(sizeof(*nfc));
+    Nfc* nfc = malloc(sizeof(*nfc));
 
     expect(nfc != NULL, "nfc allocation should succeed");
     memset(nfc, 0, sizeof(*nfc));
     return nfc;
 }
 
-void nfc_free(Nfc *nfc) {
+void nfc_free(Nfc* nfc) {
     free(nfc);
 }
 
-void nfc_start(Nfc *nfc, NfcEventCallback callback, void *context) {
+void nfc_start(Nfc* nfc, NfcEventCallback callback, void* context) {
     expect(nfc != NULL, "nfc_start should receive a device");
     UNUSED(callback);
     UNUSED(context);
     nfc->started = true;
 }
 
-void nfc_stop(Nfc *nfc) {
-    if (nfc) {
+void nfc_stop(Nfc* nfc) {
+    if(nfc) {
         nfc->stopped = true;
     }
 }
 
-NfcListener *nfc_listener_alloc(Nfc *nfc, NfcProtocol protocol, const NfcDeviceData *data) {
-    if (!g_nfc_listener_alloc_result) {
+NfcListener* nfc_listener_alloc(Nfc* nfc, NfcProtocol protocol, const NfcDeviceData* data) {
+    if(!g_nfc_listener_alloc_result) {
         return NULL;
     }
 
-    NfcListener *listener = malloc(sizeof(*listener));
+    NfcListener* listener = malloc(sizeof(*listener));
 
     expect(listener != NULL, "nfc listener allocation should succeed");
     memset(listener, 0, sizeof(*listener));
@@ -715,35 +719,35 @@ NfcListener *nfc_listener_alloc(Nfc *nfc, NfcProtocol protocol, const NfcDeviceD
     return listener;
 }
 
-void nfc_listener_free(NfcListener *instance) {
+void nfc_listener_free(NfcListener* instance) {
     free(instance);
 }
 
-void nfc_listener_start(NfcListener *instance, NfcGenericCallback callback, void *context) {
+void nfc_listener_start(NfcListener* instance, NfcGenericCallback callback, void* context) {
     expect(instance != NULL, "nfc_listener_start should receive a listener");
     instance->callback = callback;
     instance->context = context;
     instance->started = true;
 }
 
-void nfc_listener_stop(NfcListener *instance) {
-    if (instance) {
+void nfc_listener_stop(NfcListener* instance) {
+    if(instance) {
         instance->stopped = true;
     }
 }
 
-void nfc_set_fdt_listen_fc(Nfc *nfc, uint32_t fdt_listen_fc) {
+void nfc_set_fdt_listen_fc(Nfc* nfc, uint32_t fdt_listen_fc) {
     expect(nfc != NULL, "nfc_set_fdt_listen_fc should receive a device");
     nfc->fdt_listen_fc = fdt_listen_fc;
 }
 
-void nfc_config(Nfc *nfc, NfcMode mode, NfcTech tech) {
+void nfc_config(Nfc* nfc, NfcMode mode, NfcTech tech) {
     expect(nfc != NULL, "nfc_config should receive a device");
     nfc->mode = mode;
     nfc->tech = tech;
 }
 
-NfcError nfc_listener_tx(Nfc *nfc, const BitBuffer *buffer) {
+NfcError nfc_listener_tx(Nfc* nfc, const BitBuffer* buffer) {
     UNUSED(nfc);
     expect(buffer != NULL, "nfc_listener_tx should receive a frame buffer");
     expect(buffer->size_bytes <= sizeof(g_last_nfc_tx), "nfc tx frame should fit capture");
@@ -754,8 +758,12 @@ NfcError nfc_listener_tx(Nfc *nfc, const BitBuffer *buffer) {
     return NfcErrorNone;
 }
 
-void nfc_iso14443a_listener_set_col_res_data(Nfc *nfc, const uint8_t *uid, uint8_t uid_len,
-                                             const uint8_t *atqa, uint8_t sak) {
+void nfc_iso14443a_listener_set_col_res_data(
+    Nfc* nfc,
+    const uint8_t* uid,
+    uint8_t uid_len,
+    const uint8_t* atqa,
+    uint8_t sak) {
     expect(nfc != NULL, "nfc collision-response setup should receive a device");
     expect(uid_len <= sizeof(nfc->uid), "nfc uid should fit the test stub");
     memcpy(nfc->uid, uid, uid_len);
@@ -764,18 +772,18 @@ void nfc_iso14443a_listener_set_col_res_data(Nfc *nfc, const uint8_t *uid, uint8
     nfc->sak = sak;
 }
 
-void iso14443_3a_set_atqa(Iso14443_3aData *data, const uint8_t atqa[2]) {
+void iso14443_3a_set_atqa(Iso14443_3aData* data, const uint8_t atqa[2]) {
     expect(data != NULL, "iso14443_3a_set_atqa should receive data");
     memcpy(data->atqa, atqa, 2);
 }
 
-void iso14443_3a_set_sak(Iso14443_3aData *data, uint8_t sak) {
+void iso14443_3a_set_sak(Iso14443_3aData* data, uint8_t sak) {
     expect(data != NULL, "iso14443_3a_set_sak should receive data");
     data->sak = sak;
 }
 
-Iso14443_4aData *iso14443_4a_alloc(void) {
-    Iso14443_4aData *data = malloc(sizeof(*data));
+Iso14443_4aData* iso14443_4a_alloc(void) {
+    Iso14443_4aData* data = malloc(sizeof(*data));
 
     expect(data != NULL, "iso14443_4a allocation should succeed");
     memset(data, 0, sizeof(*data));
@@ -786,15 +794,15 @@ Iso14443_4aData *iso14443_4a_alloc(void) {
     return data;
 }
 
-void iso14443_4a_free(Iso14443_4aData *data) {
-    if (data) {
+void iso14443_4a_free(Iso14443_4aData* data) {
+    if(data) {
         simple_array_free(data->ats_data.t1_tk);
         free(data->iso14443_3a_data);
         free(data);
     }
 }
 
-void iso14443_4a_reset(Iso14443_4aData *data) {
+void iso14443_4a_reset(Iso14443_4aData* data) {
     expect(data != NULL, "iso14443_4a_reset should receive data");
     memset(data->iso14443_3a_data, 0, sizeof(*data->iso14443_3a_data));
     data->ats_data.tl = 1;
@@ -805,28 +813,29 @@ void iso14443_4a_reset(Iso14443_4aData *data) {
     simple_array_reset(data->ats_data.t1_tk);
 }
 
-void iso14443_4a_set_uid(Iso14443_4aData *data, const uint8_t *uid, size_t uid_len) {
+void iso14443_4a_set_uid(Iso14443_4aData* data, const uint8_t* uid, size_t uid_len) {
     expect(data != NULL, "iso14443_4a_set_uid should receive data");
-    expect(uid_len <= sizeof(data->iso14443_3a_data->uid),
-           "iso14443_4a uid should fit the test stub");
+    expect(
+        uid_len <= sizeof(data->iso14443_3a_data->uid),
+        "iso14443_4a uid should fit the test stub");
     memcpy(data->iso14443_3a_data->uid, uid, uid_len);
     data->iso14443_3a_data->uid_len = (uint8_t)uid_len;
 }
 
-const uint8_t *iso14443_4a_get_uid(const Iso14443_4aData *data, size_t *uid_len) {
+const uint8_t* iso14443_4a_get_uid(const Iso14443_4aData* data, size_t* uid_len) {
     expect(data != NULL, "iso14443_4a_get_uid should receive data");
     expect(uid_len != NULL, "iso14443_4a_get_uid should receive a length pointer");
     *uid_len = data->iso14443_3a_data->uid_len;
     return data->iso14443_3a_data->uid;
 }
 
-Iso14443_3aData *iso14443_4a_get_base_data(Iso14443_4aData *data) {
+Iso14443_3aData* iso14443_4a_get_base_data(Iso14443_4aData* data) {
     expect(data != NULL, "iso14443_4a_get_base_data should receive data");
     return data->iso14443_3a_data;
 }
 
-SimpleArray *simple_array_alloc(const SimpleArrayConfig *config) {
-    SimpleArray *instance = malloc(sizeof(*instance));
+SimpleArray* simple_array_alloc(const SimpleArrayConfig* config) {
+    SimpleArray* instance = malloc(sizeof(*instance));
 
     expect(instance != NULL, "simple_array allocation should succeed");
     instance->config = config;
@@ -835,92 +844,92 @@ SimpleArray *simple_array_alloc(const SimpleArrayConfig *config) {
     return instance;
 }
 
-void simple_array_free(SimpleArray *instance) {
-    if (instance) {
+void simple_array_free(SimpleArray* instance) {
+    if(instance) {
         free(instance->data);
         free(instance);
     }
 }
 
-void simple_array_init(SimpleArray *instance, uint32_t count) {
+void simple_array_init(SimpleArray* instance, uint32_t count) {
     expect(instance != NULL, "simple_array_init should receive an instance");
     free(instance->data);
     instance->data = NULL;
     instance->count = count;
-    if (count == 0) {
+    if(count == 0) {
         return;
     }
     instance->data = calloc(count, instance->config->type_size);
     expect(instance->data != NULL, "simple_array_init should allocate backing storage");
 }
 
-void simple_array_reset(SimpleArray *instance) {
+void simple_array_reset(SimpleArray* instance) {
     expect(instance != NULL, "simple_array_reset should receive an instance");
     free(instance->data);
     instance->data = NULL;
     instance->count = 0;
 }
 
-void simple_array_copy(SimpleArray *instance, const SimpleArray *other) {
+void simple_array_copy(SimpleArray* instance, const SimpleArray* other) {
     expect(instance != NULL, "simple_array_copy should receive a destination");
     expect(other != NULL, "simple_array_copy should receive a source");
     simple_array_init(instance, other->count);
-    if (other->count != 0) {
+    if(other->count != 0) {
         memcpy(instance->data, other->data, other->count * instance->config->type_size);
     }
 }
 
-bool simple_array_is_equal(const SimpleArray *instance, const SimpleArray *other) {
-    if (instance == other) {
+bool simple_array_is_equal(const SimpleArray* instance, const SimpleArray* other) {
+    if(instance == other) {
         return true;
     }
-    if (!instance || !other || instance->count != other->count) {
+    if(!instance || !other || instance->count != other->count) {
         return false;
     }
     return instance->count == 0 ||
            memcmp(instance->data, other->data, instance->count * instance->config->type_size) == 0;
 }
 
-uint32_t simple_array_get_count(const SimpleArray *instance) {
+uint32_t simple_array_get_count(const SimpleArray* instance) {
     expect(instance != NULL, "simple_array_get_count should receive an instance");
     return instance->count;
 }
 
-SimpleArrayElement *simple_array_get(SimpleArray *instance, uint32_t index) {
+SimpleArrayElement* simple_array_get(SimpleArray* instance, uint32_t index) {
     expect(instance != NULL, "simple_array_get should receive an instance");
     expect(index < instance->count, "simple_array_get index should be in range");
     return &instance->data[index * instance->config->type_size];
 }
 
-const SimpleArrayElement *simple_array_cget(const SimpleArray *instance, uint32_t index) {
+const SimpleArrayElement* simple_array_cget(const SimpleArray* instance, uint32_t index) {
     expect(instance != NULL, "simple_array_cget should receive an instance");
     expect(index < instance->count, "simple_array_cget index should be in range");
     return &instance->data[index * instance->config->type_size];
 }
 
-SimpleArrayData *simple_array_get_data(SimpleArray *instance) {
+SimpleArrayData* simple_array_get_data(SimpleArray* instance) {
     expect(instance != NULL, "simple_array_get_data should receive an instance");
     return instance->data;
 }
 
-const SimpleArrayData *simple_array_cget_data(const SimpleArray *instance) {
+const SimpleArrayData* simple_array_cget_data(const SimpleArray* instance) {
     expect(instance != NULL, "simple_array_cget_data should receive an instance");
     return instance->data;
 }
 
-static TestStorageFile *test_storage_file_slot(const char *path, bool create) {
+static TestStorageFile* test_storage_file_slot(const char* path, bool create) {
     size_t free_index = SIZE_MAX;
 
-    for (size_t i = 0; i < (sizeof(g_storage_files) / sizeof(g_storage_files[0])); ++i) {
-        if (g_storage_files[i].in_use && strcmp(g_storage_files[i].path, path) == 0) {
+    for(size_t i = 0; i < (sizeof(g_storage_files) / sizeof(g_storage_files[0])); ++i) {
+        if(g_storage_files[i].in_use && strcmp(g_storage_files[i].path, path) == 0) {
             return &g_storage_files[i];
         }
-        if (create && free_index == SIZE_MAX && !g_storage_files[i].in_use) {
+        if(create && free_index == SIZE_MAX && !g_storage_files[i].in_use) {
             free_index = i;
         }
     }
 
-    if (!create || free_index == SIZE_MAX) {
+    if(!create || free_index == SIZE_MAX) {
         return NULL;
     }
 
@@ -930,17 +939,17 @@ static TestStorageFile *test_storage_file_slot(const char *path, bool create) {
     return &g_storage_files[free_index];
 }
 
-bool file_info_is_dir(const FileInfo *info) {
+bool file_info_is_dir(const FileInfo* info) {
     UNUSED(info);
     return false;
 }
 
-FS_Error storage_common_remove(Storage *storage, const char *path) {
-    TestStorageFile *slot = NULL;
+FS_Error storage_common_remove(Storage* storage, const char* path) {
+    TestStorageFile* slot = NULL;
 
     UNUSED(storage);
     slot = test_storage_file_slot(path, false);
-    if (!slot || !slot->exists) {
+    if(!slot || !slot->exists) {
         return FSE_NOT_EXIST;
     }
 
@@ -950,14 +959,14 @@ FS_Error storage_common_remove(Storage *storage, const char *path) {
     return FSE_OK;
 }
 
-FS_Error storage_common_copy(Storage *storage, const char *old_path, const char *new_path) {
-    TestStorageFile *old_slot = NULL;
-    TestStorageFile *new_slot = NULL;
+FS_Error storage_common_copy(Storage* storage, const char* old_path, const char* new_path) {
+    TestStorageFile* old_slot = NULL;
+    TestStorageFile* new_slot = NULL;
 
     UNUSED(storage);
     old_slot = test_storage_file_slot(old_path, false);
     new_slot = test_storage_file_slot(new_path, true);
-    if (!old_slot || !new_slot || !old_slot->exists) {
+    if(!old_slot || !new_slot || !old_slot->exists) {
         return FSE_NOT_EXIST;
     }
 
@@ -967,20 +976,20 @@ FS_Error storage_common_copy(Storage *storage, const char *old_path, const char 
     return FSE_OK;
 }
 
-FS_Error storage_common_rename(Storage *storage, const char *old_path, const char *new_path) {
-    TestStorageFile *old_slot = NULL;
+FS_Error storage_common_rename(Storage* storage, const char* old_path, const char* new_path) {
+    TestStorageFile* old_slot = NULL;
     FS_Error copy_result = FSE_NOT_EXIST;
 
     old_slot = test_storage_file_slot(old_path, false);
-    if (!old_slot || !old_slot->exists) {
+    if(!old_slot || !old_slot->exists) {
         return FSE_NOT_EXIST;
     }
 
-    if (storage_file_exists(storage, new_path)) {
+    if(storage_file_exists(storage, new_path)) {
         storage_common_remove(storage, new_path);
     }
     copy_result = storage_common_copy(storage, old_path, new_path);
-    if (copy_result != FSE_OK) {
+    if(copy_result != FSE_OK) {
         return copy_result;
     }
 
@@ -990,45 +999,45 @@ FS_Error storage_common_rename(Storage *storage, const char *old_path, const cha
     return FSE_OK;
 }
 
-bool storage_dir_exists(Storage *storage, const char *path) {
+bool storage_dir_exists(Storage* storage, const char* path) {
     UNUSED(storage);
-    if (strcmp(path, "/ext/apps_data") == 0) {
+    if(strcmp(path, "/ext/apps_data") == 0) {
         return g_storage_root_exists;
     }
-    if (strcmp(path, "/ext/apps_data/zerofido") == 0) {
+    if(strcmp(path, "/ext/apps_data/zerofido") == 0) {
         return g_storage_app_data_exists;
     }
     return false;
 }
 
-bool storage_simply_mkdir(Storage *storage, const char *path) {
+bool storage_simply_mkdir(Storage* storage, const char* path) {
     UNUSED(storage);
-    if (strcmp(path, "/ext/apps_data") == 0) {
+    if(strcmp(path, "/ext/apps_data") == 0) {
         g_storage_root_exists = true;
         return true;
     }
-    if (strcmp(path, "/ext/apps_data/zerofido") == 0) {
+    if(strcmp(path, "/ext/apps_data/zerofido") == 0) {
         g_storage_app_data_exists = true;
         return true;
     }
     return false;
 }
 
-bool storage_file_exists(Storage *storage, const char *path) {
-    TestStorageFile *slot = NULL;
+bool storage_file_exists(Storage* storage, const char* path) {
+    TestStorageFile* slot = NULL;
 
     UNUSED(storage);
     slot = test_storage_file_slot(path, false);
     return slot && slot->exists;
 }
 
-bool storage_dir_open(File *file, const char *path) {
+bool storage_dir_open(File* file, const char* path) {
     UNUSED(file);
     UNUSED(path);
     return false;
 }
 
-bool storage_dir_read(File *file, FileInfo *info, char *name, size_t name_size) {
+bool storage_dir_read(File* file, FileInfo* info, char* name, size_t name_size) {
     UNUSED(file);
     UNUSED(info);
     UNUSED(name);
@@ -1036,14 +1045,14 @@ bool storage_dir_read(File *file, FileInfo *info, char *name, size_t name_size) 
     return false;
 }
 
-void storage_dir_close(File *file) {
+void storage_dir_close(File* file) {
     UNUSED(file);
 }
 
-File *storage_file_alloc(Storage *storage) {
+File* storage_file_alloc(Storage* storage) {
     static File files[2];
     static size_t next_file = 0;
-    File *file = NULL;
+    File* file = NULL;
 
     UNUSED(storage);
     file = &files[next_file++ % (sizeof(files) / sizeof(files[0]))];
@@ -1051,35 +1060,38 @@ File *storage_file_alloc(Storage *storage) {
     return file;
 }
 
-void storage_file_free(File *file) {
+void storage_file_free(File* file) {
     UNUSED(file);
 }
 
-bool storage_file_open(File *file, const char *path, FS_AccessMode access_mode,
-                       FS_OpenMode open_mode) {
-    TestStorageFile *slot = NULL;
+bool storage_file_open(
+    File* file,
+    const char* path,
+    FS_AccessMode access_mode,
+    FS_OpenMode open_mode) {
+    TestStorageFile* slot = NULL;
 
-    if (strncmp(path, "/ext/apps_data/zerofido/", strlen("/ext/apps_data/zerofido/")) == 0 &&
-        !g_storage_app_data_exists) {
+    if(strncmp(path, "/ext/apps_data/zerofido/", strlen("/ext/apps_data/zerofido/")) == 0 &&
+       !g_storage_app_data_exists) {
         return false;
     }
 
-    slot = test_storage_file_slot(path,
-                                  access_mode == FSAM_WRITE &&
-                                      (open_mode == FSOM_CREATE_ALWAYS ||
-                                       open_mode == FSOM_OPEN_APPEND));
-    if (!slot) {
+    slot = test_storage_file_slot(
+        path,
+        access_mode == FSAM_WRITE &&
+            (open_mode == FSOM_CREATE_ALWAYS || open_mode == FSOM_OPEN_APPEND));
+    if(!slot) {
         return false;
     }
-    if (access_mode == FSAM_READ && (!slot->exists || open_mode != FSOM_OPEN_EXISTING)) {
+    if(access_mode == FSAM_READ && (!slot->exists || open_mode != FSOM_OPEN_EXISTING)) {
         return false;
     }
-    if (access_mode == FSAM_WRITE && open_mode == FSOM_CREATE_ALWAYS) {
+    if(access_mode == FSAM_WRITE && open_mode == FSOM_CREATE_ALWAYS) {
         slot->size = 0;
         slot->exists = true;
         memset(slot->data, 0, sizeof(slot->data));
     }
-    if (access_mode == FSAM_WRITE && open_mode == FSOM_OPEN_APPEND) {
+    if(access_mode == FSAM_WRITE && open_mode == FSOM_OPEN_APPEND) {
         slot->exists = true;
     }
 
@@ -1091,33 +1103,33 @@ bool storage_file_open(File *file, const char *path, FS_AccessMode access_mode,
     return true;
 }
 
-size_t storage_file_size(File *file) {
-    TestStorageFile *slot = NULL;
+size_t storage_file_size(File* file) {
+    TestStorageFile* slot = NULL;
 
-    if (!file->open) {
+    if(!file->open) {
         return 0;
     }
     slot = test_storage_file_slot(file->path, false);
-    if (!slot || !slot->exists) {
+    if(!slot || !slot->exists) {
         return 0;
     }
     return slot->size;
 }
 
-size_t storage_file_read(File *file, void *buffer, size_t size) {
-    TestStorageFile *slot = NULL;
+size_t storage_file_read(File* file, void* buffer, size_t size) {
+    TestStorageFile* slot = NULL;
     size_t remaining = 0;
 
-    if (!file->open || file->access_mode != FSAM_READ) {
+    if(!file->open || file->access_mode != FSAM_READ) {
         return 0;
     }
     slot = test_storage_file_slot(file->path, false);
-    if (!slot || !slot->exists || file->offset >= slot->size) {
+    if(!slot || !slot->exists || file->offset >= slot->size) {
         return 0;
     }
 
     remaining = slot->size - file->offset;
-    if (size > remaining) {
+    if(size > remaining) {
         size = remaining;
     }
     memcpy(buffer, slot->data + file->offset, size);
@@ -1125,71 +1137,76 @@ size_t storage_file_read(File *file, void *buffer, size_t size) {
     return size;
 }
 
-size_t storage_file_write(File *file, const void *buffer, size_t size) {
-    TestStorageFile *slot = NULL;
+size_t storage_file_write(File* file, const void* buffer, size_t size) {
+    TestStorageFile* slot = NULL;
 
-    if (!file->open || file->access_mode != FSAM_WRITE) {
+    if(!file->open || file->access_mode != FSAM_WRITE) {
         return 0;
     }
-    if (g_storage_fail_write_match && strstr(file->path, g_storage_fail_write_match) != NULL) {
+    if(g_storage_fail_write_match && strstr(file->path, g_storage_fail_write_match) != NULL) {
         return 0;
     }
     slot = test_storage_file_slot(file->path, true);
-    if (!slot || (file->offset + size) > sizeof(slot->data)) {
+    if(!slot || (file->offset + size) > sizeof(slot->data)) {
         return 0;
     }
 
     memcpy(slot->data + file->offset, buffer, size);
     file->offset += size;
-    if (file->offset > slot->size) {
+    if(file->offset > slot->size) {
         slot->size = file->offset;
     }
     slot->exists = true;
     return size;
 }
 
-void storage_file_close(File *file) {
+void storage_file_close(File* file) {
     file->open = false;
 }
 
-FlipperFormat *flipper_format_file_alloc(Storage *storage) {
+FlipperFormat* flipper_format_file_alloc(Storage* storage) {
     static FlipperFormat flipper_format;
 
     UNUSED(storage);
     return &flipper_format;
 }
 
-void flipper_format_free(FlipperFormat *flipper_format) {
+void flipper_format_free(FlipperFormat* flipper_format) {
     UNUSED(flipper_format);
 }
 
-bool flipper_format_file_open_always(FlipperFormat *flipper_format, const char *path) {
-    UNUSED(flipper_format);
-    UNUSED(path);
-    return false;
-}
-
-bool flipper_format_file_open_existing(FlipperFormat *flipper_format, const char *path) {
+bool flipper_format_file_open_always(FlipperFormat* flipper_format, const char* path) {
     UNUSED(flipper_format);
     UNUSED(path);
     return false;
 }
 
-bool flipper_format_file_close(FlipperFormat *flipper_format) {
+bool flipper_format_file_open_existing(FlipperFormat* flipper_format, const char* path) {
+    UNUSED(flipper_format);
+    UNUSED(path);
+    return false;
+}
+
+bool flipper_format_file_close(FlipperFormat* flipper_format) {
     UNUSED(flipper_format);
     return true;
 }
 
-bool flipper_format_write_header_cstr(FlipperFormat *flipper_format, const char *type,
-                                      uint32_t version) {
+bool flipper_format_write_header_cstr(
+    FlipperFormat* flipper_format,
+    const char* type,
+    uint32_t version) {
     UNUSED(flipper_format);
     UNUSED(type);
     UNUSED(version);
     return false;
 }
 
-bool flipper_format_write_uint32(FlipperFormat *flipper_format, const char *key,
-                                 const uint32_t *value, size_t count) {
+bool flipper_format_write_uint32(
+    FlipperFormat* flipper_format,
+    const char* key,
+    const uint32_t* value,
+    size_t count) {
     UNUSED(flipper_format);
     UNUSED(key);
     UNUSED(value);
@@ -1197,8 +1214,11 @@ bool flipper_format_write_uint32(FlipperFormat *flipper_format, const char *key,
     return false;
 }
 
-bool flipper_format_write_hex(FlipperFormat *flipper_format, const char *key, const uint8_t *value,
-                              size_t size) {
+bool flipper_format_write_hex(
+    FlipperFormat* flipper_format,
+    const char* key,
+    const uint8_t* value,
+    size_t size) {
     UNUSED(flipper_format);
     UNUSED(key);
     UNUSED(value);
@@ -1206,16 +1226,18 @@ bool flipper_format_write_hex(FlipperFormat *flipper_format, const char *key, co
     return false;
 }
 
-bool flipper_format_read_header(FlipperFormat *flipper_format, FuriString *type,
-                                uint32_t *version) {
+bool flipper_format_read_header(FlipperFormat* flipper_format, FuriString* type, uint32_t* version) {
     UNUSED(flipper_format);
     UNUSED(type);
     UNUSED(version);
     return false;
 }
 
-bool flipper_format_read_uint32(FlipperFormat *flipper_format, const char *key, uint32_t *value,
-                                size_t count) {
+bool flipper_format_read_uint32(
+    FlipperFormat* flipper_format,
+    const char* key,
+    uint32_t* value,
+    size_t count) {
     UNUSED(flipper_format);
     UNUSED(key);
     UNUSED(value);
@@ -1223,8 +1245,11 @@ bool flipper_format_read_uint32(FlipperFormat *flipper_format, const char *key, 
     return false;
 }
 
-bool flipper_format_read_hex(FlipperFormat *flipper_format, const char *key, uint8_t *value,
-                             size_t size) {
+bool flipper_format_read_hex(
+    FlipperFormat* flipper_format,
+    const char* key,
+    uint8_t* value,
+    size_t size) {
     UNUSED(flipper_format);
     UNUSED(key);
     UNUSED(value);
@@ -1232,27 +1257,27 @@ bool flipper_format_read_hex(FlipperFormat *flipper_format, const char *key, uin
     return false;
 }
 
-FuriString *furi_string_alloc(void) {
+FuriString* furi_string_alloc(void) {
     static FuriString string;
 
     memset(&string, 0, sizeof(string));
     return &string;
 }
 
-void furi_string_free(FuriString *string) {
+void furi_string_free(FuriString* string) {
     UNUSED(string);
 }
 
-const char *furi_string_get_cstr(const FuriString *string) {
+const char* furi_string_get_cstr(const FuriString* string) {
     return string ? string->value : "";
 }
 
 const FuriHalUsbInterface usb_hid_u2f = {0};
 
-size_t furi_hal_hid_u2f_get_request(uint8_t *packet) {
+size_t furi_hal_hid_u2f_get_request(uint8_t* packet) {
     size_t packet_len = 0;
 
-    if (g_hid_request_index >= g_hid_request_count) {
+    if(g_hid_request_index >= g_hid_request_count) {
         return 0;
     }
 
@@ -1262,14 +1287,14 @@ size_t furi_hal_hid_u2f_get_request(uint8_t *packet) {
     return packet_len;
 }
 
-void furi_hal_hid_u2f_send_response(const uint8_t *packet, size_t packet_len) {
+void furi_hal_hid_u2f_send_response(const uint8_t* packet, size_t packet_len) {
     expect(packet_len <= sizeof(g_last_hid_response), "response frame should fit native capture");
     memcpy(g_last_hid_response, packet, packet_len);
     g_last_hid_response_len = packet_len;
     g_hid_response_count++;
 }
 
-void furi_hal_hid_u2f_set_callback(HidU2fCallback callback, void *context) {
+void furi_hal_hid_u2f_set_callback(HidU2fCallback callback, void* context) {
     UNUSED(callback);
     UNUSED(context);
 }
@@ -1278,172 +1303,196 @@ bool furi_hal_hid_u2f_is_connected(void) {
     return g_hid_connected;
 }
 
-FuriHalUsbInterface *furi_hal_usb_get_config(void) {
+FuriHalUsbInterface* furi_hal_usb_get_config(void) {
     return &g_previous_usb_config;
 }
 
-bool furi_hal_usb_set_config(const FuriHalUsbInterface *interface, void *context) {
+bool furi_hal_usb_set_config(const FuriHalUsbInterface* interface, void* context) {
     UNUSED(context);
     g_usb_set_config_count++;
     g_last_usb_set_config = interface;
     return g_usb_set_config_result;
 }
 
-void zerofido_ui_dispatch_custom_event(ZerofidoApp *app, uint32_t event) {
+void zerofido_ui_dispatch_custom_event(ZerofidoApp* app, uint32_t event) {
     UNUSED(app);
     UNUSED(event);
 }
 
-void zerofido_ui_set_status(ZerofidoApp *app, const char *status) {
+void zerofido_ui_set_status(ZerofidoApp* app, const char* status) {
     UNUSED(app);
-    if (status) {
+    if(status) {
         snprintf(g_last_status_text, sizeof(g_last_status_text), "%s", status);
     }
 }
 
-bool zerofido_ui_cancel_pending_interaction(ZerofidoApp *app) {
+bool zerofido_ui_cancel_pending_interaction(ZerofidoApp* app) {
     UNUSED(app);
     g_cancel_pending_interaction_count++;
     return g_cancel_pending_interaction_result;
 }
 
-bool zerofido_ui_cancel_pending_interaction_locked(ZerofidoApp *app) {
+bool zerofido_ui_cancel_pending_interaction_locked(ZerofidoApp* app) {
     return zerofido_ui_cancel_pending_interaction(app);
 }
 
-void zerofido_ui_set_status_locked(ZerofidoApp *app, const char *status) {
+void zerofido_ui_set_status_locked(ZerofidoApp* app, const char* status) {
     zerofido_ui_set_status(app, status);
 }
 
-void zerofido_ui_refresh_status(ZerofidoApp *app) {
+void zerofido_ui_refresh_status(ZerofidoApp* app) {
     UNUSED(app);
 }
 
-void zerofido_ui_refresh_status_line(ZerofidoApp *app) {
+void zerofido_ui_refresh_status_line(ZerofidoApp* app) {
     UNUSED(app);
 }
 
-void zerofido_ui_refresh_credentials_status(ZerofidoApp *app) {
+void zerofido_ui_refresh_credentials_status(ZerofidoApp* app) {
     UNUSED(app);
 }
 
-void zerofido_ui_set_transport_connected(ZerofidoApp *app, bool connected) {
+void zerofido_ui_set_transport_connected(ZerofidoApp* app, bool connected) {
     UNUSED(app);
     g_transport_connected_set_count++;
-    if (connected) {
+    if(connected) {
         g_transport_connected_true_count++;
     }
     g_last_transport_connected = connected;
 }
 
-void zerofido_notify_reset(ZerofidoApp *app) {
+void zerofido_notify_reset(ZerofidoApp* app) {
     UNUSED(app);
 }
 
-void zerofido_notify_error(ZerofidoApp *app) {
+void zerofido_notify_error(ZerofidoApp* app) {
     UNUSED(app);
 }
 
-void zerofido_notify_success(ZerofidoApp *app) {
+void zerofido_notify_success(ZerofidoApp* app) {
     UNUSED(app);
 }
 
-void zerofido_notify_prompt(ZerofidoApp *app) {
+void zerofido_notify_prompt(ZerofidoApp* app) {
     UNUSED(app);
     g_notify_prompt_count++;
 }
 
-void zerofido_notify_wink(ZerofidoApp *app) {
+void zerofido_notify_wink(ZerofidoApp* app) {
     UNUSED(app);
 }
 
-bool zerofido_ui_request_approval(ZerofidoApp *app, ZfUiProtocol protocol, const char *operation,
-                                  const char *rp_id, const char *user_text, uint32_t cid,
-                                  bool *approved) {
+bool zerofido_ui_request_approval(
+    ZerofidoApp* app,
+    ZfUiProtocol protocol,
+    const char* operation,
+    const char* rp_id,
+    const char* user_text,
+    uint32_t cid,
+    bool* approved) {
     UNUSED(protocol);
     UNUSED(operation);
     UNUSED(user_text);
     UNUSED(cid);
-    if (g_auto_accept_requests || test_transport_auto_accept_enabled(app)) {
-        if (approved) {
+    if(g_auto_accept_requests || test_transport_auto_accept_enabled(app)) {
+        if(approved) {
             *approved = true;
         }
         return true;
     }
     g_approval_request_count++;
-    if (rp_id) {
+    if(rp_id) {
         strncpy(g_last_approval_rp_id, rp_id, sizeof(g_last_approval_rp_id) - 1);
         g_last_approval_rp_id[sizeof(g_last_approval_rp_id) - 1] = '\0';
     }
-    if (approved) {
+    if(approved) {
         *approved = true;
     }
     return true;
 }
 
-const uint8_t *zf_attestation_get_aaguid(void) {
+const uint8_t* zf_attestation_get_aaguid(void) {
     static const uint8_t aaguid[ZF_AAGUID_LEN] = {
-        0xB5, 0x1A, 0x97, 0x6A, 0x0B, 0x02, 0x40, 0xAA,
-        0x9D, 0x8A, 0x36, 0xC8, 0xB9, 0x1B, 0xBD, 0x1A,
+        0xB5,
+        0x1A,
+        0x97,
+        0x6A,
+        0x0B,
+        0x02,
+        0x40,
+        0xAA,
+        0x9D,
+        0x8A,
+        0x36,
+        0xC8,
+        0xB9,
+        0x1B,
+        0xBD,
+        0x1A,
     };
     return aaguid;
 }
 
-void zf_crypto_secure_zero(void *data, size_t size) {
+void zf_crypto_secure_zero(void* data, size_t size) {
     memset(data, 0, size);
 }
 
-void zf_crypto_sha256(const uint8_t *data, size_t size, uint8_t out[32]) {
-    if (size > 0U) {
+void zf_crypto_sha256(const uint8_t* data, size_t size, uint8_t out[32]) {
+    if(size > 0U) {
         expect(data != NULL, "sha256 input should be present when size is non-zero");
-        expect(g_sha256_trace_len + size <= sizeof(g_sha256_trace),
-               "sha256 trace buffer should fit");
+        expect(
+            g_sha256_trace_len + size <= sizeof(g_sha256_trace), "sha256 trace buffer should fit");
         memcpy(&g_sha256_trace[g_sha256_trace_len], data, size);
         g_sha256_trace_len += size;
     }
     memset(out, 0, 32);
 }
 
-bool zf_crypto_hmac_sha256_parts_with_scratch(ZfHmacSha256Scratch *scratch, const uint8_t *key,
-                                              size_t key_len, const uint8_t *first,
-                                              size_t first_size, const uint8_t *second,
-                                              size_t second_size, uint8_t out[32]) {
+bool zf_crypto_hmac_sha256_parts_with_scratch(
+    ZfHmacSha256Scratch* scratch,
+    const uint8_t* key,
+    size_t key_len,
+    const uint8_t* first,
+    size_t first_size,
+    const uint8_t* second,
+    size_t second_size,
+    uint8_t out[32]) {
     uint8_t key_block[64] = {0};
     uint8_t inner_hash[32] = {0};
     uint8_t pad[64] = {0};
     mbedtls_sha256_context sha;
 
     UNUSED(scratch);
-    if (!key || !out || (first_size > 0U && !first) || (second_size > 0U && !second)) {
+    if(!key || !out || (first_size > 0U && !first) || (second_size > 0U && !second)) {
         return false;
     }
 
-    if (key_len > sizeof(key_block)) {
+    if(key_len > sizeof(key_block)) {
         mbedtls_sha256_init(&sha);
         mbedtls_sha256_starts(&sha, 0);
         mbedtls_sha256_update(&sha, key, key_len);
         mbedtls_sha256_finish(&sha, key_block);
         mbedtls_sha256_free(&sha);
-    } else if (key_len > 0U) {
+    } else if(key_len > 0U) {
         memcpy(key_block, key, key_len);
     }
 
-    for (size_t i = 0; i < sizeof(pad); ++i) {
+    for(size_t i = 0; i < sizeof(pad); ++i) {
         pad[i] = key_block[i] ^ 0x36U;
     }
     mbedtls_sha256_init(&sha);
     mbedtls_sha256_starts(&sha, 0);
     mbedtls_sha256_update(&sha, pad, sizeof(pad));
-    if (first_size > 0U) {
+    if(first_size > 0U) {
         mbedtls_sha256_update(&sha, first, first_size);
     }
-    if (second_size > 0U) {
+    if(second_size > 0U) {
         mbedtls_sha256_update(&sha, second, second_size);
     }
     mbedtls_sha256_finish(&sha, inner_hash);
     mbedtls_sha256_free(&sha);
 
-    for (size_t i = 0; i < sizeof(pad); ++i) {
+    for(size_t i = 0; i < sizeof(pad); ++i) {
         pad[i] = key_block[i] ^ 0x5CU;
     }
     mbedtls_sha256_init(&sha);
@@ -1456,49 +1505,63 @@ bool zf_crypto_hmac_sha256_parts_with_scratch(ZfHmacSha256Scratch *scratch, cons
     return true;
 }
 
-bool zf_crypto_hmac_sha256_parts(const uint8_t *key, size_t key_len, const uint8_t *first,
-                                 size_t first_size, const uint8_t *second, size_t second_size,
-                                 uint8_t out[32]) {
+bool zf_crypto_hmac_sha256_parts(
+    const uint8_t* key,
+    size_t key_len,
+    const uint8_t* first,
+    size_t first_size,
+    const uint8_t* second,
+    size_t second_size,
+    uint8_t out[32]) {
     ZfHmacSha256Scratch scratch;
 
-    return zf_crypto_hmac_sha256_parts_with_scratch(&scratch, key, key_len, first, first_size,
-                                                    second, second_size, out);
+    return zf_crypto_hmac_sha256_parts_with_scratch(
+        &scratch, key, key_len, first, first_size, second, second_size, out);
 }
 
-bool zf_crypto_hmac_sha256(const uint8_t *key, size_t key_len, const uint8_t *data, size_t size,
-                           uint8_t out[32]) {
+bool zf_crypto_hmac_sha256(
+    const uint8_t* key,
+    size_t key_len,
+    const uint8_t* data,
+    size_t size,
+    uint8_t out[32]) {
     return zf_crypto_hmac_sha256_parts(key, key_len, data, size, NULL, 0, out);
 }
 
-size_t zerofido_handle_ctap2(ZerofidoApp *app, uint32_t cid, const uint8_t *request,
-                             size_t request_len, uint8_t *response, size_t response_capacity) {
+size_t zerofido_handle_ctap2(
+    ZerofidoApp* app,
+    uint32_t cid,
+    const uint8_t* request,
+    size_t request_len,
+    uint8_t* response,
+    size_t response_capacity) {
     UNUSED(cid);
-    if (!request || request_len == 0 || !response || response_capacity < 2) {
+    if(!request || request_len == 0 || !response || response_capacity < 2) {
         return 0;
     }
 
     g_ctap2_request_response_overlap = request == response;
-    if (g_ctap2_requeue_during_handle) {
+    if(g_ctap2_requeue_during_handle) {
         return test_nfc_requeue_during_ctap2(app, response, response_capacity);
     }
-    if (request[0] == ZfCtapeCmdGetInfo) {
+    if(request[0] == ZfCtapeCmdGetInfo) {
         response[0] = ZF_CTAP_SUCCESS;
         response[1] = 0xA0;
         return 2;
     }
-    if (request[0] == ZfCtapeCmdMakeCredential) {
+    if(request[0] == ZfCtapeCmdMakeCredential) {
         g_ctap2_saw_transport_auto_accept = test_transport_auto_accept_enabled(app);
         response[0] = ZF_CTAP_SUCCESS;
         response[1] = 0xA0;
         return 2;
     }
-    if (request[0] == ZfCtapeCmdClientPin) {
+    if(request[0] == ZfCtapeCmdClientPin) {
         g_ctap2_saw_transport_auto_accept = test_transport_auto_accept_enabled(app);
-        if (g_ctap2_large_response_len != 0U) {
-            const size_t response_len = g_ctap2_large_response_len < response_capacity
-                                            ? g_ctap2_large_response_len
-                                            : response_capacity;
-            for (size_t i = 0U; i < response_len; ++i) {
+        if(g_ctap2_large_response_len != 0U) {
+            const size_t response_len = g_ctap2_large_response_len < response_capacity ?
+                                            g_ctap2_large_response_len :
+                                            response_capacity;
+            for(size_t i = 0U; i < response_len; ++i) {
                 response[i] = (uint8_t)(0xA0U + (i & 0x0FU));
             }
             response[0] = ZF_CTAP_SUCCESS;
@@ -1522,8 +1585,8 @@ bool u2f_data_cert_check(void) {
     return g_u2f_cert_assets_present && g_u2f_cert_check_result;
 }
 
-uint32_t u2f_data_cert_load(uint8_t *cert, size_t capacity) {
-    if (capacity > 0) {
+uint32_t u2f_data_cert_load(uint8_t* cert, size_t capacity) {
+    if(capacity > 0) {
         cert[0] = 0;
         return 1;
     }
@@ -1531,8 +1594,8 @@ uint32_t u2f_data_cert_load(uint8_t *cert, size_t capacity) {
     return 0;
 }
 
-bool u2f_data_cert_key_load(uint8_t *cert_key) {
-    if (!g_u2f_cert_assets_present || !g_u2f_cert_key_load_result) {
+bool u2f_data_cert_key_load(uint8_t* cert_key) {
+    if(!g_u2f_cert_assets_present || !g_u2f_cert_key_load_result) {
         memset(cert_key, 0, 32);
         return false;
     }
@@ -1540,14 +1603,14 @@ bool u2f_data_cert_key_load(uint8_t *cert_key) {
     return true;
 }
 
-bool u2f_data_cert_key_matches(const uint8_t *cert_key) {
+bool u2f_data_cert_key_matches(const uint8_t* cert_key) {
     UNUSED(cert_key);
     return g_u2f_cert_key_matches_result;
 }
 
 bool u2f_data_ensure_local_attestation_assets(void) {
     g_u2f_attestation_ensure_call_count++;
-    if (!g_u2f_attestation_ensure_result) {
+    if(!g_u2f_attestation_ensure_result) {
         return false;
     }
     g_u2f_cert_assets_present = true;
@@ -1565,12 +1628,12 @@ bool u2f_data_key_exists(void) {
     return g_u2f_key_exists_result;
 }
 
-bool u2f_data_key_load(uint8_t *device_key) {
+bool u2f_data_key_load(uint8_t* device_key) {
     memset(device_key, 0, 32);
     return g_u2f_key_load_result;
 }
 
-bool u2f_data_key_generate(uint8_t *device_key) {
+bool u2f_data_key_generate(uint8_t* device_key) {
     g_u2f_key_generate_count++;
     memset(device_key, 0, 32);
     return true;
@@ -1580,7 +1643,7 @@ bool u2f_data_cnt_exists(void) {
     return g_u2f_cnt_exists_result;
 }
 
-bool u2f_data_cnt_read(uint32_t *cnt) {
+bool u2f_data_cnt_read(uint32_t* cnt) {
     *cnt = 0;
     return g_u2f_cnt_read_result;
 }
@@ -1591,10 +1654,10 @@ bool u2f_data_cnt_write(uint32_t cnt) {
     return true;
 }
 
-bool u2f_data_cnt_reserve(uint32_t cnt, uint32_t *reserved_cnt) {
+bool u2f_data_cnt_reserve(uint32_t cnt, uint32_t* reserved_cnt) {
     g_u2f_cnt_reserve_count++;
     g_u2f_last_reserved_counter = cnt + ZF_COUNTER_RESERVATION_WINDOW;
-    if (reserved_cnt) {
+    if(reserved_cnt) {
         *reserved_cnt = g_u2f_last_reserved_counter;
     }
     return true;
@@ -1604,16 +1667,18 @@ bool zf_crypto_p256_private_key_valid(const uint8_t private_key[ZF_PRIVATE_KEY_L
     return private_key != NULL;
 }
 
-bool zf_crypto_p256_public_key_valid(const uint8_t public_x[ZF_PUBLIC_KEY_LEN],
-                                     const uint8_t public_y[ZF_PUBLIC_KEY_LEN]) {
+bool zf_crypto_p256_public_key_valid(
+    const uint8_t public_x[ZF_PUBLIC_KEY_LEN],
+    const uint8_t public_y[ZF_PUBLIC_KEY_LEN]) {
     return public_x != NULL && public_y != NULL;
 }
 
-bool zf_crypto_compute_public_key_from_private(const uint8_t private_key[ZF_PRIVATE_KEY_LEN],
-                                               uint8_t public_x[ZF_PUBLIC_KEY_LEN],
-                                               uint8_t public_y[ZF_PUBLIC_KEY_LEN]) {
+bool zf_crypto_compute_public_key_from_private(
+    const uint8_t private_key[ZF_PRIVATE_KEY_LEN],
+    uint8_t public_x[ZF_PUBLIC_KEY_LEN],
+    uint8_t public_y[ZF_PUBLIC_KEY_LEN]) {
     UNUSED(private_key);
-    if (!public_x || !public_y) {
+    if(!public_x || !public_y) {
         return false;
     }
     memset(public_x, 0x11, ZF_PUBLIC_KEY_LEN);
@@ -1621,29 +1686,34 @@ bool zf_crypto_compute_public_key_from_private(const uint8_t private_key[ZF_PRIV
     return true;
 }
 
-bool zf_crypto_sign_hash_raw(const uint8_t private_key[ZF_PRIVATE_KEY_LEN], const uint8_t hash[32],
-                             uint8_t out[ZF_PUBLIC_KEY_LEN * 2U]) {
+bool zf_crypto_sign_hash_raw(
+    const uint8_t private_key[ZF_PRIVATE_KEY_LEN],
+    const uint8_t hash[32],
+    uint8_t out[ZF_PUBLIC_KEY_LEN * 2U]) {
     UNUSED(private_key);
     UNUSED(hash);
-    if (!out) {
+    if(!out) {
         return false;
     }
     memset(out, 0x01, ZF_PUBLIC_KEY_LEN * 2U);
     return true;
 }
 
-bool zf_crypto_sign_hash_with_private_key(const uint8_t private_key[ZF_PRIVATE_KEY_LEN],
-                                          const uint8_t hash[32], uint8_t *out, size_t out_capacity,
-                                          size_t *out_len) {
+bool zf_crypto_sign_hash_with_private_key(
+    const uint8_t private_key[ZF_PRIVATE_KEY_LEN],
+    const uint8_t hash[32],
+    uint8_t* out,
+    size_t out_capacity,
+    size_t* out_len) {
     uint8_t raw_signature[ZF_PUBLIC_KEY_LEN * 2U];
     bool ok = false;
 
-    if (!out_len || !zf_crypto_sign_hash_raw(private_key, hash, raw_signature)) {
+    if(!out_len || !zf_crypto_sign_hash_raw(private_key, hash, raw_signature)) {
         goto cleanup;
     }
 
-    *out_len = zf_ecdsa_der_encode_signature(raw_signature, raw_signature + ZF_PUBLIC_KEY_LEN, out,
-                                             out_capacity);
+    *out_len = zf_ecdsa_der_encode_signature(
+        raw_signature, raw_signature + ZF_PUBLIC_KEY_LEN, out, out_capacity);
     ok = *out_len > 0U;
 
 cleanup:
@@ -1651,31 +1721,35 @@ cleanup:
     return ok;
 }
 
-void mbedtls_ecp_group_init(mbedtls_ecp_group *grp) {
+void mbedtls_ecp_group_init(mbedtls_ecp_group* grp) {
     UNUSED(grp);
 }
 
-void mbedtls_ecp_group_free(mbedtls_ecp_group *grp) {
+void mbedtls_ecp_group_free(mbedtls_ecp_group* grp) {
     UNUSED(grp);
 }
 
-int mbedtls_ecp_group_load(mbedtls_ecp_group *grp, int id) {
+int mbedtls_ecp_group_load(mbedtls_ecp_group* grp, int id) {
     UNUSED(grp);
     UNUSED(id);
     return 0;
 }
 
-void mbedtls_ecp_point_init(mbedtls_ecp_point *pt) {
+void mbedtls_ecp_point_init(mbedtls_ecp_point* pt) {
     memset(pt, 0, sizeof(*pt));
 }
 
-void mbedtls_ecp_point_free(mbedtls_ecp_point *pt) {
+void mbedtls_ecp_point_free(mbedtls_ecp_point* pt) {
     UNUSED(pt);
 }
 
-int mbedtls_ecp_mul(mbedtls_ecp_group *grp, mbedtls_ecp_point *r, const mbedtls_mpi *m,
-                    const mbedtls_ecp_point *p, int (*f_rng)(void *, unsigned char *, unsigned int),
-                    void *p_rng) {
+int mbedtls_ecp_mul(
+    mbedtls_ecp_group* grp,
+    mbedtls_ecp_point* r,
+    const mbedtls_mpi* m,
+    const mbedtls_ecp_point* p,
+    int (*f_rng)(void*, unsigned char*, unsigned int),
+    void* p_rng) {
     UNUSED(grp);
     UNUSED(r);
     UNUSED(m);
@@ -1685,24 +1759,29 @@ int mbedtls_ecp_mul(mbedtls_ecp_group *grp, mbedtls_ecp_point *r, const mbedtls_
     return 0;
 }
 
-int mbedtls_ecp_check_privkey(const mbedtls_ecp_group *grp, const mbedtls_mpi *d) {
+int mbedtls_ecp_check_privkey(const mbedtls_ecp_group* grp, const mbedtls_mpi* d) {
     UNUSED(grp);
     UNUSED(d);
     return 0;
 }
 
-int mbedtls_ecp_check_pubkey(const mbedtls_ecp_group *grp, const mbedtls_ecp_point *pt) {
+int mbedtls_ecp_check_pubkey(const mbedtls_ecp_group* grp, const mbedtls_ecp_point* pt) {
     UNUSED(grp);
     UNUSED(pt);
     return 0;
 }
 
-int mbedtls_ecp_point_write_binary(const mbedtls_ecp_group *grp, const mbedtls_ecp_point *pt,
-                                   int format, size_t *olen, unsigned char *buf, size_t buflen) {
+int mbedtls_ecp_point_write_binary(
+    const mbedtls_ecp_group* grp,
+    const mbedtls_ecp_point* pt,
+    int format,
+    size_t* olen,
+    unsigned char* buf,
+    size_t buflen) {
     UNUSED(grp);
     UNUSED(pt);
     UNUSED(format);
-    if (buflen > 0) {
+    if(buflen > 0) {
         memset(buf, 0, buflen);
         buf[0] = 0x04;
     }
@@ -1710,8 +1789,12 @@ int mbedtls_ecp_point_write_binary(const mbedtls_ecp_group *grp, const mbedtls_e
     return 0;
 }
 
-int mbedtls_ecp_gen_keypair(mbedtls_ecp_group *grp, mbedtls_mpi *d, mbedtls_ecp_point *q,
-                            int (*f_rng)(void *, unsigned char *, unsigned int), void *p_rng) {
+int mbedtls_ecp_gen_keypair(
+    mbedtls_ecp_group* grp,
+    mbedtls_mpi* d,
+    mbedtls_ecp_point* q,
+    int (*f_rng)(void*, unsigned char*, unsigned int),
+    void* p_rng) {
     UNUSED(grp);
     UNUSED(d);
     UNUSED(q);
@@ -1720,36 +1803,42 @@ int mbedtls_ecp_gen_keypair(mbedtls_ecp_group *grp, mbedtls_mpi *d, mbedtls_ecp_
     return 0;
 }
 
-int mbedtls_mpi_read_binary(mbedtls_mpi *x, const unsigned char *buf, size_t buflen) {
+int mbedtls_mpi_read_binary(mbedtls_mpi* x, const unsigned char* buf, size_t buflen) {
     UNUSED(x);
     UNUSED(buf);
     UNUSED(buflen);
     return 0;
 }
 
-int mbedtls_mpi_write_binary(const mbedtls_mpi *x, unsigned char *buf, size_t buflen) {
+int mbedtls_mpi_write_binary(const mbedtls_mpi* x, unsigned char* buf, size_t buflen) {
     UNUSED(x);
     memset(buf, 0, buflen);
     return 0;
 }
 
-int mbedtls_mpi_lset(mbedtls_mpi *x, int z) {
+int mbedtls_mpi_lset(mbedtls_mpi* x, int z) {
     UNUSED(x);
     UNUSED(z);
     return 0;
 }
 
-void mbedtls_mpi_init(mbedtls_mpi *x) {
+void mbedtls_mpi_init(mbedtls_mpi* x) {
     memset(x, 0, sizeof(*x));
 }
 
-void mbedtls_mpi_free(mbedtls_mpi *x) {
+void mbedtls_mpi_free(mbedtls_mpi* x) {
     UNUSED(x);
 }
 
-int mbedtls_ecdsa_sign(mbedtls_ecp_group *grp, mbedtls_mpi *r, mbedtls_mpi *s, const mbedtls_mpi *d,
-                       const unsigned char *buf, size_t blen,
-                       int (*f_rng)(void *, unsigned char *, unsigned), void *p_rng) {
+int mbedtls_ecdsa_sign(
+    mbedtls_ecp_group* grp,
+    mbedtls_mpi* r,
+    mbedtls_mpi* s,
+    const mbedtls_mpi* d,
+    const unsigned char* buf,
+    size_t blen,
+    int (*f_rng)(void*, unsigned char*, unsigned),
+    void* p_rng) {
     UNUSED(grp);
     UNUSED(r);
     UNUSED(s);
@@ -1761,8 +1850,13 @@ int mbedtls_ecdsa_sign(mbedtls_ecp_group *grp, mbedtls_mpi *r, mbedtls_mpi *s, c
     return 0;
 }
 
-int mbedtls_ecdsa_verify(mbedtls_ecp_group *grp, const unsigned char *buf, size_t blen,
-                         const mbedtls_ecp_point *q, const mbedtls_mpi *r, const mbedtls_mpi *s) {
+int mbedtls_ecdsa_verify(
+    mbedtls_ecp_group* grp,
+    const unsigned char* buf,
+    size_t blen,
+    const mbedtls_ecp_point* q,
+    const mbedtls_mpi* r,
+    const mbedtls_mpi* s) {
     UNUSED(grp);
     UNUSED(buf);
     UNUSED(blen);
@@ -1772,68 +1866,68 @@ int mbedtls_ecdsa_verify(mbedtls_ecp_group *grp, const unsigned char *buf, size_
     return 0;
 }
 
-void mbedtls_md_init(mbedtls_md_context_t *ctx) {
+void mbedtls_md_init(mbedtls_md_context_t* ctx) {
     UNUSED(ctx);
 }
 
-void mbedtls_md_free(mbedtls_md_context_t *ctx) {
+void mbedtls_md_free(mbedtls_md_context_t* ctx) {
     UNUSED(ctx);
 }
 
-const mbedtls_md_info_t *mbedtls_md_info_from_type(int md_type) {
+const mbedtls_md_info_t* mbedtls_md_info_from_type(int md_type) {
     static const mbedtls_md_info_t info = {0};
     UNUSED(md_type);
     return &info;
 }
 
-int mbedtls_md_setup(mbedtls_md_context_t *ctx, const mbedtls_md_info_t *md_info, int hmac) {
+int mbedtls_md_setup(mbedtls_md_context_t* ctx, const mbedtls_md_info_t* md_info, int hmac) {
     UNUSED(ctx);
     UNUSED(md_info);
     UNUSED(hmac);
     return 0;
 }
 
-int mbedtls_md_hmac_starts(mbedtls_md_context_t *ctx, const unsigned char *key, size_t keylen) {
+int mbedtls_md_hmac_starts(mbedtls_md_context_t* ctx, const unsigned char* key, size_t keylen) {
     UNUSED(ctx);
     UNUSED(key);
     UNUSED(keylen);
     return 0;
 }
 
-int mbedtls_md_hmac_update(mbedtls_md_context_t *ctx, const unsigned char *input, size_t ilen) {
+int mbedtls_md_hmac_update(mbedtls_md_context_t* ctx, const unsigned char* input, size_t ilen) {
     UNUSED(ctx);
     UNUSED(input);
     UNUSED(ilen);
     return 0;
 }
 
-int mbedtls_md_hmac_finish(mbedtls_md_context_t *ctx, unsigned char *output) {
+int mbedtls_md_hmac_finish(mbedtls_md_context_t* ctx, unsigned char* output) {
     UNUSED(ctx);
     memset(output, 0, 32);
     return 0;
 }
 
-void mbedtls_sha256_init(mbedtls_sha256_context *ctx) {
+void mbedtls_sha256_init(mbedtls_sha256_context* ctx) {
     UNUSED(ctx);
 }
 
-void mbedtls_sha256_free(mbedtls_sha256_context *ctx) {
+void mbedtls_sha256_free(mbedtls_sha256_context* ctx) {
     UNUSED(ctx);
 }
 
-void mbedtls_sha256_starts(mbedtls_sha256_context *ctx, int is224) {
+void mbedtls_sha256_starts(mbedtls_sha256_context* ctx, int is224) {
     UNUSED(ctx);
     UNUSED(is224);
 }
 
-void mbedtls_sha256_update(mbedtls_sha256_context *ctx, const unsigned char *input, size_t ilen) {
+void mbedtls_sha256_update(mbedtls_sha256_context* ctx, const unsigned char* input, size_t ilen) {
     UNUSED(ctx);
     expect(g_sha256_trace_len + ilen <= sizeof(g_sha256_trace), "sha256 trace buffer should fit");
     memcpy(&g_sha256_trace[g_sha256_trace_len], input, ilen);
     g_sha256_trace_len += ilen;
 }
 
-void mbedtls_sha256_finish(mbedtls_sha256_context *ctx, unsigned char output[32]) {
+void mbedtls_sha256_finish(mbedtls_sha256_context* ctx, unsigned char output[32]) {
     UNUSED(ctx);
     memset(output, 0, 32);
 }
@@ -1858,22 +1952,23 @@ void mbedtls_sha256_finish(mbedtls_sha256_context *ctx, unsigned char output[32]
 #include "../../../src/transport/nfc_engine.c"
 #include "../../../src/transport/nfc_worker.c"
 
-static size_t test_nfc_requeue_during_ctap2(ZerofidoApp *app, uint8_t *response,
-                                            size_t response_capacity) {
+static size_t
+    test_nfc_requeue_during_ctap2(ZerofidoApp* app, uint8_t* response, size_t response_capacity) {
     static const uint8_t queued_request[] = {ZfCtapeCmdGetAssertion};
-    ZfNfcTransportState *state = &app->transport_nfc_state_storage;
-    uint8_t *queued_arena = NULL;
+    ZfNfcTransportState* state = &app->transport_nfc_state_storage;
+    uint8_t* queued_arena = NULL;
 
     g_ctap2_requeue_during_handle = false;
-    if (!response || response_capacity < 2U) {
+    if(!response || response_capacity < 2U) {
         return 0U;
     }
 
     furi_mutex_acquire(app->ui_mutex, FuriWaitForever);
     zf_transport_nfc_reset_exchange_locked(state);
-    expect(zf_transport_nfc_queue_request_locked(app, state, ZfNfcRequestKindCtap2, queued_request,
-                                                 sizeof(queued_request)),
-           "CTAP handler requeue should install a fresh NFC request");
+    expect(
+        zf_transport_nfc_queue_request_locked(
+            app, state, ZfNfcRequestKindCtap2, queued_request, sizeof(queued_request)),
+        "CTAP handler requeue should install a fresh NFC request");
     queued_arena = app->transport_arena;
     furi_mutex_release(app->ui_mutex);
 
@@ -1881,37 +1976,42 @@ static size_t test_nfc_requeue_during_ctap2(ZerofidoApp *app, uint8_t *response,
     response[1] = 0xA5;
 
     furi_mutex_acquire(app->ui_mutex, FuriWaitForever);
-    expect(app->transport_arena == queued_arena && app->transport_arena != NULL,
-           "requeued NFC request should keep its transport arena");
-    g_ctap2_requeued_arena_corrupted =
-        app->transport_arena[0] != queued_request[0] ||
-        app->transport_nfc_state_storage.request_len != sizeof(queued_request);
+    expect(
+        app->transport_arena == queued_arena && app->transport_arena != NULL,
+        "requeued NFC request should keep its transport arena");
+    g_ctap2_requeued_arena_corrupted = app->transport_arena[0] != queued_request[0] ||
+                                       app->transport_nfc_state_storage.request_len !=
+                                           sizeof(queued_request);
     furi_mutex_release(app->ui_mutex);
 
     return 2U;
 }
 
-static bool test_transport_auto_accept_enabled(const ZerofidoApp *app) {
+static bool test_transport_auto_accept_enabled(const ZerofidoApp* app) {
     return app && app->transport_auto_accept_transaction;
 }
 
-uint8_t zf_ctap_build_get_info_response(const ZfResolvedCapabilities *capabilities,
-                                        bool client_pin_set, uint8_t *out, size_t out_capacity,
-                                        size_t *out_len) {
+uint8_t zf_ctap_build_get_info_response(
+    const ZfResolvedCapabilities* capabilities,
+    bool client_pin_set,
+    uint8_t* out,
+    size_t out_capacity,
+    size_t* out_len) {
     UNUSED(client_pin_set);
     g_get_info_builder_called = true;
-    g_get_info_builder_saw_nfc_transport =
-        capabilities && capabilities->nfc_enabled && capabilities->advertise_nfc_transport;
-    g_get_info_builder_saw_usb_transport =
-        capabilities && capabilities->usb_hid_enabled && capabilities->advertise_usb_transport;
-    expect(out != NULL && out_capacity > 0 && out_len != NULL,
-           "test GetInfo builder should receive an output buffer");
+    g_get_info_builder_saw_nfc_transport = capabilities && capabilities->nfc_enabled &&
+                                           capabilities->advertise_nfc_transport;
+    g_get_info_builder_saw_usb_transport = capabilities && capabilities->usb_hid_enabled &&
+                                           capabilities->advertise_usb_transport;
+    expect(
+        out != NULL && out_capacity > 0 && out_len != NULL,
+        "test GetInfo builder should receive an output buffer");
     out[0] = 0xA0;
     *out_len = 1U;
     return ZF_CTAP_SUCCESS;
 }
 
-bool zerofido_pin_is_set(const ZfClientPinState *state) {
+bool zerofido_pin_is_set(const ZfClientPinState* state) {
     return state && state->pin_set;
 }
 
@@ -1920,12 +2020,12 @@ static size_t test_nfc_payload_len(void) {
     return g_last_nfc_tx_len - 3;
 }
 
-static const uint8_t *test_nfc_payload(void) {
+static const uint8_t* test_nfc_payload(void) {
     expect(g_last_nfc_tx_len >= 3, "nfc frame should include pcb and crc");
     return &g_last_nfc_tx[1];
 }
 
-static void test_nfc_init_app(ZerofidoApp *app, FuriMutex *mutex) {
+static void test_nfc_init_app(ZerofidoApp* app, FuriMutex* mutex) {
     memset(app, 0, sizeof(*app));
     app->ui_mutex = mutex;
     app->transport_adapter = &zf_transport_nfc_adapter;
@@ -1935,13 +2035,15 @@ static void test_nfc_init_app(ZerofidoApp *app, FuriMutex *mutex) {
     app->transport_nfc_state_storage.tx_buffer = bit_buffer_alloc(320U);
     app->transport_nfc_state_storage.iso14443_4a_data = iso14443_4a_alloc();
     expect(zf_app_transport_arena_acquire(app), "NFC test app should allocate transport arena");
-    zf_transport_nfc_attach_arena(&app->transport_nfc_state_storage, app->transport_arena,
-                                  zf_app_transport_arena_capacity(app));
+    zf_transport_nfc_attach_arena(
+        &app->transport_nfc_state_storage,
+        app->transport_arena,
+        zf_app_transport_arena_capacity(app));
     zf_transport_nfc_prepare_listener(&app->transport_nfc_state_storage);
     app->transport_nfc_state_storage.listener_active = true;
 }
 
-static void test_nfc_deinit_app(ZerofidoApp *app);
+static void test_nfc_deinit_app(ZerofidoApp* app);
 
 #include "subsystems/nfc/tests.inc"
 #include "subsystems/u2f/tests.inc"

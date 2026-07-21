@@ -20,7 +20,7 @@
 
 #define PROGRESS_BAR_MARGIN (3)
 #define PROGRESS_BAR_HEIGHT (4)
-#define DIV_CEIL(a, b) (((a) + (b) - 1) / (b))
+#define DIV_CEIL(a, b)      (((a) + (b) - 1) / (b))
 
 typedef struct {
     uint8_t progress_bar_x;

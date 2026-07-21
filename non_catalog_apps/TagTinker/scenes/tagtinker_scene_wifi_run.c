@@ -90,7 +90,8 @@ static void item_changed_int(VariableItem* item) {
         if(s_param_items[i] != item) continue;
         const TtWifiParam* sp = &p->params[i];
         int32_t v = sp->int_min + variable_item_get_current_value_index(item);
-        char buf[16]; snprintf(buf, sizeof(buf), "%ld", (long)v);
+        char buf[16];
+        snprintf(buf, sizeof(buf), "%ld", (long)v);
         variable_item_set_current_value_text(item, buf);
         strncpy(app->wifi_param_values[i], buf, sizeof(app->wifi_param_values[i]) - 1);
         break;
@@ -121,8 +122,7 @@ static void seed_param_value(TagTinkerApp* app, const TtWifiParam* sp, uint8_t i
      * scene's on_enter wipes the slots fresh per plugin to prevent the
      * shared array leaking values across plugin selections. */
     if(app->wifi_param_values[i][0] != 0) return;
-    strncpy(app->wifi_param_values[i], sp->default_value,
-            sizeof(app->wifi_param_values[i]) - 1);
+    strncpy(app->wifi_param_values[i], sp->default_value, sizeof(app->wifi_param_values[i]) - 1);
     app->wifi_param_values[i][sizeof(app->wifi_param_values[i]) - 1] = 0;
 }
 
@@ -140,13 +140,13 @@ static void build_param_list(TagTinkerApp* app) {
         VariableItem* it = NULL;
 
         if(sp->type == TT_PARAM_ENUM) {
-            it = variable_item_list_add(list, sp->label, sp->option_count,
-                                        item_changed_enum, app);
+            it = variable_item_list_add(list, sp->label, sp->option_count, item_changed_enum, app);
             /* Default-select the option matching the seeded value. */
             uint8_t sel = 0;
             for(uint8_t j = 0; j < sp->option_count; j++) {
                 if(strcmp(app->wifi_param_values[i], sp->options[j]) == 0) {
-                    sel = j; break;
+                    sel = j;
+                    break;
                 }
             }
             variable_item_set_current_value_index(it, sel);
@@ -159,19 +159,19 @@ static void build_param_list(TagTinkerApp* app) {
         } else if(sp->type == TT_PARAM_INT) {
             int32_t range = sp->int_max - sp->int_min + 1;
             if(range <= 0 || range > 100) range = 1;
-            it = variable_item_list_add(list, sp->label, (uint8_t)range,
-                                        item_changed_int, app);
+            it = variable_item_list_add(list, sp->label, (uint8_t)range, item_changed_int, app);
             int32_t cur = atoi(app->wifi_param_values[i]);
             if(cur < sp->int_min) cur = sp->int_min;
             uint8_t idx = (uint8_t)(cur - sp->int_min);
             variable_item_set_current_value_index(it, idx);
-            char buf[16]; snprintf(buf, sizeof(buf), "%ld", (long)cur);
+            char buf[16];
+            snprintf(buf, sizeof(buf), "%ld", (long)cur);
             variable_item_set_current_value_text(it, buf);
         } else {
             /* String: clickable, opens text_input. */
             it = variable_item_list_add(list, sp->label, 1, NULL, app);
-            variable_item_set_current_value_text(it,
-                app->wifi_param_values[i][0] ? app->wifi_param_values[i] : "(set)");
+            variable_item_set_current_value_text(
+                it, app->wifi_param_values[i][0] ? app->wifi_param_values[i] : "(set)");
         }
         s_param_items[i] = it;
     }
@@ -203,34 +203,35 @@ static void open_text_input_for_param(TagTinkerApp* app, uint8_t i) {
 /* The wifi_plugins scene installed its own callback; we hot-swap it on
  * scene enter and restore on exit. */
 static TtWifiEventCb s_prev_cb;
-static void*         s_prev_user;
+static void* s_prev_user;
 
 static void run_event_cb(const TtWifiEvent* e, void* user) {
     TagTinkerApp* app = user;
     switch(e->type) {
     case TtWifiEvtProgress:
         app->wifi_progress_pct = (uint8_t)e->u0;
-        strncpy(app->wifi_progress_msg, e->str0 ? e->str0 : "",
-                sizeof(app->wifi_progress_msg) - 1);
+        strncpy(
+            app->wifi_progress_msg, e->str0 ? e->str0 : "", sizeof(app->wifi_progress_msg) - 1);
         view_dispatcher_send_custom_event(app->view_dispatcher, EVT_PROGRESS);
         break;
     case TtWifiEvtResultBegin: {
         uint16_t w = (uint16_t)(e->u0 & 0xFFFFu);
         uint16_t h = (uint16_t)(e->u0 >> 16);
-        uint8_t  pl = (uint8_t)(e->u1 ? e->u1 : 1);
+        uint8_t pl = (uint8_t)(e->u1 ? e->u1 : 1);
         /* Pick a palette accent that matches the destination tag's colour
          * so the BMP file embeds the right BGR for previewers. The IR TX
          * path itself only cares about plane bits + the target profile. */
-        uint8_t ar = 0xE0, ag = 0x10, ab = 0x10;  /* default red */
+        uint8_t ar = 0xE0, ag = 0x10, ab = 0x10; /* default red */
         if(app->selected_target >= 0 && app->selected_target < app->target_count) {
             const TagTinkerTarget* t = &app->targets[app->selected_target];
             if(t->profile.color == TagTinkerTagColorYellow) {
-                ar = 0xF0; ag = 0xC0; ab = 0x10;
+                ar = 0xF0;
+                ag = 0xC0;
+                ab = 0x10;
             }
         }
         if(!tagtinker_wifi_bmp_open(&s_bmp_writer, w, h, pl, ar, ag, ab)) {
-            strncpy(app->wifi_last_error, "BMP open failed",
-                    sizeof(app->wifi_last_error) - 1);
+            strncpy(app->wifi_last_error, "BMP open failed", sizeof(app->wifi_last_error) - 1);
             view_dispatcher_send_custom_event(app->view_dispatcher, EVT_ERROR);
         }
         break;
@@ -240,21 +241,21 @@ static void run_event_cb(const TtWifiEvent* e, void* user) {
         break;
     case TtWifiEvtResultEnd:
         if(!tagtinker_wifi_bmp_close(&s_bmp_writer)) {
-            strncpy(app->wifi_last_error, "BMP write failed",
-                    sizeof(app->wifi_last_error) - 1);
+            strncpy(app->wifi_last_error, "BMP write failed", sizeof(app->wifi_last_error) - 1);
             view_dispatcher_send_custom_event(app->view_dispatcher, EVT_ERROR);
         } else {
             view_dispatcher_send_custom_event(app->view_dispatcher, EVT_RESULT_DONE);
         }
         break;
     case TtWifiEvtError:
-        strncpy(app->wifi_last_error, e->str0 ? e->str0 : "Unknown error",
-                sizeof(app->wifi_last_error) - 1);
+        strncpy(
+            app->wifi_last_error,
+            e->str0 ? e->str0 : "Unknown error",
+            sizeof(app->wifi_last_error) - 1);
         view_dispatcher_send_custom_event(app->view_dispatcher, EVT_ERROR);
         break;
     case TtWifiEvtLinkLost:
-        strncpy(app->wifi_last_error, "Dev board went silent",
-                sizeof(app->wifi_last_error) - 1);
+        strncpy(app->wifi_last_error, "Dev board went silent", sizeof(app->wifi_last_error) - 1);
         view_dispatcher_send_custom_event(app->view_dispatcher, EVT_ERROR);
         break;
     default:
@@ -269,8 +270,7 @@ static void show_progress_popup(TagTinkerApp* app) {
     popup_reset(app->popup);
     popup_set_header(app->popup, "WiFi Plugin", 64, 6, AlignCenter, AlignTop);
     char body[120];
-    snprintf(body, sizeof(body), "%u%%\n%s", app->wifi_progress_pct,
-             app->wifi_progress_msg);
+    snprintf(body, sizeof(body), "%u%%\n%s", app->wifi_progress_pct, app->wifi_progress_msg);
     popup_set_text(app->popup, body, 64, 32, AlignCenter, AlignCenter);
     view_dispatcher_switch_to_view(app->view_dispatcher, TagTinkerViewPopup);
 }
@@ -287,7 +287,7 @@ static void start_run(TagTinkerApp* app) {
     if(!p) return;
     /* Need a target to pick the canvas size. Default to selected_target;
      * else fallback to a reasonable sane size. */
-    uint16_t tw = app->esl_width  ? app->esl_width  : 296;
+    uint16_t tw = app->esl_width ? app->esl_width : 296;
     uint16_t th = app->esl_height ? app->esl_height : 128;
     /* Honour the tag's accent capability: red/yellow profiles get the
      * accent plane, mono profiles stay mono. The BMP writer + the IR TX
@@ -297,9 +297,8 @@ static void start_run(TagTinkerApp* app) {
     if(app->selected_target >= 0 && app->selected_target < app->target_count) {
         const TagTinkerTarget* t = &app->targets[app->selected_target];
         if(tagtinker_target_supports_accent(t)) {
-            accent = (t->profile.color == TagTinkerTagColorYellow)
-                         ? TT_ACCENT_YELLOW
-                         : TT_ACCENT_RED;
+            accent = (t->profile.color == TagTinkerTagColorYellow) ? TT_ACCENT_YELLOW :
+                                                                     TT_ACCENT_RED;
         }
     }
 
@@ -318,8 +317,7 @@ static void start_run(TagTinkerApp* app) {
 
     show_progress_popup(app);
 
-    tagtinker_wifi_run_plugin((TagTinkerWifi*)app->wifi,
-                              p->index, tw, th, accent, kv, n);
+    tagtinker_wifi_run_plugin((TagTinkerWifi*)app->wifi, p->index, tw, th, accent, kv, n);
 }
 
 /* ---- Scene entry / event ---------------------------------------------- */
@@ -336,8 +334,7 @@ void tagtinker_scene_wifi_run_on_enter(void* ctx) {
      * The previous callback (the plugins scene's) is restored on exit. */
     if(app->wifi) {
         tagtinker_wifi_set_callback(
-            (TagTinkerWifi*)app->wifi, run_event_cb, app,
-            &s_prev_cb, &s_prev_user);
+            (TagTinkerWifi*)app->wifi, run_event_cb, app, &s_prev_cb, &s_prev_user);
     }
 
     build_param_list(app);
@@ -356,8 +353,7 @@ bool tagtinker_scene_wifi_run_on_event(void* ctx, SceneManagerEvent event) {
     case EVT_TEXT_DONE: {
         if(s_string_param_being_edited >= 0) {
             uint8_t i = (uint8_t)s_string_param_being_edited;
-            strncpy(app->wifi_param_values[i], s_text_buf,
-                    sizeof(app->wifi_param_values[i]) - 1);
+            strncpy(app->wifi_param_values[i], s_text_buf, sizeof(app->wifi_param_values[i]) - 1);
             app->wifi_param_values[i][sizeof(app->wifi_param_values[i]) - 1] = 0;
         }
         s_string_param_being_edited = -1;
@@ -380,15 +376,16 @@ bool tagtinker_scene_wifi_run_on_event(void* ctx, SceneManagerEvent event) {
         app->wifi_run_in_flight = false;
         /* Hand the BMP to the existing TX path. */
         if(app->selected_target < 0 || app->selected_target >= app->target_count) {
-            strncpy(app->wifi_last_error,
-                    "No saved tags - scan one in Targeted Payloads first",
-                    sizeof(app->wifi_last_error) - 1);
+            strncpy(
+                app->wifi_last_error,
+                "No saved tags - scan one in Targeted Payloads first",
+                sizeof(app->wifi_last_error) - 1);
             show_error_popup(app);
             return true;
         }
         const TagTinkerTarget* t = &app->targets[app->selected_target];
-        tagtinker_prepare_bmp_tx(app, t->plid, TAGTINKER_WIFI_TMP_BMP,
-                                 app->esl_width, app->esl_height, app->img_page);
+        tagtinker_prepare_bmp_tx(
+            app, t->plid, TAGTINKER_WIFI_TMP_BMP, app->esl_width, app->esl_height, app->img_page);
         scene_manager_next_scene(app->scene_manager, TagTinkerSceneTransmit);
         return true;
     }
@@ -400,9 +397,9 @@ void tagtinker_scene_wifi_run_on_exit(void* ctx) {
     TagTinkerApp* app = ctx;
     /* Restore the plugins-scene callback. */
     if(app->wifi && s_prev_cb) {
-        tagtinker_wifi_set_callback(
-            (TagTinkerWifi*)app->wifi, s_prev_cb, s_prev_user, NULL, NULL);
-        s_prev_cb = NULL; s_prev_user = NULL;
+        tagtinker_wifi_set_callback((TagTinkerWifi*)app->wifi, s_prev_cb, s_prev_user, NULL, NULL);
+        s_prev_cb = NULL;
+        s_prev_user = NULL;
     }
     /* Release the ~10 KB pixel buffer if a transfer was abandoned mid-flight
      * (e.g. the user backs out of the popup before RESULT_END). Without this

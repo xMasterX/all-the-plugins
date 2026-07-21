@@ -30,8 +30,7 @@ void mfp_scene_delete_success_on_enter(void* ctx) {
 bool mfp_scene_delete_success_on_event(void* ctx, SceneManagerEvent event) {
     MfpApp* app = ctx;
     bool do_exit = false;
-    if(event.type == SceneManagerEventTypeCustom &&
-       event.event == DeleteSuccessEventTimeout) {
+    if(event.type == SceneManagerEventTypeCustom && event.event == DeleteSuccessEventTimeout) {
         do_exit = true;
     } else if(event.type == SceneManagerEventTypeBack) {
         do_exit = true;
@@ -41,10 +40,8 @@ bool mfp_scene_delete_success_on_event(void* ctx, SceneManagerEvent event) {
         /* Refresh the Saved list: that scene's on_enter re-scans the
          * directory, which will now omit the deleted file. Skip back
          * past the file-viewer scenes and land directly on Saved. */
-        if(!scene_manager_search_and_switch_to_previous_scene(
-               app->scene_manager, MfpSceneSaved)) {
-            scene_manager_search_and_switch_to_previous_scene(
-                app->scene_manager, MfpSceneStart);
+        if(!scene_manager_search_and_switch_to_previous_scene(app->scene_manager, MfpSceneSaved)) {
+            scene_manager_search_and_switch_to_previous_scene(app->scene_manager, MfpSceneStart);
         }
         return true;
     }

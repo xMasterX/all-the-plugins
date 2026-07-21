@@ -78,38 +78,38 @@ static const uint8_t FONT_NUM_9[] = {0x0E, 0x11, 0x11, 0x0F, 0x01, 0x02, 0x0C, 0
 
 // Массив указателей на битмапы русских букв в порядке UTF-8 кодов
 static const uint8_t* const FONT_RUS[] = {
-    FONT_RUS_A,   // А (0x90)
-    FONT_RUS_B,   // Б (0x91)
-    FONT_RUS_V,   // В (0x92)
-    FONT_RUS_G,   // Г (0x93)
-    FONT_RUS_D,   // Д (0x94)
-    FONT_RUS_E,   // Е (0x95)
-    FONT_RUS_ZH,  // Ж (0x96)
-    FONT_RUS_Z,   // З (0x97)
-    FONT_RUS_I,   // И (0x98)
-    FONT_RUS_IY,  // Й (0x99)
-    FONT_RUS_K,   // К (0x9A)
-    FONT_RUS_L,   // Л (0x9B)
-    FONT_RUS_M,   // М (0x9C)
-    FONT_RUS_N,   // Н (0x9D)
-    FONT_RUS_O,   // О (0x9E)
-    FONT_RUS_P,   // П (0x9F)
-    FONT_RUS_R,   // Р (0xA0)
-    FONT_RUS_S,   // С (0xA1)
-    FONT_RUS_T,   // Т (0xA2)
-    FONT_RUS_U,   // У (0xA3)
-    FONT_RUS_F,   // Ф (0xA4)
-    FONT_RUS_H,   // Х (0xA5)
-    FONT_RUS_TS,  // Ц (0xA6)
-    FONT_RUS_CH,  // Ч (0xA7)
-    FONT_RUS_SH,  // Ш (0xA8)
+    FONT_RUS_A, // А (0x90)
+    FONT_RUS_B, // Б (0x91)
+    FONT_RUS_V, // В (0x92)
+    FONT_RUS_G, // Г (0x93)
+    FONT_RUS_D, // Д (0x94)
+    FONT_RUS_E, // Е (0x95)
+    FONT_RUS_ZH, // Ж (0x96)
+    FONT_RUS_Z, // З (0x97)
+    FONT_RUS_I, // И (0x98)
+    FONT_RUS_IY, // Й (0x99)
+    FONT_RUS_K, // К (0x9A)
+    FONT_RUS_L, // Л (0x9B)
+    FONT_RUS_M, // М (0x9C)
+    FONT_RUS_N, // Н (0x9D)
+    FONT_RUS_O, // О (0x9E)
+    FONT_RUS_P, // П (0x9F)
+    FONT_RUS_R, // Р (0xA0)
+    FONT_RUS_S, // С (0xA1)
+    FONT_RUS_T, // Т (0xA2)
+    FONT_RUS_U, // У (0xA3)
+    FONT_RUS_F, // Ф (0xA4)
+    FONT_RUS_H, // Х (0xA5)
+    FONT_RUS_TS, // Ц (0xA6)
+    FONT_RUS_CH, // Ч (0xA7)
+    FONT_RUS_SH, // Ш (0xA8)
     FONT_RUS_SCH, // Щ (0xA9)
     FONT_RUS_TVZ, // Ъ (0xAA)
-    FONT_RUS_Y,   // Ы (0xAB)
-    FONT_RUS_MZ,  // Ь (0xAC)
-    FONT_RUS_EE,  // Э (0xAD)
-    FONT_RUS_YU,  // Ю (0xAE)
-    FONT_RUS_YA   // Я (0xAF)
+    FONT_RUS_Y, // Ы (0xAB)
+    FONT_RUS_MZ, // Ь (0xAC)
+    FONT_RUS_EE, // Э (0xAD)
+    FONT_RUS_YU, // Ю (0xAE)
+    FONT_RUS_YA // Я (0xAF)
 };
 
 // Битмапы маленьких английских букв (7x8 пикселей)
@@ -120,7 +120,19 @@ static const uint8_t FONT_ENG_SMALL_N[] = {0x00, 0x00, 0x16, 0x19, 0x11, 0x11, 0
 
 // Функции для работы с текстом
 uint8_t measure_text_width(const char* str);
-void draw_russian_text(Canvas* canvas, uint8_t x, uint8_t y, Align horizontal, Align vertical, const char* str);
-void draw_small_text(Canvas* canvas, uint8_t x, uint8_t y, Align horizontal, Align vertical, const char* str);
+void draw_russian_text(
+    Canvas* canvas,
+    uint8_t x,
+    uint8_t y,
+    Align horizontal,
+    Align vertical,
+    const char* str);
+void draw_small_text(
+    Canvas* canvas,
+    uint8_t x,
+    uint8_t y,
+    Align horizontal,
+    Align vertical,
+    const char* str);
 const uint8_t* get_number_bitmap(char c);
-const uint8_t* get_small_english_char_bitmap(char c); 
+const uint8_t* get_small_english_char_bitmap(char c);

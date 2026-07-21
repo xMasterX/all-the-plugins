@@ -24,10 +24,8 @@ void uhf_reader_epc_value_text_updated(void* context) {
 
         //Keep track of the new epc value
         UHFReaderWriteModel * Model,
-        { 
-            
-            furi_string_set_str(Model->NewEpcValue, App->TempSaveBuffer);},
-            
+        { furi_string_set_str(Model->NewEpcValue, App->TempSaveBuffer); },
+
         redraw);
 
     view_dispatcher_switch_to_view(App->ViewDispatcher, UHFReaderViewWrite);
@@ -52,7 +50,7 @@ void uhf_reader_view_write_enter_callback(void* context) {
     //Grab the period for the timer
     uint32_t Period = furi_ms_to_ticks(200);
     UHFReaderApp* App = (UHFReaderApp*)context;
-    
+
     //Allocate space for the FuriStrings used
     FuriString* TempStr = furi_string_alloc();
     FuriString* TempTag = furi_string_alloc();
@@ -70,7 +68,7 @@ void uhf_reader_view_write_enter_callback(void* context) {
             const char* InputString = furi_string_get_cstr(TempTag);
             furi_string_set(App->EpcToWrite, extract_epc(InputString));
             furi_string_set(App->EpcName, extract_name(InputString));
-            
+
             //Set the write model uhf tag values accordingly
             bool redraw = true;
             with_view_model(
@@ -128,13 +126,13 @@ void uhf_write_tag_worker_callback(UHFWorkerEvent event, void* context) {
         dolphin_deed(DolphinDeedNfcReadSuccess);
         notification_message(App->Notifications, &uhf_sequence_blink_stop);
         notification_message(App->Notifications, &sequence_success);
-        
+
         //Reset booleans tracking if the kill or access password were set for writing.
         App->YRM100XWorker->KillPwd = false;
-        App->YRM100XWorker->AccessPwd = false; 
+        App->YRM100XWorker->AccessPwd = false;
 
         //If the save on write option is toggled, then update the fields for the saved tag
-        if(App->UHFSaveType == YES_SAVE_ON_WRITE){
+        if(App->UHFSaveType == YES_SAVE_ON_WRITE) {
             if(!flipper_format_file_open_existing(App->EpcFile, APP_DATA_PATH("Saved_EPCs.txt"))) {
                 FURI_LOG_E(TAG, "Failed to open file");
             }
@@ -151,40 +149,36 @@ void uhf_write_tag_worker_callback(UHFWorkerEvent event, void* context) {
                 App->ViewWrite,
                 UHFReaderWriteModel * Model,
                 {
-                    if(furi_string_equal(Model->WriteFunction,WRITE_EPC_VAL)){
+                    if(furi_string_equal(Model->WriteFunction, WRITE_EPC_VAL)) {
                         furi_string_set(TempTid, Model->TidValue);
                         furi_string_set(TempRes, Model->ResValue);
                         furi_string_set(TempMem, Model->MemValue);
                         furi_string_set(TempEpc, Model->NewEpcValue);
-                        
-                    }
-                    else if(furi_string_equal(Model->WriteFunction,WRITE_USR_MEM)){
+
+                    } else if(furi_string_equal(Model->WriteFunction, WRITE_USR_MEM)) {
                         furi_string_set(TempTid, Model->TidValue);
                         furi_string_set(TempRes, Model->ResValue);
                         furi_string_set(TempMem, Model->NewEpcValue);
                         furi_string_set(TempEpc, Model->EpcValue);
-                        
-                    }
-                    else if(furi_string_equal(Model->WriteFunction,WRITE_TID_MEM)){
+
+                    } else if(furi_string_equal(Model->WriteFunction, WRITE_TID_MEM)) {
                         furi_string_set(TempTid, Model->NewEpcValue);
                         furi_string_set(TempRes, Model->ResValue);
                         furi_string_set(TempMem, Model->MemValue);
                         furi_string_set(TempEpc, Model->EpcValue);
-                        
-                    }
-                    else if(furi_string_equal(Model->WriteFunction,WRITE_RES_MEM)){
+
+                    } else if(furi_string_equal(Model->WriteFunction, WRITE_RES_MEM)) {
                         furi_string_set(TempTid, Model->TidValue);
                         furi_string_set(TempRes, Model->NewEpcValue);
                         furi_string_set(TempMem, Model->MemValue);
                         furi_string_set(TempEpc, Model->EpcValue);
-                        
                     }
                     furi_string_set(TempPc, Model->Pc);
                     furi_string_set(TempCrc, Model->Crc);
                 },
                 Redraw);
 
-            //Get the selected tag index and save all tag fields 
+            //Get the selected tag index and save all tag fields
             furi_string_printf(NumEpcs, "Tag%ld", App->SelectedTagIndex);
             furi_string_printf(
                 EpcAndName,
@@ -212,14 +206,13 @@ void uhf_write_tag_worker_callback(UHFWorkerEvent event, void* context) {
             furi_string_free(TempRes);
             furi_string_free(TempMem);
             dolphin_deed(DolphinDeedRfidAdd);
-           
         }
         view_dispatcher_send_custom_event(App->ViewDispatcher, UHFCustomEventWorkerExit);
     } else if(event == UHFWorkerEventAborted) {
         notification_message(App->Notifications, &uhf_sequence_blink_stop);
         notification_message(App->Notifications, &sequence_error);
         App->YRM100XWorker->KillPwd = false;
-        App->YRM100XWorker->AccessPwd = false; 
+        App->YRM100XWorker->AccessPwd = false;
         view_dispatcher_send_custom_event(App->ViewDispatcher, UHFCustomEventWorkerExitAborted);
     }
 }
@@ -245,7 +238,7 @@ bool uhf_reader_view_write_custom_event_callback(uint32_t event, void* context) 
     case UHFCustomEventWorkerExit: {
         bool Redraw = true;
         App->IsWriting = false;
-        
+
         with_view_model(
             App->ViewWrite,
             UHFReaderWriteModel * Model,
@@ -254,38 +247,35 @@ bool uhf_reader_view_write_custom_event_callback(uint32_t event, void* context) 
                 Model->IsWriting = false;
             },
             Redraw);
-       
+
         return true;
     }
     //Indicate a failure :(
     case UHFCustomEventWorkerExitAborted: {
         bool Redraw = true;
         App->IsWriting = false;
-        
+
         with_view_model(
             App->ViewWrite,
             UHFReaderWriteModel * Model,
             {
                 furi_string_set(Model->WriteFunction, WRITE_EPC_CANCELED);
-                 Model->IsWriting = false;
+                Model->IsWriting = false;
             },
             Redraw);
-       
+
         return true;
     }
     //The ok button was pressed to trigger a write
     case UHFReaderEventIdOkPressed: {
-        
-        
         bool redraw = true;
         dolphin_deed(DolphinDeedNfcRead);
 
-
         //If the user presses the ok button while the app is writing (to cancel the operation if the tag is inactive) then the worker is stopped
-        if(App->IsWriting){
+        if(App->IsWriting) {
             uhf_worker_stop(App->YRM100XWorker);
             App->IsWriting = false;
-             
+
             return true;
         }
 
@@ -330,12 +320,14 @@ bool uhf_reader_view_write_custom_event_callback(uint32_t event, void* context) 
                     App->UserBytesLen = 0;
                     App->PcBytesLen = 0;
                     App->CrcBytesLen = 0;
-                    
+
                     uhf_tag_reset(App->YRM100XWorker->NewTag);
 
-                    hex_string_to_uint16(furi_string_get_cstr(Model->Pc), App->PcBytes, &App->PcBytesLen);
-                    hex_string_to_uint16(furi_string_get_cstr(Model->Crc), App->CrcBytes, &App->CrcBytesLen);
-                    
+                    hex_string_to_uint16(
+                        furi_string_get_cstr(Model->Pc), App->PcBytes, &App->PcBytesLen);
+                    hex_string_to_uint16(
+                        furi_string_get_cstr(Model->Crc), App->CrcBytes, &App->CrcBytesLen);
+
                     uint16_t combinedPc = 0;
                     uint16_t combinedCrc = 0;
 
@@ -349,76 +341,101 @@ bool uhf_reader_view_write_custom_event_callback(uint32_t event, void* context) 
 
                     if(furi_string_equal(Model->WriteFunction, WRITE_EPC_VAL) &&
                        Model->NewEpcValue != NULL) {
-                        hex_string_to_bytes(
-                            App->TempSaveBuffer, App->EpcBytes, &App->EpcBytesLen);
-                        
+                        hex_string_to_bytes(App->TempSaveBuffer, App->EpcBytes, &App->EpcBytesLen);
+
                         uhf_tag_set_epc(
-                            App->YRM100XWorker->NewTag, (uint8_t*)App->EpcBytes, App->EpcBytesLen * sizeof(uint8_t));
+                            App->YRM100XWorker->NewTag,
+                            (uint8_t*)App->EpcBytes,
+                            App->EpcBytesLen * sizeof(uint8_t));
 
                         m100_enable_write_mask(App->YRM100XWorker->module, WRITE_EPC);
                     } else {
                         hex_string_to_bytes(
-                            furi_string_get_cstr(Model->EpcValue), App->EpcBytes, &App->EpcBytesLen);
+                            furi_string_get_cstr(Model->EpcValue),
+                            App->EpcBytes,
+                            &App->EpcBytesLen);
                         uhf_tag_set_epc(
-                            App->YRM100XWorker->NewTag, (uint8_t*)App->EpcBytes, App->EpcBytesLen * sizeof(uint8_t));
+                            App->YRM100XWorker->NewTag,
+                            (uint8_t*)App->EpcBytes,
+                            App->EpcBytesLen * sizeof(uint8_t));
                     }
 
                     if(furi_string_equal(Model->WriteFunction, WRITE_USR_MEM) &&
                        Model->NewEpcValue != NULL) {
                         hex_string_to_bytes(
-                            furi_string_get_cstr(Model->NewEpcValue), App->UserBytes, &App->UserBytesLen);
+                            furi_string_get_cstr(Model->NewEpcValue),
+                            App->UserBytes,
+                            &App->UserBytesLen);
                         uhf_tag_set_user(
-                            App->YRM100XWorker->NewTag, (uint8_t*)App->UserBytes, App->UserBytesLen * sizeof(uint8_t));
+                            App->YRM100XWorker->NewTag,
+                            (uint8_t*)App->UserBytes,
+                            App->UserBytesLen * sizeof(uint8_t));
                         m100_enable_write_mask(App->YRM100XWorker->module, WRITE_USER);
-                        
+
                     } else {
                         hex_string_to_bytes(
-                            furi_string_get_cstr(Model->MemValue), App->UserBytes, &App->UserBytesLen);
+                            furi_string_get_cstr(Model->MemValue),
+                            App->UserBytes,
+                            &App->UserBytesLen);
                         uhf_tag_set_user(
-                            App->YRM100XWorker->NewTag, (uint8_t*)App->UserBytes, App->UserBytesLen * sizeof(uint8_t));
+                            App->YRM100XWorker->NewTag,
+                            (uint8_t*)App->UserBytes,
+                            App->UserBytesLen * sizeof(uint8_t));
                     }
                     if(furi_string_equal(Model->WriteFunction, WRITE_TID_MEM) &&
                        Model->NewEpcValue != NULL) {
                         hex_string_to_bytes(
-                            furi_string_get_cstr(Model->NewEpcValue), App->TidBytes, &App->TidBytesLen);
+                            furi_string_get_cstr(Model->NewEpcValue),
+                            App->TidBytes,
+                            &App->TidBytesLen);
                         uhf_tag_set_tid(
-                            App->YRM100XWorker->NewTag, (uint8_t*)App->TidBytes, App->TidBytesLen * sizeof(uint8_t));
+                            App->YRM100XWorker->NewTag,
+                            (uint8_t*)App->TidBytes,
+                            App->TidBytesLen * sizeof(uint8_t));
                         m100_enable_write_mask(App->YRM100XWorker->module, WRITE_TID);
                     } else {
                         hex_string_to_bytes(
-                            furi_string_get_cstr(Model->TidValue), App->TidBytes, &App->TidBytesLen);
+                            furi_string_get_cstr(Model->TidValue),
+                            App->TidBytes,
+                            &App->TidBytesLen);
                         uhf_tag_set_tid(
-                            App->YRM100XWorker->NewTag, (uint8_t*)App->TidBytes,App->TidBytesLen * sizeof(uint8_t));
+                            App->YRM100XWorker->NewTag,
+                            (uint8_t*)App->TidBytes,
+                            App->TidBytesLen * sizeof(uint8_t));
                     }
                     if(furi_string_equal(Model->WriteFunction, WRITE_RES_MEM) &&
                        Model->NewEpcValue != NULL) {
                         hex_string_to_bytes(
-                            furi_string_get_cstr(Model->NewEpcValue), App->ResBytes, &App->ResBytesLen);
-                        uhf_tag_set_kill_pwd(App->YRM100XWorker->NewTag, App->ResBytes, App->ResBytesLen);
-                        uhf_tag_set_access_pwd(App->YRM100XWorker->NewTag, App->ResBytes, App->ResBytesLen);
-                        
+                            furi_string_get_cstr(Model->NewEpcValue),
+                            App->ResBytes,
+                            &App->ResBytesLen);
+                        uhf_tag_set_kill_pwd(
+                            App->YRM100XWorker->NewTag, App->ResBytes, App->ResBytesLen);
+                        uhf_tag_set_access_pwd(
+                            App->YRM100XWorker->NewTag, App->ResBytes, App->ResBytesLen);
+
                         m100_enable_write_mask(App->YRM100XWorker->module, WRITE_RFU);
                     } else {
                         hex_string_to_bytes(
-                            furi_string_get_cstr(Model->ResValue), App->ResBytes, &App->ResBytesLen);
-
-                        
+                            furi_string_get_cstr(Model->ResValue),
+                            App->ResBytes,
+                            &App->ResBytesLen);
                     }
-                    
 
                     uhf_tag_set_epc_pc(App->YRM100XWorker->NewTag, combinedPc);
                     uhf_tag_set_epc_crc(App->YRM100XWorker->NewTag, combinedCrc);
-                    uhf_tag_set_epc_size(App->YRM100XWorker->NewTag, App->EpcBytesLen * sizeof(uint8_t));
-                    uhf_tag_set_user_size(App->YRM100XWorker->NewTag, App->UserBytesLen * sizeof(uint8_t));
-                    uhf_tag_set_tid_size(App->YRM100XWorker->NewTag, App->TidBytesLen * sizeof(uint8_t));
+                    uhf_tag_set_epc_size(
+                        App->YRM100XWorker->NewTag, App->EpcBytesLen * sizeof(uint8_t));
+                    uhf_tag_set_user_size(
+                        App->YRM100XWorker->NewTag, App->UserBytesLen * sizeof(uint8_t));
+                    uhf_tag_set_tid_size(
+                        App->YRM100XWorker->NewTag, App->TidBytesLen * sizeof(uint8_t));
 
                     App->YRM100XWorker->KillPwd = true;
-                    App->YRM100XWorker->AccessPwd = true; 
-                    
+                    App->YRM100XWorker->AccessPwd = true;
+
                     App->IsWriting = true;
 
-
-                    
                     uhf_worker_start(
                         App->YRM100XWorker,
                         UHFWorkerStateWriteSingle,
@@ -512,7 +529,6 @@ bool uhf_reader_view_write_input_callback(InputEvent* event, void* context) {
                 redraw);
 
             // Configure the text input
-            
 
             bool clear_previous_text = false;
             text_input_set_result_callback(
@@ -629,7 +645,7 @@ bool uhf_reader_view_write_input_callback(InputEvent* event, void* context) {
     } else if(event->type == InputTypePress) {
         if(event->key == InputKeyOk) {
             //Handle the OK button event
-            
+
             view_dispatcher_send_custom_event(App->ViewDispatcher, UHFReaderEventIdOkPressed);
             return true;
         }
@@ -676,7 +692,7 @@ void view_write_alloc(UHFReaderApp* App) {
     App->PcBytesLen = 0;
     App->CrcBytesLen = 0;
     App->EpcBytes = (uint8_t*)malloc(12 * sizeof(uint8_t));
-    App->ResBytes = (uint8_t*)malloc(8 * sizeof(uint8_t)); 
+    App->ResBytes = (uint8_t*)malloc(8 * sizeof(uint8_t));
     App->TidBytes = (uint8_t*)malloc(16 * sizeof(uint8_t));
     App->UserBytes = (uint8_t*)malloc(16 * sizeof(uint8_t));
     App->PcBytes = (uint16_t*)malloc(2 * sizeof(uint16_t));

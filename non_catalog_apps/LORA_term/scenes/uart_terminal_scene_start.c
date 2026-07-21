@@ -4,12 +4,20 @@
 // For each command, define whether additional arguments are needed
 // (enabling text input to fill them out), and whether the console
 // text box should focus at the start of the output or the end
-typedef enum { NO_ARGS = 0, INPUT_ARGS, TOGGLE_ARGS } InputArgs;
+typedef enum {
+    NO_ARGS = 0,
+    INPUT_ARGS,
+    TOGGLE_ARGS
+} InputArgs;
 
-typedef enum { FOCUS_CONSOLE_END = 0, FOCUS_CONSOLE_START, FOCUS_CONSOLE_TOGGLE } FocusConsole;
+typedef enum {
+    FOCUS_CONSOLE_END = 0,
+    FOCUS_CONSOLE_START,
+    FOCUS_CONSOLE_TOGGLE
+} FocusConsole;
 
 #define SHOW_STOPSCAN_TIP (true)
-#define NO_TIP (false)
+#define NO_TIP            (false)
 
 #define MAX_OPTIONS (9)
 typedef struct {

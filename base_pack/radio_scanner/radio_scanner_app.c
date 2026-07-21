@@ -31,7 +31,8 @@ static void radio_scanner_draw_callback(Canvas* canvas, void* context) {
 
     canvas_set_font(canvas, FontSecondary);
     char freq_str[RADIO_SCANNER_BUFFER_SZ + 1] = {0};
-    snprintf(freq_str, RADIO_SCANNER_BUFFER_SZ, "Freq: %.2f MHz", (double)app->frequency / 1000000);
+    snprintf(
+        freq_str, RADIO_SCANNER_BUFFER_SZ, "Freq: %.2f MHz", (double)app->frequency / 1000000);
     canvas_draw_str_aligned(canvas, 64, 18, AlignCenter, AlignTop, freq_str);
 
     char rssi_str[RADIO_SCANNER_BUFFER_SZ + 1] = {0};

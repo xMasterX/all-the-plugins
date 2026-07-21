@@ -34,18 +34,22 @@ typedef enum {
 typedef struct {
     NfcEventType type;
     struct {
-        BitBuffer *buffer;
+        BitBuffer* buffer;
     } data;
 } NfcEvent;
 
-typedef NfcCommand (*NfcEventCallback)(NfcEvent event, void *context);
+typedef NfcCommand (*NfcEventCallback)(NfcEvent event, void* context);
 
-Nfc *nfc_alloc(void);
-void nfc_free(Nfc *nfc);
-void nfc_start(Nfc *nfc, NfcEventCallback callback, void *context);
-void nfc_stop(Nfc *nfc);
-void nfc_set_fdt_listen_fc(Nfc *nfc, uint32_t fdt_listen_fc);
-void nfc_config(Nfc *nfc, NfcMode mode, NfcTech tech);
-NfcError nfc_listener_tx(Nfc *nfc, const BitBuffer *buffer);
-void nfc_iso14443a_listener_set_col_res_data(Nfc *nfc, const uint8_t *uid, uint8_t uid_len,
-                                             const uint8_t *atqa, uint8_t sak);
+Nfc* nfc_alloc(void);
+void nfc_free(Nfc* nfc);
+void nfc_start(Nfc* nfc, NfcEventCallback callback, void* context);
+void nfc_stop(Nfc* nfc);
+void nfc_set_fdt_listen_fc(Nfc* nfc, uint32_t fdt_listen_fc);
+void nfc_config(Nfc* nfc, NfcMode mode, NfcTech tech);
+NfcError nfc_listener_tx(Nfc* nfc, const BitBuffer* buffer);
+void nfc_iso14443a_listener_set_col_res_data(
+    Nfc* nfc,
+    const uint8_t* uid,
+    uint8_t uid_len,
+    const uint8_t* atqa,
+    uint8_t sak);

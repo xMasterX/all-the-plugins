@@ -60,19 +60,19 @@ FlipperWedge* flipper_wedge_app_alloc() {
     app->submenu = submenu_alloc();
 
     // Set defaults
-    app->output_mode = FlipperWedgeOutputUsb;  // Default: USB HID
-    app->usb_debug_mode = false;  // Deprecated: kept for backward compatibility
+    app->output_mode = FlipperWedgeOutputUsb; // Default: USB HID
+    app->usb_debug_mode = false; // Deprecated: kept for backward compatibility
 
     // Scanning defaults
-    app->mode = FlipperWedgeModeNfc;  // Default: NFC only
-    app->mode_startup_behavior = FlipperWedgeModeStartupRemember;  // Default: Remember last mode
+    app->mode = FlipperWedgeModeNfc; // Default: NFC only
+    app->mode_startup_behavior = FlipperWedgeModeStartupRemember; // Default: Remember last mode
     app->scan_state = FlipperWedgeScanStateIdle;
-    app->delimiter[0] = '\0';  // Empty delimiter by default
+    app->delimiter[0] = '\0'; // Empty delimiter by default
     app->append_enter = true;
-    app->vibration_level = FlipperWedgeVibrationMedium;  // Default: Medium vibration
-    app->ndef_max_len = FlipperWedgeNdefMaxLen250;  // Default: 250 char limit (fast typing)
-    app->log_to_sd = false;  // Default: Logging disabled for privacy/performance
-    app->restart_pending = false;  // Deprecated field, no longer used
+    app->vibration_level = FlipperWedgeVibrationMedium; // Default: Medium vibration
+    app->ndef_max_len = FlipperWedgeNdefMaxLen250; // Default: 250 char limit (fast typing)
+    app->log_to_sd = false; // Default: Logging disabled for privacy/performance
+    app->restart_pending = false; // Deprecated field, no longer used
     app->output_switch_pending = false;
     app->output_switch_target = FlipperWedgeOutputUsb;
 
@@ -97,10 +97,13 @@ FlipperWedge* flipper_wedge_app_alloc() {
     app->hid_worker = flipper_wedge_hid_worker_alloc();
 
     // Start HID worker with loaded output mode (like Bad USB pattern)
-    flipper_wedge_debug_log("App", "Starting HID worker in %s mode",
-                        app->output_mode == FlipperWedgeOutputUsb ? "USB" : "BLE");
+    flipper_wedge_debug_log(
+        "App",
+        "Starting HID worker in %s mode",
+        app->output_mode == FlipperWedgeOutputUsb ? "USB" : "BLE");
     FlipperWedgeHidWorkerMode worker_mode = (app->output_mode == FlipperWedgeOutputUsb) ?
-        FlipperWedgeHidWorkerModeUsb : FlipperWedgeHidWorkerModeBle;
+                                                FlipperWedgeHidWorkerModeUsb :
+                                                FlipperWedgeHidWorkerModeBle;
     flipper_wedge_hid_worker_start(app->hid_worker, worker_mode);
 
     // Allocate NFC module
@@ -129,9 +132,7 @@ FlipperWedge* flipper_wedge_app_alloc() {
 
     app->text_input = text_input_alloc();
     view_dispatcher_add_view(
-        app->view_dispatcher,
-        FlipperWedgeViewIdTextInput,
-        text_input_get_view(app->text_input));
+        app->view_dispatcher, FlipperWedgeViewIdTextInput, text_input_get_view(app->text_input));
 
     app->number_input = number_input_alloc();
     view_dispatcher_add_view(
@@ -150,8 +151,8 @@ void flipper_wedge_switch_output_mode(FlipperWedge* app, FlipperWedgeOutput new_
     // Note: app->output_mode may already equal new_mode (set by settings callback)
     // but we still need to restart the HID worker with the new profile
     FURI_LOG_I(TAG, "Switching output mode to: %d", new_mode);
-    flipper_wedge_debug_log(TAG, "=== OUTPUT MODE SWITCH: %d -> %d ===",
-                        app->output_mode, new_mode);
+    flipper_wedge_debug_log(
+        TAG, "=== OUTPUT MODE SWITCH: %d -> %d ===", app->output_mode, new_mode);
 
     // STEP 1: Stop all workers (NFC/RFID)
     flipper_wedge_debug_log(TAG, "Step 1: Stopping NFC/RFID workers");
@@ -169,8 +170,10 @@ void flipper_wedge_switch_output_mode(FlipperWedge* app, FlipperWedgeOutput new_
     }
 
     // STEP 2: Stop HID worker (deinits HID in worker thread, waits for exit)
-    flipper_wedge_debug_log(TAG, "Step 2: Stopping HID worker (old mode=%s)",
-                        app->output_mode == FlipperWedgeOutputUsb ? "USB" : "BLE");
+    flipper_wedge_debug_log(
+        TAG,
+        "Step 2: Stopping HID worker (old mode=%s)",
+        app->output_mode == FlipperWedgeOutputUsb ? "USB" : "BLE");
     flipper_wedge_hid_worker_stop(app->hid_worker);
     flipper_wedge_debug_log(TAG, "HID worker stopped");
 
@@ -183,16 +186,22 @@ void flipper_wedge_switch_output_mode(FlipperWedge* app, FlipperWedgeOutput new_
     app->output_mode = new_mode;
 
     // STEP 5: Start HID worker with new mode (inits HID in worker thread)
-    flipper_wedge_debug_log(TAG, "Step 5: Starting HID worker (new mode=%s)",
-                        new_mode == FlipperWedgeOutputUsb ? "USB" : "BLE");
+    flipper_wedge_debug_log(
+        TAG,
+        "Step 5: Starting HID worker (new mode=%s)",
+        new_mode == FlipperWedgeOutputUsb ? "USB" : "BLE");
     FlipperWedgeHidWorkerMode worker_mode = (new_mode == FlipperWedgeOutputUsb) ?
-        FlipperWedgeHidWorkerModeUsb : FlipperWedgeHidWorkerModeBle;
+                                                FlipperWedgeHidWorkerModeUsb :
+                                                FlipperWedgeHidWorkerModeBle;
     flipper_wedge_hid_worker_start(app->hid_worker, worker_mode);
     flipper_wedge_debug_log(TAG, "HID worker started");
 
     // STEP 6: Restart NFC/RFID workers if they were running
-    flipper_wedge_debug_log(TAG, "Step 6: Restarting NFC/RFID workers (NFC=%d, RFID=%d)",
-                        nfc_was_scanning, rfid_was_scanning);
+    flipper_wedge_debug_log(
+        TAG,
+        "Step 6: Restarting NFC/RFID workers (NFC=%d, RFID=%d)",
+        nfc_was_scanning,
+        rfid_was_scanning);
     if(nfc_was_scanning) {
         flipper_wedge_nfc_start(app->nfc, parse_ndef);
         flipper_wedge_debug_log(TAG, "NFC restarted");

@@ -2,4 +2,4 @@
 
 #include "app_state.h"
 
-void ui_setup_views(SubDupFinderApp *app);
+void ui_setup_views(SubDupFinderApp* app);

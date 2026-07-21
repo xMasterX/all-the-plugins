@@ -15,7 +15,7 @@
 #include "helpers/vk_thermo_storage.h"
 #include "vk_thermo_icons.h"
 
-#define TAG "VkThermo"
+#define TAG               "VkThermo"
 #define VK_THERMO_VERSION "1.0"
 
 // Forward declarations
@@ -33,8 +33,8 @@ typedef struct {
     VkThermoScanView* scan_view;
     VkThermoLogView* log_view;
     VkThermoGraphView* graph_view;
-    VariableItemList* variable_item_list;  // For settings
-    DialogEx* dialog;  // For confirmation dialogs
+    VariableItemList* variable_item_list; // For settings
+    DialogEx* dialog; // For confirmation dialogs
 
     // NFC
     VkThermoNfc* nfc;
@@ -46,9 +46,9 @@ typedef struct {
     uint32_t haptic;
     uint32_t speaker;
     uint32_t led;
-    uint32_t temp_unit;  // 0 = Celsius, 1 = Fahrenheit
-    uint32_t eh_timeout;  // EH stabilization timeout index
-    uint32_t debug;  // Debug diagnostics on/off
+    uint32_t temp_unit; // 0 = Celsius, 1 = Fahrenheit
+    uint32_t eh_timeout; // EH stabilization timeout index
+    uint32_t debug; // Debug diagnostics on/off
 } VkThermo;
 
 typedef enum {

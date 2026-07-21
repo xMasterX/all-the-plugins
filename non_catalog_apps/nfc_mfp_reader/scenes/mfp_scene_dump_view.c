@@ -28,8 +28,7 @@ void mfp_scene_dump_view_on_enter(void* ctx) {
             /* 16 bytes as 8 two-byte groups separated by spaces, same
              * as nfc_render_mf_classic_dump in the stock firmware. */
             for(uint8_t i = 0; i < MFP_BLOCK_SIZE; i += 2) {
-                furi_string_cat_printf(
-                    app->text_box_store, "%02X%02X ", data[i], data[i + 1]);
+                furi_string_cat_printf(app->text_box_store, "%02X%02X ", data[i], data[i + 1]);
             }
             /* Line break after each block so blocks within a sector
              * are at least visually stacked. */

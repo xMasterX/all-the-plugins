@@ -168,8 +168,7 @@ static int32_t ami_tool_scene_read_worker(void* context) {
                 }
                 ami_tool_store_uid(app, result.uid, result.uid_len);
 
-                if(ami_tool_compute_password_from_uid(
-                       uid, result.uid_len, &app->tag_password)) {
+                if(ami_tool_compute_password_from_uid(uid, result.uid_len, &app->tag_password)) {
                     app->tag_password_valid = true;
                 } else {
                     app->tag_password_valid = false;
@@ -316,7 +315,7 @@ void ami_tool_scene_read_on_exit(void* context) {
 }
 static void ami_tool_scene_read_show_info(AmiToolApp* app) {
     char id_hex[17] = {0};
-    bool has_id =
-        ami_tool_extract_amiibo_id(app->tag_data_valid ? app->tag_data : NULL, id_hex, sizeof(id_hex));
+    bool has_id = ami_tool_extract_amiibo_id(
+        app->tag_data_valid ? app->tag_data : NULL, id_hex, sizeof(id_hex));
     ami_tool_info_show_page(app, has_id ? id_hex : NULL, true);
 }

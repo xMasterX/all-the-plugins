@@ -14,8 +14,7 @@ static void delay(int milliseconds) {
     furi_thread_flags_wait(0, FuriFlagWaitAny, milliseconds);
 }
 
-static NfcCommand
-    atr_poller_callback_iso14443_4a(NfcGenericEvent event, void* context) {
+static NfcCommand atr_poller_callback_iso14443_4a(NfcGenericEvent event, void* context) {
     furi_assert(event.protocol == NfcProtocolIso14443_4a);
 
     Metroflip* app = context;
@@ -63,7 +62,8 @@ static bool atr_on_event(Metroflip* app, SceneManagerEvent event) {
             delay(50);
             notification_message(notification, &sequence_reset_vibro);
             furi_record_close(RECORD_NOTIFICATION);
-            const Iso14443_4aData* data = nfc_device_get_data(app->nfc_device, NfcProtocolIso14443_4a);
+            const Iso14443_4aData* data =
+                nfc_device_get_data(app->nfc_device, NfcProtocolIso14443_4a);
             // Clear stale historical bytes from previous scans
             memset(app->hist_bytes, 0, sizeof(app->hist_bytes));
             app->hist_bytes_count = 0;
@@ -72,7 +72,8 @@ static bool atr_on_event(Metroflip* app, SceneManagerEvent event) {
             const uint8_t* hist_bytes = iso14443_4a_get_historical_bytes(data, &hist_bytes_count);
             FURI_LOG_I(TAG, "Historical bytes count: %ld", hist_bytes_count);
             if(hist_bytes && hist_bytes_count > 0) {
-                memcpy(app->hist_bytes, hist_bytes, MIN(hist_bytes_count, sizeof(app->hist_bytes)));
+                memcpy(
+                    app->hist_bytes, hist_bytes, MIN(hist_bytes_count, sizeof(app->hist_bytes)));
                 app->hist_bytes_count = MIN(hist_bytes_count, sizeof(app->hist_bytes));
                 view_dispatcher_send_custom_event(
                     app->view_dispatcher, MetroflipCustomEventAtrComplete);
@@ -85,7 +86,7 @@ static bool atr_on_event(Metroflip* app, SceneManagerEvent event) {
             Popup* popup = app->popup;
             popup_set_header(popup, "Scanning..", 68, 30, AlignLeft, AlignTop);
             consumed = true;
-        }else if(event.event == MetroflipCustomEventPollerFileNotFound) {
+        } else if(event.event == MetroflipCustomEventPollerFileNotFound) {
             Popup* popup = app->popup;
             popup_set_header(popup, "Read Error,\n wrong card", 68, 30, AlignLeft, AlignTop);
             consumed = true;

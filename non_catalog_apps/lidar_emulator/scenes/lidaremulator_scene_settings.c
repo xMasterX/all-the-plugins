@@ -3,9 +3,9 @@
 #include <storage/storage.h>
 #include <toolbox/saved_struct.h>
 
-#define LIDAREMULATOR_SETTINGS_PATH INT_PATH(".lidaremulator.settings")
+#define LIDAREMULATOR_SETTINGS_PATH    INT_PATH(".lidaremulator.settings")
 #define LIDAREMULATOR_SETTINGS_VERSION (2)
-#define LIDAREMULATOR_SETTINGS_MAGIC (0x4C)
+#define LIDAREMULATOR_SETTINGS_MAGIC   (0x4C)
 
 typedef struct {
     LidarEmulatorIrOutput ir_output;
@@ -76,7 +76,6 @@ void lidaremulator_load_settings(LidarEmulatorApp* app) {
     }
 }
 
-
 void lidaremulator_scene_settings_on_enter(void* context) {
     LidarEmulatorApp* app = context;
     VariableItemList* var_item_list = app->variable_item_list;
@@ -95,13 +94,10 @@ void lidaremulator_scene_settings_on_enter(void* context) {
     variable_item_set_current_value_text(item, lidaremulator_ir_output_text[app->ir_output]);
 
     item = variable_item_list_add(
-        var_item_list,
-        "5V on GPIO",
-        2,
-        lidaremulator_scene_settings_5v_change_callback,
-        app);
+        var_item_list, "5V on GPIO", 2, lidaremulator_scene_settings_5v_change_callback, app);
     variable_item_set_current_value_index(item, app->ir_ext_5v_enabled ? 1 : 0);
-    variable_item_set_current_value_text(item, lidaremulator_5v_text[app->ir_ext_5v_enabled ? 1 : 0]);
+    variable_item_set_current_value_text(
+        item, lidaremulator_5v_text[app->ir_ext_5v_enabled ? 1 : 0]);
 
     view_dispatcher_switch_to_view(app->view_dispatcher, LidarEmulatorViewVariableList);
 }

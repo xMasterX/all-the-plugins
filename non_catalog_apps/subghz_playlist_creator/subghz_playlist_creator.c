@@ -22,7 +22,7 @@
 #define POPUP_DISPLAY_TIME 2000 // 2 seconds in milliseconds
 #define PLAYLIST_EXTENSION ".txt"
 #define PLAYLIST_DIRECTORY "/ext/subghz/playlist"
-#define MAX_TEXT_LENGTH 128
+#define MAX_TEXT_LENGTH    128
 
 // Forward declarations
 static void create_playlist_file(SubGhzPlaylistCreator* app);
@@ -72,7 +72,8 @@ static void create_playlist_file(SubGhzPlaylistCreator* app) {
         scene_menu_show(app);
         return;
     }
-    if(storage_file_open(file, furi_string_get_cstr(app->playlist_path), FSAM_WRITE, FSOM_CREATE_ALWAYS)) {
+    if(storage_file_open(
+           file, furi_string_get_cstr(app->playlist_path), FSAM_WRITE, FSOM_CREATE_ALWAYS)) {
         const char* header = "# SubGhz Playlist\n";
         if(storage_file_write(file, header, strlen(header)) == strlen(header)) {
             storage_file_close(file);
@@ -133,8 +134,10 @@ static void on_edit_file_selected(SubGhzPlaylistCreator* app, const char* path) 
                 if(nl) *nl = 0;
                 // Add to playlist state
                 if(app->playlist_entry_count == app->playlist_entry_capacity) {
-                    app->playlist_entry_capacity = app->playlist_entry_capacity ? app->playlist_entry_capacity * 2 : 8;
-                    app->playlist_entries = realloc(app->playlist_entries, app->playlist_entry_capacity * sizeof(char*));
+                    app->playlist_entry_capacity =
+                        app->playlist_entry_capacity ? app->playlist_entry_capacity * 2 : 8;
+                    app->playlist_entries = realloc(
+                        app->playlist_entries, app->playlist_entry_capacity * sizeof(char*));
                 }
                 app->playlist_entries[app->playlist_entry_count++] = strdup(entry_path);
             }
@@ -154,7 +157,8 @@ static void subghz_playlist_creator_submenu_callback(void* context, uint32_t ind
         memset(app->text_buffer, 0, MAX_TEXT_LENGTH);
         scene_text_input_show(app);
     } else if(index == 1) { // Edit
-        scene_file_browser_select(app, PLAYLIST_DIRECTORY, PLAYLIST_EXTENSION, on_edit_file_selected);
+        scene_file_browser_select(
+            app, PLAYLIST_DIRECTORY, PLAYLIST_EXTENSION, on_edit_file_selected);
     }
 }
 
@@ -165,7 +169,8 @@ static void subghz_playlist_creator_text_input_callback(void* context) {
         return;
     }
     furi_string_set_str(app->playlist_name, app->text_buffer);
-    furi_string_printf(app->playlist_path, "%s/%s%s", PLAYLIST_DIRECTORY, app->text_buffer, PLAYLIST_EXTENSION);
+    furi_string_printf(
+        app->playlist_path, "%s/%s%s", PLAYLIST_DIRECTORY, app->text_buffer, PLAYLIST_EXTENSION);
     File* file = storage_file_alloc(app->storage);
     bool exists = storage_file_exists(app->storage, furi_string_get_cstr(app->playlist_path));
     storage_file_free(file);
@@ -230,26 +235,64 @@ SubGhzPlaylistCreator* subghz_playlist_creator_alloc(void) {
     FURI_LOG_D(TAG, "Initialized dialog view");
 
     // Add views to the dispatcher
-    FURI_LOG_D(TAG, "Adding submenu view %p with ID %lu", submenu_get_view(app->submenu), (uint32_t)SubGhzPlaylistCreatorViewSubmenu);
-    view_dispatcher_add_view(app->view_dispatcher, SubGhzPlaylistCreatorViewSubmenu, submenu_get_view(app->submenu));
-    FURI_LOG_D(TAG, "Adding playlist_edit_submenu view %p with ID %lu", submenu_get_view(app->playlist_edit_submenu), (uint32_t)SubGhzPlaylistCreatorViewPlaylistEdit);
-    view_dispatcher_add_view(app->view_dispatcher, SubGhzPlaylistCreatorViewPlaylistEdit, submenu_get_view(app->playlist_edit_submenu));
-    FURI_LOG_D(TAG, "Adding popup view %p with ID %lu", popup_get_view(app->popup), (uint32_t)SubGhzPlaylistCreatorViewPopup);
-    view_dispatcher_add_view(app->view_dispatcher, SubGhzPlaylistCreatorViewPopup, popup_get_view(app->popup));
-    FURI_LOG_D(TAG, "Adding text input view %p with ID %lu", text_input_get_view(app->text_input), (uint32_t)SubGhzPlaylistCreatorViewTextInput);
-    view_dispatcher_add_view(app->view_dispatcher, SubGhzPlaylistCreatorViewTextInput, text_input_get_view(app->text_input));
-    FURI_LOG_D(TAG, "Adding dialog view %p with ID %lu", dialog_ex_get_view(app->dialog), (uint32_t)SubGhzPlaylistCreatorViewDialog);
-    view_dispatcher_add_view(app->view_dispatcher, SubGhzPlaylistCreatorViewDialog, dialog_ex_get_view(app->dialog));
-    FURI_LOG_D(TAG, "Adding file browser view %p with ID %lu", file_browser_get_view(app->file_browser), (uint32_t)SubGhzPlaylistCreatorViewFileBrowser);
-    view_dispatcher_add_view(app->view_dispatcher, SubGhzPlaylistCreatorViewFileBrowser, file_browser_get_view(app->file_browser));
+    FURI_LOG_D(
+        TAG,
+        "Adding submenu view %p with ID %lu",
+        submenu_get_view(app->submenu),
+        (uint32_t)SubGhzPlaylistCreatorViewSubmenu);
+    view_dispatcher_add_view(
+        app->view_dispatcher, SubGhzPlaylistCreatorViewSubmenu, submenu_get_view(app->submenu));
+    FURI_LOG_D(
+        TAG,
+        "Adding playlist_edit_submenu view %p with ID %lu",
+        submenu_get_view(app->playlist_edit_submenu),
+        (uint32_t)SubGhzPlaylistCreatorViewPlaylistEdit);
+    view_dispatcher_add_view(
+        app->view_dispatcher,
+        SubGhzPlaylistCreatorViewPlaylistEdit,
+        submenu_get_view(app->playlist_edit_submenu));
+    FURI_LOG_D(
+        TAG,
+        "Adding popup view %p with ID %lu",
+        popup_get_view(app->popup),
+        (uint32_t)SubGhzPlaylistCreatorViewPopup);
+    view_dispatcher_add_view(
+        app->view_dispatcher, SubGhzPlaylistCreatorViewPopup, popup_get_view(app->popup));
+    FURI_LOG_D(
+        TAG,
+        "Adding text input view %p with ID %lu",
+        text_input_get_view(app->text_input),
+        (uint32_t)SubGhzPlaylistCreatorViewTextInput);
+    view_dispatcher_add_view(
+        app->view_dispatcher,
+        SubGhzPlaylistCreatorViewTextInput,
+        text_input_get_view(app->text_input));
+    FURI_LOG_D(
+        TAG,
+        "Adding dialog view %p with ID %lu",
+        dialog_ex_get_view(app->dialog),
+        (uint32_t)SubGhzPlaylistCreatorViewDialog);
+    view_dispatcher_add_view(
+        app->view_dispatcher, SubGhzPlaylistCreatorViewDialog, dialog_ex_get_view(app->dialog));
+    FURI_LOG_D(
+        TAG,
+        "Adding file browser view %p with ID %lu",
+        file_browser_get_view(app->file_browser),
+        (uint32_t)SubGhzPlaylistCreatorViewFileBrowser);
+    view_dispatcher_add_view(
+        app->view_dispatcher,
+        SubGhzPlaylistCreatorViewFileBrowser,
+        file_browser_get_view(app->file_browser));
 
     // Set initial scene
     scene_menu_show(app);
     FURI_LOG_D(TAG, "Showing menu scene");
 
     view_dispatcher_set_event_callback_context(app->view_dispatcher, app);
-    view_dispatcher_set_custom_event_callback(app->view_dispatcher, subghz_playlist_creator_custom_callback);
-    view_dispatcher_set_navigation_event_callback(app->view_dispatcher, subghz_playlist_creator_back_event_callback);
+    view_dispatcher_set_custom_event_callback(
+        app->view_dispatcher, subghz_playlist_creator_custom_callback);
+    view_dispatcher_set_navigation_event_callback(
+        app->view_dispatcher, subghz_playlist_creator_back_event_callback);
     popup_set_header(app->popup, "SubGhz Playlist Creator", 64, 26, AlignCenter, AlignCenter);
     FURI_LOG_D(TAG, "Set popup header");
     popup_set_text(app->popup, "Welcome!", 64, 40, AlignCenter, AlignCenter);
@@ -340,7 +383,7 @@ bool subghz_playlist_creator_custom_callback(void* context, uint32_t custom_even
     // The custom callback is now primarily for the timer event
     SubGhzPlaylistCreator* app = context;
 
-    if (custom_event == SubGhzPlaylistCreatorCustomEventShowMenu) {
+    if(custom_event == SubGhzPlaylistCreatorCustomEventShowMenu) {
         FURI_LOG_D(TAG, "Received custom event to show menu");
         // Stop the timer once the event is received
         furi_timer_stop(app->popup_timer);
@@ -357,7 +400,11 @@ bool subghz_playlist_creator_custom_callback(void* context, uint32_t custom_even
 // Replace the back event callback
 bool subghz_playlist_creator_back_event_callback(void* context) {
     SubGhzPlaylistCreator* app = context;
-    FURI_LOG_D(TAG, "Back event callback. is_stopped: %d, current_view: %d", app->is_stopped, app->current_view);
+    FURI_LOG_D(
+        TAG,
+        "Back event callback. is_stopped: %d, current_view: %d",
+        app->is_stopped,
+        app->current_view);
     if(app->is_stopped) return true;
     // If in PlaylistEdit, show discard dialog
     if(app->current_view == SubGhzPlaylistCreatorViewPlaylistEdit) {

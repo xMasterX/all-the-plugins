@@ -8,8 +8,8 @@
 #define min(a, b) (((a) < (b)) ? (a) : (b))
 #endif
 
-#define BLACK 1
-#define WHITE -1
+#define BLACK      1
+#define WHITE      -1
 #define BOARD_SIZE 8
 
 typedef struct {

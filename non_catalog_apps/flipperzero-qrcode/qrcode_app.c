@@ -10,10 +10,10 @@
 #include <qrcode_icons.h>
 #include "qrcode.h"
 
-#define TAG "qrcode"
-#define QRCODE_FOLDER EXT_PATH("qrcodes")
-#define QRCODE_EXTENSION ".qrcode"
-#define QRCODE_FILETYPE "QRCode"
+#define TAG                 "qrcode"
+#define QRCODE_FOLDER       EXT_PATH("qrcodes")
+#define QRCODE_EXTENSION    ".qrcode"
+#define QRCODE_FILETYPE     "QRCode"
 #define QRCODE_FILE_VERSION 1
 
 /** Valid modes are Numeric (0), Alpha-Numeric (1), and Binary (2) */

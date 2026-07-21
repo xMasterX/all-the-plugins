@@ -14,16 +14,16 @@ typedef struct {
 } XRemoteSettingsContext;
 
 #define XREMOTE_ORIENTATION_TEXT "Orientation"
-#define XREMOTE_ORIENTATION_MAX 2
+#define XREMOTE_ORIENTATION_MAX  2
 
 #define XREMOTE_EXIT_BEHAVIOR_TEXT "Exit Apps"
-#define XREMOTE_EXIT_BEHAVIOR_MAX 2
+#define XREMOTE_EXIT_BEHAVIOR_MAX  2
 
 #define XREMOTE_REPEAT_TEXT "IR Msg Repeat"
-#define XREMOTE_REPEAT_MAX 128
+#define XREMOTE_REPEAT_MAX  128
 
 #define XREMOTE_ALT_NAMES_TEXT "Alt Names"
-#define XREMOTE_ALT_NAMES_MAX 2
+#define XREMOTE_ALT_NAMES_MAX  2
 
 static uint32_t xremote_settings_view_exit_callback(void* context) {
     UNUSED(context);
@@ -48,7 +48,7 @@ static void infrared_settings_repeat_changed(VariableItem* item) {
     char repeat_str[8];
 
     settings->repeat_count = variable_item_get_current_value_index(item);
-    if (settings->repeat_count == 0) {
+    if(settings->repeat_count == 0) {
         settings->repeat_count = 1;
         variable_item_set_current_value_index(item, 1);
     }

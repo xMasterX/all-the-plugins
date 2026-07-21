@@ -12,7 +12,8 @@
 
 typedef struct FlipperWedgeHid FlipperWedgeHid;
 
-typedef void (*FlipperWedgeHidConnectionCallback)(bool usb_connected, bool bt_connected, void* context);
+typedef void (
+    *FlipperWedgeHidConnectionCallback)(bool usb_connected, bool bt_connected, void* context);
 
 /** Allocate HID helper
  *
@@ -93,7 +94,10 @@ bool flipper_wedge_hid_is_connected(FlipperWedgeHid* instance);
  * @param layout Keyboard layout for character mapping (NULL for firmware default)
  * @param str String to type
  */
-void flipper_wedge_hid_type_string(FlipperWedgeHid* instance, FlipperWedgeKeyboardLayout* layout, const char* str);
+void flipper_wedge_hid_type_string(
+    FlipperWedgeHid* instance,
+    FlipperWedgeKeyboardLayout* layout,
+    const char* str);
 
 /** Type a single character via HID keyboard
  *
@@ -101,7 +105,10 @@ void flipper_wedge_hid_type_string(FlipperWedgeHid* instance, FlipperWedgeKeyboa
  * @param layout Keyboard layout for character mapping (NULL for firmware default)
  * @param c Character to type
  */
-void flipper_wedge_hid_type_char(FlipperWedgeHid* instance, FlipperWedgeKeyboardLayout* layout, char c);
+void flipper_wedge_hid_type_char(
+    FlipperWedgeHid* instance,
+    FlipperWedgeKeyboardLayout* layout,
+    char c);
 
 /** Press and release Enter key
  *

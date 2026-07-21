@@ -36,39 +36,39 @@
 /* Frame types -------------------------------------------------------------- */
 enum {
     /* Handshake / status. */
-    TT_FRAME_HELLO         = 0x01, /* E->F: u16 fw_ver, u32 free_heap, zstring fw_name */
-    TT_FRAME_PING          = 0x02, /* F->E: empty   |  E->F: empty (echo) */
+    TT_FRAME_HELLO = 0x01, /* E->F: u16 fw_ver, u32 free_heap, zstring fw_name */
+    TT_FRAME_PING = 0x02, /* F->E: empty   |  E->F: empty (echo) */
 
     /* WiFi config. */
-    TT_FRAME_WIFI_SET      = 0x10, /* F->E: zstring ssid, zstring password */
-    TT_FRAME_WIFI_FORGET   = 0x11, /* F->E: empty (clears NVS creds) */
-    TT_FRAME_WIFI_STATUS   = 0x12, /* either way:
+    TT_FRAME_WIFI_SET = 0x10, /* F->E: zstring ssid, zstring password */
+    TT_FRAME_WIFI_FORGET = 0x11, /* F->E: empty (clears NVS creds) */
+    TT_FRAME_WIFI_STATUS = 0x12, /* either way:
                                     *   u8 state (TT_WIFI_*),
                                     *   i8 rssi,
                                     *   zstring ssid,
                                     *   zstring ip */
 
     /* Plugin discovery / execution. */
-    TT_FRAME_LIST_PLUGINS  = 0x20, /* F->E: empty */
-    TT_FRAME_PLUGIN        = 0x21, /* E->F: one frame per plugin (see below) */
-    TT_FRAME_PLUGINS_END   = 0x22, /* E->F: end-of-list sentinel */
+    TT_FRAME_LIST_PLUGINS = 0x20, /* F->E: empty */
+    TT_FRAME_PLUGIN = 0x21, /* E->F: one frame per plugin (see below) */
+    TT_FRAME_PLUGINS_END = 0x22, /* E->F: end-of-list sentinel */
 
-    TT_FRAME_RUN_PLUGIN    = 0x30, /* F->E: see TT_RUN_PLUGIN layout below */
-    TT_FRAME_PROGRESS      = 0x31, /* E->F: u8 percent, zstring message */
-    TT_FRAME_RESULT_BEGIN  = 0x32, /* E->F: u16 width, u16 height, u8 planes (1|2),
+    TT_FRAME_RUN_PLUGIN = 0x30, /* F->E: see TT_RUN_PLUGIN layout below */
+    TT_FRAME_PROGRESS = 0x31, /* E->F: u8 percent, zstring message */
+    TT_FRAME_RESULT_BEGIN = 0x32, /* E->F: u16 width, u16 height, u8 planes (1|2),
                                     *       u32 total_bytes */
-    TT_FRAME_RESULT_CHUNK  = 0x33, /* E->F: raw plane bytes */
-    TT_FRAME_RESULT_END    = 0x34, /* E->F: empty - all chunks delivered */
-    TT_FRAME_ERROR         = 0x3F, /* E->F: zstring message */
+    TT_FRAME_RESULT_CHUNK = 0x33, /* E->F: raw plane bytes */
+    TT_FRAME_RESULT_END = 0x34, /* E->F: empty - all chunks delivered */
+    TT_FRAME_ERROR = 0x3F, /* E->F: zstring message */
 };
 
 /* WiFi state codes (TT_FRAME_WIFI_STATUS payload byte 0). */
 enum {
-    TT_WIFI_DISCONNECTED   = 0,
-    TT_WIFI_CONNECTING     = 1,
-    TT_WIFI_CONNECTED      = 2,
-    TT_WIFI_AUTH_FAILED    = 3,
-    TT_WIFI_NO_AP          = 4,
+    TT_WIFI_DISCONNECTED = 0,
+    TT_WIFI_CONNECTING = 1,
+    TT_WIFI_CONNECTED = 2,
+    TT_WIFI_AUTH_FAILED = 3,
+    TT_WIFI_NO_AP = 4,
 };
 
 /*
@@ -94,9 +94,9 @@ enum {
  */
 enum {
     TT_PARAM_STRING = 0,
-    TT_PARAM_INT    = 1,
-    TT_PARAM_ENUM   = 2,
-    TT_PARAM_BOOL   = 3,
+    TT_PARAM_INT = 1,
+    TT_PARAM_ENUM = 2,
+    TT_PARAM_BOOL = 3,
 };
 
 /* TT_FRAME_RUN_PLUGIN payload layout
@@ -109,8 +109,8 @@ enum {
  *   repeated: zstr key, zstr value (string-encoded, the plugin parses)
  */
 enum {
-    TT_ACCENT_NONE   = 0,  /* mono tag */
-    TT_ACCENT_RED    = 1,
+    TT_ACCENT_NONE = 0, /* mono tag */
+    TT_ACCENT_RED = 1,
     TT_ACCENT_YELLOW = 2,
 };
 

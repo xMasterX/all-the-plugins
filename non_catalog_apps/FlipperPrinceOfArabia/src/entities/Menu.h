@@ -1,55 +1,48 @@
 #pragma once
 
-#include <lib/Arduboy2.h>   
+#include <lib/Arduboy2.h>
 #include "../utils/Constants.h"
 
 struct MenuItem {
-
     Direction direction = Direction::None;
     uint8_t x;
     uint8_t cursor;
 
     void init() {
-
         this->x = 130;
         this->direction = Direction::None;
-
     }
 
     bool update() {
-
         bool result = false;
         uint8_t x = this->x;
 
-        switch (this->direction) {
+        switch(this->direction) {
+        case Direction::Left:
 
-            case Direction::Left:
-                
-                x -= 4;
-              
-                if (x == 86) {
-                    this->direction = Direction::None;
-                }
-                
-                break;
+            x -= 4;
 
-            case Direction::Right:
+            if(x == 86) {
+                this->direction = Direction::None;
+            }
 
-                x += 4;
+            break;
 
-                if (x == 130) {
+        case Direction::Right:
 
-                    this->direction = Direction::None;
-                    result = true;
-                }
+            x += 4;
 
-                break;
+            if(x == 130) {
+                this->direction = Direction::None;
+                result = true;
+            }
 
-            default: break;
+            break;
 
+        default:
+            break;
         }
         this->x = x;
         return result;
     }
- 
 };

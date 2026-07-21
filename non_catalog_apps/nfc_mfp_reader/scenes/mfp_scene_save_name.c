@@ -36,11 +36,9 @@ static void save_name_suggest_default(MfpApp* app) {
 
     /* Fallback: MFP<UID> */
     int n = snprintf(app->text_store, sizeof(app->text_store), "MFP");
-    for(uint8_t i = 0; i < app->version.uid_len && n < (int)sizeof(app->text_store) - 3;
-        i++) {
+    for(uint8_t i = 0; i < app->version.uid_len && n < (int)sizeof(app->text_store) - 3; i++) {
         n += snprintf(
-            app->text_store + n, sizeof(app->text_store) - (size_t)n, "%02X",
-            app->version.uid[i]);
+            app->text_store + n, sizeof(app->text_store) - (size_t)n, "%02X", app->version.uid[i]);
     }
 }
 
@@ -62,8 +60,7 @@ void mfp_scene_save_name_on_enter(void* ctx) {
     /* File-name validator: complains if the chosen name already
      * exists in the app folder. Protects users from accidentally
      * overwriting existing saves. */
-    ValidatorIsFile* validator =
-        validator_is_file_alloc_init(MFP_APP_FOLDER, MFP_FILE_EXT, NULL);
+    ValidatorIsFile* validator = validator_is_file_alloc_init(MFP_APP_FOLDER, MFP_FILE_EXT, NULL);
     text_input_set_validator(app->text_input, validator_is_file_callback, validator);
 
     view_dispatcher_switch_to_view(app->view_dispatcher, MfpViewTextInput);
@@ -74,8 +71,7 @@ bool mfp_scene_save_name_on_event(void* ctx, SceneManagerEvent event) {
     if(event.type == SceneManagerEventTypeCustom && event.event == SaveNameEventDone) {
         /* Build the full path from the edited name + extension. */
         char path[160];
-        snprintf(
-            path, sizeof(path), "%s/%s%s", MFP_APP_FOLDER, app->text_store, MFP_FILE_EXT);
+        snprintf(path, sizeof(path), "%s/%s%s", MFP_APP_FOLDER, app->text_store, MFP_FILE_EXT);
 
         if(mfp_storage_save_all_to_path(app, path)) {
             scene_manager_next_scene(app->scene_manager, MfpSceneSaveSuccess);
@@ -94,8 +90,7 @@ bool mfp_scene_save_name_on_event(void* ctx, SceneManagerEvent event) {
 
 void mfp_scene_save_name_on_exit(void* ctx) {
     MfpApp* app = ctx;
-    ValidatorIsFile* validator =
-        text_input_get_validator_callback_context(app->text_input);
+    ValidatorIsFile* validator = text_input_get_validator_callback_context(app->text_input);
     text_input_set_validator(app->text_input, NULL, NULL);
     if(validator) validator_is_file_free(validator);
     text_input_reset(app->text_input);

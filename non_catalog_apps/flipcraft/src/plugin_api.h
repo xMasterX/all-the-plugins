@@ -18,19 +18,16 @@
 #define FLIPCRAFT_MENU_API_VERSION 3u
 
 typedef enum {
-    FlipcraftMenuActionQuit = 0,     // leave the app
-    FlipcraftMenuActionLaunch = 1,   // out_path is an existing save to play
+    FlipcraftMenuActionQuit = 0, // leave the app
+    FlipcraftMenuActionLaunch = 1, // out_path is an existing save to play
     FlipcraftMenuActionGenerate = 2, // generate out_chunks^2 world at out_path, then play it
 } FlipcraftMenuAction;
 
 typedef struct {
     // Runs the world-selector UI and reports what the player chose. For
     // Generate, out_seed is the seed the player accepted or edited.
-    FlipcraftMenuAction (*run)(
-        char* out_path,
-        size_t out_size,
-        uint8_t* out_chunks,
-        uint32_t* out_seed);
+    FlipcraftMenuAction (
+        *run)(char* out_path, size_t out_size, uint8_t* out_chunks, uint32_t* out_seed);
 } FlipcraftMenuApi;
 
 #define FLIPCRAFT_GAME_APP_ID      "flipcraft_game"

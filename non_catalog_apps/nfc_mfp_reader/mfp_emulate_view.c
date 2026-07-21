@@ -67,8 +67,7 @@ static void draw_running(Canvas* canvas, const MfpEmulateViewModel* m) {
     /* Header line: card type + UID prefix */
     canvas_set_font(canvas, FontSecondary);
     char header[32];
-    int n = snprintf(
-        header, sizeof(header), "SL3 %s  ", m->card_size == MfpSize4K ? "4K" : "2K");
+    int n = snprintf(header, sizeof(header), "SL3 %s  ", m->card_size == MfpSize4K ? "4K" : "2K");
     for(uint8_t i = 0; i < m->uid_len && n < (int)sizeof(header) - 3; i++) {
         n += snprintf(header + n, sizeof(header) - (size_t)n, "%02X", m->uid[i]);
     }
@@ -93,11 +92,19 @@ static void draw_running(Canvas* canvas, const MfpEmulateViewModel* m) {
     if(m->last_op == 'A') {
         snprintf(buf, sizeof(buf), "Auth s%02u", (unsigned)m->last_sector);
     } else if(m->last_op == 'R') {
-        snprintf(buf, sizeof(buf), "Read b%02u s%02u",
-                 (unsigned)m->last_block, (unsigned)m->last_sector);
+        snprintf(
+            buf,
+            sizeof(buf),
+            "Read b%02u s%02u",
+            (unsigned)m->last_block,
+            (unsigned)m->last_sector);
     } else if(m->last_op == 'W') {
-        snprintf(buf, sizeof(buf), "Write b%02u s%02u",
-                 (unsigned)m->last_block, (unsigned)m->last_sector);
+        snprintf(
+            buf,
+            sizeof(buf),
+            "Write b%02u s%02u",
+            (unsigned)m->last_block,
+            (unsigned)m->last_sector);
     } else {
         snprintf(buf, sizeof(buf), "Waiting...");
     }
@@ -129,16 +136,18 @@ static void draw_summary(Canvas* canvas, const MfpEmulateViewModel* m) {
     canvas_set_font(canvas, FontSecondary);
     char buf[32];
     snprintf(
-        buf, sizeof(buf), "A:%lu  R:%lu  W:%lu",
-        (unsigned long)m->auths, (unsigned long)m->reads, (unsigned long)m->writes);
+        buf,
+        sizeof(buf),
+        "A:%lu  R:%lu  W:%lu",
+        (unsigned long)m->auths,
+        (unsigned long)m->reads,
+        (unsigned long)m->writes);
     canvas_draw_str_aligned(canvas, 64, 26, AlignCenter, AlignCenter, buf);
 
     if(m->writes > 0 && m->modified_saved && m->summary_path[0]) {
-        canvas_draw_str_aligned(
-            canvas, 64, 40, AlignCenter, AlignCenter, m->summary_path);
+        canvas_draw_str_aligned(canvas, 64, 40, AlignCenter, AlignCenter, m->summary_path);
     } else if(m->writes > 0 && !m->allow_overwrite) {
-        canvas_draw_str_aligned(
-            canvas, 64, 40, AlignCenter, AlignCenter, "(read-only mode)");
+        canvas_draw_str_aligned(canvas, 64, 40, AlignCenter, AlignCenter, "(read-only mode)");
     }
 
     canvas_draw_line(canvas, 0, 53, 127, 53);
@@ -223,19 +232,21 @@ void mfp_emulate_view_record(
             m->last_sector = last_sector;
             m->last_block = last_block;
             if(last_sector < MFP_SECTORS_4K) {
-                if(last_op == 'A') m->sector_flags[last_sector] |= MFP_SECTOR_AUTHED;
+                if(last_op == 'A')
+                    m->sector_flags[last_sector] |= MFP_SECTOR_AUTHED;
                 else if(last_op == 'R')
                     m->sector_flags[last_sector] |= MFP_SECTOR_AUTHED | MFP_SECTOR_READ;
                 else if(last_op == 'W')
-                    m->sector_flags[last_sector] |=
-                        MFP_SECTOR_AUTHED | MFP_SECTOR_WRITTEN;
+                    m->sector_flags[last_sector] |= MFP_SECTOR_AUTHED | MFP_SECTOR_WRITTEN;
             }
         },
         true);
 }
 
 void mfp_emulate_view_show_summary(
-    MfpEmulateView* inst, bool modified_saved, const char* summary_path) {
+    MfpEmulateView* inst,
+    bool modified_saved,
+    const char* summary_path) {
     with_view_model(
         inst->view,
         MfpEmulateViewModel * m,

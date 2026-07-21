@@ -13,16 +13,16 @@
 #include <nrf24.h>
 #include <u8g2.h>
 
-#define TAG "nrf24batch"
+#define TAG     "nrf24batch"
 #define VERSION "1.9"
 
-#define SCAN_APP_PATH_FOLDER STORAGE_APP_DATA_PATH_PREFIX
-#define LOG_FILEEXT ".txt"
-#define NRF_READ_TIMEOUT 300UL // ms
-#define WORK_PERIOD 2 // ms, Timer period
-#define MAX_CHANNEL 125
+#define SCAN_APP_PATH_FOLDER  STORAGE_APP_DATA_PATH_PREFIX
+#define LOG_FILEEXT           ".txt"
+#define NRF_READ_TIMEOUT      300UL // ms
+#define WORK_PERIOD           2 // ms, Timer period
+#define MAX_CHANNEL           125
 #define FONT_5x7_SCREEN_WIDTH 25
-#define NRF_EN_DYN_ACK 0 // does not work on some nrf24l01+ chips, (0/1)
+#define NRF_EN_DYN_ACK        0 // does not work on some nrf24l01+ chips, (0/1)
 
 const char SettingsFld_Info[] = "Info:";
 const char SettingsFld_Ch[] = "Ch:";
@@ -48,7 +48,7 @@ const char SettingsFld_ReadCmdRepeatPeriod[] = "ReadCmd repeat:";
 const char AskQuestion_Save[] = "SAVE BATCH?";
 #define Settings_i 'i'
 #define Settings_n 'n'
-#define VAR_EMPTY ((int32_t)0x80000000)
+#define VAR_EMPTY  ((int32_t)0x80000000)
 
 nRF24Batch* APP;
 uint8_t what_doing = 0; // 0 - setup, 1 - cmd list, 2 - read/write/listen cmd
@@ -61,7 +61,14 @@ enum {
     rwt_max
 };
 uint8_t rw_type = rwt_read_batch; // What to do: rwt_*
-enum { sst_none = 0, sst_sending, sst_receiving, sst_ok, sst_error, sst_timeout };
+enum {
+    sst_none = 0,
+    sst_sending,
+    sst_receiving,
+    sst_ok,
+    sst_error,
+    sst_timeout
+};
 uint8_t send_status = sst_none; // sst_*
 bool cmd_array = false;
 uint8_t cmd_array_idx;
@@ -139,7 +146,13 @@ uint16_t pwr_read_timer = 0;
 int Current = 0;
 int CurrentStart = 0;
 
-enum { ask_write_batch = 1, ask_save_batch, ask_skip_cmd, ask_return, ask_exit };
+enum {
+    ask_write_batch = 1,
+    ask_save_batch,
+    ask_skip_cmd,
+    ask_return,
+    ask_exit
+};
 uint8_t ask_question = 0; // 1 - Ask now - ask_*
 uint8_t ask_question_answer = 0; // 0 - no, 1 - yes
 
@@ -302,7 +315,8 @@ void free_store(void) {
         ListenFields = NULL;
     }
     if(Read_cmd_Total) {
-        for(uint16_t i = 0; i < Read_cmd_Total; i++) furi_string_free(Read_cmd[i]);
+        for(uint16_t i = 0; i < Read_cmd_Total; i++)
+            furi_string_free(Read_cmd[i]);
         Read_cmd_Total = 0;
     }
     if(Read_cmd) {
@@ -310,7 +324,8 @@ void free_store(void) {
         Read_cmd = NULL;
     }
     if(ReadBatch_cmd_Total) {
-        for(uint16_t i = 0; i < ReadBatch_cmd_Total; i++) furi_string_free(ReadBatch_cmd[i]);
+        for(uint16_t i = 0; i < ReadBatch_cmd_Total; i++)
+            furi_string_free(ReadBatch_cmd[i]);
         ReadBatch_cmd_Total = 0;
     }
     if(ReadBatch_cmd) {
@@ -318,7 +333,8 @@ void free_store(void) {
         ReadBatch_cmd = NULL;
     }
     if(WriteBatch_cmd_Total) {
-        for(uint16_t i = 0; i < WriteBatch_cmd_Total; i++) furi_string_free(WriteBatch_cmd[i]);
+        for(uint16_t i = 0; i < WriteBatch_cmd_Total; i++)
+            furi_string_free(WriteBatch_cmd[i]);
         WriteBatch_cmd_Total = 0;
     }
     if(WriteBatch_cmd) {
@@ -326,7 +342,8 @@ void free_store(void) {
         WriteBatch_cmd = NULL;
     }
     if(SetBatch_cmd_Total) {
-        for(uint16_t i = 0; i < SetBatch_cmd_Total; i++) furi_string_free(SetBatch_cmd[i]);
+        for(uint16_t i = 0; i < SetBatch_cmd_Total; i++)
+            furi_string_free(SetBatch_cmd[i]);
         SetBatch_cmd_Total = 0;
     }
     if(SetBatch_cmd) {
@@ -1065,7 +1082,8 @@ static void save_batch(void) {
                     stream_write_cstring(file_stream, "={");
                     p = (p2 += 2);
                     do {
-                        while(is_digit(p2, true) || *p2 == 'x') p2++;
+                        while(is_digit(p2, true) || *p2 == 'x')
+                            p2++;
                         stream_write(file_stream, (uint8_t*)p, p2 - p);
                         char c = *p2;
                         if(c == '\0') break;
@@ -1889,7 +1907,8 @@ int32_t nrf24batch_app(void* p) {
                                             }
                                             if(is_digit(p, Edit_hex)) {
                                                 Edit_start = p;
-                                                while(is_digit(p, Edit_hex)) p++;
+                                                while(is_digit(p, Edit_hex))
+                                                    p++;
                                                 Edit_pos = p - 1;
                                                 Edited = true;
                                                 Edit = 1;

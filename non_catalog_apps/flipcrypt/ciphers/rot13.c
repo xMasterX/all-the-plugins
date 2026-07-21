@@ -10,14 +10,14 @@
 char* encrypt_rot13(const char* plaintext) {
     size_t len = strlen(plaintext);
     char* output = malloc(len + 1);
-    if (!output) return "memory allocation failed, try again";
+    if(!output) return "memory allocation failed, try again";
 
-    for (size_t i = 0; i < len; i++) {
+    for(size_t i = 0; i < len; i++) {
         char c = plaintext[i];
 
-        if (c >= 'a' && c <= 'z') {
+        if(c >= 'a' && c <= 'z') {
             output[i] = 'a' + ((c - 'a' + 13) % 26 + 26) % 26;
-        } else if (c >= 'A' && c <= 'Z') {
+        } else if(c >= 'A' && c <= 'Z') {
             output[i] = 'A' + ((c - 'A' + 13) % 26 + 26) % 26;
         } else {
             output[i] = c;
@@ -31,14 +31,14 @@ char* encrypt_rot13(const char* plaintext) {
 char* decrypt_rot13(const char* ciphertext) {
     size_t len = strlen(ciphertext);
     char* output = malloc(len + 1);
-    if (!output) return "memory allocation failed, try again";
+    if(!output) return "memory allocation failed, try again";
 
-    for (size_t i = 0; i < len; i++) {
+    for(size_t i = 0; i < len; i++) {
         char c = ciphertext[i];
 
-        if (c >= 'a' && c <= 'z') {
+        if(c >= 'a' && c <= 'z') {
             output[i] = 'a' + ((c - 'a' - 13) % 26 + 26) % 26;
-        } else if (c >= 'A' && c <= 'Z') {
+        } else if(c >= 'A' && c <= 'Z') {
             output[i] = 'A' + ((c - 'A' - 13) % 26 + 26) % 26;
         } else {
             output[i] = c;

@@ -10,8 +10,7 @@ enum {
     CellHasPlayer = 0x8
 };
 
-typedef struct Level
-{
+typedef struct Level {
     int level_width, level_height;
     int cell_size;
     CellType board[MAX_BOARD_SIZE][MAX_BOARD_SIZE];

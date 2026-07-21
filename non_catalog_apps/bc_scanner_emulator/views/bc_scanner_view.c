@@ -3,8 +3,8 @@
 #include <gui/elements.h>
 
 #define MAX_NAME_LEN 64
-#define TAG "BcScanner"
-#define WORKER_TAG TAG "View"
+#define TAG          "BcScanner"
+#define WORKER_TAG   TAG "View"
 
 struct BarCodeView {
     View* view;

@@ -9,7 +9,7 @@
 #include <furi_hal.h>
 #include <storage/storage.h>
 
-#include <applications/services/notification/notification.h>    // NotificationApp
+#include <applications/services/notification/notification.h> // NotificationApp
 #include <notification/notification_messages.h>
 
 #define TAG "FlipperShareIR"
@@ -24,26 +24,26 @@
 // Retuned for the IR link: one packet occupies the air for a few hundred ms and
 // the channel is half-duplex, so timeouts are much longer than the Sub-GHz ones.
 enum {
-    ISH_VERSION             = 2,      // wire format v2: IR transport, CRC16
-    ISH_ANNOUNCE_INTERVAL_MS= 1500,   // announce/discovery interval (idle sender)
+    ISH_VERSION = 2, // wire format v2: IR transport, CRC16
+    ISH_ANNOUNCE_INTERVAL_MS = 1500, // announce/discovery interval (idle sender)
     ISH_ANNOUNCE_CONNECTED_MS = 3000, // announce interval while serving a transfer.
-                                      // We keep announcing during the stream (just
-                                      // less often) so a receiver can be restarted
-                                      // and re-lock without touching the sender.
-    ISH_RX_TIMEOUT_MS       = 1500,   // receiver re-request timeout. MUST exceed the full
-                                      // REQUEST->first-DATA round trip (~1.1s: REQUEST tx +
-                                      // sender turnaround + first DATA tx), else the receiver
-                                      // re-requests and tears down its RX before the first
-                                      // block arrives -> stall. During streaming, blocks arrive
-                                      // every ~350ms << this, so no spurious re-requests.
-    ISH_TX_TIMEOUT_MS       = 100,    // sender gap after last RX before streaming data
-    ISH_IDLE_TICK_MS        = 20,     // interval for calling ish_idle()
-    ISH_CONNECTED_IDLE_MS   = 5000,   // sender reverts CONNECTED->ANNOUNCING after this idle
-    ISH_REQUEST_JITTER_MS   = 1500    // random backoff before each (re)REQUEST, up to ~the
-                                      // main retry/announce interval, to break ALOHA-style
-                                      // phase-lock with the sender's periodic ANNOUNCEs
-                                      // (both sides transmitting at once -> never hear each
-                                      // other -> stall). No priority arbitration in 1:1 IR.
+        // We keep announcing during the stream (just
+        // less often) so a receiver can be restarted
+        // and re-lock without touching the sender.
+    ISH_RX_TIMEOUT_MS = 1500, // receiver re-request timeout. MUST exceed the full
+        // REQUEST->first-DATA round trip (~1.1s: REQUEST tx +
+        // sender turnaround + first DATA tx), else the receiver
+        // re-requests and tears down its RX before the first
+        // block arrives -> stall. During streaming, blocks arrive
+        // every ~350ms << this, so no spurious re-requests.
+    ISH_TX_TIMEOUT_MS = 100, // sender gap after last RX before streaming data
+    ISH_IDLE_TICK_MS = 20, // interval for calling ish_idle()
+    ISH_CONNECTED_IDLE_MS = 5000, // sender reverts CONNECTED->ANNOUNCING after this idle
+    ISH_REQUEST_JITTER_MS = 1500 // random backoff before each (re)REQUEST, up to ~the
+        // main retry/announce interval, to break ALOHA-style
+        // phase-lock with the sender's periodic ANNOUNCEs
+        // (both sides transmitting at once -> never hear each
+        // other -> stall). No priority arbitration in 1:1 IR.
 };
 
 // ===== Global state =====
@@ -191,97 +191,107 @@ void ish_notify_led_cyan(void) {
 
 // Map
 typedef struct {
-    uint8_t  *bits;     // array of bytes, 1 bit = 1 block
-    uint32_t  count;    // number of blocks (valid bits)
-    uint32_t  nbytes;   // length of bits array in bytes
+    uint8_t* bits; // array of bytes, 1 bit = 1 block
+    uint32_t count; // number of blocks (valid bits)
+    uint32_t nbytes; // length of bits array in bytes
 } ish_blockmap_t;
 
 static ish_blockmap_t g_map = {0};
 
-static inline uint32_t _ish_div8(uint32_t x) { return x >> 3; }
-static inline uint32_t _ish_mod8(uint32_t x) { return x & 7u; }
+static inline uint32_t _ish_div8(uint32_t x) {
+    return x >> 3;
+}
+static inline uint32_t _ish_mod8(uint32_t x) {
+    return x & 7u;
+}
 
-bool ish_map_init(uint32_t block_count) {    // default all blocks = 0 (means not received)
-    if (g_map.bits) {
+bool ish_map_init(uint32_t block_count) { // default all blocks = 0 (means not received)
+    if(g_map.bits) {
         free(g_map.bits);
         g_map.bits = NULL;
     }
-    g_map.count  = 0;
+    g_map.count = 0;
     g_map.nbytes = 0;
 
-    if (block_count == 0) return true; // empty map is allowed
+    if(block_count == 0) return true; // empty map is allowed
 
-    uint32_t nbytes = (block_count + 7u) / 8u;      // calculate buffer size and check for overflow
+    uint32_t nbytes = (block_count + 7u) / 8u; // calculate buffer size and check for overflow
 
     // simple overflow check for size_t in malloc
-    if (nbytes == 0 || nbytes > (uint32_t)SIZE_MAX) return false;
+    if(nbytes == 0 || nbytes > (uint32_t)SIZE_MAX) return false;
 
-    uint8_t *buf = (uint8_t*)malloc(nbytes);
-    if (!buf) return false;
+    uint8_t* buf = (uint8_t*)malloc(nbytes);
+    if(!buf) return false;
 
     memset(buf, 0x00, nbytes);
 
     // Make tail bits (beyond count) = 1, to avoid false positives in zero search
     uint32_t rem = block_count & 7u; // count % 8
-    if (rem != 0) {
-        uint8_t tail_mask = (uint8_t)~((1u << rem) - 1u); // bits beyond count
+    if(rem != 0) {
+        uint8_t tail_mask = (uint8_t) ~((1u << rem) - 1u); // bits beyond count
         buf[nbytes - 1] |= tail_mask;
     }
 
-    g_map.bits   = buf;
-    g_map.count  = block_count;
+    g_map.bits = buf;
+    g_map.count = block_count;
     g_map.nbytes = nbytes;
     return true;
 }
 
 void ish_map_deinit(void) {
-    if (g_map.bits) {
+    if(g_map.bits) {
         free(g_map.bits);
         g_map.bits = NULL;
     }
-    g_map.count  = 0;
+    g_map.count = 0;
     g_map.nbytes = 0;
 }
 
-bool ish_map_set(uint32_t block_number, uint8_t value) {     // Set numbered block to 0/1, return false if out of range
-    if (!g_map.bits || block_number >= g_map.count) return false;
-    uint32_t i   = _ish_div8(block_number);
-    uint8_t  m   = (uint8_t)(1u << _ish_mod8(block_number));
-    if (value)   g_map.bits[i] |=  m;
-    else         g_map.bits[i] &= (uint8_t)~m;
+bool ish_map_set(
+    uint32_t block_number,
+    uint8_t value) { // Set numbered block to 0/1, return false if out of range
+    if(!g_map.bits || block_number >= g_map.count) return false;
+    uint32_t i = _ish_div8(block_number);
+    uint8_t m = (uint8_t)(1u << _ish_mod8(block_number));
+    if(value)
+        g_map.bits[i] |= m;
+    else
+        g_map.bits[i] &= (uint8_t)~m;
     return true;
 }
 
-int ish_map_get(uint32_t block_number) {     // Get numbered block value 0/1, -1 if out of range
-    if (!g_map.bits || block_number >= g_map.count) return -1;
+int ish_map_get(uint32_t block_number) { // Get numbered block value 0/1, -1 if out of range
+    if(!g_map.bits || block_number >= g_map.count) return -1;
     uint32_t i = _ish_div8(block_number);
-    uint8_t  m = (uint8_t)(1u << _ish_mod8(block_number));
+    uint8_t m = (uint8_t)(1u << _ish_mod8(block_number));
     return (g_map.bits[i] & m) ? 1 : 0;
 }
 
 // Find first num with value 0/1, starting from offset_from (inclusive). Returns UINT32_MAX if not found
-uint32_t ish_map_search(uint8_t bitval, uint32_t offset_from) {  
-    if (!g_map.bits) return UINT32_MAX;
-    if (offset_from >= g_map.count) return UINT32_MAX;
+uint32_t ish_map_search(uint8_t bitval, uint32_t offset_from) {
+    if(!g_map.bits) return UINT32_MAX;
+    if(offset_from >= g_map.count) return UINT32_MAX;
 
     uint32_t byte_idx = _ish_div8(offset_from);
-    uint32_t bit_off  = _ish_mod8(offset_from);
+    uint32_t bit_off = _ish_mod8(offset_from);
 
     // first (partial) iteration — mask bits before offset_from
     {
         uint8_t byte = g_map.bits[byte_idx];
-        if (bitval == 0) byte = (uint8_t)~byte; // searching for zeros => invert
+        if(bitval == 0) byte = (uint8_t)~byte; // searching for zeros => invert
 
         // mask: keep bits [bit_off..7]
         uint8_t mask = (uint8_t)(0xFFu << bit_off);
         uint8_t cand = (uint8_t)(byte & mask);
-        if (cand) {
+        if(cand) {
             // find first set bit
-            for (uint32_t b = bit_off; b < 8; ++b) {
-                if (cand & (1u << b)) {
+            for(uint32_t b = bit_off; b < 8; ++b) {
+                if(cand & (1u << b)) {
                     uint32_t idx = (byte_idx << 3) + b;
-                    if (idx < g_map.count) return idx;
-                    else return UINT32_MAX;
+                    if(idx < g_map.count)
+                        return idx;
+                    else
+                        return UINT32_MAX;
                 }
             }
         }
@@ -289,17 +299,19 @@ uint32_t ish_map_search(uint8_t bitval, uint32_t offset_from) {
     }
 
     // full bytes
-    for (; byte_idx < g_map.nbytes; ++byte_idx) {
+    for(; byte_idx < g_map.nbytes; ++byte_idx) {
         uint8_t byte = g_map.bits[byte_idx];
-        if (bitval == 0) byte = (uint8_t)~byte;
+        if(bitval == 0) byte = (uint8_t)~byte;
 
-        if (byte) { // if it is last byte, protect against overflow count
+        if(byte) { // if it is last byte, protect against overflow count
             bool last = (byte_idx == g_map.nbytes - 1);
-            for (uint32_t b = 0; b < 8; ++b) {
-                if (byte & (1u << b)) {
+            for(uint32_t b = 0; b < 8; ++b) {
+                if(byte & (1u << b)) {
                     uint32_t idx = (byte_idx << 3) + b;
-                    if (!last || idx < g_map.count) return idx;
-                    else return UINT32_MAX;
+                    if(!last || idx < g_map.count)
+                        return idx;
+                    else
+                        return UINT32_MAX;
                 }
             }
         }
@@ -308,11 +320,11 @@ uint32_t ish_map_search(uint8_t bitval, uint32_t offset_from) {
     return UINT32_MAX;
 }
 
-bool ish_map_all_set(void) {     // Quick check if all blocks received, true if all bits is 1
-    if (!g_map.bits) return false;
+bool ish_map_all_set(void) { // Quick check if all blocks received, true if all bits is 1
+    if(!g_map.bits) return false;
     // all intermediate bytes must be 0xFF
-    for (uint32_t i = 0; i + 1 < g_map.nbytes; ++i) {
-        if (g_map.bits[i] != 0xFFu) return false;
+    for(uint32_t i = 0; i + 1 < g_map.nbytes; ++i) {
+        if(g_map.bits[i] != 0xFFu) return false;
     }
     // last byte must also be 0xFF, since we set "tail" bits to 1 during init
     return g_map.bits[g_map.nbytes - 1] == 0xFFu;
@@ -324,9 +336,9 @@ bool ish_map_all_set(void) {     // Quick check if all blocks received, true if 
 // CRC16 makes that ~1/65536, so the ARQ actually converges "until success".
 static uint16_t ish_crc16(const uint8_t* data, size_t len) {
     uint16_t crc = 0xFFFF;
-    for (size_t i = 0; i < len; ++i) {
+    for(size_t i = 0; i < len; ++i) {
         crc ^= (uint16_t)data[i] << 8;
-        for (int b = 0; b < 8; ++b) {
+        for(int b = 0; b < 8; ++b) {
             crc = (crc & 0x8000) ? (uint16_t)((crc << 1) ^ 0x1021) : (uint16_t)(crc << 1);
         }
     }
@@ -336,15 +348,15 @@ static uint16_t ish_crc16(const uint8_t* data, size_t len) {
 typedef enum {
     ISH_PARTS_MODE_NONE = 0,
     ISH_PARTS_MODE_BLOCKS_PER_PART, // B >= N
-    ISH_PARTS_MODE_PARTS_PER_BLOCK  // B <  N
+    ISH_PARTS_MODE_PARTS_PER_BLOCK // B <  N
 } ish_parts_mode_t;
 
 static struct {
-    uint32_t         B;     // block_count
-    uint32_t         N;     // parts count (= ISH_PARTS_COUNT)
-    ish_parts_mode_t  mode;
-    uint32_t         received[ISH_PARTS_COUNT]; // blocks received per part
-    uint32_t         total   [ISH_PARTS_COUNT]; // blocks total per part (>=1 unless B==0)
+    uint32_t B; // block_count
+    uint32_t N; // parts count (= ISH_PARTS_COUNT)
+    ish_parts_mode_t mode;
+    uint32_t received[ISH_PARTS_COUNT]; // blocks received per part
+    uint32_t total[ISH_PARTS_COUNT]; // blocks total per part (>=1 unless B==0)
 } ish_parts;
 
 static inline uint32_t _scale_floor_u32(uint32_t x, uint32_t mul, uint32_t den) {
@@ -365,9 +377,9 @@ static void _init_blocks_per_part(void) {
     const uint32_t N = ish_parts.N;
 
     uint32_t prev = 0; // ceil(0*B/N)
-    for (uint32_t s = 0; s < N; ++s) {
+    for(uint32_t s = 0; s < N; ++s) {
         uint32_t next = _scale_ceil_u32(s + 1, B, N);
-        ish_parts.total[s]    = next - prev; // >=1 since B>=N
+        ish_parts.total[s] = next - prev; // >=1 since B>=N
         ish_parts.received[s] = 0;
         prev = next;
     }
@@ -378,23 +390,23 @@ bool ish_parts_init(uint32_t block_count) {
     ish_parts.N = ISH_PARTS_COUNT;
     ish_parts.B = block_count;
 
-    if (ish_parts.N == 0) {
+    if(ish_parts.N == 0) {
         ish_parts.mode = ISH_PARTS_MODE_NONE;
         return false;
     }
 
-    if (ish_parts.B == 0) {
+    if(ish_parts.B == 0) {
         ish_parts.mode = ISH_PARTS_MODE_NONE;
         return true;
     }
 
-    if (ish_parts.B >= ish_parts.N) {
+    if(ish_parts.B >= ish_parts.N) {
         ish_parts.mode = ISH_PARTS_MODE_BLOCKS_PER_PART;
         _init_blocks_per_part();
     } else {
         // B<N: each part is covered by exactly one block → total 1 per part.
         ish_parts.mode = ISH_PARTS_MODE_PARTS_PER_BLOCK;
-        for (uint32_t s = 0; s < ish_parts.N; ++s) {
+        for(uint32_t s = 0; s < ish_parts.N; ++s) {
             ish_parts.total[s] = 1u;
             ish_parts.received[s] = 0u;
         }
@@ -407,53 +419,55 @@ void ish_parts_deinit(void) {
 }
 
 void ish_parts_on_block_set(uint32_t i) {
-    if (ish_parts.B == 0 || ish_parts.N == 0 || ish_parts.mode == ISH_PARTS_MODE_NONE) return;
-    if (i >= ish_parts.B) return; // out of range
+    if(ish_parts.B == 0 || ish_parts.N == 0 || ish_parts.mode == ISH_PARTS_MODE_NONE) return;
+    if(i >= ish_parts.B) return; // out of range
 
-    if (ish_parts.mode == ISH_PARTS_MODE_BLOCKS_PER_PART) {
+    if(ish_parts.mode == ISH_PARTS_MODE_BLOCKS_PER_PART) {
         // Block i belongs to exactly one part: part(i) = floor(i*N/B).
         uint32_t s = _scale_floor_u32(i, ish_parts.N, ish_parts.B);
-        if (s >= ish_parts.N) return; // bounds check
+        if(s >= ish_parts.N) return; // bounds check
 
         // Count it (idempotent to duplicate DATA — capped at total[s]).
-        if (ish_parts.received[s] < ish_parts.total[s]) {
+        if(ish_parts.received[s] < ish_parts.total[s]) {
             ish_parts.received[s]++;
         }
     } else {
         // ISH_PARTS_MODE_PARTS_PER_BLOCK (B<N): block covers range of parts [sf .. sl]
         // sf = floor(i*N/B), sl = floor((i+1)*N/B) - 1
-        uint32_t sf = _scale_floor_u32(i,     ish_parts.N, ish_parts.B);
+        uint32_t sf = _scale_floor_u32(i, ish_parts.N, ish_parts.B);
         uint32_t sl = _scale_floor_u32(i + 1, ish_parts.N, ish_parts.B);
-        if (sl > 0) sl -= 1u;
+        if(sl > 0) sl -= 1u;
 
-        if (sf >= ish_parts.N) return;
-        if (sl >= ish_parts.N) sl = ish_parts.N - 1u;
-        if (sf >  sl)  return;
+        if(sf >= ish_parts.N) return;
+        if(sl >= ish_parts.N) sl = ish_parts.N - 1u;
+        if(sf > sl) return;
 
         // Mark covered columns full (total[s]==1). Idempotent.
-        for (uint32_t s = sf; s <= sl; ++s) {
+        for(uint32_t s = sf; s <= sl; ++s) {
             ish_parts.received[s] = ish_parts.total[s];
         }
     }
 }
 
 int ish_parts_get(uint32_t part_index) {
-    if (part_index >= ish_parts.N || ish_parts.N == 0) return -1;
+    if(part_index >= ish_parts.N || ish_parts.N == 0) return -1;
     return (ish_parts.total[part_index] > 0 &&
-            ish_parts.received[part_index] >= ish_parts.total[part_index]) ? 1 : 0;
+            ish_parts.received[part_index] >= ish_parts.total[part_index]) ?
+               1 :
+               0;
 }
 
 // Fill dst[0..ISH_PARTS_COUNT-1] with per-part fill level 0..255 (received/total).
 // A partially-received part yields >=1 so early progress is visible; a fully
 // received part yields 255. Caller must hold g_lock.
 void ish_parts_levels_copy(uint8_t* dst) {
-    if (!dst) return;
-    for (uint32_t s = 0; s < ISH_PARTS_COUNT; ++s) {
+    if(!dst) return;
+    for(uint32_t s = 0; s < ISH_PARTS_COUNT; ++s) {
         uint32_t tot = ish_parts.total[s];
         uint32_t rcv = ish_parts.received[s];
-        if (tot == 0 || rcv == 0) {
+        if(tot == 0 || rcv == 0) {
             dst[s] = 0;
-        } else if (rcv >= tot) {
+        } else if(rcv >= tot) {
             dst[s] = 255;
         } else {
             uint32_t v = (uint32_t)(((uint64_t)rcv * 255u) / tot);
@@ -472,11 +486,11 @@ uint32_t ish_parts_block_count(void) {
 
 bool ish_parts_is_ready(void) {
     // Assume "ready" if N>0 and (B==0 or some mode selected)
-    if (ish_parts.N == 0) return false;
-    if (ish_parts.B == 0) return true;
-    return ish_parts.mode == ISH_PARTS_MODE_BLOCKS_PER_PART || ish_parts.mode == ISH_PARTS_MODE_PARTS_PER_BLOCK;
+    if(ish_parts.N == 0) return false;
+    if(ish_parts.B == 0) return true;
+    return ish_parts.mode == ISH_PARTS_MODE_BLOCKS_PER_PART ||
+           ish_parts.mode == ISH_PARTS_MODE_PARTS_PER_BLOCK;
 }
-
 
 // ===== Helpers =====
 
@@ -493,26 +507,28 @@ void ish_fmt_duration(uint32_t secs, char* buf, size_t n) {
 }
 
 const char* ish_basename(const char* path) {
-    if (!path || !*path) return "";  // empty
+    if(!path || !*path) return ""; // empty
 
     const char* end = path + strlen(path); // end points to '\0'
 
-    while (end > path && end[-1] == '/') end--;  // remove trailing '/'
+    while(end > path && end[-1] == '/')
+        end--; // remove trailing '/'
 
-    if (end == path) return "/";   // string consisted only of '/' (e.g. "/","///")
+    if(end == path) return "/"; // string consisted only of '/' (e.g. "/","///")
 
     const char* p = end;
-    while (p > path && p[-1] != '/') p--;   // find last '/'
+    while(p > path && p[-1] != '/')
+        p--; // find last '/'
 
     return p; // [p, end) — basename
 }
 
 void ish_hexdump(const void* data, size_t len) {
     const uint8_t* p = (const uint8_t*)data;
-    for (size_t i = 0; i < len; ++i) {
-        if ((i % 16) == 0) printf("%04zu: ", i);
+    for(size_t i = 0; i < len; ++i) {
+        if((i % 16) == 0) printf("%04zu: ", i);
         printf("%02X ", p[i]);
-        if ((i % 16) == 15 || i + 1 == len) printf("\n");
+        if((i % 16) == 15 || i + 1 == len) printf("\n");
     }
 }
 
@@ -532,7 +548,11 @@ static inline size_t ish_packet_len_for_type(uint8_t pkt_type) {
 // Serialize into out (>= ISH_PACKET_MAX). payload_src must hold at least
 // ish_payload_len_for_type(pkt_type) bytes. Returns the total packet length.
 static size_t ish_packet_pack(
-    uint8_t* out, uint8_t version, uint8_t tx_id, uint8_t pkt_type, const uint8_t* payload_src) {
+    uint8_t* out,
+    uint8_t version,
+    uint8_t tx_id,
+    uint8_t pkt_type,
+    const uint8_t* payload_src) {
     const size_t pl = ish_payload_len_for_type(pkt_type);
     out[0] = version;
     out[1] = tx_id;
@@ -548,18 +568,22 @@ static size_t ish_packet_pack(
 // and *payload (points into buf). Rejects bad version, unknown type, wrong
 // length-for-type, or CRC mismatch.
 static bool ish_packet_check_and_parse(
-    const uint8_t* buf, size_t len, uint8_t* tx_id, uint8_t* pkt_type, const uint8_t** payload) {
-    if (len < ISH_HEADER_LENGTH + ISH_CRC_LENGTH) return false;
-    if (buf[0] != ISH_VERSION) return false;
+    const uint8_t* buf,
+    size_t len,
+    uint8_t* tx_id,
+    uint8_t* pkt_type,
+    const uint8_t** payload) {
+    if(len < ISH_HEADER_LENGTH + ISH_CRC_LENGTH) return false;
+    if(buf[0] != ISH_VERSION) return false;
     uint8_t type = buf[2];
-    if (type != ISH_PKT_ANNOUNCE && type != ISH_PKT_REQUEST && type != ISH_PKT_DATA) return false;
-    if (len != ish_packet_len_for_type(type)) return false;
+    if(type != ISH_PKT_ANNOUNCE && type != ISH_PKT_REQUEST && type != ISH_PKT_DATA) return false;
+    if(len != ish_packet_len_for_type(type)) return false;
 
     const size_t pl = ish_payload_len_for_type(type);
     uint16_t calc = ish_crc16(buf, ISH_HEADER_LENGTH + pl);
     uint16_t got = (uint16_t)buf[ISH_HEADER_LENGTH + pl] |
                    ((uint16_t)buf[ISH_HEADER_LENGTH + pl + 1] << 8);
-    if (calc != got) return false;
+    if(calc != got) return false;
 
     *tx_id = buf[1];
     *pkt_type = type;
@@ -613,7 +637,10 @@ void ish_ensure_inbox_dir(void) {
 
     bool ok = storage_simply_mkdir(storage, EXT_PATH(ISH_RECEIVER_DIRECTORY));
     if(!ok) {
-        FURI_LOG_E(TAG, "ish_ensure_inbox_dir: Failed to create directory '%s'", EXT_PATH(ISH_RECEIVER_DIRECTORY));
+        FURI_LOG_E(
+            TAG,
+            "ish_ensure_inbox_dir: Failed to create directory '%s'",
+            EXT_PATH(ISH_RECEIVER_DIRECTORY));
     }
     // TODO: check return value?
 
@@ -640,7 +667,7 @@ static void ish_close_session_file(void) {
 // then rewinds to 0. Caller holds g_lock (ish_handle_announce).
 uint8_t ish_file_create_truncate(uint32_t file_size) {
     FURI_LOG_I(TAG, "ish_file_create_truncate: Creating and truncating file '%s'", g.r_file_path);
-    if (g.mode != ISH_MODE_RECEIVER) {
+    if(g.mode != ISH_MODE_RECEIVER) {
         FURI_LOG_E(TAG, "ish_file_create_truncate: Not available in SENDER mode");
         return 1;
     }
@@ -689,7 +716,7 @@ void my_write_block(uint32_t block_number, const uint8_t in52[ISH_DATA_LENGTH], 
     }
 
     uint32_t bytes_written = storage_file_write(g.file, in52, valid_len);
-    if (bytes_written < valid_len) {
+    if(bytes_written < valid_len) {
         FURI_LOG_W(TAG, "my_write_block: Write error, only %lu bytes written", bytes_written);
     }
 }
@@ -706,7 +733,7 @@ uint32_t my_read_block(uint32_t block_number, uint8_t out52[ISH_DATA_LENGTH]) {
     storage_file_seek(g.file, block_number * ISH_DATA_LENGTH, true);
 
     uint32_t bytes = storage_file_read(g.file, out52, ISH_DATA_LENGTH);
-    if (bytes < ISH_DATA_LENGTH) {
+    if(bytes < ISH_DATA_LENGTH) {
         FURI_LOG_W(TAG, "my_read_block: Read error, last block? %lu bytes read", bytes);
     }
 
@@ -735,21 +762,20 @@ bool ish_init_from_external_transmit(const char* file_path) {
 
 bool ish_init_from_external_receive() {
     ish_init_params_t pr = {
-      .mode = ISH_MODE_RECEIVER,
-      .tx_id = 0x00,
-      .send_bytes = ir_transport_send,
-      .now_ms = furi_get_tick,
-      .r_write_block = my_write_block
-    };
+        .mode = ISH_MODE_RECEIVER,
+        .tx_id = 0x00,
+        .send_bytes = ir_transport_send,
+        .now_ms = furi_get_tick,
+        .r_write_block = my_write_block};
     return ish_init(&pr);
 }
 
 bool ish_init(const ish_init_params_t* p) {
-    if (!p || !p->send_bytes || !p->now_ms) {
+    if(!p || !p->send_bytes || !p->now_ms) {
         FURI_LOG_E(TAG, "ish_init: Invalid parameters");
         return false;
     }
-    if (p->mode != ISH_MODE_SENDER && p->mode != ISH_MODE_RECEIVER) {
+    if(p->mode != ISH_MODE_SENDER && p->mode != ISH_MODE_RECEIVER) {
         FURI_LOG_E(TAG, "ish_init: Invalid mode %d", p->mode);
         return false;
     }
@@ -758,17 +784,17 @@ bool ish_init(const ish_init_params_t* p) {
     // on_enter before any thread starts; this is a defensive fallback).
     ish_lock_ensure();
 
-    if (p->mode == ISH_MODE_SENDER) {
+    if(p->mode == ISH_MODE_SENDER) {
         FURI_LOG_I(TAG, "ish_init: SENDER mode, file_path='%s'", p->s_file_path);
 
-        if (!p->s_read_block) return false;
-        if (p->s_file_path[0] == '\0') {
+        if(!p->s_read_block) return false;
+        if(p->s_file_path[0] == '\0') {
             FURI_LOG_E(TAG, "ish_init: Invalid file path");
             return false;
         }
 
         const char* basename = ish_basename(p->s_file_path);
-        if (strlen(basename) >= ISH_FILENAME_LENGTH) {
+        if(strlen(basename) >= ISH_FILENAME_LENGTH) {
             FURI_LOG_E(TAG, "ish_init: File name too long: %s", basename);
             return false;
         }
@@ -781,12 +807,12 @@ bool ish_init(const ish_init_params_t* p) {
 
         Storage* storage = furi_record_open(RECORD_STORAGE);
         File* file = storage_file_alloc(storage);
-        if (!file) {
+        if(!file) {
             FURI_LOG_E(TAG, "ish_init: Failed to allocate file handle");
             furi_record_close(RECORD_STORAGE);
             return false;
         }
-        if (!storage_file_open(file, p->s_file_path, FSAM_READ, FSOM_OPEN_EXISTING)) {
+        if(!storage_file_open(file, p->s_file_path, FSAM_READ, FSOM_OPEN_EXISTING)) {
             FURI_LOG_E(TAG, "ish_init: Failed to open file '%s'", p->s_file_path);
             storage_file_free(file);
             furi_record_close(RECORD_STORAGE);
@@ -812,9 +838,10 @@ bool ish_init(const ish_init_params_t* p) {
         // md5 released its handle on the same path (per-path FSE_ALREADY_OPEN).
         Storage* psto = furi_record_open(RECORD_STORAGE);
         File* pfile = storage_file_alloc(psto);
-        if (!pfile || !storage_file_open(pfile, p->s_file_path, FSAM_READ, FSOM_OPEN_EXISTING)) {
-            FURI_LOG_E(TAG, "ish_init: Failed to open persistent read handle '%s'", p->s_file_path);
-            if (pfile) storage_file_free(pfile);
+        if(!pfile || !storage_file_open(pfile, p->s_file_path, FSAM_READ, FSOM_OPEN_EXISTING)) {
+            FURI_LOG_E(
+                TAG, "ish_init: Failed to open persistent read handle '%s'", p->s_file_path);
+            if(pfile) storage_file_free(pfile);
             furi_record_close(RECORD_STORAGE);
             return false;
         }
@@ -838,20 +865,39 @@ bool ish_init(const ish_init_params_t* p) {
         g.s_is_blocks_requested = 0;
         g.s_block_needed_first = 0;
         g.s_block_needed_last = 0;
-        g.storage = psto;  // persistent read handle
+        g.storage = psto; // persistent read handle
         g.file = pfile;
         ish_unlock();
 
-        FURI_LOG_I(TAG, "ish_init: SENDER, file_path='%s', file_name='%s', file_size=%lu, tx_id=%d",
-            g.s_file_path, g.s_file_name, g.s_file_size, g.tx_id);
-        FURI_LOG_I(TAG, "ish_init: md5=%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-            g.s_md5[0], g.s_md5[1], g.s_md5[2], g.s_md5[3],
-            g.s_md5[4], g.s_md5[5], g.s_md5[6], g.s_md5[7],
-            g.s_md5[8], g.s_md5[9], g.s_md5[10], g.s_md5[11],
-            g.s_md5[12], g.s_md5[13], g.s_md5[14], g.s_md5[15]);
+        FURI_LOG_I(
+            TAG,
+            "ish_init: SENDER, file_path='%s', file_name='%s', file_size=%lu, tx_id=%d",
+            g.s_file_path,
+            g.s_file_name,
+            g.s_file_size,
+            g.tx_id);
+        FURI_LOG_I(
+            TAG,
+            "ish_init: md5=%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+            g.s_md5[0],
+            g.s_md5[1],
+            g.s_md5[2],
+            g.s_md5[3],
+            g.s_md5[4],
+            g.s_md5[5],
+            g.s_md5[6],
+            g.s_md5[7],
+            g.s_md5[8],
+            g.s_md5[9],
+            g.s_md5[10],
+            g.s_md5[11],
+            g.s_md5[12],
+            g.s_md5[13],
+            g.s_md5[14],
+            g.s_md5[15]);
 
     } else { // RECEIVER:
-        if (!p->r_write_block) return false;
+        if(!p->r_write_block) return false;
 
         ish_lock();
         memset(&g, 0, sizeof(g));
@@ -886,7 +932,7 @@ void ish_deinit(void) {
 
     // clear callbacks and other pointers to avoid use-after-free
     g.cb_send_bytes = NULL;
-    g.cb_now_ms     = NULL;
+    g.cb_now_ms = NULL;
     g.cb_read_block = NULL;
     g.cb_write_block = NULL;
 
@@ -907,9 +953,10 @@ void ish_deinit(void) {
 // High-level sender helper functions
 
 void ish_send_announce(void) {
-    if (g.mode != ISH_MODE_SENDER || !g.cb_send_bytes) return;
+    if(g.mode != ISH_MODE_SENDER || !g.cb_send_bytes) return;
 
-    FURI_LOG_I(TAG, "ish_send_announce: file_name='%s', file_size=%lu", g.s_file_name, g.s_file_size);
+    FURI_LOG_I(
+        TAG, "ish_send_announce: file_name='%s', file_size=%lu", g.s_file_name, g.s_file_size);
 
     ish_notify_led_blue();
 
@@ -928,11 +975,11 @@ void ish_send_announce(void) {
 
 void ish_send_request(uint32_t range_start, uint32_t range_end) {
     // FURI_LOG_I(TAG, "ish_send_request: range_start=%lu, range_end=%lu", range_start, range_end);
-    
-    if (g.mode != ISH_MODE_RECEIVER || !g.cb_send_bytes) return;
+
+    if(g.mode != ISH_MODE_RECEIVER || !g.cb_send_bytes) return;
 
     // RECOMMENDATION: align range by ISH_DATA_LENGTH, except the tail == file_size
-    ISH_pl_request_t pl = { .range_start = range_start, .range_end = range_end };
+    ISH_pl_request_t pl = {.range_start = range_start, .range_end = range_end};
     uint8_t payload[ISH_PAYLOAD_MAX];
     ish_pl_request_pack(payload, &pl);
 
@@ -942,18 +989,18 @@ void ish_send_request(uint32_t range_start, uint32_t range_end) {
 }
 
 void ish_send_data() {
-    if (g.mode != ISH_MODE_SENDER || !g.cb_send_bytes || !g.cb_read_block) return;
+    if(g.mode != ISH_MODE_SENDER || !g.cb_send_bytes || !g.cb_read_block) return;
 
     // Pick the next block to send under the lock (ish_handle_request, on the RX
     // thread, mutates these fields concurrently).
     ish_lock();
-    if (g.s_is_blocks_requested == 0) {
+    if(g.s_is_blocks_requested == 0) {
         ish_unlock();
         FURI_LOG_E(TAG, "ish_send_data: No blocks needed, cannot send data");
         return;
     }
     uint32_t block_number = g.s_block_needed_first;
-    if (g.s_block_needed_first < g.s_block_needed_last) {
+    if(g.s_block_needed_first < g.s_block_needed_last) {
         g.s_block_needed_first++;
     } else {
         g.s_is_blocks_requested = 0; // all requested blocks have been sent
@@ -963,7 +1010,8 @@ void ish_send_data() {
     FURI_LOG_I(TAG, "ish_send_data: block_number=%lu", block_number);
 
     uint8_t data52[ISH_DATA_LENGTH];
-    uint32_t valid = g.cb_read_block(block_number, data52); // fill and zero‑pad if valid<ISH_DATA_LENGTH
+    uint32_t valid =
+        g.cb_read_block(block_number, data52); // fill and zero‑pad if valid<ISH_DATA_LENGTH
 
     ish_notify_led_green();
 
@@ -984,10 +1032,10 @@ void ish_send_data() {
 // ===== Simple timer/behavior logic =====
 
 void ish_idle(void) {
-    if (!g.cb_now_ms) return;
+    if(!g.cb_now_ms) return;
     uint32_t now = g.cb_now_ms();
 
-    if (g.mode == ISH_MODE_SENDER) {
+    if(g.mode == ISH_MODE_SENDER) {
         // Decide what to do under the lock (last_rx_ms / s_is_blocks_requested are
         // mutated by ish_handle_request on the RX thread), then act outside it —
         // the radio sends are slow and must not hold the lock.
@@ -995,8 +1043,8 @@ void ish_idle(void) {
         // After a long idle (transfer finished / link dropped) go back to the
         // faster discovery announce rate. Never changes state mid-stream
         // (s_is_blocks_requested==1).
-        if (g.state == ISH_ST_CONNECTED && g.s_is_blocks_requested == 0 &&
-            (now - g.last_rx_ms > ISH_CONNECTED_IDLE_MS)) {
+        if(g.state == ISH_ST_CONNECTED && g.s_is_blocks_requested == 0 &&
+           (now - g.last_rx_ms > ISH_CONNECTED_IDLE_MS)) {
             g.state = ISH_ST_ANNOUNCING;
         }
         // Keep announcing throughout — a receiver can be restarted and re-lock
@@ -1005,19 +1053,19 @@ void ish_idle(void) {
         uint32_t ann_iv = (g.state == ISH_ST_CONNECTED) ? ISH_ANNOUNCE_CONNECTED_MS :
                                                           ISH_ANNOUNCE_INTERVAL_MS;
         bool do_announce = (now - g.last_announce_ms >= ann_iv);
-        if (do_announce) g.last_announce_ms = now;
+        if(do_announce) g.last_announce_ms = now;
         bool do_data = (now - g.last_rx_ms > ISH_TX_TIMEOUT_MS) && (g.s_is_blocks_requested == 1);
         g.last_tick_ms = now;
         ish_unlock();
 
-        if (do_announce) ish_send_announce();
-        if (do_data) ish_send_data(); // takes the lock internally for bookkeeping
+        if(do_announce) ish_send_announce();
+        if(do_data) ish_send_data(); // takes the lock internally for bookkeeping
         return;
     }
 
-    if (g.mode == ISH_MODE_RECEIVER) {
+    if(g.mode == ISH_MODE_RECEIVER) {
         ish_lock();
-        if (g.r_is_finished) {
+        if(g.r_is_finished) {
             g.last_tick_ms = now;
             ish_unlock();
             return;
@@ -1026,12 +1074,12 @@ void ish_idle(void) {
         // --- Decide whether to (re)send a REQUEST for the next missing window ---
         bool do_request = false;
         uint32_t nbyte_start = 0, nbyte_end = 0;
-        if (now - g.last_rx_ms > ISH_RX_TIMEOUT_MS) {
-            if (g.r_locked && !g.r_finalizing && g.r_blocks_received < g.r_blocks_needed) {
+        if(now - g.last_rx_ms > ISH_RX_TIMEOUT_MS) {
+            if(g.r_locked && !g.r_finalizing && g.r_blocks_received < g.r_blocks_needed) {
                 uint32_t nblk_start = ish_map_search(0, 0);
-                uint32_t nblk_end   = ish_map_search(1, nblk_start + 1);
+                uint32_t nblk_end = ish_map_search(1, nblk_start + 1);
                 nbyte_start = nblk_start * ISH_DATA_LENGTH;
-                if (nblk_end == UINT32_MAX) {
+                if(nblk_end == UINT32_MAX) {
                     nblk_end = g.r_blocks_needed - 1; // last missing block -> request to end
                 }
                 // No cap: request the whole first contiguous missing run. On a fresh
@@ -1040,8 +1088,13 @@ void ish_idle(void) {
                 // receiver only re-requests genuinely missing (lost) blocks.
                 nbyte_end = (nblk_end + 1) * ISH_DATA_LENGTH; // inclusive end
                 do_request = (nblk_start != UINT32_MAX);
-                FURI_LOG_I(TAG, "ish_idle: REQUEST blocks (%lu, %lu), bytes (%lu, %lu)",
-                    nblk_start, nblk_end, nbyte_start, nbyte_end);
+                FURI_LOG_I(
+                    TAG,
+                    "ish_idle: REQUEST blocks (%lu, %lu), bytes (%lu, %lu)",
+                    nblk_start,
+                    nblk_end,
+                    nbyte_start,
+                    nbyte_end);
             }
             g.last_rx_ms = now; // debounce timer
         }
@@ -1052,11 +1105,11 @@ void ish_idle(void) {
         // writes the file while we hash it. r_file_path / r_md5 stay frozen.
         bool do_finalize = g.r_locked && !g.r_finalizing &&
                            (g.r_blocks_received == g.r_blocks_needed);
-        if (do_finalize) {
+        if(do_finalize) {
             FURI_LOG_I(TAG, "ish_idle: ALL BLOCKS RECEIVED, finalizing");
             g.r_finalizing = true;
-            g.r_finish_ms = now;     // reception end (all blocks in) — before MD5
-            g.r_locked = false;      // keep existing UX (lock released on completion)
+            g.r_finish_ms = now; // reception end (all blocks in) — before MD5
+            g.r_locked = false; // keep existing UX (lock released on completion)
             g.r_locked_tx_id = 0;
             g.r_blocks_received = 0;
             // Close the persistent write handle BEFORE hashing: flushes the last
@@ -1070,7 +1123,7 @@ void ish_idle(void) {
         ish_unlock();
 
         // --- Slow work OUTSIDE the lock ---
-        if (do_request) {
+        if(do_request) {
             // Large random backoff (up to ~the retry/announce interval) so periodic
             // REQUESTs don't stay phase-locked with the sender's periodic ANNOUNCEs
             // (both transmitting at once never hear each other). No priority
@@ -1086,7 +1139,7 @@ void ish_idle(void) {
             ish_unlock();
         }
 
-        if (do_finalize) {
+        if(do_finalize) {
             // MD5 on a LOCAL handle; r_finalizing keeps the RX thread out of the file.
             Storage* storage = furi_record_open(RECORD_STORAGE);
             File* file = storage ? storage_file_alloc(storage) : NULL;
@@ -1094,18 +1147,18 @@ void ish_idle(void) {
             memset(real_md5, 0, sizeof(real_md5));
             FS_Error err = 0;
             bool md5_ok = false;
-            if (file) {
+            if(file) {
                 md5_ok = ish_md5_calc_file_progress(file, g.r_file_path, real_md5, &err);
                 storage_file_free(file);
             }
             furi_record_close(RECORD_STORAGE);
 
-            if (!md5_ok || err != 0) {
+            if(!md5_ok || err != 0) {
                 FURI_LOG_E(TAG, "ish_idle: MD5 error %d", err);
             }
 
             bool success = md5_ok && (err == 0) && (memcmp(real_md5, g.r_md5, 16) == 0);
-            if (success) {
+            if(success) {
                 FURI_LOG_I(TAG, "ish_idle: MD5 match, file received successfully");
             } else {
                 FURI_LOG_W(TAG, "ish_idle: MD5 mismatch/error, file may be corrupted");
@@ -1118,8 +1171,10 @@ void ish_idle(void) {
 
             // No notification if verification was aborted by user cancel
             if(!(furi_thread_flags_get() & ISH_WORKER_STOP_FLAG)) {
-                if (success) ish_notify_success();
-                else ish_notify_error();
+                if(success)
+                    ish_notify_success();
+                else
+                    ish_notify_error();
             }
         }
         return;
@@ -1133,15 +1188,15 @@ void ish_idle(void) {
 // Reject file names that could escape /ext/inbox/ (path separators / traversal)
 // or are empty. `name` must already be NUL-terminated.
 static bool ish_filename_is_safe(const char* name) {
-    if (name[0] == '\0') return false;
-    if (strchr(name, '/') != NULL) return false;
-    if (strchr(name, '\\') != NULL) return false;
-    if (strstr(name, "..") != NULL) return false;
+    if(name[0] == '\0') return false;
+    if(strchr(name, '/') != NULL) return false;
+    if(strchr(name, '\\') != NULL) return false;
+    if(strstr(name, "..") != NULL) return false;
     return true;
 }
 
 static void ish_handle_announce(uint8_t tx_id, const ISH_pl_announce_t* ann) {
-    if (g.mode != ISH_MODE_RECEIVER) return;
+    if(g.mode != ISH_MODE_RECEIVER) return;
 
     // notifications to fire after releasing the lock
     bool notify_vibro = false, notify_red = false, notify_blue = false;
@@ -1150,7 +1205,7 @@ static void ish_handle_announce(uint8_t tx_id, const ISH_pl_announce_t* ann) {
 
     // Ignore all announces while finalizing/finished — this is what prevents an
     // ANNOUNCE from re-locking and truncating the file that ish_idle is hashing.
-    if (g.r_finalizing || g.r_is_finished) {
+    if(g.r_finalizing || g.r_is_finished) {
         ish_unlock();
         return;
     }
@@ -1162,20 +1217,24 @@ static void ish_handle_announce(uint8_t tx_id, const ISH_pl_announce_t* ann) {
     // suppress the receiver's re-request -> stall that only clears when the link is
     // physically broken (which stops the announces). The initial lock seeds it below.
 
-    if (g.r_locked == false) {
+    if(g.r_locked == false) {
         // #8: sanitize the announced file name before using it in a path
         char name[ISH_FILENAME_LENGTH];
         memcpy(name, ann->file_name, ISH_FILENAME_LENGTH);
         name[ISH_FILENAME_LENGTH - 1] = '\0';
-        if (!ish_filename_is_safe(name)) {
+        if(!ish_filename_is_safe(name)) {
             FURI_LOG_W(TAG, "ish_handle_announce: rejected unsafe file name");
             ish_unlock();
             ish_notify_led_red();
             return;
         }
 
-        FURI_LOG_I(TAG, "ish_handle_announce: LOCK to tx_id=%d, file_name='%s', file_size=%lu",
-                 tx_id, name, ann->file_size);
+        FURI_LOG_I(
+            TAG,
+            "ish_handle_announce: LOCK to tx_id=%d, file_name='%s', file_size=%lu",
+            tx_id,
+            name,
+            ann->file_size);
         g.r_locked = true;
         g.r_locked_tx_id = tx_id;
         g.tx_id = tx_id; // respond on the same tx_id
@@ -1188,11 +1247,16 @@ static void ish_handle_announce(uint8_t tx_id, const ISH_pl_announce_t* ann) {
         g.r_blocks_needed = (g.r_file_size + ISH_DATA_LENGTH - 1) / ISH_DATA_LENGTH; // round up
 
         // build fullpath as /ext/<dir>/<file_name>
-        snprintf((char*)g.r_file_path, sizeof(g.r_file_path), "/ext/%s/%s", ISH_RECEIVER_DIRECTORY, g.r_file_name);
+        snprintf(
+            (char*)g.r_file_path,
+            sizeof(g.r_file_path),
+            "/ext/%s/%s",
+            ISH_RECEIVER_DIRECTORY,
+            g.r_file_name);
         FURI_LOG_I(TAG, "ish_handle_announce: r_file_path='%s'", g.r_file_path);
 
         ish_ensure_inbox_dir();
-        if (ish_file_create_truncate(g.r_file_size) != 0) {
+        if(ish_file_create_truncate(g.r_file_size) != 0) {
             FURI_LOG_E(TAG, "ish_handle_announce: Failed to create/truncate file");
             g.r_locked = false; // release lock if failed to create file
             g.r_locked_tx_id = 0;
@@ -1201,7 +1265,7 @@ static void ish_handle_announce(uint8_t tx_id, const ISH_pl_announce_t* ann) {
         }
 
         FURI_LOG_I(TAG, "ish_handle_announce: Init ish_map for %lu blocks...", g.r_blocks_needed);
-        if (!ish_map_init(g.r_blocks_needed)) {
+        if(!ish_map_init(g.r_blocks_needed)) {
             FURI_LOG_E(TAG, "ish_handle_announce: Failed to init block map");
             ish_close_session_file(); // drop the just-opened write handle
             g.r_locked = false; // release lock if failed to init map
@@ -1210,8 +1274,9 @@ static void ish_handle_announce(uint8_t tx_id, const ISH_pl_announce_t* ann) {
             return;
         }
         // Init parts for GUI progress bar
-        FURI_LOG_I(TAG, "ish_handle_announce: Init ish_parts for %lu blocks...", g.r_blocks_needed);
-        if (!ish_parts_init(g.r_blocks_needed)) {
+        FURI_LOG_I(
+            TAG, "ish_handle_announce: Init ish_parts for %lu blocks...", g.r_blocks_needed);
+        if(!ish_parts_init(g.r_blocks_needed)) {
             FURI_LOG_E(TAG, "ish_handle_announce: Failed to init parts");
             ish_close_session_file(); // drop the just-opened write handle
             g.r_locked = false;
@@ -1229,7 +1294,7 @@ static void ish_handle_announce(uint8_t tx_id, const ISH_pl_announce_t* ann) {
     }
 
     // If already locked on another sender — ignore
-    if (g.r_locked && g.r_locked_tx_id != tx_id) {
+    if(g.r_locked && g.r_locked_tx_id != tx_id) {
         notify_red = true;
     } else {
         notify_blue = true;
@@ -1237,29 +1302,35 @@ static void ish_handle_announce(uint8_t tx_id, const ISH_pl_announce_t* ann) {
 
     ish_unlock();
 
-    if (notify_vibro) ish_notify_vibro();
-    if (notify_red)   ish_notify_led_red();
-    else if (notify_blue) ish_notify_led_blue();
+    if(notify_vibro) ish_notify_vibro();
+    if(notify_red)
+        ish_notify_led_red();
+    else if(notify_blue)
+        ish_notify_led_blue();
 }
 
 static void ish_handle_request(uint8_t tx_id, const ISH_pl_request_t* rq) {
-    if (g.mode != ISH_MODE_SENDER) return;
+    if(g.mode != ISH_MODE_SENDER) return;
 
-    FURI_LOG_I(TAG, "ish_handle_request: tx_id=%d, range_start=%lu, range_end=%lu",
-             tx_id, rq->range_start, rq->range_end);
+    FURI_LOG_I(
+        TAG,
+        "ish_handle_request: tx_id=%d, range_start=%lu, range_end=%lu",
+        tx_id,
+        rq->range_start,
+        rq->range_end);
 
     bool notify_cyan = false;
 
     ish_lock();
     g.last_rx_ms = g.cb_now_ms ? g.cb_now_ms() : 0;
 
-    if (tx_id != g.tx_id) {
+    if(tx_id != g.tx_id) {
         ish_unlock();
         FURI_LOG_W(TAG, "ish_handle_request: tx_id=%d != g.tx_id, ignoring", tx_id);
         ish_notify_led_red();
         return;
     }
-    if (g.s_is_blocks_requested == 1) {
+    if(g.s_is_blocks_requested == 1) {
         ish_unlock();
         FURI_LOG_W(TAG, "ish_handle_request: tx_id=%d, already have blocks requested", tx_id);
         return;
@@ -1267,15 +1338,15 @@ static void ish_handle_request(uint8_t tx_id, const ISH_pl_request_t* rq) {
 
     // Normalize to blocks (uneven tail == file_size allowed)
     uint32_t start = rq->range_start;
-    uint32_t end   = rq->range_end;
-    if (end > g.s_file_size) end = g.s_file_size;
-    if (start >= end) {
+    uint32_t end = rq->range_end;
+    if(end > g.s_file_size) end = g.s_file_size;
+    if(start >= end) {
         ish_unlock();
         return;
     }
 
     uint32_t first_block = start / ISH_DATA_LENGTH;
-    uint32_t last_block  = (end - 1) / ISH_DATA_LENGTH;
+    uint32_t last_block = (end - 1) / ISH_DATA_LENGTH;
 
     g.s_is_blocks_requested = 1;
     g.s_block_needed_first = first_block;
@@ -1284,14 +1355,20 @@ static void ish_handle_request(uint8_t tx_id, const ISH_pl_request_t* rq) {
     notify_cyan = true;
     ish_unlock();
 
-    FURI_LOG_I(TAG, "ish_handle_request: tx_id=%d, bytes (%lu, %lu), blocks (%lu, %lu)",
-             tx_id, start, end, first_block, last_block);
+    FURI_LOG_I(
+        TAG,
+        "ish_handle_request: tx_id=%d, bytes (%lu, %lu), blocks (%lu, %lu)",
+        tx_id,
+        start,
+        end,
+        first_block,
+        last_block);
 
-    if (notify_cyan) ish_notify_led_cyan();
+    if(notify_cyan) ish_notify_led_cyan();
 }
 
 static void ish_handle_data(uint8_t tx_id, const ISH_pl_data_t* d) {
-    if (g.mode != ISH_MODE_RECEIVER) return;
+    if(g.mode != ISH_MODE_RECEIVER) return;
 
     // Whole body under the lock (incl. the write): the RX thread is the only
     // writer of the map/counter, so holding the lock across my_write_block just
@@ -1299,23 +1376,35 @@ static void ish_handle_data(uint8_t tx_id, const ISH_pl_data_t* d) {
     // finalization stage.
     ish_lock();
 
-    if (g.r_finalizing || g.r_is_finished) { ish_unlock(); return; }
+    if(g.r_finalizing || g.r_is_finished) {
+        ish_unlock();
+        return;
+    }
 
     g.last_rx_ms = g.cb_now_ms ? g.cb_now_ms() : 0;
 
-    if (!g.r_locked || tx_id != g.r_locked_tx_id) { ish_unlock(); return; }
+    if(!g.r_locked || tx_id != g.r_locked_tx_id) {
+        ish_unlock();
+        return;
+    }
 
-    if (ish_map_get(d->block_number) == 1) { // already received
+    if(ish_map_get(d->block_number) == 1) { // already received
         ish_unlock();
         FURI_LOG_W(TAG, "ish_handle_data: block %lu already received", d->block_number);
         return;
     }
 
-    if (!g.cb_write_block) { ish_unlock(); return; }
+    if(!g.cb_write_block) {
+        ish_unlock();
+        return;
+    }
 
     // Calculate valid block length based on file size
     uint32_t block_start = d->block_number * ISH_DATA_LENGTH;
-    if (block_start >= g.r_file_size) { ish_unlock(); return; } // out of range
+    if(block_start >= g.r_file_size) {
+        ish_unlock();
+        return;
+    } // out of range
 
     uint32_t remaining = g.r_file_size - block_start;
     uint32_t valid_len = (remaining >= ISH_DATA_LENGTH) ? ISH_DATA_LENGTH : remaining;
@@ -1333,42 +1422,47 @@ static void ish_handle_data(uint8_t tx_id, const ISH_pl_data_t* d) {
 
     ish_notify_led_green();
 
-    FURI_LOG_I(TAG, "ish_handle_data[txid=%d]: block %lu written, valid_len=%lu, "
-             "blocks_received: %lu/%lu", tx_id,
-             d->block_number, valid_len, received, needed);
+    FURI_LOG_I(
+        TAG,
+        "ish_handle_data[txid=%d]: block %lu written, valid_len=%lu, "
+        "blocks_received: %lu/%lu",
+        tx_id,
+        d->block_number,
+        valid_len,
+        received,
+        needed);
 }
 
 // Main entry for a decoded packet delivered by the IR transport.
 void ish_receive_callback(const uint8_t* buf, size_t size) {
     uint8_t tx_id = 0, pkt_type = 0;
     const uint8_t* payload = NULL;
-    if (!ish_packet_check_and_parse(buf, size, &tx_id, &pkt_type, &payload)) {
+    if(!ish_packet_check_and_parse(buf, size, &tx_id, &pkt_type, &payload)) {
         // Bad CRC / wrong length / not our version: drop and let ARQ retransmit.
         return;
     }
 
-    switch ((ish_pkt_type_t)pkt_type) {
-        case ISH_PKT_ANNOUNCE: {
-            FURI_LOG_I(TAG, "Received ANNOUNCE, tx_id %d", tx_id);
-            ISH_pl_announce_t ann;
-            ish_pl_announce_unpack(payload, &ann);
-            ish_handle_announce(tx_id, &ann);
-        } break;
-        case ISH_PKT_REQUEST: {
-            FURI_LOG_I(TAG, "Received REQUEST, tx_id %d", tx_id);
-            ISH_pl_request_t rq;
-            ish_pl_request_unpack(payload, &rq);
-            ish_handle_request(tx_id, &rq);
-        } break;
-        case ISH_PKT_DATA: {
-            ISH_pl_data_t d;
-            ish_pl_data_unpack(payload, &d);
-            ish_handle_data(tx_id, &d);
-        } break;
-        default:
-            ish_notify_led_red();
-            FURI_LOG_E(TAG, "Unknown packet type: %d", pkt_type);
-            break;
+    switch((ish_pkt_type_t)pkt_type) {
+    case ISH_PKT_ANNOUNCE: {
+        FURI_LOG_I(TAG, "Received ANNOUNCE, tx_id %d", tx_id);
+        ISH_pl_announce_t ann;
+        ish_pl_announce_unpack(payload, &ann);
+        ish_handle_announce(tx_id, &ann);
+    } break;
+    case ISH_PKT_REQUEST: {
+        FURI_LOG_I(TAG, "Received REQUEST, tx_id %d", tx_id);
+        ISH_pl_request_t rq;
+        ish_pl_request_unpack(payload, &rq);
+        ish_handle_request(tx_id, &rq);
+    } break;
+    case ISH_PKT_DATA: {
+        ISH_pl_data_t d;
+        ish_pl_data_unpack(payload, &d);
+        ish_handle_data(tx_id, &d);
+    } break;
+    default:
+        ish_notify_led_red();
+        FURI_LOG_E(TAG, "Unknown packet type: %d", pkt_type);
+        break;
     }
 }
-

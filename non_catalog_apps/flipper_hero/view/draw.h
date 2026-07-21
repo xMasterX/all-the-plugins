@@ -7,25 +7,24 @@
 #include "arrows.h"
 #pragma once
 
-
 // For adjusting pause menu
-#define PAUSE_MENU_MARGIN_X 8
-#define PAUSE_MENU_MARGIN_Y 4
+#define PAUSE_MENU_MARGIN_X  8
+#define PAUSE_MENU_MARGIN_Y  4
 #define PAUSE_MENU_PADDING_X 2
 #define PAUSE_MENU_PADDING_Y 4
-#define MENU_OPTION_SPACE_Y 12
+#define MENU_OPTION_SPACE_Y  12
 
 // These are for name printing and the marquee effect.
-#define MARQUEE_SPEED 50 // Amount of ticks between marquee movements
-#define MARQUEE_DELAY 50 // Amount of ticks before the marquee starts moving (with new stratagem)
+#define MARQUEE_SPEED    50 // Amount of ticks between marquee movements
+#define MARQUEE_DELAY    50 // Amount of ticks before the marquee starts moving (with new stratagem)
 #define MARQUEE_DISTANCE 10 // Amount of pixels marquee moves at a time
-#define MARQUEE_BASE_PADDING 10 // The minimum space (in pixels) between the start and end of marquee text
+#define MARQUEE_BASE_PADDING \
+    10 // The minimum space (in pixels) between the start and end of marquee text
 
 // For adjusting the stratagem name display
-#define NAME_POS_Y 35
+#define NAME_POS_Y     35
 #define NAME_PADDING_X 2
 #define NAME_PADDING_Y 1
-
 
 void update_marquee_data(PluginState* plugin_state);
 void init_marquee_data(Canvas* const canvas, PluginState* plugin_state);

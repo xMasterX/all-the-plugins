@@ -1,7 +1,7 @@
 #include "speaker_hal.h"
 
-#define FURI_HAL_SPEAKER_TIMER TIM16
-#define FURI_HAL_SPEAKER_CHANNEL LL_TIM_CHANNEL_CH1
+#define FURI_HAL_SPEAKER_TIMER     TIM16
+#define FURI_HAL_SPEAKER_CHANNEL   LL_TIM_CHANNEL_CH1
 #define FURI_HAL_SPEAKER_PRESCALER 500
 
 void tracker_speaker_play(float frequency, float pwm) {

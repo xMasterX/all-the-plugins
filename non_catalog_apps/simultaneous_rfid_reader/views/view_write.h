@@ -28,4 +28,3 @@ uint32_t uhf_reader_navigation_write_exit_callback(void* context);
 void view_write_alloc(UHFReaderApp* App);
 
 void view_write_free(UHFReaderApp* App);
-

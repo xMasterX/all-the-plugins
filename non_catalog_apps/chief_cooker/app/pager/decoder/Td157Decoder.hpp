@@ -59,7 +59,8 @@ public:
         case RING:
             return SetActionValue(data, TD157_ACTION_RING);
         case TURN_OFF_ALL:
-            return SetActionValue(SetPager(data, TD157_PAGER_TURN_OFF_ALL), TD157_ACTION_TURN_OFF_ALL);
+            return SetActionValue(
+                SetPager(data, TD157_PAGER_TURN_OFF_ALL), TD157_ACTION_TURN_OFF_ALL);
         default:
             return data;
         }

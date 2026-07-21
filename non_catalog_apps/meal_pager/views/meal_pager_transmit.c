@@ -77,8 +77,7 @@ void meal_pager_transmit_model_set_station(Meal_PagerTransmit* instance, uint32_
     Meal_PagerTransmitModel* model = view_get_model(instance->view);
     model->station = station;
     view_commit_model(instance->view, false);
-    with_view_model(
-        instance->view, Meal_PagerTransmitModel * model, { UNUSED(model); }, true);
+    with_view_model(instance->view, Meal_PagerTransmitModel * model, { UNUSED(model); }, true);
 }
 
 void meal_pager_transmit_model_set_sending(Meal_PagerTransmit* instance, uint32_t value) {
@@ -86,8 +85,7 @@ void meal_pager_transmit_model_set_sending(Meal_PagerTransmit* instance, uint32_
     Meal_PagerTransmitModel* model = view_get_model(instance->view);
     model->sending = value;
     view_commit_model(instance->view, false);
-    with_view_model(
-        instance->view, Meal_PagerTransmitModel * model, { UNUSED(model); }, true);
+    with_view_model(instance->view, Meal_PagerTransmitModel * model, { UNUSED(model); }, true);
 }
 
 void meal_pager_transmit_model_set_pager(Meal_PagerTransmit* instance, uint32_t pager) {
@@ -95,8 +93,7 @@ void meal_pager_transmit_model_set_pager(Meal_PagerTransmit* instance, uint32_t 
     Meal_PagerTransmitModel* model = view_get_model(instance->view);
     model->pager = pager;
     view_commit_model(instance->view, false);
-    with_view_model(
-        instance->view, Meal_PagerTransmitModel * model, { UNUSED(model); }, true);
+    with_view_model(instance->view, Meal_PagerTransmitModel * model, { UNUSED(model); }, true);
 }
 
 bool meal_pager_transmit_input(InputEvent* event, void* context) {
@@ -139,8 +136,7 @@ void meal_pager_transmit_enter(void* context) {
     FURI_LOG_D(TAG, "Scene 1 Enter");
     furi_assert(context);
     Meal_PagerTransmit* instance = (Meal_PagerTransmit*)context;
-    with_view_model(
-        instance->view, Meal_PagerTransmitModel * model, { UNUSED(model); }, true);
+    with_view_model(instance->view, Meal_PagerTransmitModel * model, { UNUSED(model); }, true);
 }
 
 Meal_PagerTransmit* meal_pager_transmit_alloc(void* context) {

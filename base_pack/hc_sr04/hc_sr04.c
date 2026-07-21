@@ -92,14 +92,17 @@ static void render_callback(Canvas* const canvas, void* ctx) {
             canvas_draw_str_aligned(
                 canvas, 8, 38, AlignLeft, AlignTop, furi_string_get_cstr(str_buf));
 
-            if (plugin_state->mode == 1) {
+            if(plugin_state->mode == 1) {
                 furi_string_printf(str_buf, "Distance: %02f m", (double)plugin_state->distance);
-            } else if (plugin_state->mode == 2) {
-                furi_string_printf(str_buf, "Distance: %02f cm", (double)m_to_cm(plugin_state->distance));
-            } else if (plugin_state->mode == 3) {
-                furi_string_printf(str_buf, "Distance: %02f ft", (double)m_to_feet(plugin_state->distance));
-            } else if (plugin_state->mode == 4) {
-                furi_string_printf(str_buf, "Distance: %02f in", (double)m_to_inches(plugin_state->distance));
+            } else if(plugin_state->mode == 2) {
+                furi_string_printf(
+                    str_buf, "Distance: %02f cm", (double)m_to_cm(plugin_state->distance));
+            } else if(plugin_state->mode == 3) {
+                furi_string_printf(
+                    str_buf, "Distance: %02f ft", (double)m_to_feet(plugin_state->distance));
+            } else if(plugin_state->mode == 4) {
+                furi_string_printf(
+                    str_buf, "Distance: %02f in", (double)m_to_inches(plugin_state->distance));
             }
 
             canvas_draw_str_aligned(

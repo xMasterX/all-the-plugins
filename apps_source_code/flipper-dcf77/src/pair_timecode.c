@@ -51,8 +51,7 @@ void pair_timecode_set_weighted(
     uint16_t value,
     uint16_t high_weight,
     uint16_t low_weight) {
-    pair_timecode_set_bits(
-        frame, second, (value & high_weight) != 0U, (value & low_weight) != 0U);
+    pair_timecode_set_bits(frame, second, (value & high_weight) != 0U, (value & low_weight) != 0U);
 }
 
 bool pair_timecode_even_parity_bits(

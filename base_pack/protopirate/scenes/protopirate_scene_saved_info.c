@@ -114,8 +114,7 @@ void protopirate_scene_saved_info_on_enter(void* context) {
     if(flipper_format_read_string(ff, FF_PROTOCOL, temp_str)) {
         const char* protocol_name = furi_string_get_cstr(temp_str);
         furi_string_cat_printf(info_str, "Protocol: %s\n", protocol_name);
-        app->emulate_disabled_for_loaded =
-            !protopirate_protocol_catalog_can_tx(protocol_name);
+        app->emulate_disabled_for_loaded = !protopirate_protocol_catalog_can_tx(protocol_name);
     }
 
     flipper_format_rewind(ff);

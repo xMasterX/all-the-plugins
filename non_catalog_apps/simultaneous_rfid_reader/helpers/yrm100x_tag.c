@@ -61,18 +61,16 @@ void uhf_tag_set_epc_pc(UHFTag* uhf_tag, uint16_t pc) {
     uhf_tag->epc->pc = pc;
 }
 
-
 void uhf_tag_set_kill_pwd(UHFTag* uhf_tag, uint8_t* data_in, size_t size) {
-    if (size >= 4) {
+    if(size >= 4) {
         memcpy(uhf_tag->reserved->kill_password, data_in, 4);
     }
 }
 
 void uhf_tag_set_access_pwd(UHFTag* uhf_tag, uint8_t* data_in, size_t size) {
-    if (size >= 8) {
+    if(size >= 8) {
         memcpy(uhf_tag->reserved->access_password, data_in + size - 4, 4);
-    }
-    else if (size >= 4) {
+    } else if(size >= 4) {
         memcpy(uhf_tag->reserved->access_password, data_in, 4);
     }
 }
@@ -148,4 +146,3 @@ uint8_t* uhf_tag_get_access_pwd(UHFTag* uhf_tag) {
 uint8_t* uhf_tag_get_kill_pwd(UHFTag* uhf_tag) {
     return uhf_tag->reserved->kill_password;
 }
-

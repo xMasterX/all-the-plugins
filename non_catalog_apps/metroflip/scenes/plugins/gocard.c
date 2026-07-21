@@ -43,12 +43,8 @@ uint32_t extract_and_convert(const char* str, int start, int length) {
 }
 
 /* Parse gocard date/time from a block and write formatted string into out buffer */
-static void gocard_format_time(
-    int block,
-    int offset,
-    const MfClassicData* data,
-    char* out,
-    size_t out_len) {
+static void
+    gocard_format_time(int block, int offset, const MfClassicData* data, char* out, size_t out_len) {
     int num_bytes = 4;
     char gocard_date_bit_representation[num_bytes * 8 + 1];
     memset(gocard_date_bit_representation, 0, sizeof(gocard_date_bit_representation));
@@ -263,7 +259,6 @@ static bool gocard_on_event(Metroflip* app, SceneManagerEvent event) {
 }
 
 static void gocard_on_exit(Metroflip* app) {
-
     widget_reset(app->widget);
     popup_reset(app->popup);
     metroflip_app_blink_stop(app);

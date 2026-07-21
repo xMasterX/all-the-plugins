@@ -142,7 +142,7 @@ static void render_callback(Canvas* canvas, void* ctx) {
 // Program entry point
 int32_t memsic_2125_app(void* p) {
     UNUSED(p);
-    
+
     Expansion* expansion = furi_record_open(RECORD_EXPANSION);
     expansion_disable(expansion);
     // Configure our initial data.

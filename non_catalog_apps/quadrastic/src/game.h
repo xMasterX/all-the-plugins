@@ -21,15 +21,14 @@
 
 #include "engine/engine.h" // IWYU pragma: keep
 
-#define SCREEN_WIDTH 128
+#define SCREEN_WIDTH  128
 #define SCREEN_HEIGHT 64
 
 #define GAME_NAME "Quadrastic"
 
 #define WIN_SCORE 15
 
-typedef enum
-{
+typedef enum {
     DifficultyEasy,
     DifficultyNormal,
     DifficultyHard,
@@ -37,20 +36,17 @@ typedef enum
     DifficultyCount,
 } Difficulty;
 
-typedef enum
-{
+typedef enum {
     StateOff,
     StateOn,
     StateCount,
 } State;
 
-typedef enum
-{
+typedef enum {
     GameEventSkipAnimation,
 } GameEvent;
 
-typedef struct
-{
+typedef struct {
     Level* menu;
     Level* game;
     Level* game_over;
@@ -60,8 +56,7 @@ typedef struct
 
 typedef struct NotificationApp NotificationApp;
 
-typedef struct
-{
+typedef struct {
     NotificationApp* notification;
 
     Levels levels;

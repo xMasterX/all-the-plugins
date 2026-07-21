@@ -144,7 +144,8 @@ ProtoViewApp* protoview_app_alloc() {
     app->alert_dismiss_time = 0;
     app->current_view = ViewRawPulses;
     app->view_updating_mutex = furi_mutex_alloc(FuriMutexTypeNormal);
-    for(int j = 0; j < ViewLast; j++) app->current_subview[j] = 0;
+    for(int j = 0; j < ViewLast; j++)
+        app->current_subview[j] = 0;
     app->direct_sampling_enabled = false;
     app->view_privdata = malloc(PROTOVIEW_VIEW_PRIVDATA_LEN);
     memset(app->view_privdata, 0, PROTOVIEW_VIEW_PRIVDATA_LEN);
@@ -344,7 +345,7 @@ int32_t protoview_app_entry(void* p) {
             /* Allocate a view dispatcher, add a text input view to it,
              * and activate it. */
             app->view_dispatcher = view_dispatcher_alloc();
-            
+
             /* We need to set a navigation callback for the view dispatcher
              * otherwise when the user presses back on the keyboard to
              * abort, the dispatcher will not stop. */

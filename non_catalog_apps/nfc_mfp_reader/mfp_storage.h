@@ -3,10 +3,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#define MFP_APP_FOLDER  "/ext/apps_data/mfp_reader"
-#define MFP_FILE_EXT    ".mfp"
-#define MFP_MAX_SAVED   32
-#define MFP_NAME_LEN    64
+#define MFP_APP_FOLDER "/ext/apps_data/mfp_reader"
+#define MFP_FILE_EXT   ".mfp"
+#define MFP_MAX_SAVED  32
+#define MFP_NAME_LEN   64
 
 /* Forward declaration — full definition is in mfp_app.h */
 typedef struct MfpApp MfpApp;

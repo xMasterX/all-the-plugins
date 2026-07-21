@@ -7,6 +7,6 @@ typedef void NfcGenericEventData;
 
 typedef struct {
     NfcProtocol protocol;
-    NfcGenericInstance *instance;
-    NfcGenericEventData *event_data;
+    NfcGenericInstance* instance;
+    NfcGenericEventData* event_data;
 } NfcGenericEvent;

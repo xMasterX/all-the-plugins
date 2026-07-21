@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define DBC_CONFIG_MAX      24U
+#define DBC_CONFIG_MAX 24U
 
 static char cancommander_dbc_config_labels[DBC_CONFIG_MAX][32];
 static char cancommander_dbc_config_paths[DBC_CONFIG_MAX][160];
@@ -64,7 +64,8 @@ static void cancommander_scene_dbc_config_list_scan_dir(const char* dir_path) {
     char entry_name[128] = {0};
     while(storage_dir_read(dir, &file_info, entry_name, sizeof(entry_name))) {
         const size_t len = strlen(entry_name);
-        const bool is_new = cancommander_scene_dbc_has_suffix(entry_name, APP_DBC_DECODE_PROFILE_EXT);
+        const bool is_new =
+            cancommander_scene_dbc_has_suffix(entry_name, APP_DBC_DECODE_PROFILE_EXT);
         const bool is_legacy =
             cancommander_scene_dbc_has_suffix(entry_name, APP_DBC_DECODE_PROFILE_LEGACY_EXT);
         if(!is_new && !is_legacy) {
@@ -82,9 +83,8 @@ static void cancommander_scene_dbc_config_list_scan_dir(const char* dir_path) {
             dir_path,
             entry_name);
 
-        const size_t suffix_len =
-            is_new ? strlen(APP_DBC_DECODE_PROFILE_EXT) :
-                     strlen(APP_DBC_DECODE_PROFILE_LEGACY_EXT);
+        const size_t suffix_len = is_new ? strlen(APP_DBC_DECODE_PROFILE_EXT) :
+                                           strlen(APP_DBC_DECODE_PROFILE_LEGACY_EXT);
         size_t label_len = len - suffix_len;
         if(label_len >= sizeof(cancommander_dbc_config_labels[idx])) {
             label_len = sizeof(cancommander_dbc_config_labels[idx]) - 1U;
@@ -98,18 +98,17 @@ static void cancommander_scene_dbc_config_list_scan_dir(const char* dir_path) {
         if(ff && file_type && name_value) {
             if(flipper_format_file_open_existing(ff, cancommander_dbc_config_paths[idx])) {
                 uint32_t version = 0U;
-                if(
-                    flipper_format_read_header(ff, file_type, &version) &&
-                    cancommander_scene_dbc_type_ok(file_type, version) &&
-                    flipper_format_read_string(ff, "name", name_value)) {
+                if(flipper_format_read_header(ff, file_type, &version) &&
+                   cancommander_scene_dbc_type_ok(file_type, version) &&
+                   flipper_format_read_string(ff, "name", name_value)) {
                     const char* display_name = furi_string_get_cstr(name_value);
                     if(display_name && display_name[0] != '\0') {
                         strncpy(
                             cancommander_dbc_config_labels[idx],
                             display_name,
                             sizeof(cancommander_dbc_config_labels[idx]) - 1U);
-                        cancommander_dbc_config_labels[idx]
-                                                    [sizeof(cancommander_dbc_config_labels[idx]) - 1U] = '\0';
+                        cancommander_dbc_config_labels
+                            [idx][sizeof(cancommander_dbc_config_labels[idx]) - 1U] = '\0';
                     }
                 }
             }
@@ -186,11 +185,10 @@ bool cancommander_scene_dbc_load_config_menu_on_event(void* context, SceneManage
 
     if(app_dbc_config_load_file(app, cancommander_dbc_config_paths[event.event], true)) {
         cancommander_scene_dbc_load_config_start_decode(app);
-        const bool ready =
-            app->connected && app->tool_active && app->dashboard_mode == AppDashboardDbcDecode;
+        const bool ready = app->connected && app->tool_active &&
+                           app->dashboard_mode == AppDashboardDbcDecode;
         scene_manager_next_scene(
-            app->scene_manager,
-            ready ? cancommander_scene_monitor : cancommander_scene_status);
+            app->scene_manager, ready ? cancommander_scene_monitor : cancommander_scene_status);
         return true;
     }
 

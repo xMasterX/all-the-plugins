@@ -1,7 +1,12 @@
 #ifndef RESISTOR_LOGIC_HEADERS
 #define RESISTOR_LOGIC_HEADERS
 
-typedef enum { R3 = 3, R4 = 4, R5 = 5, R6 = 6 } ResistorType;
+typedef enum {
+    R3 = 3,
+    R4 = 4,
+    R5 = 5,
+    R6 = 6
+} ResistorType;
 
 typedef enum {
     BandBlack = 0,

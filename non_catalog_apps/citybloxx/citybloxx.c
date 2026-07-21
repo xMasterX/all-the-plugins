@@ -12,11 +12,11 @@
 #include "blocks.h"
 #include "manipulations.h"
 
-#define TICK_VALUE 0.002
+#define TICK_VALUE     0.002
 #define SIN_MULTIPLIER 10
-#define ROTATION (sin(ticks) * SIN_MULTIPLIER)
-#define ROTATION_LAST (sin(ticks - TICK_VALUE) * SIN_MULTIPLIER)
-#define ROTATION_DIFF (ROTATION - ROTATION_LAST)
+#define ROTATION       (sin(ticks) * SIN_MULTIPLIER)
+#define ROTATION_LAST  (sin(ticks - TICK_VALUE) * SIN_MULTIPLIER)
+#define ROTATION_DIFF  (ROTATION - ROTATION_LAST)
 
 #define G_CONSTANT 9.8
 
@@ -68,7 +68,8 @@ static void fall(void* ctx) {
 
         if(block_list_i == BLOCK_COUNT) {
             free(block_list[0].lines);
-            for(uint16_t i = 0; i < block_list_i - 1; i++) block_list[i] = block_list[i + 1];
+            for(uint16_t i = 0; i < block_list_i - 1; i++)
+                block_list[i] = block_list[i + 1];
             block_list_i--;
         }
         if(block_list_i == 0) {
@@ -105,7 +106,8 @@ static void render_line(Canvas* canvas, Line line) {
 }
 
 static void render_line_group(Canvas* canvas, Line* line_group, uint8_t count) {
-    for(uint8_t i = 0; i < count; i++) render_line(canvas, line_group[i]);
+    for(uint8_t i = 0; i < count; i++)
+        render_line(canvas, line_group[i]);
 }
 
 static Block get_house_i() {
@@ -199,7 +201,8 @@ static void app_draw_callback(Canvas* canvas, void* ctx) {
     for(uint16_t i = 0; i < block_list_i; i++)
         render_line_group(canvas, block_list_copy[i].lines, block_list_copy[i].count);
 
-    for(uint16_t i = 0; i < block_list_i; i++) free(block_list_copy[i].lines);
+    for(uint16_t i = 0; i < block_list_i; i++)
+        free(block_list_copy[i].lines);
     free(block_list_copy);
 
     FuriString* str = furi_string_alloc();
@@ -280,7 +283,8 @@ int32_t citybloxx_main(void* p) {
 
     exiting = true;
 
-    for(uint16_t i = 0; i < block_list_i; i++) free(block_list[i].lines);
+    for(uint16_t i = 0; i < block_list_i; i++)
+        free(block_list[i].lines);
     free(block_list);
 
     furi_timer_stop(timer);

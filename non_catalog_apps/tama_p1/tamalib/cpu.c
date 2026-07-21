@@ -23,39 +23,39 @@
 
 #define TICK_FREQUENCY 32768 // Hz
 
-#define TIMER_1HZ_PERIOD 32768 // in ticks
+#define TIMER_1HZ_PERIOD   32768 // in ticks
 #define TIMER_256HZ_PERIOD 128 // in ticks
 
-#define MASK_4B 0xF00
-#define MASK_6B 0xFC0
-#define MASK_7B 0xFE0
-#define MASK_8B 0xFF0
+#define MASK_4B  0xF00
+#define MASK_6B  0xFC0
+#define MASK_7B  0xFE0
+#define MASK_8B  0xFF0
 #define MASK_10B 0xFFC
 #define MASK_12B 0xFFF
 
-#define PCS (pc & 0xFF)
-#define PCSL (pc & 0xF)
-#define PCSH ((pc >> 4) & 0xF)
-#define PCP ((pc >> 8) & 0xF)
-#define PCB ((pc >> 12) & 0x1)
+#define PCS                     (pc & 0xFF)
+#define PCSL                    (pc & 0xF)
+#define PCSH                    ((pc >> 4) & 0xF)
+#define PCP                     ((pc >> 8) & 0xF)
+#define PCB                     ((pc >> 12) & 0x1)
 #define TO_PC(bank, page, step) ((step & 0xFF) | ((page & 0xF) << 8) | (bank & 0x1) << 12)
-#define NBP ((np >> 4) & 0x1)
-#define NPP (np & 0xF)
-#define TO_NP(bank, page) ((page & 0xF) | (bank & 0x1) << 4)
-#define XHL (x & 0xFF)
-#define XL (x & 0xF)
-#define XH ((x >> 4) & 0xF)
-#define XP ((x >> 8) & 0xF)
-#define YHL (y & 0xFF)
-#define YL (y & 0xF)
-#define YH ((y >> 4) & 0xF)
-#define YP ((y >> 8) & 0xF)
-#define M(n) get_memory(n)
-#define SET_M(n, v) set_memory(n, v)
-#define RQ(i) get_rq(i)
-#define SET_RQ(i, v) set_rq(i, v)
-#define SPL (sp & 0xF)
-#define SPH ((sp >> 4) & 0xF)
+#define NBP                     ((np >> 4) & 0x1)
+#define NPP                     (np & 0xF)
+#define TO_NP(bank, page)       ((page & 0xF) | (bank & 0x1) << 4)
+#define XHL                     (x & 0xFF)
+#define XL                      (x & 0xF)
+#define XH                      ((x >> 4) & 0xF)
+#define XP                      ((x >> 8) & 0xF)
+#define YHL                     (y & 0xFF)
+#define YL                      (y & 0xF)
+#define YH                      ((y >> 4) & 0xF)
+#define YP                      ((y >> 8) & 0xF)
+#define M(n)                    get_memory(n)
+#define SET_M(n, v)             set_memory(n, v)
+#define RQ(i)                   get_rq(i)
+#define SET_RQ(i, v)            set_rq(i, v)
+#define SPL                     (sp & 0xF)
+#define SPH                     ((sp >> 4) & 0xF)
 
 #define FLAG_C (0x1 << 0)
 #define FLAG_Z (0x1 << 1)
@@ -84,35 +84,35 @@
 #define CLEAR_I() \
     { flags &= ~FLAG_I; }
 
-#define REG_CLK_INT_FACTOR_FLAGS 0xF00
-#define REG_SW_INT_FACTOR_FLAGS 0xF01
-#define REG_PROG_INT_FACTOR_FLAGS 0xF02
-#define REG_SERIAL_INT_FACTOR_FLAGS 0xF03
+#define REG_CLK_INT_FACTOR_FLAGS     0xF00
+#define REG_SW_INT_FACTOR_FLAGS      0xF01
+#define REG_PROG_INT_FACTOR_FLAGS    0xF02
+#define REG_SERIAL_INT_FACTOR_FLAGS  0xF03
 #define REG_K00_K03_INT_FACTOR_FLAGS 0xF04
 #define REG_K10_K13_INT_FACTOR_FLAGS 0xF05
-#define REG_CLOCK_INT_MASKS 0xF10
-#define REG_SW_INT_MASKS 0xF11
-#define REG_PROG_INT_MASKS 0xF12
-#define REG_SERIAL_INT_MASKS 0xF13
-#define REG_K00_K03_INT_MASKS 0xF14
-#define REG_K10_K13_INT_MASKS 0xF15
-#define REG_PROG_TIMER_DATA_L 0xF24
-#define REG_PROG_TIMER_DATA_H 0xF25
+#define REG_CLOCK_INT_MASKS          0xF10
+#define REG_SW_INT_MASKS             0xF11
+#define REG_PROG_INT_MASKS           0xF12
+#define REG_SERIAL_INT_MASKS         0xF13
+#define REG_K00_K03_INT_MASKS        0xF14
+#define REG_K10_K13_INT_MASKS        0xF15
+#define REG_PROG_TIMER_DATA_L        0xF24
+#define REG_PROG_TIMER_DATA_H        0xF25
 #define REG_PROG_TIMER_RELOAD_DATA_L 0xF26
 #define REG_PROG_TIMER_RELOAD_DATA_H 0xF27
-#define REG_K00_K03_INPUT_PORT 0xF40
-#define REG_K10_K13_INPUT_PORT 0xF42
-#define REG_K40_K43_BZ_OUTPUT_PORT 0xF54
-#define REG_CPU_OSC3_CTRL 0xF70
-#define REG_LCD_CTRL 0xF71
-#define REG_LCD_CONTRAST 0xF72
-#define REG_SVD_CTRL 0xF73
-#define REG_BUZZER_CTRL1 0xF74
-#define REG_BUZZER_CTRL2 0xF75
-#define REG_CLK_WD_TIMER_CTRL 0xF76
-#define REG_SW_TIMER_CTRL 0xF77
-#define REG_PROG_TIMER_CTRL 0xF78
-#define REG_PROG_TIMER_CLK_SEL 0xF79
+#define REG_K00_K03_INPUT_PORT       0xF40
+#define REG_K10_K13_INPUT_PORT       0xF42
+#define REG_K40_K43_BZ_OUTPUT_PORT   0xF54
+#define REG_CPU_OSC3_CTRL            0xF70
+#define REG_LCD_CTRL                 0xF71
+#define REG_LCD_CONTRAST             0xF72
+#define REG_SVD_CTRL                 0xF73
+#define REG_BUZZER_CTRL1             0xF74
+#define REG_BUZZER_CTRL2             0xF75
+#define REG_CLK_WD_TIMER_CTRL        0xF76
+#define REG_SW_TIMER_CTRL            0xF77
+#define REG_PROG_TIMER_CTRL          0xF78
+#define REG_PROG_TIMER_CLK_SEL       0xF79
 
 #define INPUT_PORT_NUM 2
 

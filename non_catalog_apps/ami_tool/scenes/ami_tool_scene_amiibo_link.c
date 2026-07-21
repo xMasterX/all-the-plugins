@@ -70,14 +70,8 @@ static void ami_tool_scene_amiibo_link_monitor_config(AmiToolApp* app) {
         }
     } else if(app->amiibo_link_access_snapshot_valid) {
         uint8_t* access_page = app->tag_data->page[config_start + 1].data;
-        if(memcmp(
-               access_page,
-               app->amiibo_link_access_snapshot,
-               MF_ULTRALIGHT_PAGE_SIZE) != 0) {
-            memcpy(
-                app->amiibo_link_access_snapshot,
-                access_page,
-                MF_ULTRALIGHT_PAGE_SIZE);
+        if(memcmp(access_page, app->amiibo_link_access_snapshot, MF_ULTRALIGHT_PAGE_SIZE) != 0) {
+            memcpy(app->amiibo_link_access_snapshot, access_page, MF_ULTRALIGHT_PAGE_SIZE);
             config_page[3] = app->amiibo_link_pending_auth0;
             app->amiibo_link_current_auth0 = app->amiibo_link_pending_auth0;
             app->amiibo_link_auth0_override_active = false;
@@ -113,12 +107,11 @@ static void ami_tool_scene_amiibo_link_show_ready(AmiToolApp* app) {
     if(!app) {
         return;
     }
-    static const char* ready_text =
-        "Blank Tag\n\n"
-        "Flipper is emulating a blank NTAG215.\n"
-        "Use a compatible app to write data.\n"
-        "Press OK once writing is complete.\n"
-        "Press Back to stop.";
+    static const char* ready_text = "Blank Tag\n\n"
+                                    "Flipper is emulating a blank NTAG215.\n"
+                                    "Use a compatible app to write data.\n"
+                                    "Press OK once writing is complete.\n"
+                                    "Press Back to stop.";
     widget_reset(app->info_widget);
     widget_add_text_scroll_element(app->info_widget, 2, 0, 124, 60, ready_text);
     widget_add_button_element(
@@ -170,7 +163,8 @@ static bool ami_tool_scene_amiibo_link_regenerate_template(AmiToolApp* app) {
     }
     static const uint8_t dynamic_lock_defaults[4] = {0x01, 0x00, 0x0F, 0xBD};
     size_t dynamic_lock_page = tag->pages_total - 5;
-    memcpy(tag->page[dynamic_lock_page].data, dynamic_lock_defaults, sizeof(dynamic_lock_defaults));
+    memcpy(
+        tag->page[dynamic_lock_page].data, dynamic_lock_defaults, sizeof(dynamic_lock_defaults));
 
     size_t config_start = ami_tool_scene_amiibo_link_config_start_page(app);
     if(config_start == 0 || (config_start + 3) >= tag->pages_total) {
@@ -372,10 +366,9 @@ static void ami_tool_scene_amiibo_link_handle_completion(AmiToolApp* app) {
         return;
     }
 
-    const char* failure_template =
-        "Blank Tag\n\nNo valid Amiibo data detected.\n"
-        "Detected ID: %s\n"
-        "Let the app finish writing and press OK again.";
+    const char* failure_template = "Blank Tag\n\nNo valid Amiibo data detected.\n"
+                                   "Detected ID: %s\n"
+                                   "Let the app finish writing and press OK again.";
     char id_hex[17] = {0};
     const char* detected_id = "Unknown";
     if(ami_tool_extract_amiibo_id(app->tag_data, id_hex, sizeof(id_hex))) {

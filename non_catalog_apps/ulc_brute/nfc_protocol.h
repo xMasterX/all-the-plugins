@@ -9,9 +9,9 @@
 #include <lib/drivers/st25r3916.h>
 
 // Timeout definitions in microseconds
-#define NFC_TIMEOUT_DEFAULT 70  // Standard communication timeout
+#define NFC_TIMEOUT_DEFAULT 70 // Standard communication timeout
 // not doing anything?
-#define NFC_TIMEOUT_AUTH    1  // Authentication-specific timeout
+#define NFC_TIMEOUT_AUTH    1 // Authentication-specific timeout
 
 // ST25R3916 register configuration for ISO14443A
 // Masks and configurations for transmit/receive parity settings
@@ -23,10 +23,10 @@
 
 // MIFARE Ultralight C protocol commands
 typedef enum {
-    ULC_CMD_WUPA = 0x52,   // Wake Up Type A (7-bit command)
-    ULC_CMD_READ = 0x30,   // Read memory block
-    ULC_CMD_AUTH1 = 0x1A,  // First authentication step
-    ULC_CMD_AUTH2 = 0xAF   // Second authentication step
+    ULC_CMD_WUPA = 0x52, // Wake Up Type A (7-bit command)
+    ULC_CMD_READ = 0x30, // Read memory block
+    ULC_CMD_AUTH1 = 0x1A, // First authentication step
+    ULC_CMD_AUTH2 = 0xAF // Second authentication step
 } UlcCommand;
 
 /**
@@ -35,11 +35,11 @@ typedef enum {
  * @param auth2_data_32 Pointer to output buffer (16 bytes)
  * @param rnd_b Pointer to received random B data (8 bytes)
  */
- void setup_auth2_data(uint32_t* auth2_data_32, const uint8_t* rnd_b) {
-    auth2_data_32[0] = 0x420FADED;  // Fixed RndA part 1
-    auth2_data_32[1] = 0xDEADC0DE;  // Fixed RndA part 2
-    auth2_data_32[2] = *((uint32_t*)rnd_b);        // First 4 bytes of random B
-    auth2_data_32[3] = *((uint32_t*)(rnd_b + 4));  // Last 4 bytes of random B
+void setup_auth2_data(uint32_t* auth2_data_32, const uint8_t* rnd_b) {
+    auth2_data_32[0] = 0x420FADED; // Fixed RndA part 1
+    auth2_data_32[1] = 0xDEADC0DE; // Fixed RndA part 2
+    auth2_data_32[2] = *((uint32_t*)rnd_b); // First 4 bytes of random B
+    auth2_data_32[3] = *((uint32_t*)(rnd_b + 4)); // Last 4 bytes of random B
 }
 
 /**
@@ -48,18 +48,18 @@ typedef enum {
  * @param buffer Buffer to clear
  * @param bits Number of bits to clear (converted to bytes)
  */
- void clear_rx_buffer(uint8_t* buffer, size_t bits) {
+void clear_rx_buffer(uint8_t* buffer, size_t bits) {
     size_t bytes = (bits + 7) >> 3; // Convert bits to bytes, rounding up
-    
+
     // Use 32-bit operations when possible
     uint32_t* buf32 = (uint32_t*)buffer;
     size_t words = bytes >> 2;
-    
+
     for(size_t i = 0; i < words; i++) {
         if(buf32[i] == 0) return; // Stop if we find a zero word
         buf32[i] = 0;
     }
-    
+
     // Handle remaining bytes
     for(size_t i = words << 2; i < bytes; i++) {
         if(buffer[i] == 0) return; // Stop if we find a zero byte
@@ -74,20 +74,14 @@ typedef enum {
  * @param response_length Length of received response in bytes
  * @return 0 on success, negative error code on failure
  */
- int32_t nfc_send_wupa(
-    FuriHalSpiBusHandle* handle,
-    uint8_t* response,
-    size_t* response_length) {
+int32_t nfc_send_wupa(FuriHalSpiBusHandle* handle, uint8_t* response, size_t* response_length) {
     // Reset communication state
     st25r3916_direct_cmd(handle, ST25R3916_CMD_CLEAR_FIFO);
     st25r3916_get_irq(handle);
 
     // Configure ISO14443A parameters
     st25r3916_change_reg_bits(
-        handle,
-        ST25R3916_REG_ISO14443A_NFC,
-        ST25R3916_ISO14443A_MASK,
-        ST25R3916_ISO14443A_CONFIG);
+        handle, ST25R3916_REG_ISO14443A_NFC, ST25R3916_ISO14443A_MASK, ST25R3916_ISO14443A_CONFIG);
 
     // Send WUPA command
     st25r3916_direct_cmd(handle, ST25R3916_CMD_TRANSMIT_WUPA);
@@ -216,7 +210,7 @@ int32_t
  * @param handle SPI bus handle
  * @return true if valid ATQA received (2 bytes, first byte 0x44)
  */
- bool nfc_send_wupa_and_validate(FuriHalSpiBusHandle* handle) {
+bool nfc_send_wupa_and_validate(FuriHalSpiBusHandle* handle) {
     uint8_t rx_buffer[2];
     size_t rx_length = 0;
 
@@ -253,14 +247,15 @@ bool nfc_send_wupa_and_validate_debug(FuriHalSpiBusHandle* handle) {
  * @param rx_bits Number of bits received
  * @return true on successful exchange
  */
- bool nfc_transceive(
+bool nfc_transceive(
     FuriHalSpiBusHandle* handle,
     uint8_t* tx_buffer,
     uint8_t tx_bits,
     uint8_t* rx_buffer,
     size_t* rx_bits) {
     // Combined error masks for faster checking
-    const uint32_t TX_ERROR_MASK = (ST25R3916_IRQ_MASK_COL | ST25R3916_IRQ_MASK_ERR1 | ST25R3916_IRQ_MASK_ERR2);
+    const uint32_t TX_ERROR_MASK =
+        (ST25R3916_IRQ_MASK_COL | ST25R3916_IRQ_MASK_ERR1 | ST25R3916_IRQ_MASK_ERR2);
     const uint32_t RX_ERROR_MASK = (ST25R3916_IRQ_MASK_NRE | ST25R3916_IRQ_MASK_COL);
 
     // Clear FIFO and IRQ in one operation
@@ -485,10 +480,7 @@ bool nfc_transmit_only(FuriHalSpiBusHandle* handle, uint8_t* tx_buffer, uint8_t 
 
     // Configure ISO14443A parameters
     st25r3916_change_reg_bits(
-        handle,
-        ST25R3916_REG_ISO14443A_NFC,
-        ST25R3916_ISO14443A_MASK,
-        ST25R3916_ISO14443A_CONFIG);
+        handle, ST25R3916_REG_ISO14443A_NFC, ST25R3916_ISO14443A_MASK, ST25R3916_ISO14443A_CONFIG);
 
     // Send command
     st25r3916_write_fifo(handle, tx_buffer, tx_bits);

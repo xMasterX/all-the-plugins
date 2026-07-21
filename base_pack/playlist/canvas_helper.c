@@ -1,6 +1,6 @@
 #include <gui/gui.h>
 
-#define WIDTH 128
+#define WIDTH  128
 #define HEIGHT 64
 
 void draw_centered_boxed_str(Canvas* canvas, int x, int y, int height, int pad, const char* text) {

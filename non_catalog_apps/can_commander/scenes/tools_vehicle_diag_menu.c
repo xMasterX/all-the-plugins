@@ -12,7 +12,10 @@ static void cancommander_scene_tools_vehicle_diag_menu_callback(void* context, u
     view_dispatcher_send_custom_event(app->view_dispatcher, index);
 }
 
-static void cancommander_scene_tools_vehicle_diag_set_pid(App* app, const char* pid_token, const char* label) {
+static void cancommander_scene_tools_vehicle_diag_set_pid(
+    App* app,
+    const char* pid_token,
+    const char* label) {
     app_args_set_key_value(app->args_obd_pid, sizeof(app->args_obd_pid), "pid", pid_token);
     app_set_status(app, "OBD PID selected: %s", label);
 }
@@ -50,7 +53,8 @@ void cancommander_scene_tools_vehicle_diag_menu_on_enter(void* context) {
 
     submenu_set_selected_item(
         app->submenu,
-        scene_manager_get_scene_state(app->scene_manager, cancommander_scene_tools_vehicle_diag_menu));
+        scene_manager_get_scene_state(
+            app->scene_manager, cancommander_scene_tools_vehicle_diag_menu));
 
     view_dispatcher_switch_to_view(app->view_dispatcher, AppViewSubmenu);
 }
@@ -103,4 +107,3 @@ void cancommander_scene_tools_vehicle_diag_menu_on_exit(void* context) {
     App* app = context;
     submenu_reset(app->submenu);
 }
-

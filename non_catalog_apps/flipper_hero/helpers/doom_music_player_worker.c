@@ -11,12 +11,12 @@
 #define TAG "MusicPlayerWorker"
 
 #define MUSIC_PLAYER_FILETYPE "Flipper Music Format"
-#define MUSIC_PLAYER_VERSION 0
+#define MUSIC_PLAYER_VERSION  0
 
 #define SEMITONE_PAUSE 0xFF
 
-#define NOTE_C4 261.63f
-#define NOTE_C4_SEMITONE (4.0f * 12.0f)
+#define NOTE_C4             261.63f
+#define NOTE_C4_SEMITONE    (4.0f * 12.0f)
 #define TWO_POW_TWELTH_ROOT 1.059463094359f
 
 typedef struct {
@@ -59,12 +59,16 @@ static int32_t music_player_worker_thread_callback(void* context) {
                 float note_from_a4 = (float)note_block->semitone - NOTE_C4_SEMITONE;
                 float frequency = NOTE_C4 * powf(TWO_POW_TWELTH_ROOT, note_from_a4);
 
-                uint32_t freq= furi_kernel_get_tick_frequency();
+                uint32_t freq = furi_kernel_get_tick_frequency();
                 // float duration = 60.0 * furi_kernel_get_tick_frequency() * 4 / instance->bpm /
                 //                  note_block->duration;
                 float duration = 60.0 * freq * 4 / instance->bpm / note_block->duration;
 
-                FURI_LOG_I(TAG, "Tick frequency: %lu \nNote block duration: %d", freq, note_block->duration);
+                FURI_LOG_I(
+                    TAG,
+                    "Tick frequency: %lu \nNote block duration: %d",
+                    freq,
+                    note_block->duration);
 
                 uint32_t dots = note_block->dots;
                 while(dots > 0) {
@@ -441,7 +445,7 @@ bool music_player_worker_load_rtttl_from_file(MusicPlayerWorker* instance, const
 bool music_player_worker_load_rtttl_from_string(MusicPlayerWorker* instance, const char* string) {
     furi_assert(instance);
 
-    if (instance->update_defaults) {
+    if(instance->update_defaults) {
         instance->duration = 0;
         instance->octave = 0;
         instance->bpm = 0;

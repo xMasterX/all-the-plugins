@@ -95,8 +95,7 @@ public:
         ProtocolAndDecoderProvider* pdProvider,
         CategoryType categoryType,
         const char* category,
-        bool loadNames
-    ) {
+        bool loadNames) {
         FileManager fileManager = FileManager();
         String* stationDirPath = getCategoryPath(categoryType, category);
         Directory* dir = fileManager.OpenDirectory(stationDirPath->cstr());
@@ -107,8 +106,8 @@ public:
             char fileName[MAX_FILENAME_LENGTH];
             while(dir->GetNextFile(fileName, MAX_FILENAME_LENGTH)) {
                 String* stationName = new String();
-                StoredPagerData pager =
-                    serializer.LoadPagerData(&fileManager, stationName, stationDirPath->cstr(), fileName, pdProvider);
+                StoredPagerData pager = serializer.LoadPagerData(
+                    &fileManager, stationName, stationDirPath->cstr(), fileName, pdProvider);
 
                 if(!loadNames) {
                     delete stationName;
@@ -129,18 +128,27 @@ public:
         return stationsLoaded;
     }
 
-    String* GetOnlyStationName(CategoryType categoryType, const char* category, StoredPagerData* pager) {
+    String* GetOnlyStationName(
+        CategoryType categoryType,
+        const char* category,
+        StoredPagerData* pager) {
         FileManager fileManager = FileManager();
         String* categoryPath = getCategoryPath(categoryType, category);
-        String* name = PagerSerializer().LoadOnlyStationName(&fileManager, categoryPath->cstr(), pager);
+        String* name =
+            PagerSerializer().LoadOnlyStationName(&fileManager, categoryPath->cstr(), pager);
         delete categoryPath;
         return name;
     }
 
-    void AutoSave(StoredPagerData* storedData, PagerDecoder* decoder, PagerProtocol* protocol, uint32_t frequency) {
+    void AutoSave(
+        StoredPagerData* storedData,
+        PagerDecoder* decoder,
+        PagerProtocol* protocol,
+        uint32_t frequency) {
         DateTime datetime;
         furi_hal_rtc_get_datetime(&datetime);
-        String* todayDate = new String("%d-%02d-%02d", datetime.year, datetime.month, datetime.day);
+        String* todayDate =
+            new String("%d-%02d-%02d", datetime.year, datetime.month, datetime.day);
         String* todaysDir = getCategoryPath(Autosaved, todayDate->cstr());
 
         FileManager fileManager = FileManager();
@@ -148,7 +156,8 @@ public:
         fileManager.CreateDirIfNotExists(AUTOSAVED_STATIONS_PATH);
         fileManager.CreateDirIfNotExists(todaysDir->cstr());
 
-        PagerSerializer().SavePagerData(&fileManager, todaysDir->cstr(), "", storedData, decoder, protocol, frequency);
+        PagerSerializer().SavePagerData(
+            &fileManager, todaysDir->cstr(), "", storedData, decoder, protocol, frequency);
 
         delete todaysDir;
         delete todayDate;
@@ -160,8 +169,7 @@ public:
         StoredPagerData* storedData,
         PagerDecoder* decoder,
         PagerProtocol* protocol,
-        uint32_t frequency
-    ) {
+        uint32_t frequency) {
         String* catDir = getCategoryPath(User, userCategory);
 
         FileManager fileManager = FileManager();
@@ -169,7 +177,8 @@ public:
         fileManager.CreateDirIfNotExists(AUTOSAVED_STATIONS_PATH);
         fileManager.CreateDirIfNotExists(catDir->cstr());
 
-        PagerSerializer().SavePagerData(&fileManager, catDir->cstr(), stationName, storedData, decoder, protocol, frequency);
+        PagerSerializer().SavePagerData(
+            &fileManager, catDir->cstr(), stationName, storedData, decoder, protocol, frequency);
 
         delete catDir;
     }

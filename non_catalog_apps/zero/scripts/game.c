@@ -26,7 +26,8 @@ struct GameState {
 
 void fill_shuffle_queue(GameState* state) {
     int array[NUMBER_OF_CARDS];
-    for(int i = 0; i < NUMBER_OF_CARDS; i++) array[i] = i;
+    for(int i = 0; i < NUMBER_OF_CARDS; i++)
+        array[i] = i;
 
     for(int i = 0; i < NUMBER_OF_CARDS; i++) {
         int j = rand() % NUMBER_OF_CARDS;
@@ -35,7 +36,8 @@ void fill_shuffle_queue(GameState* state) {
         array[j] = temp;
     }
 
-    for(int i = 0; i < NUMBER_OF_CARDS; i++) queue_enqueue(state->shuffleQueue, &array[i]);
+    for(int i = 0; i < NUMBER_OF_CARDS; i++)
+        queue_enqueue(state->shuffleQueue, &array[i]);
 }
 
 int game_step_draw_card(GameState* state, int playerNumber) {
@@ -268,7 +270,8 @@ void game_reset_top_card(GameState* state) {
 void game_reset(GameState* state) {
     initialize_cards_data();
 
-    for(int i = 0; i < NUMBER_OF_CARDS; i++) state->cardLocation[i] = 0;
+    for(int i = 0; i < NUMBER_OF_CARDS; i++)
+        state->cardLocation[i] = 0;
 
     for(int playerIndex = 1; playerIndex <= NUMBER_OF_PLAYERS; playerIndex++) {
         for(int j = 0; j < NUMBER_OF_STARTING_CARDS; j++) {

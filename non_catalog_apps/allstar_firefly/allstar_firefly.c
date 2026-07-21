@@ -16,10 +16,14 @@ bool af_decode_symbols(const volatile uint8_t* syms, char* dip) {
     for(int i = 0; i < AF_BIT_COUNT; i++) {
         uint8_t a = syms[i * 2];
         uint8_t b = syms[i * 2 + 1];
-        if      (a == 1 && b == 1) dip[i] = '+';
-        else if (a == 0 && b == 0) dip[i] = '-';
-        else if (a == 1 && b == 0) dip[i] = '0';
-        else return false; /* invalid (L,H) pair — discard frame */
+        if(a == 1 && b == 1)
+            dip[i] = '+';
+        else if(a == 0 && b == 0)
+            dip[i] = '-';
+        else if(a == 1 && b == 0)
+            dip[i] = '0';
+        else
+            return false; /* invalid (L,H) pair — discard frame */
     }
     dip[AF_BIT_COUNT] = '\0';
     return true;
@@ -39,23 +43,29 @@ bool af_decode_symbols(const volatile uint8_t* syms, char* dip) {
  */
 void af_build_tx_buf(AllstarApp* app) {
     uint32_t* buf = app->tx_buf;
-    uint32_t  pos = 0;
+    uint32_t pos = 0;
 
     for(int rep = 0; rep < AF_TX_REPEAT; rep++) {
         for(int bit = 0; bit < AF_BIT_COUNT; bit++) {
-            bool     last = (bit == AF_BIT_COUNT - 1);
-            char     c    = app->dip[bit];
+            bool last = (bit == AF_BIT_COUNT - 1);
+            char c = app->dip[bit];
             uint32_t p0, g0, p1, g1;
 
             if(c == '+') {
-                p0 = AF_LONG_PULSE_US;  g0 = AF_SHORT_GAP_US;
-                p1 = AF_LONG_PULSE_US;  g1 = AF_SHORT_GAP_US;
+                p0 = AF_LONG_PULSE_US;
+                g0 = AF_SHORT_GAP_US;
+                p1 = AF_LONG_PULSE_US;
+                g1 = AF_SHORT_GAP_US;
             } else if(c == '-') {
-                p0 = AF_SHORT_PULSE_US; g0 = AF_LONG_GAP_US;
-                p1 = AF_SHORT_PULSE_US; g1 = AF_LONG_GAP_US;
+                p0 = AF_SHORT_PULSE_US;
+                g0 = AF_LONG_GAP_US;
+                p1 = AF_SHORT_PULSE_US;
+                g1 = AF_LONG_GAP_US;
             } else { /* '0' */
-                p0 = AF_LONG_PULSE_US;  g0 = AF_SHORT_GAP_US;
-                p1 = AF_SHORT_PULSE_US; g1 = AF_LONG_GAP_US;
+                p0 = AF_LONG_PULSE_US;
+                g0 = AF_SHORT_GAP_US;
+                p1 = AF_SHORT_PULSE_US;
+                g1 = AF_LONG_GAP_US;
             }
 
             if(last) g1 = AF_INTERFRAME_US;
@@ -111,8 +121,7 @@ static void rx_callback(bool level, uint32_t duration, void* ctx) {
     } else {
         /* Rising edge — gap measurement */
         if(duration >= AF_FRAME_THRESH_US) {
-            if(app->rx_state == RxState_Receiving &&
-               app->rx_count == AF_SYM_COUNT) {
+            if(app->rx_state == RxState_Receiving && app->rx_count == AF_SYM_COUNT) {
                 /* ── Complete 18-symbol frame ── */
                 app->rx_ready = true;
 
@@ -143,7 +152,7 @@ static LevelDuration tx_callback(void* ctx) {
         return level_duration_reset();
     }
 
-    bool     lv  = (app->tx_pos % 2 == 0); /* even = HIGH, odd = LOW */
+    bool lv = (app->tx_pos % 2 == 0); /* even = HIGH, odd = LOW */
     uint32_t dur = app->tx_buf[app->tx_pos++];
     return level_duration_make(lv, dur);
 }
@@ -168,12 +177,12 @@ static LevelDuration tx_callback(void* ctx) {
 static void gdo0_edge_cb(void* ctx) {
     AllstarApp* app = (AllstarApp*)ctx;
 
-    uint32_t now     = DWT->CYCCNT;
+    uint32_t now = DWT->CYCCNT;
     uint32_t elapsed = now - app->rx_last_cyc;
     app->rx_last_cyc = now;
 
     uint32_t duration_us = elapsed / app->cpu_mhz;
-    bool     level       = furi_hal_gpio_read(app->gdo0);
+    bool level = furi_hal_gpio_read(app->gdo0);
 
     rx_callback(level, duration_us, app);
 }
@@ -194,7 +203,7 @@ void af_radio_start_rx(AllstarApp* app) {
     subghz_devices_reset(app->radio);
     subghz_devices_load_preset(app->radio, FuriHalSubGhzPresetOok650Async, NULL);
     subghz_devices_set_frequency(app->radio, AF_FREQ);
-    subghz_devices_set_rx(app->radio);   /* CC1101 → RX, GDO0 = demod data */
+    subghz_devices_set_rx(app->radio); /* CC1101 → RX, GDO0 = demod data */
 
     /* Arm GPIO edge interrupt for raw timing capture */
     furi_hal_gpio_init(app->gdo0, GpioModeInterruptRiseFall, GpioPullNo, GpioSpeedVeryHigh);
@@ -209,7 +218,7 @@ void af_radio_stop_rx(AllstarApp* app) {
 }
 
 void af_radio_start_tx(AllstarApp* app) {
-    app->tx_pos  = 0;
+    app->tx_pos = 0;
     app->tx_done = false;
 
     /* Disarm any active RX interrupt before switching to TX */
@@ -240,26 +249,24 @@ static void draw_cb(Canvas* canvas, void* ctx) {
 
     /* Mode label — top right */
     canvas_set_font(canvas, FontSecondary);
-    const char* mode_lbl =
-        (app->mode == AppMode_Listen)   ? "LISTEN" :
-        (app->mode == AppMode_Edit)     ? "EDIT"   : "TX";
-    canvas_draw_str(canvas,
-        128 - canvas_string_width(canvas, mode_lbl), 10, mode_lbl);
+    const char* mode_lbl = (app->mode == AppMode_Listen) ? "LISTEN" :
+                           (app->mode == AppMode_Edit)   ? "EDIT" :
+                                                           "TX";
+    canvas_draw_str(canvas, 128 - canvas_string_width(canvas, mode_lbl), 10, mode_lbl);
 
     canvas_draw_str(canvas, 0, 20, "318MHz OOK  9-bit trinary");
 
     /* ── DIP switch row ─────────────────────────────────────────────────── */
-    const int DIP_X0  = 27; /* pixel X of first DIP char                   */
-    const int DIP_Y   = 35; /* baseline Y                                   */
+    const int DIP_X0 = 27; /* pixel X of first DIP char                   */
+    const int DIP_Y = 35; /* baseline Y                                   */
     const int DIP_SPC = 11; /* pixels between DIP positions                 */
 
     canvas_draw_str(canvas, 0, DIP_Y, "DIP:");
 
     for(int i = 0; i < AF_BIT_COUNT; i++) {
-        int  cx   = DIP_X0 + i * DIP_SPC;
-        char ch[2] = { 0, 0 };
-        ch[0] = (app->has_decode || app->mode == AppMode_Edit)
-                    ? app->dip[i] : '?';
+        int cx = DIP_X0 + i * DIP_SPC;
+        char ch[2] = {0, 0};
+        ch[0] = (app->has_decode || app->mode == AppMode_Edit) ? app->dip[i] : '?';
 
         bool cur = (app->mode == AppMode_Edit && i == app->cursor);
         if(cur) {
@@ -292,7 +299,7 @@ static void draw_cb(Canvas* canvas, void* ctx) {
         canvas_draw_frame(canvas, bx, by, bw, bh);
         float r = app->rssi_dbm;
         if(r < -100.0f) r = -100.0f;
-        if(r > -20.0f)  r = -20.0f;
+        if(r > -20.0f) r = -20.0f;
         int fill = (int)((r + 100.0f) * (bw - 2) / 80.0f);
         if(fill > 0) canvas_draw_box(canvas, bx + 1, by + 1, fill, bh - 2);
         char rs[12];
@@ -302,8 +309,7 @@ static void draw_cb(Canvas* canvas, void* ctx) {
         /* ── Status hint ─────────────────────────────────────── */
         char bot[32];
         if(app->has_decode)
-            snprintf(bot, sizeof(bot), "Frames: %lu  OK=edit",
-                     (unsigned long)app->frame_count);
+            snprintf(bot, sizeof(bot), "Frames: %lu  OK=edit", (unsigned long)app->frame_count);
         else
             snprintf(bot, sizeof(bot), "OK=edit  Back=exit");
         canvas_draw_str(canvas, 0, 63, bot);
@@ -334,32 +340,33 @@ int32_t allstar_firefly_app(void* p) {
     if(!app) return -1;
     memset(app, 0, sizeof(AllstarApp));
 
-    for(int i = 0; i < AF_BIT_COUNT; i++) app->dip[i] = '-';
+    for(int i = 0; i < AF_BIT_COUNT; i++)
+        app->dip[i] = '-';
     app->dip[AF_BIT_COUNT] = '\0';
     app->running = true;
-    app->mode    = AppMode_Listen;
+    app->mode = AppMode_Listen;
 
     /* Enable DWT cycle counter for µs-precision GPIO edge timing */
     CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-    DWT->CYCCNT       = 0;
-    DWT->CTRL        |= DWT_CTRL_CYCCNTENA_Msk;
+    DWT->CYCCNT = 0;
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
     /* SubGHz */
     subghz_devices_init();
-    app->radio   = subghz_devices_get_by_name(SUBGHZ_DEVICE_CC1101_INT_NAME);
+    app->radio = subghz_devices_get_by_name(SUBGHZ_DEVICE_CC1101_INT_NAME);
     furi_check(app->radio);
     subghz_devices_begin(app->radio);
-    app->gdo0    = subghz_devices_get_data_gpio(app->radio);
+    app->gdo0 = subghz_devices_get_data_gpio(app->radio);
     app->cpu_mhz = furi_hal_cortex_instructions_per_microsecond();
 
     /* GUI */
-    app->gui       = furi_record_open(RECORD_GUI);
+    app->gui = furi_record_open(RECORD_GUI);
     app->view_port = view_port_alloc();
-    view_port_draw_callback_set(app->view_port,  draw_cb,  app);
+    view_port_draw_callback_set(app->view_port, draw_cb, app);
     view_port_input_callback_set(app->view_port, input_cb, app);
     gui_add_view_port(app->gui, app->view_port, GuiLayerFullscreen);
 
-    app->event_queue   = furi_message_queue_alloc(8, sizeof(InputEvent));
+    app->event_queue = furi_message_queue_alloc(8, sizeof(InputEvent));
     app->notifications = furi_record_open(RECORD_NOTIFICATION);
 
     af_radio_start_rx(app);
@@ -368,7 +375,6 @@ int32_t allstar_firefly_app(void* p) {
     /* ── Main loop ──────────────────────────────────────────────────────── */
     InputEvent ev;
     while(app->running) {
-
         /* Consume a newly decoded frame */
         if(app->rx_ready && app->mode == AppMode_Listen) {
             char decoded[AF_BIT_COUNT + 1];
@@ -405,11 +411,9 @@ int32_t allstar_firefly_app(void* p) {
             }
             continue;
         }
-        if(ev.type != InputTypePress && ev.type != InputTypeRepeat)
-            continue;
+        if(ev.type != InputTypePress && ev.type != InputTypeRepeat) continue;
 
         switch(app->mode) {
-
         case AppMode_Listen:
             if(ev.key == InputKeyBack) {
                 notification_message(app->notifications, &sequence_blink_stop);
@@ -418,7 +422,7 @@ int32_t allstar_firefly_app(void* p) {
                 notification_message(app->notifications, &sequence_blink_stop);
                 af_radio_stop_rx(app);
                 app->cursor = 0;
-                app->mode   = AppMode_Edit;
+                app->mode = AppMode_Edit;
                 view_port_update(app->view_port);
             }
             break;
@@ -432,10 +436,16 @@ int32_t allstar_firefly_app(void* p) {
                 view_port_update(app->view_port);
                 break;
             case InputKeyLeft:
-                if(app->cursor > 0) { app->cursor--; view_port_update(app->view_port); }
+                if(app->cursor > 0) {
+                    app->cursor--;
+                    view_port_update(app->view_port);
+                }
                 break;
             case InputKeyRight:
-                if(app->cursor < AF_BIT_COUNT - 1) { app->cursor++; view_port_update(app->view_port); }
+                if(app->cursor < AF_BIT_COUNT - 1) {
+                    app->cursor++;
+                    view_port_update(app->view_port);
+                }
                 break;
             case InputKeyUp: {
                 /* Cycle forward: + -> - -> 0 -> + */
@@ -457,7 +467,8 @@ int32_t allstar_firefly_app(void* p) {
                 af_radio_start_tx(app);
                 view_port_update(app->view_port);
                 break;
-            default: break;
+            default:
+                break;
             }
             break;
 

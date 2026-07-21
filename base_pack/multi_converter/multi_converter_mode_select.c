@@ -3,8 +3,8 @@
 #define MULTI_CONVERTER_LIST_ENTRIES_COUNT 3
 
 #define MULTI_CONVERTER_INFO_STRING_FROM "FROM:"
-#define MULTI_CONVERTER_INFO_STRING_TO "TO:"
-#define MULTI_CONVERTER_INFO_STRING_OK "OK: Change"
+#define MULTI_CONVERTER_INFO_STRING_TO   "TO:"
+#define MULTI_CONVERTER_INFO_STRING_OK   "OK: Change"
 #define MULTI_CONVERTER_INFO_STRING_BACK "BACK: Cancel"
 
 void multi_converter_mode_select_draw_destination_offset(

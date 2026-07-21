@@ -9,7 +9,7 @@
 #include "text_viewer_icons.h"
 #include "scenes/text_viewer_scene.h"
 
-#define TEXT_VIEWER_PATH STORAGE_EXT_PATH_PREFIX
+#define TEXT_VIEWER_PATH      STORAGE_EXT_PATH_PREFIX
 #define TEXT_VIEWER_EXTENSION "*"
 
 typedef struct {

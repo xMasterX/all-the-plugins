@@ -35,7 +35,6 @@ static void tx_debug_log(const char* fmt, ...) {
     UNUSED(fmt);
 }
 
-
 static uint16_t tx_apply_signal_mode(const TagTinkerApp* app, uint16_t repeats) {
     UNUSED(app);
     return repeats & 0x7FFFU;
@@ -113,10 +112,7 @@ static bool tx_send_payload_frames(
     size_t frame_count = payload->byte_count / TAGTINKER_IMAGE_DATA_BYTES_PER_FRAME;
     for(size_t i = 0; ok && i < frame_count; i++) {
         size_t len = tagtinker_make_image_data_frame(
-            frame,
-            plid,
-            (uint16_t)i,
-            &payload->data[i * TAGTINKER_IMAGE_DATA_BYTES_PER_FRAME]);
+            frame, plid, (uint16_t)i, &payload->data[i * TAGTINKER_IMAGE_DATA_BYTES_PER_FRAME]);
         ok = tx_send_frame(app, frame, len, app->data_frame_repeats);
         /* Short delay to avoid tag overflow */
         if(ok && ((i + 1U) % 32U) == 0U && (i + 1U) < frame_count) {
@@ -140,11 +136,7 @@ static bool tx_send_image_chunk(
     TagTinkerImagePayload payload;
     size_t pixel_count = (size_t)width * height;
     if(!tagtinker_encode_planes_payload(
-           primary_pixels,
-           secondary_pixels,
-           pixel_count,
-           app->compression_mode,
-           &payload)) {
+           primary_pixels, secondary_pixels, pixel_count, app->compression_mode, &payload)) {
         return false;
     }
 
@@ -233,8 +225,16 @@ static bool tx_send_full_text_image(TagTinkerApp* app) {
     if(accent_text) {
         uint8_t bg_primary = app->invert_text ? 0 : 1;
         uint8_t fg_primary = (accent_color == TagTinkerTagColorYellow) ? 0 : 1;
-        render_text_ex(primary, job->width, job->height, app->text_input_buf, bg_primary, fg_primary, app->text_padding_pct);
-        render_text_ex(secondary, job->width, job->height, app->text_input_buf, 1, 0, app->text_padding_pct);
+        render_text_ex(
+            primary,
+            job->width,
+            job->height,
+            app->text_input_buf,
+            bg_primary,
+            fg_primary,
+            app->text_padding_pct);
+        render_text_ex(
+            secondary, job->width, job->height, app->text_input_buf, 1, 0, app->text_padding_pct);
     } else {
         render_text_ex(
             primary,
@@ -256,14 +256,7 @@ static bool tx_send_full_text_image(TagTinkerApp* app) {
     if(!ok) return false;
 
     ok = tx_send_full_payload(
-        app,
-        job->plid,
-        &payload,
-        job->page,
-        job->width,
-        job->height,
-        job->pos_x,
-        job->pos_y);
+        app, job->plid, &payload, job->page, job->width, job->height, job->pos_x, job->pos_y);
     tagtinker_free_image_payload(&payload);
     return ok;
 }
@@ -370,7 +363,8 @@ static bool tx_bmp_open(const char* path, File* file, TxBmpInfo* info) {
     info->bpp = bpp;
 
     int32_t bmp_h = header[22] | (header[23] << 8) | (header[24] << 16) | (header[25] << 24);
-    info->width = (uint16_t)(header[18] | (header[19] << 8) | (header[20] << 16) | (header[21] << 24));
+    info->width =
+        (uint16_t)(header[18] | (header[19] << 8) | (header[20] << 16) | (header[21] << 24));
     info->top_down = false;
     if(bmp_h < 0) {
         info->top_down = true;
@@ -405,7 +399,10 @@ static bool tx_bmp_open(const char* path, File* file, TxBmpInfo* info) {
 static inline size_t rle_run_bits(uint32_t count) {
     uint8_t n = 0;
     uint32_t v = count;
-    while(v) { n++; v >>= 1; }
+    while(v) {
+        n++;
+        v >>= 1;
+    }
     return (size_t)(n * 2U) - 1U;
 }
 
@@ -435,36 +432,46 @@ static inline uint16_t bmp_map_x(uint16_t out_x, uint16_t tx_w, uint16_t src_w) 
 }
 
 static inline bool bmp_read_row_at(
-    File* file, const TxBmpInfo* info,
-    uint16_t src_y, uint16_t plane_offset_rows,
+    File* file,
+    const TxBmpInfo* info,
+    uint16_t src_y,
+    uint16_t plane_offset_rows,
     uint8_t* row_buf) {
-    uint16_t actual_row =
-        info->top_down ? src_y : (uint16_t)(info->height - 1U - src_y);
+    uint16_t actual_row = info->top_down ? src_y : (uint16_t)(info->height - 1U - src_y);
     uint32_t off = info->data_offset +
-        ((uint32_t)actual_row + (uint32_t)plane_offset_rows) * info->row_stride;
+                   ((uint32_t)actual_row + (uint32_t)plane_offset_rows) * info->row_stride;
     storage_file_seek(file, off, true);
     return storage_file_read(file, row_buf, info->row_stride) == info->row_stride;
 }
 
-#define BMP_FETCH_ROW(out_y, plane_off) do { \
-    uint16_t _src_y = bmp_map_y((out_y), tx_height, info.height); \
-    if(_src_y != cached_src_y) { \
-        if(!bmp_read_row_at(file, &info, _src_y, (plane_off), row_buf)) { ok = false; break; } \
-        cached_src_y = _src_y; \
-    } \
-} while(0)
+#define BMP_FETCH_ROW(out_y, plane_off)                                       \
+    do {                                                                      \
+        uint16_t _src_y = bmp_map_y((out_y), tx_height, info.height);         \
+        if(_src_y != cached_src_y) {                                          \
+            if(!bmp_read_row_at(file, &info, _src_y, (plane_off), row_buf)) { \
+                ok = false;                                                   \
+                break;                                                        \
+            }                                                                 \
+            cached_src_y = _src_y;                                            \
+        }                                                                     \
+    } while(0)
 
 static bool tx_stream_bmp_image(TagTinkerApp* app) {
     const TagTinkerImageTxJob* job = &app->image_tx_job;
-    tx_debug_log("BMP TX: path=%s w=%u h=%u page=%u",
-        job->image_path, job->width, job->height, job->page);
+    tx_debug_log(
+        "BMP TX: path=%s w=%u h=%u page=%u", job->image_path, job->width, job->height, job->page);
 
     Storage* storage = furi_record_open(RECORD_STORAGE);
     File* file = storage_file_alloc(storage);
     TxBmpInfo info = {0};
     bool ok = tx_bmp_open(job->image_path, file, &info);
-    tx_debug_log("bmp_open=%d bmp_w=%u bmp_h=%u bpp=%u off=%lu",
-        ok, info.width, info.height, info.bpp, (unsigned long)info.data_offset);
+    tx_debug_log(
+        "bmp_open=%d bmp_w=%u bmp_h=%u bpp=%u off=%lu",
+        ok,
+        info.width,
+        info.height,
+        info.bpp,
+        (unsigned long)info.data_offset);
 
     if(!ok) {
         storage_file_close(file);
@@ -476,12 +483,12 @@ static bool tx_stream_bmp_image(TagTinkerApp* app) {
     /* Output dims come from the target's profile; source dims come from the
      * BMP file. The streaming pipeline below rescales source -> target with
      * nearest-neighbour as it reads, so any BMP can drive any tag. */
-    uint16_t tx_width  = (job->width  > 0U) ? job->width  : info.width;
+    uint16_t tx_width = (job->width > 0U) ? job->width : info.width;
     uint16_t tx_height = (job->height > 0U) ? job->height : info.height;
 
     TagTinkerTagColor accent_color = tx_target_color(app);
-    bool accent_capable =
-        accent_color == TagTinkerTagColorRed || accent_color == TagTinkerTagColorYellow;
+    bool accent_capable = accent_color == TagTinkerTagColorRed ||
+                          accent_color == TagTinkerTagColorYellow;
     bool use_second_plane = app->color_clear || accent_capable;
     bool has_secondary_in_bmp = (info.bpp == 2);
     /* Plane offset (in source rows) of the secondary plane in 2bpp BMPs. */
@@ -504,9 +511,18 @@ static bool tx_stream_bmp_image(TagTinkerApp* app) {
         BMP_FETCH_ROW(y, 0U);
         for(uint16_t x = 0; x < tx_width; x++) {
             uint8_t pix = bmp_read_pixel(row_buf, bmp_map_x(x, tx_width, info.width));
-            if(first) { rle_bits = 1; run_pixel = pix; run_count = 1; first = false; }
-            else if(pix == run_pixel) { run_count++; }
-            else { rle_bits += rle_run_bits(run_count); run_pixel = pix; run_count = 1; }
+            if(first) {
+                rle_bits = 1;
+                run_pixel = pix;
+                run_count = 1;
+                first = false;
+            } else if(pix == run_pixel) {
+                run_count++;
+            } else {
+                rle_bits += rle_run_bits(run_count);
+                run_pixel = pix;
+                run_count = 1;
+            }
         }
     }
     if(ok && use_second_plane) {
@@ -516,16 +532,34 @@ static bool tx_stream_bmp_image(TagTinkerApp* app) {
                 BMP_FETCH_ROW(y, plane2_off_rows);
                 for(uint16_t x = 0; x < tx_width; x++) {
                     uint8_t pix = bmp_read_pixel(row_buf, bmp_map_x(x, tx_width, info.width));
-                    if(first) { rle_bits = 1; run_pixel = pix; run_count = 1; first = false; }
-                    else if(pix == run_pixel) { run_count++; }
-                    else { rle_bits += rle_run_bits(run_count); run_pixel = pix; run_count = 1; }
+                    if(first) {
+                        rle_bits = 1;
+                        run_pixel = pix;
+                        run_count = 1;
+                        first = false;
+                    } else if(pix == run_pixel) {
+                        run_count++;
+                    } else {
+                        rle_bits += rle_run_bits(run_count);
+                        run_pixel = pix;
+                        run_count = 1;
+                    }
                 }
             }
         } else {
             uint32_t count = (uint32_t)tx_width * tx_height;
-            if(first) { rle_bits = 1; run_pixel = 1; run_count = count; first = false; }
-            else if(1U == run_pixel) { run_count += count; }
-            else { rle_bits += rle_run_bits(run_count); run_pixel = 1; run_count = count; }
+            if(first) {
+                rle_bits = 1;
+                run_pixel = 1;
+                run_count = count;
+                first = false;
+            } else if(1U == run_pixel) {
+                run_count += count;
+            } else {
+                rle_bits += rle_run_bits(run_count);
+                run_pixel = 1;
+                run_count = count;
+            }
         }
     }
     if(run_count > 0) rle_bits += rle_run_bits(run_count);
@@ -537,19 +571,20 @@ static bool tx_stream_bmp_image(TagTinkerApp* app) {
         return false;
     }
 
-
-
     tx_debug_log("STREAM RLE: bits=%u", (unsigned)rle_bits);
 
     uint32_t raw_bits = (uint32_t)tx_width * tx_height;
     if(use_second_plane) raw_bits *= 2U;
-    
-    bool use_compressed = (app->compression_mode == TagTinkerCompressionRle) || 
-                          (app->compression_mode == TagTinkerCompressionAuto && rle_bits > 0U && rle_bits < raw_bits);
-    
+
+    bool use_compressed = (app->compression_mode == TagTinkerCompressionRle) ||
+                          (app->compression_mode == TagTinkerCompressionAuto && rle_bits > 0U &&
+                           rle_bits < raw_bits);
+
     uint32_t target_bits = use_compressed ? (uint32_t)rle_bits : raw_bits;
     uint32_t padded_bytes = (target_bits + 7U) / 8U;
-    padded_bytes += (TAGTINKER_IMAGE_DATA_BYTES_PER_FRAME - (padded_bytes % TAGTINKER_IMAGE_DATA_BYTES_PER_FRAME)) % TAGTINKER_IMAGE_DATA_BYTES_PER_FRAME;
+    padded_bytes += (TAGTINKER_IMAGE_DATA_BYTES_PER_FRAME -
+                     (padded_bytes % TAGTINKER_IMAGE_DATA_BYTES_PER_FRAME)) %
+                    TAGTINKER_IMAGE_DATA_BYTES_PER_FRAME;
 
     uint8_t* encoded = calloc(padded_bytes, 1);
     if(!encoded) {
@@ -564,29 +599,53 @@ static bool tx_stream_bmp_image(TagTinkerApp* app) {
         /* ---- PASS 2: RLE encode into a small heap buffer ---- */
         size_t enc_bit_pos = 0;
 
-        #define ENC_BIT(b) do { \
-            if(b) encoded[enc_bit_pos / 8U] |= (1U << (7U - (enc_bit_pos % 8U))); \
-            enc_bit_pos++; \
-        } while(0)
+#define ENC_BIT(b)                                                            \
+    do {                                                                      \
+        if(b) encoded[enc_bit_pos / 8U] |= (1U << (7U - (enc_bit_pos % 8U))); \
+        enc_bit_pos++;                                                        \
+    } while(0)
 
-        #define ENC_RUN(cnt) do { \
-            uint8_t _bits[32]; int _n = 0; uint32_t _v = (cnt); \
-            while(_v) { _bits[_n++] = _v & 1U; _v >>= 1; } \
-            for(int _i = 0; _i < _n/2; _i++) { uint8_t _t = _bits[_i]; _bits[_i] = _bits[_n-1-_i]; _bits[_n-1-_i] = _t; } \
-            for(int _i = 1; _i < _n; _i++) ENC_BIT(0U); \
-            for(int _i = 0; _i < _n; _i++) ENC_BIT(_bits[_i]); \
-        } while(0)
+#define ENC_RUN(cnt)                         \
+    do {                                     \
+        uint8_t _bits[32];                   \
+        int _n = 0;                          \
+        uint32_t _v = (cnt);                 \
+        while(_v) {                          \
+            _bits[_n++] = _v & 1U;           \
+            _v >>= 1;                        \
+        }                                    \
+        for(int _i = 0; _i < _n / 2; _i++) { \
+            uint8_t _t = _bits[_i];          \
+            _bits[_i] = _bits[_n - 1 - _i];  \
+            _bits[_n - 1 - _i] = _t;         \
+        }                                    \
+        for(int _i = 1; _i < _n; _i++)       \
+            ENC_BIT(0U);                     \
+        for(int _i = 0; _i < _n; _i++)       \
+            ENC_BIT(_bits[_i]);              \
+    } while(0)
 
-        run_pixel = 0; run_count = 0; first = true;
+        run_pixel = 0;
+        run_count = 0;
+        first = true;
 
         cached_src_y = UINT16_MAX;
         for(uint16_t y = 0; ok && y < tx_height; y++) {
             BMP_FETCH_ROW(y, 0U);
             for(uint16_t x = 0; x < tx_width; x++) {
                 uint8_t pix = bmp_read_pixel(row_buf, bmp_map_x(x, tx_width, info.width));
-                if(first) { ENC_BIT(pix); run_pixel = pix; run_count = 1; first = false; }
-                else if(pix == run_pixel) { run_count++; }
-                else { ENC_RUN(run_count); run_pixel = pix; run_count = 1; }
+                if(first) {
+                    ENC_BIT(pix);
+                    run_pixel = pix;
+                    run_count = 1;
+                    first = false;
+                } else if(pix == run_pixel) {
+                    run_count++;
+                } else {
+                    ENC_RUN(run_count);
+                    run_pixel = pix;
+                    run_count = 1;
+                }
             }
         }
         if(ok && use_second_plane) {
@@ -596,22 +655,42 @@ static bool tx_stream_bmp_image(TagTinkerApp* app) {
                     BMP_FETCH_ROW(y, plane2_off_rows);
                     for(uint16_t x = 0; x < tx_width; x++) {
                         uint8_t pix = bmp_read_pixel(row_buf, bmp_map_x(x, tx_width, info.width));
-                        if(first) { ENC_BIT(pix); run_pixel = pix; run_count = 1; first = false; }
-                        else if(pix == run_pixel) { run_count++; }
-                        else { ENC_RUN(run_count); run_pixel = pix; run_count = 1; }
+                        if(first) {
+                            ENC_BIT(pix);
+                            run_pixel = pix;
+                            run_count = 1;
+                            first = false;
+                        } else if(pix == run_pixel) {
+                            run_count++;
+                        } else {
+                            ENC_RUN(run_count);
+                            run_pixel = pix;
+                            run_count = 1;
+                        }
                     }
                 }
             } else {
                 uint32_t count = (uint32_t)tx_width * tx_height;
-                if(first) { ENC_BIT(1U); run_pixel = 1; run_count = count; first = false; }
-                else if(1U == run_pixel) { run_count += count; }
-                else { ENC_RUN(run_count); run_pixel = 1; run_count = count; }
+                if(first) {
+                    ENC_BIT(1U);
+                    run_pixel = 1;
+                    run_count = count;
+                    first = false;
+                } else if(1U == run_pixel) {
+                    run_count += count;
+                } else {
+                    ENC_RUN(run_count);
+                    run_pixel = 1;
+                    run_count = count;
+                }
             }
         }
-        if(run_count > 0) { ENC_RUN(run_count); }
+        if(run_count > 0) {
+            ENC_RUN(run_count);
+        }
 
-        #undef ENC_BIT
-        #undef ENC_RUN
+#undef ENC_BIT
+#undef ENC_RUN
     } else {
         /* ---- PASS 2: RAW encode into heap buffer ---- */
         size_t bit_idx = 0;
@@ -649,7 +728,10 @@ static bool tx_stream_bmp_image(TagTinkerApp* app) {
     storage_file_free(file);
     furi_record_close(RECORD_STORAGE);
 
-    if(!ok) { free(encoded); return false; }
+    if(!ok) {
+        free(encoded);
+        return false;
+    }
 
     /* Transmit encoded buffer */
     TagTinkerImagePayload payload;
@@ -658,8 +740,7 @@ static bool tx_stream_bmp_image(TagTinkerApp* app) {
     payload.comp_type = use_compressed ? 2U : 0U;
 
     ok = tx_send_full_payload(
-        app, job->plid, &payload, job->page,
-        tx_width, tx_height, job->pos_x, job->pos_y);
+        app, job->plid, &payload, job->page, tx_width, tx_height, job->pos_x, job->pos_y);
 
     free(encoded);
     return ok;
@@ -675,7 +756,8 @@ static int32_t tx_thread_callback(void* context) {
     tagtinker_ir_init();
 
     /* Let OS settle (especially BLE teardown) before IR blasting */
-    if(app->image_tx_job.mode == TagTinkerTxModeBmpImage || app->image_tx_job.mode == TagTinkerTxModeTextImage) {
+    if(app->image_tx_job.mode == TagTinkerTxModeBmpImage ||
+       app->image_tx_job.mode == TagTinkerTxModeTextImage) {
         furi_delay_ms(500);
     }
 
@@ -686,11 +768,16 @@ static int32_t tx_thread_callback(void* context) {
             ok = tx_stream_bmp_image(app);
         } else if(app->frame_seq_count > 0) {
             for(size_t i = 0; i < app->frame_seq_count; i++) {
-                if(!app->tx_active) { ok = false; break; }
+                if(!app->tx_active) {
+                    ok = false;
+                    break;
+                }
                 if(i > 0) furi_delay_ms(20);
                 ok = tagtinker_ir_transmit(
-                    app->frame_sequence[i], app->frame_lengths[i],
-                    tx_apply_signal_mode(app, app->frame_repeats[i]), 10);
+                    app->frame_sequence[i],
+                    app->frame_lengths[i],
+                    tx_apply_signal_mode(app, app->frame_repeats[i]),
+                    10);
                 if(!ok) break;
             }
         } else {
@@ -705,7 +792,7 @@ static int32_t tx_thread_callback(void* context) {
 
     app->tx_active = false;
     /* Use event payload to securely pass result instead of querying running thread! */
-    view_dispatcher_send_custom_event(app->view_dispatcher, 101 + (ok ? 0 : 1)); 
+    view_dispatcher_send_custom_event(app->view_dispatcher, 101 + (ok ? 0 : 1));
     return 0;
 }
 
@@ -788,11 +875,16 @@ bool tagtinker_scene_transmit_on_event(void* context, SceneManagerEvent event) {
             tagtinker_ir_stop();
             return true;
         } else {
-            if(!scene_manager_search_and_switch_to_previous_scene(app->scene_manager, TagTinkerSceneTargetActions)) {
-                if(!scene_manager_search_and_switch_to_previous_scene(app->scene_manager, TagTinkerSceneAbout)) {
-                    if(!scene_manager_search_and_switch_to_previous_scene(app->scene_manager, TagTinkerSceneBroadcast)) {
-                        if(!scene_manager_search_and_switch_to_previous_scene(app->scene_manager, TagTinkerSceneBroadcastMenu)) {
-                            scene_manager_search_and_switch_to_previous_scene(app->scene_manager, TagTinkerSceneMainMenu);
+            if(!scene_manager_search_and_switch_to_previous_scene(
+                   app->scene_manager, TagTinkerSceneTargetActions)) {
+                if(!scene_manager_search_and_switch_to_previous_scene(
+                       app->scene_manager, TagTinkerSceneAbout)) {
+                    if(!scene_manager_search_and_switch_to_previous_scene(
+                           app->scene_manager, TagTinkerSceneBroadcast)) {
+                        if(!scene_manager_search_and_switch_to_previous_scene(
+                               app->scene_manager, TagTinkerSceneBroadcastMenu)) {
+                            scene_manager_search_and_switch_to_previous_scene(
+                                app->scene_manager, TagTinkerSceneMainMenu);
                         }
                     }
                 }
@@ -821,7 +913,7 @@ bool tagtinker_scene_transmit_on_event(void* context, SceneManagerEvent event) {
 
 void tagtinker_scene_transmit_on_exit(void* context) {
     TagTinkerApp* app = context;
-    
+
     app->tx_active = false;
     tagtinker_ir_stop();
     furi_thread_join(app->tx_thread);

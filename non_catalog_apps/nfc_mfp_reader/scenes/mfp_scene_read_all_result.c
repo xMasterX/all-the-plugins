@@ -19,9 +19,8 @@ static void read_all_result_actions_cb(void* ctx) {
 void mfp_scene_read_all_result_on_enter(void* ctx) {
     MfpApp* app = ctx;
 
-    uint8_t total = app->scan_total_sectors
-                        ? app->scan_total_sectors
-                        : mfp_sector_count(app->version.size);
+    uint8_t total = app->scan_total_sectors ? app->scan_total_sectors :
+                                              mfp_sector_count(app->version.size);
 
     /* Pack per-sector key flags into the view's compact byte format. */
     uint8_t states[MFP_SECTORS_4K] = {0};
@@ -50,16 +49,14 @@ void mfp_scene_read_all_result_on_enter(void* ctx) {
         app->version.uid_len,
         total,
         states);
-    mfp_result_view_set_actions_callback(
-        app->result_view, read_all_result_actions_cb, app);
+    mfp_result_view_set_actions_callback(app->result_view, read_all_result_actions_cb, app);
 
     view_dispatcher_switch_to_view(app->view_dispatcher, MfpViewResult);
 }
 
 bool mfp_scene_read_all_result_on_event(void* ctx, SceneManagerEvent event) {
     MfpApp* app = ctx;
-    if(event.type == SceneManagerEventTypeCustom &&
-       event.event == ReadAllResultEventActions) {
+    if(event.type == SceneManagerEventTypeCustom && event.event == ReadAllResultEventActions) {
         scene_manager_next_scene(app->scene_manager, MfpSceneActions);
         return true;
     }
@@ -67,11 +64,9 @@ bool mfp_scene_read_all_result_on_event(void* ctx, SceneManagerEvent event) {
         /* Loaded from Saved → go back to the Saved file list.
          * Fresh dump → skip past the scan pipeline to Start. */
         if(app->loaded_from_file) {
-            scene_manager_search_and_switch_to_previous_scene(
-                app->scene_manager, MfpSceneSaved);
+            scene_manager_search_and_switch_to_previous_scene(app->scene_manager, MfpSceneSaved);
         } else {
-            scene_manager_search_and_switch_to_previous_scene(
-                app->scene_manager, MfpSceneStart);
+            scene_manager_search_and_switch_to_previous_scene(app->scene_manager, MfpSceneStart);
         }
         return true;
     }

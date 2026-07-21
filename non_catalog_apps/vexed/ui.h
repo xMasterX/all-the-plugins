@@ -3,7 +3,7 @@
 #include <gui/gui.h>
 #include <toolbox/compress.h>
 
-#define GUI_DISPLAY_WIDTH 128
+#define GUI_DISPLAY_WIDTH  128
 #define GUI_DISPLAY_HEIGHT 64
 
 #define GUI_DISPLAY_CENTER_X 64

@@ -36,8 +36,9 @@ void vk_thermo_uid_to_string(const uint8_t* uid, char* str, size_t str_len) {
 
 // UID to short string (last 4 chars)
 void vk_thermo_uid_to_short_string(const uint8_t* uid, char* str, size_t str_len) {
-    if(str_len < 7) return;  // "..XXXX\0"
-    snprintf(str, str_len, "..%02X%02X", uid[VK_THERMO_UID_LENGTH - 2], uid[VK_THERMO_UID_LENGTH - 1]);
+    if(str_len < 7) return; // "..XXXX\0"
+    snprintf(
+        str, str_len, "..%02X%02X", uid[VK_THERMO_UID_LENGTH - 2], uid[VK_THERMO_UID_LENGTH - 1]);
 }
 
 // Settings functions
@@ -55,7 +56,8 @@ void vk_thermo_save_settings(void* context) {
 
     // Create directory if needed
     if(storage_common_stat(storage, CONFIG_FILE_DIRECTORY_PATH, NULL) == FSE_NOT_EXIST) {
-        FURI_LOG_D(TAG, "Directory %s doesn't exist. Will create new.", CONFIG_FILE_DIRECTORY_PATH);
+        FURI_LOG_D(
+            TAG, "Directory %s doesn't exist. Will create new.", CONFIG_FILE_DIRECTORY_PATH);
         if(!storage_simply_mkdir(storage, CONFIG_FILE_DIRECTORY_PATH)) {
             FURI_LOG_E(TAG, "Error creating directory %s", CONFIG_FILE_DIRECTORY_PATH);
         }
@@ -69,7 +71,8 @@ void vk_thermo_save_settings(void* context) {
     }
 
     // Store Settings
-    flipper_format_write_header_cstr(fff_file, VK_THERMO_SETTINGS_HEADER, VK_THERMO_SETTINGS_FILE_VERSION);
+    flipper_format_write_header_cstr(
+        fff_file, VK_THERMO_SETTINGS_HEADER, VK_THERMO_SETTINGS_FILE_VERSION);
     flipper_format_write_uint32(fff_file, VK_THERMO_SETTINGS_KEY_HAPTIC, &app->haptic, 1);
     flipper_format_write_uint32(fff_file, VK_THERMO_SETTINGS_KEY_SPEAKER, &app->speaker, 1);
     flipper_format_write_uint32(fff_file, VK_THERMO_SETTINGS_KEY_LED, &app->led, 1);
@@ -217,7 +220,9 @@ static void vk_thermo_log_save_uid_csv(Storage* storage, VkThermoLog* log, const
             (double)entry->temperature_celsius,
             (double)vk_thermo_celsius_to_fahrenheit(entry->temperature_celsius),
             entry->has_dual_temps ? (double)entry->temperature2_celsius : (double)0.0,
-            entry->has_dual_temps ? (double)vk_thermo_celsius_to_fahrenheit(entry->temperature2_celsius) : (double)0.0);
+            entry->has_dual_temps ?
+                (double)vk_thermo_celsius_to_fahrenheit(entry->temperature2_celsius) :
+                (double)0.0);
 
         storage_file_write(file, line, len);
         written++;
@@ -296,7 +301,11 @@ static bool vk_thermo_parse_uid_from_filename(const char* name, uint8_t* uid) {
 }
 
 // Load entries from a single UID CSV file
-static void vk_thermo_log_load_uid_csv(Storage* storage, VkThermoLog* log, const uint8_t* uid, const char* path) {
+static void vk_thermo_log_load_uid_csv(
+    Storage* storage,
+    VkThermoLog* log,
+    const uint8_t* uid,
+    const char* path) {
     File* file = storage_file_alloc(storage);
     if(!storage_file_open(file, path, FSAM_READ, FSOM_OPEN_EXISTING)) {
         storage_file_free(file);
@@ -333,13 +342,26 @@ static void vk_thermo_log_load_uid_csv(Storage* storage, VkThermoLog* log, const
         uint32_t timestamp;
         char device_type[16] = "unknown";
         float celsius, fahrenheit, celsius2 = 0.0f, fahrenheit2 = 0.0f;
-        int fields = sscanf(line, "%lu,%15[^,],%f,%f,%f,%f",
-            (unsigned long*)&timestamp, device_type, &celsius, &fahrenheit, &celsius2, &fahrenheit2);
+        int fields = sscanf(
+            line,
+            "%lu,%15[^,],%f,%f,%f,%f",
+            (unsigned long*)&timestamp,
+            device_type,
+            &celsius,
+            &fahrenheit,
+            &celsius2,
+            &fahrenheit2);
 
         if(fields < 3) {
             // Try old format without device_type (5 columns)
-            fields = sscanf(line, "%lu,%f,%f,%f,%f",
-                (unsigned long*)&timestamp, &celsius, &fahrenheit, &celsius2, &fahrenheit2);
+            fields = sscanf(
+                line,
+                "%lu,%f,%f,%f,%f",
+                (unsigned long*)&timestamp,
+                &celsius,
+                &fahrenheit,
+                &celsius2,
+                &fahrenheit2);
             // Infer device type from has_dual_temps
             if(fields >= 5 && celsius2 != 0.0f) {
                 snprintf(device_type, sizeof(device_type), "temptress");
@@ -348,7 +370,7 @@ static void vk_thermo_log_load_uid_csv(Storage* storage, VkThermoLog* log, const
             }
         }
 
-        if(fields >= 3) {  // At least old format (3 columns: timestamp,celsius,fahrenheit)
+        if(fields >= 3) { // At least old format (3 columns: timestamp,celsius,fahrenheit)
             VkThermoLogEntry* entry = &log->entries[log->head];
             memcpy(entry->uid, uid, VK_THERMO_UID_LENGTH);
             entry->timestamp = timestamp;
@@ -423,7 +445,8 @@ static bool vk_thermo_log_load_legacy_csv(Storage* storage, VkThermoLog* log) {
         if(uid_str[0] && timestamp_str[0] && celsius_str[0]) {
             VkThermoLogEntry* entry = &log->entries[log->head];
 
-            for(size_t i = 0; i < VK_THERMO_UID_LENGTH && uid_str[i * 2] && uid_str[i * 2 + 1]; i++) {
+            for(size_t i = 0; i < VK_THERMO_UID_LENGTH && uid_str[i * 2] && uid_str[i * 2 + 1];
+                i++) {
                 char byte_str[3] = {uid_str[i * 2], uid_str[i * 2 + 1], '\0'};
                 entry->uid[i] = (uint8_t)strtol(byte_str, NULL, 16);
             }
@@ -515,7 +538,9 @@ float vk_thermo_log_get_min(VkThermoLog* log) {
 
     float min = 999.0f;
     for(uint8_t i = 0; i < log->count; i++) {
-        uint8_t idx = (log->count < VK_THERMO_LOG_MAX_ENTRIES) ? i : ((log->head + i) % VK_THERMO_LOG_MAX_ENTRIES);
+        uint8_t idx = (log->count < VK_THERMO_LOG_MAX_ENTRIES) ?
+                          i :
+                          ((log->head + i) % VK_THERMO_LOG_MAX_ENTRIES);
         if(log->entries[idx].valid && log->entries[idx].temperature_celsius < min) {
             min = log->entries[idx].temperature_celsius;
         }
@@ -528,7 +553,9 @@ float vk_thermo_log_get_max(VkThermoLog* log) {
 
     float max = -999.0f;
     for(uint8_t i = 0; i < log->count; i++) {
-        uint8_t idx = (log->count < VK_THERMO_LOG_MAX_ENTRIES) ? i : ((log->head + i) % VK_THERMO_LOG_MAX_ENTRIES);
+        uint8_t idx = (log->count < VK_THERMO_LOG_MAX_ENTRIES) ?
+                          i :
+                          ((log->head + i) % VK_THERMO_LOG_MAX_ENTRIES);
         if(log->entries[idx].valid && log->entries[idx].temperature_celsius > max) {
             max = log->entries[idx].temperature_celsius;
         }
@@ -542,7 +569,9 @@ float vk_thermo_log_get_avg(VkThermoLog* log) {
     float sum = 0.0f;
     uint8_t valid_count = 0;
     for(uint8_t i = 0; i < log->count; i++) {
-        uint8_t idx = (log->count < VK_THERMO_LOG_MAX_ENTRIES) ? i : ((log->head + i) % VK_THERMO_LOG_MAX_ENTRIES);
+        uint8_t idx = (log->count < VK_THERMO_LOG_MAX_ENTRIES) ?
+                          i :
+                          ((log->head + i) % VK_THERMO_LOG_MAX_ENTRIES);
         if(log->entries[idx].valid) {
             sum += log->entries[idx].temperature_celsius;
             valid_count++;
@@ -557,8 +586,11 @@ float vk_thermo_log_get_min_for_uid(VkThermoLog* log, const uint8_t* uid) {
     float min = 999.0f;
     bool found = false;
     for(uint8_t i = 0; i < log->count; i++) {
-        uint8_t idx = (log->count < VK_THERMO_LOG_MAX_ENTRIES) ? i : ((log->head + i) % VK_THERMO_LOG_MAX_ENTRIES);
-        if(log->entries[idx].valid && memcmp(log->entries[idx].uid, uid, VK_THERMO_UID_LENGTH) == 0) {
+        uint8_t idx = (log->count < VK_THERMO_LOG_MAX_ENTRIES) ?
+                          i :
+                          ((log->head + i) % VK_THERMO_LOG_MAX_ENTRIES);
+        if(log->entries[idx].valid &&
+           memcmp(log->entries[idx].uid, uid, VK_THERMO_UID_LENGTH) == 0) {
             if(log->entries[idx].temperature_celsius < min) {
                 min = log->entries[idx].temperature_celsius;
             }
@@ -574,8 +606,11 @@ float vk_thermo_log_get_max_for_uid(VkThermoLog* log, const uint8_t* uid) {
     float max = -999.0f;
     bool found = false;
     for(uint8_t i = 0; i < log->count; i++) {
-        uint8_t idx = (log->count < VK_THERMO_LOG_MAX_ENTRIES) ? i : ((log->head + i) % VK_THERMO_LOG_MAX_ENTRIES);
-        if(log->entries[idx].valid && memcmp(log->entries[idx].uid, uid, VK_THERMO_UID_LENGTH) == 0) {
+        uint8_t idx = (log->count < VK_THERMO_LOG_MAX_ENTRIES) ?
+                          i :
+                          ((log->head + i) % VK_THERMO_LOG_MAX_ENTRIES);
+        if(log->entries[idx].valid &&
+           memcmp(log->entries[idx].uid, uid, VK_THERMO_UID_LENGTH) == 0) {
             if(log->entries[idx].temperature_celsius > max) {
                 max = log->entries[idx].temperature_celsius;
             }

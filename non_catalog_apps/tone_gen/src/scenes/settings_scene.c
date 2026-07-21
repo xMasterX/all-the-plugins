@@ -24,11 +24,11 @@ static void wave_type_option_change(VariableItem* item) {
 // the size of an 8-bit integer, we need to limit the max
 // number of steps. In this case, we limit it to 241 total
 // steps available, incrementing in steps of 10.
-#define MIN_FREQ 100
-#define MAX_FREQ 2500
-#define FREQ_STEPS 10
+#define MIN_FREQ             100
+#define MAX_FREQ             2500
+#define FREQ_STEPS           10
 #define INDEX_TO_FREQ(index) (uint16_t)((index * FREQ_STEPS) + MIN_FREQ)
-#define FREQ_TO_INDEX(freq) (uint8_t)((freq - MIN_FREQ) / FREQ_STEPS)
+#define FREQ_TO_INDEX(freq)  (uint8_t)((freq - MIN_FREQ) / FREQ_STEPS)
 char* frequencyStr;
 static void frequency_option_change(VariableItem* item) {
     struct AppContext_t* app = variable_item_get_context(item);

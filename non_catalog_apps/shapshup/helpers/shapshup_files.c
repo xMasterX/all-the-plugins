@@ -2,7 +2,7 @@
 #include <inttypes.h>
 #include <lib/subghz/types.h>
 
-#define TAG "ShapShupFiles"
+#define TAG          "ShapShupFiles"
 #define RAW_KEY_NAME "RAW_Data"
 
 const size_t buffer_size = 32;
@@ -103,7 +103,11 @@ static inline bool is_space_shapshup(char c) {
 }
 
 static bool stream_read_value_shapshup(Stream* stream, FuriString* value, bool* last) {
-    enum { LeadingSpace, ReadValue, TrailingSpace } state = LeadingSpace;
+    enum {
+        LeadingSpace,
+        ReadValue,
+        TrailingSpace
+    } state = LeadingSpace;
     const size_t buffer_size = 32;
     uint8_t buffer[buffer_size];
     bool result = false;

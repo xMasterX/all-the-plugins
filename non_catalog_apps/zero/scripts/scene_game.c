@@ -13,14 +13,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define VISUAL_CARD_WIDTH 23
-#define VISUAL_CARD_HEIGHT 13
-#define VISUAL_ICON_WIDTH 9
-#define VISUAL_ICON_HEIGHT 9
+#define VISUAL_CARD_WIDTH     23
+#define VISUAL_CARD_HEIGHT    13
+#define VISUAL_ICON_WIDTH     9
+#define VISUAL_ICON_HEIGHT    9
 #define VISUAL_ICON_BIG_WIDTH 17
 
-#define VISUAL_CARD_SPACING 0
-#define VISUAL_CARDS_ROWS 1
+#define VISUAL_CARD_SPACING  0
+#define VISUAL_CARDS_ROWS    1
 #define VISUAL_CARDS_COLUMNS 5
 
 #define VISUAL_PLAYER_CARDS_X 7
@@ -34,7 +34,10 @@ typedef enum {
     CardDrawMode_NoBorder,
 } CardDrawMode;
 
-typedef enum { CardDrawAlign_TopLeft, CardDrawAlign_Center } CardDrawAlign;
+typedef enum {
+    CardDrawAlign_TopLeft,
+    CardDrawAlign_Center
+} CardDrawAlign;
 
 // Suit selector component.
 typedef struct SuitSelector {

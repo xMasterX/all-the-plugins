@@ -108,7 +108,8 @@ static void decrypt(uint8_t* buf, const uint8_t* encKey, const uint8_t reg, unsi
 #else //! This is (I think) a shortcut for an all-zero key [not tested]
     (void)encKey;
     (void)reg;
-    for(uint8_t* p = buf; p < buf + len; p++) *p = (*p ^ 0x17) + 0x17;
+    for(uint8_t* p = buf; p < buf + len; p++)
+        *p = (*p ^ 0x17) + 0x17;
 #endif
 }
 

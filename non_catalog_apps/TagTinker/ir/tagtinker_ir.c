@@ -17,21 +17,21 @@
 #include <stm32wbxx_ll_tim.h>
 
 /* Carrier setup for the built-in IR LED on TIM1 CH3N. */
-#define CARRIER_TIM       TIM1
-#define CARRIER_ARR       (51 - 1)
-#define CARRIER_CCR       25
+#define CARRIER_TIM TIM1
+#define CARRIER_ARR (51 - 1)
+#define CARRIER_CCR 25
 
 /*
  * PP4 sends two bits per symbol. The gap selects the symbol value.
  * These are pre-computed CPU cycle counts at 64 MHz to avoid any
  * per-call overhead in the tight timing loop.
  */
-#define PP4_BURST_CYCLES  2581
+#define PP4_BURST_CYCLES 2581
 static const uint32_t pp4_gap_cycles[4] = {
-    3871,   /* symbol 0 ~60 us  */
-    15483,  /* symbol 3 ~242 us */
-    7741,   /* symbol 2 ~121 us */
-    11612,  /* symbol 1 ~181 us */
+    3871, /* symbol 0 ~60 us  */
+    15483, /* symbol 3 ~242 us */
+    7741, /* symbol 2 ~121 us */
+    11612, /* symbol 1 ~181 us */
 };
 
 static bool ir_initialized = false;

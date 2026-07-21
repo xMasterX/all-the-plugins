@@ -39,8 +39,7 @@ void start_screen_view_enter(void* context) {
         start_screen->view,
         StartScreenModel * model,
         {
-            if (model->icon.animation != NULL)
-                icon_animation_start(model->icon.animation);
+            if(model->icon.animation != NULL) icon_animation_start(model->icon.animation);
         },
         true);
 }
@@ -53,8 +52,7 @@ void start_screen_view_exit(void* context) {
         start_screen->view,
         StartScreenModel * model,
         {
-            if (model->icon.animation != NULL)
-                icon_animation_stop(model->icon.animation);
+            if(model->icon.animation != NULL) icon_animation_stop(model->icon.animation);
         },
         true);
 }
@@ -70,11 +68,11 @@ void start_screen_view_draw_callback(Canvas* canvas, void* _model) {
     canvas_draw_box(canvas, 0, 0, canvas_width(canvas), canvas_height(canvas));
     canvas_set_color(canvas, ColorBlack);
 
-    if (model->icon.animation != NULL) {
+    if(model->icon.animation != NULL) {
         canvas_draw_icon_animation(canvas, model->icon.x, model->icon.y, model->icon.animation);
     }
 
-    if (model->text1.text != NULL) {
+    if(model->text1.text != NULL) {
         canvas_set_font(canvas, model->text1.font);
         elements_multiline_text_aligned(
             canvas,
@@ -85,7 +83,7 @@ void start_screen_view_draw_callback(Canvas* canvas, void* _model) {
             model->text1.text);
     }
 
-    if (model->text2.text != NULL) {
+    if(model->text2.text != NULL) {
         canvas_set_font(canvas, model->text2.font);
         elements_multiline_text_aligned(
             canvas,
@@ -96,7 +94,7 @@ void start_screen_view_draw_callback(Canvas* canvas, void* _model) {
             model->text2.text);
     }
 
-    if (model->text3.text != NULL) {
+    if(model->text3.text != NULL) {
         canvas_set_font(canvas, model->text3.font);
         elements_multiline_text_aligned(
             canvas,
@@ -107,7 +105,7 @@ void start_screen_view_draw_callback(Canvas* canvas, void* _model) {
             model->text3.text);
     }
 
-    if (model->secondary_draw_callback != NULL) {
+    if(model->secondary_draw_callback != NULL) {
         model->secondary_draw_callback(canvas, model);
     }
 }
@@ -116,9 +114,9 @@ bool start_screen_view_input_callback(InputEvent* event, void* context) {
     StartScreen* start_screen = context;
     bool consumed = false;
 
-    // If custom input callback is defined pass event to it 
-    if (start_screen->input_callback != NULL) {
-        consumed = start_screen->input_callback(event, start_screen->context); 
+    // If custom input callback is defined pass event to it
+    if(start_screen->input_callback != NULL) {
+        consumed = start_screen->input_callback(event, start_screen->context);
     } else {
         // You can add default functionality here
     }
@@ -128,7 +126,7 @@ bool start_screen_view_input_callback(InputEvent* event, void* context) {
 
 StartScreen* start_screen_alloc() {
     StartScreen* start_screen = (StartScreen*)malloc(sizeof(StartScreen));
-    
+
     start_screen->view = view_alloc();
 
     start_screen->input_callback = NULL;
@@ -170,11 +168,11 @@ StartScreen* start_screen_alloc() {
 
     view_set_draw_callback(start_screen->view, start_screen_view_draw_callback);
     view_set_input_callback(start_screen->view, start_screen_view_input_callback);
-    
+
     // Right now these enter/exit callbacks are being used to start/stop animations
     view_set_enter_callback(start_screen->view, start_screen_view_enter);
     view_set_exit_callback(start_screen->view, start_screen_view_exit);
-    
+
     return start_screen;
 }
 
@@ -185,8 +183,7 @@ void start_screen_free(StartScreen* instance) {
         instance->view,
         StartScreenModel * model,
         {
-            if (model->icon.animation != NULL)
-                icon_animation_free(model->icon.animation);
+            if(model->icon.animation != NULL) icon_animation_free(model->icon.animation);
 
             model->icon.animation = NULL;
         },
@@ -203,7 +200,7 @@ void start_screen_reset(StartScreen* instance) {
         instance->view,
         StartScreenModel * model,
         {
-            if (model->icon.animation != NULL) {
+            if(model->icon.animation != NULL) {
                 icon_animation_stop(model->icon.animation);
                 icon_animation_free(model->icon.animation);
                 model->icon.animation = NULL;
@@ -227,14 +224,14 @@ void start_screen_set_input_callback(StartScreen* instance, StartScreenInputCall
     instance->input_callback = callback;
 }
 
-void start_screen_set_secondary_draw_callback(StartScreen* instance, StartScreenDrawCallback callback) {
+void start_screen_set_secondary_draw_callback(
+    StartScreen* instance,
+    StartScreenDrawCallback callback) {
     furi_assert(instance);
     with_view_model(
         instance->view,
         StartScreenModel * model,
-        {
-            model->secondary_draw_callback = callback;
-        },
+        { model->secondary_draw_callback = callback; },
         true);
 }
 
@@ -251,7 +248,6 @@ void start_screen_set_text1(
     Align vertical,
     Font font,
     const char* text) {
-
     furi_assert(instance);
     with_view_model(
         instance->view,
@@ -275,7 +271,6 @@ void start_screen_set_text2(
     Align vertical,
     Font font,
     const char* text) {
-
     furi_assert(instance);
     with_view_model(
         instance->view,
@@ -299,7 +294,6 @@ void start_screen_set_text3(
     Align vertical,
     Font font,
     const char* text) {
-
     furi_assert(instance);
     with_view_model(
         instance->view,
@@ -320,13 +314,12 @@ void start_screen_set_icon_animation(
     uint8_t x,
     uint8_t y,
     const Icon* animation) {
-
     furi_assert(instance);
     with_view_model(
         instance->view,
         StartScreenModel * model,
         {
-            if (model->icon.animation != NULL) {
+            if(model->icon.animation != NULL) {
                 icon_animation_stop(model->icon.animation);
                 icon_animation_free(model->icon.animation);
                 model->icon.animation = NULL;
@@ -335,7 +328,7 @@ void start_screen_set_icon_animation(
             model->icon.x = x;
             model->icon.y = y;
 
-            if (animation != NULL) {
+            if(animation != NULL) {
                 model->icon.animation = icon_animation_alloc(animation);
                 view_tie_icon_animation(instance->view, model->icon.animation);
             }

@@ -8,10 +8,10 @@ using uint24_t = __uint24;
 
 // Initialize FX hardware using  FX::begin(FX_DATA_PAGE); in the setup() function.
 
-constexpr uint16_t FX_DATA_PAGE  = 0xfbf3;
+constexpr uint16_t FX_DATA_PAGE = 0xfbf3;
 constexpr uint24_t FX_DATA_BYTES = 261298;
 
-constexpr uint16_t FX_SAVE_PAGE  = 0xfff0;
+constexpr uint16_t FX_SAVE_PAGE = 0xfff0;
 constexpr uint24_t FX_SAVE_BYTES = 2;
 
 constexpr uint24_t MapData = 0x000000;

@@ -4,42 +4,42 @@
 #ifndef _sprites_h
 #define _sprites_h
 
-#define bmp_font_width 24 // in bytes
-#define bmp_font_height 6
-#define bmp_font_width_pxs 192
+#define bmp_font_width      24 // in bytes
+#define bmp_font_height     6
+#define bmp_font_width_pxs  192
 #define bmp_font_height_pxs 48
-#define CHAR_MAP " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.,-_(){}[]#"
-#define UICHAR_WIDTH 4
-#define CHAR_HEIGHT 6
+#define CHAR_MAP            " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.,-_(){}[]#"
+#define UICHAR_WIDTH        4
+#define CHAR_HEIGHT         6
 
-#define BMP_GUN_WIDTH 32
+#define BMP_GUN_WIDTH  32
 #define BMP_GUN_HEIGHT 32
 
-#define BMP_FIRE_WIDTH 24
+#define BMP_FIRE_WIDTH  24
 #define BMP_FIRE_HEIGHT 20
 
-#define BMP_IMP_WIDTH 32
+#define BMP_IMP_WIDTH  32
 #define BMP_IMP_HEIGHT 32
-#define BMP_IMP_COUNT 5
+#define BMP_IMP_COUNT  5
 
-#define BMP_FIREBALL_WIDTH 16
+#define BMP_FIREBALL_WIDTH  16
 #define BMP_FIREBALL_HEIGHT 16
 
-#define BMP_DOOR_WIDTH 100
+#define BMP_DOOR_WIDTH  100
 #define BMP_DOOR_HEIGHT 100
 
-#define BMP_ITEMS_WIDTH 16
+#define BMP_ITEMS_WIDTH  16
 #define BMP_ITEMS_HEIGHT 16
-#define BMP_ITEMS_COUNT 2
+#define BMP_ITEMS_COUNT  2
 
-#define BMP_LOGO_WIDTH 128
+#define BMP_LOGO_WIDTH  128
 #define BMP_LOGO_HEIGHT 64
 
-#define GRADIENT_WIDTH 2
+#define GRADIENT_WIDTH  2
 #define GRADIENT_HEIGHT 8
-#define GRADIENT_COUNT 8
-#define GRADIENT_WHITE 7
-#define GRADIENT_BLACK 0
+#define GRADIENT_COUNT  8
+#define GRADIENT_WHITE  7
+#define GRADIENT_BLACK  0
 
 // Fonts
 extern const uint8_t zero[];

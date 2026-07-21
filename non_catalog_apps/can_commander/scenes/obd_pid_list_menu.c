@@ -17,7 +17,8 @@ static void cancommander_scene_obd_pid_list_menu_callback(void* context, uint32_
     view_dispatcher_send_custom_event(app->view_dispatcher, index);
 }
 
-static void cancommander_scene_obd_pid_set_pid(App* app, const char* pid_token, const char* label) {
+static void
+    cancommander_scene_obd_pid_set_pid(App* app, const char* pid_token, const char* label) {
     app_args_set_key_value(app->args_obd_pid, sizeof(app->args_obd_pid), "pid", pid_token);
     app_set_status(app, "OBD PID selected: %s", label);
 }
@@ -28,11 +29,16 @@ void cancommander_scene_obd_pid_list_menu_on_enter(void* context) {
     submenu_reset(app->submenu);
     submenu_set_header(app->submenu, "PID List");
 
-    submenu_add_item(app->submenu, "RPM", ObdPidListRpm, cancommander_scene_obd_pid_list_menu_callback, app);
+    submenu_add_item(
+        app->submenu, "RPM", ObdPidListRpm, cancommander_scene_obd_pid_list_menu_callback, app);
     submenu_add_item(
         app->submenu, "Speed", ObdPidListSpeed, cancommander_scene_obd_pid_list_menu_callback, app);
     submenu_add_item(
-        app->submenu, "Coolant Temp", ObdPidListCoolant, cancommander_scene_obd_pid_list_menu_callback, app);
+        app->submenu,
+        "Coolant Temp",
+        ObdPidListCoolant,
+        cancommander_scene_obd_pid_list_menu_callback,
+        app);
     submenu_add_item(
         app->submenu,
         "Throttle Position",
@@ -40,18 +46,39 @@ void cancommander_scene_obd_pid_list_menu_on_enter(void* context) {
         cancommander_scene_obd_pid_list_menu_callback,
         app);
     submenu_add_item(
-        app->submenu, "Engine Load", ObdPidListLoad, cancommander_scene_obd_pid_list_menu_callback, app);
+        app->submenu,
+        "Engine Load",
+        ObdPidListLoad,
+        cancommander_scene_obd_pid_list_menu_callback,
+        app);
     submenu_add_item(
-        app->submenu, "Fuel Level", ObdPidListFuel, cancommander_scene_obd_pid_list_menu_callback, app);
+        app->submenu,
+        "Fuel Level",
+        ObdPidListFuel,
+        cancommander_scene_obd_pid_list_menu_callback,
+        app);
     submenu_add_item(
-        app->submenu, "Intake Temp", ObdPidListIat, cancommander_scene_obd_pid_list_menu_callback, app);
+        app->submenu,
+        "Intake Temp",
+        ObdPidListIat,
+        cancommander_scene_obd_pid_list_menu_callback,
+        app);
     submenu_add_item(
-        app->submenu, "Barometric", ObdPidListBaro, cancommander_scene_obd_pid_list_menu_callback, app);
+        app->submenu,
+        "Barometric",
+        ObdPidListBaro,
+        cancommander_scene_obd_pid_list_menu_callback,
+        app);
     submenu_add_item(
-        app->submenu, "Odometer", ObdPidListOdometer, cancommander_scene_obd_pid_list_menu_callback, app);
+        app->submenu,
+        "Odometer",
+        ObdPidListOdometer,
+        cancommander_scene_obd_pid_list_menu_callback,
+        app);
 
     submenu_set_selected_item(
-        app->submenu, scene_manager_get_scene_state(app->scene_manager, cancommander_scene_obd_pid_list_menu));
+        app->submenu,
+        scene_manager_get_scene_state(app->scene_manager, cancommander_scene_obd_pid_list_menu));
 
     view_dispatcher_switch_to_view(app->view_dispatcher, AppViewSubmenu);
 }
@@ -63,7 +90,8 @@ bool cancommander_scene_obd_pid_list_menu_on_event(void* context, SceneManagerEv
         return false;
     }
 
-    scene_manager_set_scene_state(app->scene_manager, cancommander_scene_obd_pid_list_menu, event.event);
+    scene_manager_set_scene_state(
+        app->scene_manager, cancommander_scene_obd_pid_list_menu, event.event);
 
     switch(event.event) {
     case ObdPidListRpm:

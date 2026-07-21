@@ -75,8 +75,15 @@ static bool trt_display_card_view(const MfUltralightData* data, Metroflip* app, 
     snprintf(val, sizeof(val), "%u.%02u RMB", balance_yuan, balance_cent);
     metroflip_card_view_add_field(view, p, "Balance", val, true);
 
-    snprintf(val, sizeof(val), "%04u-%02d-%02d %02d:%02d",
-        sale_year, sale_month, sale_day, sale_hour, sale_minute);
+    snprintf(
+        val,
+        sizeof(val),
+        "%04u-%02d-%02d %02d:%02d",
+        sale_year,
+        sale_month,
+        sale_day,
+        sale_hour,
+        sale_minute);
     metroflip_card_view_add_field(view, p, "Sale Date", val, false);
 
     if(from_file) {
@@ -89,8 +96,7 @@ static bool trt_display_card_view(const MfUltralightData* data, Metroflip* app, 
     return true;
 }
 
-static NfcCommand
-    trt_poller_callback(NfcGenericEvent event, void* context) {
+static NfcCommand trt_poller_callback(NfcGenericEvent event, void* context) {
     furi_assert(event.protocol == NfcProtocolMfUltralight);
 
     Metroflip* app = context;
@@ -102,8 +108,9 @@ static NfcCommand
 
         const MfUltralightData* data =
             nfc_device_get_data(app->nfc_device, NfcProtocolMfUltralight);
-        uint32_t event = (data->pages_read == data->pages_total) ? MetroflipCustomEventPollerSuccess :
-                                                                   MetroflipCustomEventPollerFail;
+        uint32_t event = (data->pages_read == data->pages_total) ?
+                             MetroflipCustomEventPollerSuccess :
+                             MetroflipCustomEventPollerFail;
         view_dispatcher_send_custom_event(app->view_dispatcher, event);
         return NfcCommandStop;
     } else if(mf_ultralight_event->type == MfUltralightPollerEventTypeAuthRequest) {
@@ -130,8 +137,7 @@ static void trt_on_enter(Metroflip* app) {
                 FURI_LOG_I(TAG, "Unknown card type");
                 Widget* widget = app->widget;
                 FuriString* s = furi_string_alloc_set("\e#Unknown card\n");
-                widget_add_text_scroll_element(
-                    widget, 0, 0, 128, 64, furi_string_get_cstr(s));
+                widget_add_text_scroll_element(widget, 0, 0, 128, 64, furi_string_get_cstr(s));
                 widget_add_button_element(
                     widget, GuiButtonTypeRight, "Exit", metroflip_exit_widget_callback, app);
                 furi_string_free(s);
@@ -154,7 +160,8 @@ static void trt_on_enter(Metroflip* app) {
         FURI_LOG_I(TAG, "TRT not loaded");
         // Setup view
         Popup* popup = app->popup;
-        popup_set_header(popup, "Scanning...\nApply card\nto the back", 68, 30, AlignLeft, AlignTop);
+        popup_set_header(
+            popup, "Scanning...\nApply card\nto the back", 68, 30, AlignLeft, AlignTop);
         popup_set_icon(popup, 0, 3, &I_RFIDDolphinReceive_97x61);
 
         // Start worker
@@ -175,14 +182,14 @@ static bool trt_on_event(Metroflip* app, SceneManagerEvent event) {
             popup_set_header(popup, "Card found!\nDon't move...", 68, 30, AlignLeft, AlignTop);
             consumed = true;
         } else if(event.event == MetroflipCustomEventPollerSuccess) {
-            const MfUltralightData* ultralight_data = nfc_device_get_data(app->nfc_device, NfcProtocolMfUltralight);
+            const MfUltralightData* ultralight_data =
+                nfc_device_get_data(app->nfc_device, NfcProtocolMfUltralight);
 
             if(!trt_display_card_view(ultralight_data, app, false)) {
                 FURI_LOG_I(TAG, "Unknown card type");
                 Widget* widget = app->widget;
                 FuriString* s = furi_string_alloc_set("\e#Unknown card\n");
-                widget_add_text_scroll_element(
-                    widget, 0, 0, 128, 64, furi_string_get_cstr(s));
+                widget_add_text_scroll_element(widget, 0, 0, 128, 64, furi_string_get_cstr(s));
                 widget_add_button_element(
                     widget, GuiButtonTypeRight, "Exit", metroflip_exit_widget_callback, app);
                 furi_string_free(s);
@@ -203,8 +210,7 @@ static bool trt_on_event(Metroflip* app, SceneManagerEvent event) {
             FURI_LOG_I(TAG, "Unknown card type");
             Widget* widget = app->widget;
             FuriString* s = furi_string_alloc_set("\e#Unknown card\n");
-            widget_add_text_scroll_element(
-                widget, 0, 0, 128, 64, furi_string_get_cstr(s));
+            widget_add_text_scroll_element(widget, 0, 0, 128, 64, furi_string_get_cstr(s));
             widget_add_button_element(
                 widget, GuiButtonTypeRight, "Exit", metroflip_exit_widget_callback, app);
             furi_string_free(s);
@@ -221,7 +227,6 @@ static bool trt_on_event(Metroflip* app, SceneManagerEvent event) {
 }
 
 static void trt_on_exit(Metroflip* app) {
-
     widget_reset(app->widget);
 
     if(app->poller && !app->data_loaded) {

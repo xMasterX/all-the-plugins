@@ -84,7 +84,8 @@ void process_input_settings(ProtoViewApp* app, InputEvent input) {
             uint32_t count = 0;
             uint32_t modid = app->modulation;
 
-            while(ProtoViewModulations[count].name != NULL) count++;
+            while(ProtoViewModulations[count].name != NULL)
+                count++;
             if(input.key == InputKeyUp) {
                 modid = modid == 0 ? count - 1 : modid - 1;
             } else if(input.key == InputKeyDown) {

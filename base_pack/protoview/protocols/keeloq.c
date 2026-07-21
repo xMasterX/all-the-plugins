@@ -45,7 +45,8 @@ static bool decode(uint8_t* bits, uint32_t numbytes, uint32_t numbits, ProtoView
      * symbols of gap, to avoid missing the signal for a matter of wrong
      * timing. */
     uint8_t gap_len = 0;
-    while(gap_len <= 7 && bitmap_get(bits, numbytes, off + gap_len) == 0) gap_len++;
+    while(gap_len <= 7 && bitmap_get(bits, numbytes, off + gap_len) == 0)
+        gap_len++;
     if(gap_len < 3 || gap_len > 7) return false;
 
     off += gap_len;

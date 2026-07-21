@@ -23,7 +23,8 @@ void add_new_tilemap(uint8_t* data, unsigned long iconId) {
     tileMapCount++;
     tileMap = malloc(sizeof(TileMap) * tileMapCount);
     if(tileMapCount > 1) {
-        for(uint8_t i = 0; i < tileMapCount; i++) tileMap[i] = old[i];
+        for(uint8_t i = 0; i < tileMapCount; i++)
+            tileMap[i] = old[i];
     }
     tileMap[tileMapCount - 1] = (TileMap){data, iconId};
 }

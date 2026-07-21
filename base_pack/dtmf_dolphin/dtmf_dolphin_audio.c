@@ -2,7 +2,7 @@
 
 DTMFDolphinAudio* current_player;
 
-// Interrupt handler. Read DMA flag and put correspondint event to queue. 
+// Interrupt handler. Read DMA flag and put correspondint event to queue.
 static void dtmf_dolphin_audio_dma_isr(void* ctx) {
     FuriMessageQueue* event_queue = ctx;
 

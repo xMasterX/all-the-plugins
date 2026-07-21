@@ -9,7 +9,7 @@
 #define PCSG_GITHUB "https://github.com/xMasterX/flipper-pager"
 
 #define PCSG_KEY_FILE_VERSION 1
-#define PCSG_KEY_FILE_TYPE "Flipper POCSAG Pager Key File"
+#define PCSG_KEY_FILE_TYPE    "Flipper POCSAG Pager Key File"
 
 /** PCSGRxKeyState state */
 typedef enum {

@@ -15,21 +15,30 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define BMP_FILE_HDR    14U
-#define BMP_DIB_HDR     40U
-#define BMP_PALETTE_2    8U   /* mono: 2 entries * 4 bytes BGRA */
-#define BMP_PALETTE_3   12U   /* tri:  3 entries (white / black / accent) */
+#define BMP_FILE_HDR  14U
+#define BMP_DIB_HDR   40U
+#define BMP_PALETTE_2 8U /* mono: 2 entries * 4 bytes BGRA */
+#define BMP_PALETTE_3 12U /* tri:  3 entries (white / black / accent) */
 
-static void put_le16(uint8_t* p, uint16_t v) { p[0] = (uint8_t)v; p[1] = (uint8_t)(v >> 8); }
+static void put_le16(uint8_t* p, uint16_t v) {
+    p[0] = (uint8_t)v;
+    p[1] = (uint8_t)(v >> 8);
+}
 static void put_le32(uint8_t* p, uint32_t v) {
-    p[0] = (uint8_t)v; p[1] = (uint8_t)(v >> 8);
-    p[2] = (uint8_t)(v >> 16); p[3] = (uint8_t)(v >> 24);
+    p[0] = (uint8_t)v;
+    p[1] = (uint8_t)(v >> 8);
+    p[2] = (uint8_t)(v >> 16);
+    p[3] = (uint8_t)(v >> 24);
 }
 
-bool tagtinker_wifi_bmp_open(TagTinkerWifiBmpWriter* w,
-                             uint16_t width, uint16_t height,
-                             uint8_t planes,
-                             uint8_t accent_r, uint8_t accent_g, uint8_t accent_b) {
+bool tagtinker_wifi_bmp_open(
+    TagTinkerWifiBmpWriter* w,
+    uint16_t width,
+    uint16_t height,
+    uint8_t planes,
+    uint8_t accent_r,
+    uint8_t accent_g,
+    uint8_t accent_b) {
     memset(w, 0, sizeof(*w));
     w->width = width;
     w->height = height;
@@ -50,11 +59,13 @@ bool tagtinker_wifi_bmp_open(TagTinkerWifiBmpWriter* w,
     w->storage = furi_record_open(RECORD_STORAGE);
     storage_common_mkdir(w->storage, "/ext/apps_data/tagtinker");
     w->file = storage_file_alloc(w->storage);
-    if(!storage_file_open(w->file, TAGTINKER_WIFI_TMP_BMP,
-                          FSAM_WRITE, FSOM_CREATE_ALWAYS)) {
-        storage_file_free(w->file); w->file = NULL;
-        furi_record_close(RECORD_STORAGE); w->storage = NULL;
-        free(w->pixel_buf); w->pixel_buf = NULL;
+    if(!storage_file_open(w->file, TAGTINKER_WIFI_TMP_BMP, FSAM_WRITE, FSOM_CREATE_ALWAYS)) {
+        storage_file_free(w->file);
+        w->file = NULL;
+        furi_record_close(RECORD_STORAGE);
+        w->storage = NULL;
+        free(w->pixel_buf);
+        w->pixel_buf = NULL;
         return false;
     }
     return true;
@@ -67,7 +78,7 @@ bool tagtinker_wifi_bmp_chunk(TagTinkerWifiBmpWriter* w, const uint8_t* data, si
      * to row_stride. The worker emits planes back-to-back (plane 0 then
      * plane 1), and pixel_size already accounts for all planes. */
     size_t off = (size_t)w->bytes_written;
-    if(off >= w->pixel_size) return true;        /* overflow - drop */
+    if(off >= w->pixel_size) return true; /* overflow - drop */
     size_t remain = w->pixel_size - off;
     size_t take = (len < remain) ? len : remain;
     memcpy(w->pixel_buf + off, data, take);
@@ -97,29 +108,38 @@ bool tagtinker_wifi_bmp_close(TagTinkerWifiBmpWriter* w) {
     /* --- File + DIB headers ----------------------------------------- */
     uint8_t hdr[BMP_FILE_HDR + BMP_DIB_HDR + BMP_PALETTE_3] = {0};
     /* BITMAPFILEHEADER */
-    hdr[0] = 'B'; hdr[1] = 'M';
-    put_le32(&hdr[2],  total_size);
+    hdr[0] = 'B';
+    hdr[1] = 'M';
+    put_le32(&hdr[2], total_size);
     put_le32(&hdr[10], hdr_total);
 
     /* BITMAPINFOHEADER */
     put_le32(&hdr[14], BMP_DIB_HDR);
     put_le32(&hdr[18], (uint32_t)w->width);
-    put_le32(&hdr[22], (uint32_t)w->height);   /* positive = bottom-up */
-    put_le16(&hdr[26], 1);                      /* biPlanes (BMP req) */
-    put_le16(&hdr[28], (uint16_t)w->planes);   /* biBitCount: 1=mono, 2=accent */
-    put_le32(&hdr[30], 0);                      /* BI_RGB */
+    put_le32(&hdr[22], (uint32_t)w->height); /* positive = bottom-up */
+    put_le16(&hdr[26], 1); /* biPlanes (BMP req) */
+    put_le16(&hdr[28], (uint16_t)w->planes); /* biBitCount: 1=mono, 2=accent */
+    put_le32(&hdr[30], 0); /* BI_RGB */
     put_le32(&hdr[34], pixel_section);
-    put_le32(&hdr[38], 2835);                   /* 72 DPI */
+    put_le32(&hdr[38], 2835); /* 72 DPI */
     put_le32(&hdr[42], 2835);
-    put_le32(&hdr[46], (uint32_t)(w->planes == 2 ? 3 : 2));  /* colors used */
-    put_le32(&hdr[50], 0);                      /* important colors */
+    put_le32(&hdr[46], (uint32_t)(w->planes == 2 ? 3 : 2)); /* colors used */
+    put_le32(&hdr[50], 0); /* important colors */
 
     /* Palette (BGRA per entry). */
-    hdr[54] = 0xFF; hdr[55] = 0xFF; hdr[56] = 0xFF; hdr[57] = 0x00;  /* white */
-    hdr[58] = 0x00; hdr[59] = 0x00; hdr[60] = 0x00; hdr[61] = 0x00;  /* black */
+    hdr[54] = 0xFF;
+    hdr[55] = 0xFF;
+    hdr[56] = 0xFF;
+    hdr[57] = 0x00; /* white */
+    hdr[58] = 0x00;
+    hdr[59] = 0x00;
+    hdr[60] = 0x00;
+    hdr[61] = 0x00; /* black */
     if(w->planes == 2) {
-        hdr[62] = w->accent_b; hdr[63] = w->accent_g;
-        hdr[64] = w->accent_r; hdr[65] = 0x00;                      /* accent */
+        hdr[62] = w->accent_b;
+        hdr[63] = w->accent_g;
+        hdr[64] = w->accent_r;
+        hdr[65] = 0x00; /* accent */
     }
 
     if(storage_file_write(w->file, hdr, hdr_total) != hdr_total) goto fail;
@@ -146,7 +166,10 @@ fail:
 }
 
 void tagtinker_wifi_bmp_abort(TagTinkerWifiBmpWriter* w) {
-    if(w->file) { storage_file_close(w->file); storage_file_free(w->file); }
+    if(w->file) {
+        storage_file_close(w->file);
+        storage_file_free(w->file);
+    }
     if(w->storage) furi_record_close(RECORD_STORAGE);
     free(w->pixel_buf);
     memset(w, 0, sizeof(*w));

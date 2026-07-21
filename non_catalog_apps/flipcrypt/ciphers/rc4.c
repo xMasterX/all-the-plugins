@@ -4,13 +4,14 @@
 
 #include "rc4.h"
 
-unsigned char* rc4_encrypt_and_decrypt(const char* key, const unsigned char* input, size_t inputlen) {
+unsigned char*
+    rc4_encrypt_and_decrypt(const char* key, const unsigned char* input, size_t inputlen) {
     unsigned char S[256];
     unsigned int i, j = 0, k, t;
     size_t keylen = strlen(key);
 
     unsigned char* output = malloc(inputlen);
-    if (!output) return NULL;
+    if(!output) return NULL;
 
     // KSA
     for(i = 0; i < 256; i++) {

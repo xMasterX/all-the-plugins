@@ -25,14 +25,11 @@ constexpr uint8_t CURSOR_OFFSET_X = 10;
 constexpr uint8_t CURSOR_OFFSET_Y = 0;
 
 constexpr uint8_t kMenuStarCount = 16;
-const uint8_t kStarX[kMenuStarCount] = {
-    7, 15, 22, 30, 41, 50, 60, 71, 80, 89, 98, 106, 114, 119, 123, 126};
-const uint8_t kStarY[kMenuStarCount] = {
-    8, 18, 11, 24, 6, 20, 13, 27, 9, 22, 7, 32, 12, 35, 5, 38};
-const uint8_t kStarPhase[kMenuStarCount] = {
-    0, 5, 11, 17, 3, 9, 15, 1, 7, 13, 19, 4, 10, 16, 2, 8};
-const uint8_t kStarRadius[kMenuStarCount] = {
-    1, 2, 1, 1, 2, 1, 2, 1, 1, 2, 1, 2, 1, 1, 2, 1};
+const uint8_t kStarX[kMenuStarCount] =
+    {7, 15, 22, 30, 41, 50, 60, 71, 80, 89, 98, 106, 114, 119, 123, 126};
+const uint8_t kStarY[kMenuStarCount] = {8, 18, 11, 24, 6, 20, 13, 27, 9, 22, 7, 32, 12, 35, 5, 38};
+const uint8_t kStarPhase[kMenuStarCount] = {0, 5, 11, 17, 3, 9, 15, 1, 7, 13, 19, 4, 10, 16, 2, 8};
+const uint8_t kStarRadius[kMenuStarCount] = {1, 2, 1, 1, 2, 1, 2, 1, 1, 2, 1, 2, 1, 1, 2, 1};
 
 static uint8_t Wrap(int v, int n) {
     v %= n;
@@ -91,7 +88,7 @@ void Menu::Draw() {
     PrintItem(1, 0);
 
     const uint8_t cursorX = (m_selection == 0) ? (uint8_t)(MENU_START_X - CURSOR_OFFSET_X) :
-                                               (uint8_t)(MENU_SOUND_X - CURSOR_OFFSET_X);
+                                                 (uint8_t)(MENU_SOUND_X - CURSOR_OFFSET_X);
     Platform::DrawSprite(cursorX, MENU_LINE_Y + CURSOR_OFFSET_Y, skullSpriteData, 0);
 }
 
@@ -241,7 +238,7 @@ void Menu::DrawGameOver() {
 
     if(Game::floor > 0) {
         m_save[8] = Game::floor - 1;
-    } 
+    }
 
     SetScore(finalScore);
 }
@@ -358,10 +355,12 @@ void Menu::FadeOut() {
 
 void Menu::ReadSave() {
     uint8_t addr = EEPROM_BASE_ADDR;
-    m_score = (uint16_t)EEPROM.read(addr) | ((uint16_t)EEPROM.read(addr + 1) << 8); addr += 2;
-    m_high = (uint16_t)EEPROM.read(addr) | ((uint16_t)EEPROM.read(addr + 1) << 8);  addr += 2;
+    m_score = (uint16_t)EEPROM.read(addr) | ((uint16_t)EEPROM.read(addr + 1) << 8);
+    addr += 2;
+    m_high = (uint16_t)EEPROM.read(addr) | ((uint16_t)EEPROM.read(addr + 1) << 8);
+    addr += 2;
     m_storedHigh = m_high;
-    
+
     for(int i = 0; i < 9; i++) {
         m_save[i] = EEPROM.read(addr++);
     }

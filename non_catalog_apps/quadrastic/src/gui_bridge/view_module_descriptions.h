@@ -23,8 +23,7 @@ typedef void* (*ViewModuleAllocCallback)(void);
 typedef void (*ViewModuleFreeCallback)(void* view_module);
 typedef View* (*ViewModuleGetViewCallback)(void* view_module);
 
-typedef struct
-{
+typedef struct {
     ViewModuleAllocCallback alloc;
     ViewModuleFreeCallback free;
     ViewModuleGetViewCallback get_view;

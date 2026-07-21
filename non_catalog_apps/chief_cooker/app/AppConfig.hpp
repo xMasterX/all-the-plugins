@@ -52,7 +52,9 @@ private:
         file->WriteUInt32(KEY_CONFIG_REPEATS, SignalRepeats);
         file->WriteUInt32(KEY_CONFIG_SAVED_STRATEGY, SavedStrategy);
         file->WriteBool(KEY_CONFIG_AUTOSAVE, AutosaveFoundSignals);
-        file->WriteString(KEY_CONFIG_USER_CATGEGORY, CurrentUserCategory != NULL ? CurrentUserCategory->cstr() : "");
+        file->WriteString(
+            KEY_CONFIG_USER_CATGEGORY,
+            CurrentUserCategory != NULL ? CurrentUserCategory->cstr() : "");
     }
 
 public:

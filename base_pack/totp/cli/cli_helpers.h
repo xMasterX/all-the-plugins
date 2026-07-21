@@ -8,10 +8,10 @@ extern "C" {
 
 #define TOTP_CLI_COMMAND_NAME "totp"
 
-#define TOTP_CLI_COLOR_ERROR "91m"
+#define TOTP_CLI_COLOR_ERROR   "91m"
 #define TOTP_CLI_COLOR_WARNING "93m"
 #define TOTP_CLI_COLOR_SUCCESS "92m"
-#define TOTP_CLI_COLOR_INFO "96m"
+#define TOTP_CLI_COLOR_INFO    "96m"
 
 #define TOTP_CLI_PRINTF(format, ...) printf(format, ##__VA_ARGS__)
 

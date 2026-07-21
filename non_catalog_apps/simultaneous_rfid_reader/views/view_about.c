@@ -17,30 +17,29 @@ uint32_t uhf_reader_navigation_about_submenu_callback(void* context) {
  * @param      app  The UHFReaderApp used to allocate variables 
 */
 void view_about_alloc(UHFReaderApp* App) {
-    
-    //Creating the about widget 
+    //Creating the about widget
     App->WidgetAbout = widget_alloc();
     FuriString* TmpString = furi_string_alloc();
     widget_add_text_box_element(
         App->WidgetAbout, 0, 0, 128, 14, AlignCenter, AlignBottom, UHF_RFID_BLANK_INV, false);
     widget_add_text_box_element(
         App->WidgetAbout, 0, 0, 128, 14, AlignCenter, AlignBottom, UHF_RFID_NAME, false);
-    
+
     //Adding version and developer information
     furi_string_printf(TmpString, "\e#%s\n", "Information:");
     furi_string_cat_printf(TmpString, "Version: %s\n", UHF_RFID_VERSION_APP);
     furi_string_cat_printf(TmpString, "Developed by: %s\n", UHF_RFID_MEM_DEVELOPER);
     furi_string_cat_printf(TmpString, "Github: %s\n\n", UHF_RFID_GITHUB);
     furi_string_cat_printf(TmpString, "\e#%s\n", "Description:");
-    
-    //Section with high level overview of app functions 
+
+    //Section with high level overview of app functions
     furi_string_cat_printf(
         TmpString,
         "UHF RFID Reader\n"
         "Made for use with a M6E, M7E, or YRM100 compatible reader.\n"
         "Can read up to 150 tags simultaneously using M6E or M7E reader!\n"
         "Can read/write, save, lock, kill, and dump data from read tags.\n\n");
-   
+
     //Hardware requirements
     furi_string_cat_printf(TmpString, "\e#%s\n", "Hardware Requirements:");
     furi_string_cat_printf(
@@ -69,8 +68,7 @@ void view_about_alloc(UHFReaderApp* App) {
         "- Save configuration settings (Future)\n"
         "- Set/Detect UHF RFID Tag Type (Future)\n"
         "- Toggle the antenna selection (Future for M6E and M7E Only)\n\n");
-        
-    
+
     //Read screen information
     furi_string_cat_printf(TmpString, "\e#%s\n", "Read:");
     furi_string_cat_printf(
@@ -81,7 +79,7 @@ void view_about_alloc(UHFReaderApp* App) {
         "- Hold Up to pause scrolling the selected EPC\n"
         "- Press Down to see TID, EPC, User, and Reserved Memory\n"
         "- Press Left/Right to cycle through tags read (M6E & M7E Only)\n\n");
-    
+
     //Write screen information
     furi_string_cat_printf(TmpString, "\e#%s\n", "Write:");
     furi_string_cat_printf(
@@ -92,7 +90,7 @@ void view_about_alloc(UHFReaderApp* App) {
         "- Press Right to modify Reserved Memory (First 4 bytes = kill password, last 4 bytes = access password)\n"
         "- Press Up to modify the User Memory Bank\n"
         "- Press Down to modify the TID (Supported but usually locked by manufacturer)\n\n");
-    
+
     furi_string_cat_printf(TmpString, "\e#%s\n", "Lock:");
     furi_string_cat_printf(
         TmpString,
@@ -110,8 +108,8 @@ void view_about_alloc(UHFReaderApp* App) {
         "- Set kill password (Can alternatively be set through the write menu)\n"
         "- Press Kill Tag and confirm the kill password to permanently inactivate the tag!\n"
         "- If the password is wrong, an error sequence will beep\n\n");
-    
-    //Adding the widget to the view dispatcher 
+
+    //Adding the widget to the view dispatcher
     widget_add_text_scroll_element(
         App->WidgetAbout, 0, 16, 128, 50, furi_string_get_cstr(TmpString));
     furi_string_free(TmpString);

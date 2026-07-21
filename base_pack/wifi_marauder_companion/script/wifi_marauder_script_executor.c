@@ -2,7 +2,8 @@
 #include "wifi_marauder_script_executor.h"
 
 void _wifi_marauder_script_delay(WifiMarauderScriptWorker* worker, uint32_t delay_secs) {
-    for(uint32_t i = 0; i < delay_secs && worker->is_running; i++) furi_delay_ms(1000);
+    for(uint32_t i = 0; i < delay_secs && worker->is_running; i++)
+        furi_delay_ms(1000);
 }
 
 void _send_stop(WifiMarauderScriptWorker* worker) {

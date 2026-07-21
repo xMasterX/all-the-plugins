@@ -48,8 +48,8 @@ static const uint8_t keyboard_origin_y = 29;
 static const uint8_t keyboard_row_count = 3;
 static const uint8_t keyboard_count = 2;
 
-#define ENTER_KEY '\r'
-#define BACKSPACE_KEY '\b'
+#define ENTER_KEY           '\r'
+#define BACKSPACE_KEY       '\b'
 #define SWITCH_KEYBOARD_KEY 0xfe
 
 static const WIFI_TextInputKey keyboard_keys_row_1[] = {

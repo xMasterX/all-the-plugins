@@ -29,19 +29,25 @@ static void lidaremulator_tick_event_callback(void* context) {
 
 static LidarEmulatorApp* LidarEmulatorApp_alloc() {
     LidarEmulatorApp* lidaremulator = malloc(sizeof(LidarEmulatorApp));
-    
+
     lidaremulator->gui = furi_record_open(RECORD_GUI);
     lidaremulator->view_dispatcher = view_dispatcher_alloc();
-    lidaremulator->scene_manager = scene_manager_alloc(&lidaremulator_scene_handlers, lidaremulator);
+    lidaremulator->scene_manager =
+        scene_manager_alloc(&lidaremulator_scene_handlers, lidaremulator);
 
     view_dispatcher_set_event_callback_context(lidaremulator->view_dispatcher, lidaremulator);
-    view_dispatcher_set_custom_event_callback(lidaremulator->view_dispatcher, lidaremulator_custom_event_callback);
-    view_dispatcher_set_navigation_event_callback(lidaremulator->view_dispatcher, lidaremulator_back_event_callback);
-    view_dispatcher_set_tick_event_callback(lidaremulator->view_dispatcher, lidaremulator_tick_event_callback, 100);
+    view_dispatcher_set_custom_event_callback(
+        lidaremulator->view_dispatcher, lidaremulator_custom_event_callback);
+    view_dispatcher_set_navigation_event_callback(
+        lidaremulator->view_dispatcher, lidaremulator_back_event_callback);
+    view_dispatcher_set_tick_event_callback(
+        lidaremulator->view_dispatcher, lidaremulator_tick_event_callback, 100);
 
     lidaremulator->submenu = submenu_alloc();
     view_dispatcher_add_view(
-        lidaremulator->view_dispatcher, LidarEmulatorViewSubmenu, submenu_get_view(lidaremulator->submenu));
+        lidaremulator->view_dispatcher,
+        LidarEmulatorViewSubmenu,
+        submenu_get_view(lidaremulator->submenu));
 
     lidaremulator->variable_item_list = variable_item_list_alloc();
     view_dispatcher_add_view(
@@ -60,7 +66,6 @@ static LidarEmulatorApp* LidarEmulatorApp_alloc() {
 }
 
 static void LidarEmulatorApp_free(LidarEmulatorApp* lidaremulator) {
-
     view_dispatcher_remove_view(lidaremulator->view_dispatcher, LidarEmulatorViewVariableList);
     variable_item_list_free(lidaremulator->variable_item_list);
 
@@ -68,12 +73,12 @@ static void LidarEmulatorApp_free(LidarEmulatorApp* lidaremulator) {
     submenu_free(lidaremulator->submenu);
 
     scene_manager_free(lidaremulator->scene_manager);
-    view_dispatcher_free(lidaremulator->view_dispatcher);   
+    view_dispatcher_free(lidaremulator->view_dispatcher);
 
     furi_record_close(RECORD_GUI);
     lidaremulator->gui = NULL;
 
-//    free_view_hijacker(lidaremulator->view_hijacker);
+    //    free_view_hijacker(lidaremulator->view_hijacker);
 
     free(lidaremulator);
 }
@@ -83,7 +88,8 @@ int lidar_emulator_app(void* p) {
 
     LidarEmulatorApp* lidaremulator = LidarEmulatorApp_alloc();
 
-    view_dispatcher_attach_to_gui(lidaremulator->view_dispatcher, lidaremulator->gui, ViewDispatcherTypeFullscreen);
+    view_dispatcher_attach_to_gui(
+        lidaremulator->view_dispatcher, lidaremulator->gui, ViewDispatcherTypeFullscreen);
 
     scene_manager_next_scene(lidaremulator->scene_manager, LidarEmulatorSceneStart);
 

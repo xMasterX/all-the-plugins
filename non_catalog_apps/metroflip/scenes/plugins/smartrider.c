@@ -199,7 +199,8 @@ static bool smartrider_parse_data(SmartRiderData* sr_data, const MfClassicData* 
 }
 
 /* Parse MIFARE Classic data and populate card view */
-static bool smartrider_display_card_view(const MfClassicData* data, Metroflip* app, bool from_file) {
+static bool
+    smartrider_display_card_view(const MfClassicData* data, Metroflip* app, bool from_file) {
     SmartRiderData sr_data = {0};
 
     if(!smartrider_parse_data(&sr_data, data)) {
@@ -218,7 +219,8 @@ static bool smartrider_display_card_view(const MfClassicData* data, Metroflip* a
     metroflip_card_view_add_field(view, p, "Balance", val, true);
 
     const char* concession = get_concession_type(sr_data.token);
-    metroflip_card_view_add_field(view, p, "Concession", concession ? concession : "Unknown", false);
+    metroflip_card_view_add_field(
+        view, p, "Concession", concession ? concession : "Unknown", false);
 
     // Build serial: prefix SR0 if starts with 00
     char serial_display[METROFLIP_CARD_VIEW_VALUE_LEN];
@@ -236,11 +238,7 @@ static bool smartrider_display_card_view(const MfClassicData* data, Metroflip* a
     p = metroflip_card_view_add_page(view, "Details");
 
     snprintf(
-        val,
-        sizeof(val),
-        "$%u.%02u",
-        sr_data.purchase_cost / 100,
-        sr_data.purchase_cost % 100);
+        val, sizeof(val), "$%u.%02u", sr_data.purchase_cost / 100, sr_data.purchase_cost % 100);
     metroflip_card_view_add_field(view, p, "Total Cost", val, false);
 
     snprintf(
@@ -252,11 +250,7 @@ static bool smartrider_display_card_view(const MfClassicData* data, Metroflip* a
     metroflip_card_view_add_field(view, p, "AL Threshold", val, false);
 
     snprintf(
-        val,
-        sizeof(val),
-        "$%u.%02u",
-        sr_data.auto_load_value / 100,
-        sr_data.auto_load_value % 100);
+        val, sizeof(val), "$%u.%02u", sr_data.auto_load_value / 100, sr_data.auto_load_value % 100);
     metroflip_card_view_add_field(view, p, "AL Value", val, false);
 
     /* Trip history pages (max 16 pages total, we used 2 already, so up to 14 trips but MAX_TRIPS=10) */
@@ -426,7 +420,8 @@ static void smartrider_on_enter(Metroflip* app) {
         furi_record_close(RECORD_STORAGE);
     } else {
         Popup* popup = app->popup;
-        popup_set_header(popup, "Scanning...\nApply card\nto the back", 68, 30, AlignLeft, AlignTop);
+        popup_set_header(
+            popup, "Scanning...\nApply card\nto the back", 68, 30, AlignLeft, AlignTop);
         popup_set_icon(popup, 0, 3, &I_RFIDDolphinReceive_97x61);
 
         view_dispatcher_switch_to_view(app->view_dispatcher, MetroflipViewPopup);
@@ -483,7 +478,6 @@ static bool smartrider_on_event(Metroflip* app, SceneManagerEvent event) {
 }
 
 static void smartrider_on_exit(Metroflip* app) {
-
     widget_reset(app->widget);
     popup_reset(app->popup);
     metroflip_app_blink_stop(app);

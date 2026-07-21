@@ -28,24 +28,25 @@
  * per-instance state lives in FSDState.
  */
 
-#include "fsd_handler.h"  // DAS_APSTATE_ABORTING / DAS_APSTATE_ABORTED
-#include "fsd_state.h"    // FSDState (carries the per-instance event bookkeeping)
+#include "fsd_handler.h" // DAS_APSTATE_ABORTING / DAS_APSTATE_ABORTED
+#include "fsd_state.h" // FSDState (carries the per-instance event bookkeeping)
 #include <stdbool.h>
 #include <stdint.h>
 
 typedef enum {
-    EVT_NONE = 0,    // no transition this frame
-    EVT_ABORT,       // das_ap_state entered an abort state (8 ABORTING / 9 ABORTED)
-    EVT_DISENGAGE,   // das_ap_state high (>= 2) -> not engaged (< 2)
-    EVT_MANUAL,      // caller-injected (dashboard Mark button)
-    EVT_BUSOFF,      // caller-injected (TWAI bus-off recovery fired)
-    EVT__COUNT,      // sentinel: number of event types (= cooldown-slot count)
+    EVT_NONE = 0, // no transition this frame
+    EVT_ABORT, // das_ap_state entered an abort state (8 ABORTING / 9 ABORTED)
+    EVT_DISENGAGE, // das_ap_state high (>= 2) -> not engaged (< 2)
+    EVT_MANUAL, // caller-injected (dashboard Mark button)
+    EVT_BUSOFF, // caller-injected (TWAI bus-off recovery fired)
+    EVT__COUNT, // sentinel: number of event types (= cooldown-slot count)
 } FSDEventType;
 
 // FSDState sizes evt_cooldown_until_ms[] with FSD_EVENT_COUNT (it can't include
 // this header without a cycle); keep the two in lock-step.
-_Static_assert(EVT__COUNT == FSD_EVENT_COUNT,
-               "FSD_EVENT_COUNT (fsd_state.h) must match the FSDEventType enum");
+_Static_assert(
+    EVT__COUNT == FSD_EVENT_COUNT,
+    "FSD_EVENT_COUNT (fsd_state.h) must match the FSDEventType enum");
 
 // Per-event-type cooldown: suppress a repeat of the same event within this
 // window so a flapping abort doesn't spam the consumer.
@@ -57,9 +58,9 @@ static inline bool fsd_events_is_abort_state(uint8_t ap_state) {
 
 // Apply the per-type cooldown and, if the event passes, stamp the transition
 // detail. Returns evt when emitted, EVT_NONE when still cooling down.
-static inline FSDEventType fsd_events_emit(FSDState* st, FSDEventType evt, uint8_t from,
-                                           uint8_t to, uint32_t now_ms) {
-    if (now_ms < st->evt_cooldown_until_ms[evt]) return EVT_NONE;  // still cooling
+static inline FSDEventType
+    fsd_events_emit(FSDState* st, FSDEventType evt, uint8_t from, uint8_t to, uint32_t now_ms) {
+    if(now_ms < st->evt_cooldown_until_ms[evt]) return EVT_NONE; // still cooling
     st->evt_cooldown_until_ms[evt] = now_ms + FSD_EVENT_COOLDOWN_MS;
     st->evt_last_from = from;
     st->evt_last_to = to;
@@ -75,16 +76,16 @@ static inline FSDEventType fsd_events_emit(FSDState* st, FSDEventType evt, uint8
 static inline FSDEventType fsd_events_poll(FSDState* st, uint32_t now_ms) {
     uint8_t from = st->evt_prev_ap_state;
     uint8_t to = st->das_ap_state;
-    st->evt_prev_ap_state = to;  // baseline always advances, even when suppressed
+    st->evt_prev_ap_state = to; // baseline always advances, even when suppressed
 
     FSDEventType evt = EVT_NONE;
-    if (fsd_events_is_abort_state(to) && !fsd_events_is_abort_state(from)) {
-        evt = EVT_ABORT;        // entering an abort state (fires once per entry)
-    } else if (from >= 2u && to < 2u) {
-        evt = EVT_DISENGAGE;    // engaged -> not engaged
+    if(fsd_events_is_abort_state(to) && !fsd_events_is_abort_state(from)) {
+        evt = EVT_ABORT; // entering an abort state (fires once per entry)
+    } else if(from >= 2u && to < 2u) {
+        evt = EVT_DISENGAGE; // engaged -> not engaged
     }
 
-    if (evt == EVT_NONE) return EVT_NONE;
+    if(evt == EVT_NONE) return EVT_NONE;
     return fsd_events_emit(st, evt, from, to, now_ms);
 }
 
@@ -93,6 +94,6 @@ static inline FSDEventType fsd_events_poll(FSDState* st, uint32_t now_ms) {
  *  cooldown as fsd_events_poll(). On a fired event the evt_last_* fields are
  *  set (from == to == current das_ap_state, now_ms). */
 static inline FSDEventType fsd_events_inject(FSDState* st, FSDEventType evt, uint32_t now_ms) {
-    if (evt != EVT_MANUAL && evt != EVT_BUSOFF) return EVT_NONE;  // caller-sourced only
+    if(evt != EVT_MANUAL && evt != EVT_BUSOFF) return EVT_NONE; // caller-sourced only
     return fsd_events_emit(st, evt, st->das_ap_state, st->das_ap_state, now_ms);
 }

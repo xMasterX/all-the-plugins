@@ -7,20 +7,20 @@ void flipper_wedge_play_happy_bump(void* context) {
     // Get vibration duration based on setting
     uint32_t duration_ms;
     switch(app->vibration_level) {
-        case FlipperWedgeVibrationOff:
-            return;  // No vibration
-        case FlipperWedgeVibrationLow:
-            duration_ms = 30;
-            break;
-        case FlipperWedgeVibrationMedium:
-            duration_ms = 60;
-            break;
-        case FlipperWedgeVibrationHigh:
-            duration_ms = 100;
-            break;
-        default:
-            duration_ms = 30;  // Default to low
-            break;
+    case FlipperWedgeVibrationOff:
+        return; // No vibration
+    case FlipperWedgeVibrationLow:
+        duration_ms = 30;
+        break;
+    case FlipperWedgeVibrationMedium:
+        duration_ms = 60;
+        break;
+    case FlipperWedgeVibrationHigh:
+        duration_ms = 100;
+        break;
+    default:
+        duration_ms = 30; // Default to low
+        break;
     }
 
     notification_message(app->notification, &sequence_set_vibro_on);

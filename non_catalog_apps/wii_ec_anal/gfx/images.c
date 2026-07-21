@@ -120,7 +120,8 @@ void show(
         for(unsigned int i = 0; i < img->len; i++, bp++) {
             // Compressed data? {tag, length, value}
             if(*bp == img->tag) {
-                for(uint16_t c = 0; c < bp[1]; c++) fnShow(bp[2]);
+                for(uint16_t c = 0; c < bp[1]; c++)
+                    fnShow(bp[2]);
                 bp += 3 - 1;
                 i += 3 - 1;
 
@@ -132,6 +133,7 @@ void show(
 
         // Not compressed
     } else {
-        for(unsigned int i = 0; i < img->len; i++, bp++) fnShow(*bp);
+        for(unsigned int i = 0; i < img->len; i++, bp++)
+            fnShow(*bp);
     }
 }

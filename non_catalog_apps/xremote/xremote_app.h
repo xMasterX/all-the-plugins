@@ -32,20 +32,23 @@
 // XRemote generic functions and definitions
 //////////////////////////////////////////////////////////////////////////////
 
-#define XREMOTE_APP_TEXT_MAX 128
+#define XREMOTE_APP_TEXT_MAX  128
 #define XREMOTE_APP_EXTENSION ".ir"
-#define XREMOTE_APP_TAG "XRemoteApp"
+#define XREMOTE_APP_TAG       "XRemoteApp"
 
-#define XREMOTE_APP_FOLDER ANY_PATH("infrared")
+#define XREMOTE_APP_FOLDER   ANY_PATH("infrared")
 #define XREMOTE_APP_SETTINGS APP_DATA_PATH("xremote.cfg")
-#define XREMOTE_ALT_NAMES APP_DATA_PATH("alt_names.txt")
+#define XREMOTE_ALT_NAMES    APP_DATA_PATH("alt_names.txt")
 
 #define xremote_app_assert_void(cond) \
     if(!cond) return
 #define xremote_app_assert(cond, var) \
     if(!cond) return var
 
-typedef enum { XRemoteAppExitPress, XRemoteAppExitHold } XRemoteAppExit;
+typedef enum {
+    XRemoteAppExitPress,
+    XRemoteAppExitHold
+} XRemoteAppExit;
 
 XRemoteAppExit xremote_app_get_exit_behavior(uint8_t exit_index);
 const char* xremote_app_get_exit_str(XRemoteAppExit exit_behavior);

@@ -11,17 +11,29 @@
  * @author modified by haffnerriley
 */
 
-
 #define MAX_BANK_SIZE 200
 // storage enum
-typedef enum { ReservedBank, EPCBank, TIDBank, UserBank, KillPwd, AccessPwd, FileZero} BankType;
+typedef enum {
+    ReservedBank,
+    EPCBank,
+    TIDBank,
+    UserBank,
+    KillPwd,
+    AccessPwd,
+    FileZero
+} BankType;
 
-typedef enum { PermaLock, Lock, Unlock, PermaUnlock} LockType;
+typedef enum {
+    PermaLock,
+    Lock,
+    Unlock,
+    PermaUnlock
+} LockType;
 
 // Reserved Memory Bank ***Revised by Wiliam Riley Haffner***
 typedef struct {
-    uint8_t kill_password[4]; // 4 bytes (32 bits) for kill password 
-    uint8_t access_password[4]; // 4 bytes (32 bits) for access password 
+    uint8_t kill_password[4]; // 4 bytes (32 bits) for kill password
+    uint8_t access_password[4]; // 4 bytes (32 bits) for access password
 } ReservedMemoryBank;
 
 // EPC Memory Bank

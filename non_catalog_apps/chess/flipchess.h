@@ -19,7 +19,7 @@
 #define FLIPCHESS_VERSION "v1.10"
 
 #define TEXT_BUFFER_SIZE 96
-#define TEXT_SIZE (TEXT_BUFFER_SIZE - 1)
+#define TEXT_SIZE        (TEXT_BUFFER_SIZE - 1)
 
 typedef struct {
     Gui* gui;
@@ -65,7 +65,10 @@ typedef enum {
     FlipChessPlayerAI3 = 3,
 } FlipChessPlayerMode;
 
-typedef enum { FlipChessTextInputDefault, FlipChessTextInputGame } FlipChessTextInputState;
+typedef enum {
+    FlipChessTextInputDefault,
+    FlipChessTextInputGame
+} FlipChessTextInputState;
 
 typedef enum {
     FlipChessStatusNone = 0,

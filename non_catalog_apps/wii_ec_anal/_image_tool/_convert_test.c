@@ -34,7 +34,8 @@ void show(const image_t* img) {
         for(unsigned int i = 0; i < img->len; i++, bp++) {
             // Compressed data? {tag, length, value}
             if(*bp == img->tag) {
-                for(uint16_t c = 0; c < bp[1]; c++) PLOTBYTE(bp[2]);
+                for(uint16_t c = 0; c < bp[1]; c++)
+                    PLOTBYTE(bp[2]);
                 bp += 3 - 1;
                 i += 3 - 1;
 
@@ -46,7 +47,8 @@ void show(const image_t* img) {
 
         // Not compressed
     } else {
-        for(unsigned int i = 0; i < img->len; i++, bp++) PLOTBYTE(*bp);
+        for(unsigned int i = 0; i < img->len; i++, bp++)
+            PLOTBYTE(*bp);
     }
 }
 

@@ -4,25 +4,25 @@
 
 #define TAG "FiatProtocolV2"
 
-#define FIAT_V2_TE_SHORT          210U
-#define FIAT_V2_TE_LONG           420U
-#define FIAT_V2_TE_DELTA          100U
-#define FIAT_V2_BOUNDARY_MIN_US   900U
-#define FIAT_V2_WIRE_BITS         112U
-#define FIAT_V2_WIRE_BYTES        14U
-#define FIAT_V2_WIRE_CELLS        (FIAT_V2_WIRE_BITS * 2U)
-#define FIAT_V2_LOGICAL_BITS      112U
-#define FIAT_V2_MARKER0           0x00U
-#define FIAT_V2_MARKER1           0x01U
-#define FIAT_V2_BTN_SHIFT         6U
-#define FIAT_V2_BUTTON_LOCK       0x2U
-#define FIAT_V2_BUTTON_UNLOCK     0x3U
-#define FIAT_V2_BUTTON_TRUNK      0x1U
-#define FIAT_V2_CNT_SHIFT         3U
-#define FIAT_V2_FCA_TYPE_NIBBLE   0xD0U
-#define FIAT_V2_RAW_FIELD         "Raw"
-#define FIAT_V2_HOP_FIELD         "Hop"
-#define FIAT_V2_BTN_FIELD         "Btn"
+#define FIAT_V2_TE_SHORT        210U
+#define FIAT_V2_TE_LONG         420U
+#define FIAT_V2_TE_DELTA        100U
+#define FIAT_V2_BOUNDARY_MIN_US 900U
+#define FIAT_V2_WIRE_BITS       112U
+#define FIAT_V2_WIRE_BYTES      14U
+#define FIAT_V2_WIRE_CELLS      (FIAT_V2_WIRE_BITS * 2U)
+#define FIAT_V2_LOGICAL_BITS    112U
+#define FIAT_V2_MARKER0         0x00U
+#define FIAT_V2_MARKER1         0x01U
+#define FIAT_V2_BTN_SHIFT       6U
+#define FIAT_V2_BUTTON_LOCK     0x2U
+#define FIAT_V2_BUTTON_UNLOCK   0x3U
+#define FIAT_V2_BUTTON_TRUNK    0x1U
+#define FIAT_V2_CNT_SHIFT       3U
+#define FIAT_V2_FCA_TYPE_NIBBLE 0xD0U
+#define FIAT_V2_RAW_FIELD       "Raw"
+#define FIAT_V2_HOP_FIELD       "Hop"
+#define FIAT_V2_BTN_FIELD       "Btn"
 
 static const SubGhzBlockConst subghz_protocol_fiat_v2_const = {
     .te_short = FIAT_V2_TE_SHORT,
@@ -53,10 +53,8 @@ struct SubGhzProtocolDecoderFiatV2 {
     uint8_t button;
 };
 
-static bool fiat_v2_feed_data_pulse(
-    SubGhzProtocolDecoderFiatV2* instance,
-    bool level,
-    uint32_t duration);
+static bool
+    fiat_v2_feed_data_pulse(SubGhzProtocolDecoderFiatV2* instance, bool level, uint32_t duration);
 static bool fiat_v2_frame_valid(const uint8_t raw[FIAT_V2_WIRE_BYTES]);
 
 const SubGhzProtocolDecoder subghz_protocol_fiat_v2_decoder = {
@@ -125,8 +123,8 @@ static const char* fiat_v2_button_name(uint8_t button) {
 }
 
 static uint32_t fiat_v2_uid(const uint8_t raw[FIAT_V2_WIRE_BYTES]) {
-    return ((uint32_t)raw[2] << 24U) | ((uint32_t)raw[3] << 16U) |
-           ((uint32_t)raw[4] << 8U) | raw[5];
+    return ((uint32_t)raw[2] << 24U) | ((uint32_t)raw[3] << 16U) | ((uint32_t)raw[4] << 8U) |
+           raw[5];
 }
 
 static bool fiat_v2_is_fca(const uint8_t raw[FIAT_V2_WIRE_BYTES]) {
@@ -137,8 +135,8 @@ static uint32_t fiat_v2_hop(const uint8_t raw[FIAT_V2_WIRE_BYTES]) {
         return ((uint32_t)raw[10] << 24U) | ((uint32_t)raw[11] << 16U) |
                ((uint32_t)raw[12] << 8U) | raw[13];
     }
-    return ((uint32_t)raw[9] << 24U) | ((uint32_t)raw[10] << 16U) |
-           ((uint32_t)raw[11] << 8U) | raw[12];
+    return ((uint32_t)raw[9] << 24U) | ((uint32_t)raw[10] << 16U) | ((uint32_t)raw[11] << 8U) |
+           raw[12];
 }
 
 static uint32_t fiat_v2_counter(const uint8_t raw[FIAT_V2_WIRE_BYTES]) {
@@ -146,11 +144,10 @@ static uint32_t fiat_v2_counter(const uint8_t raw[FIAT_V2_WIRE_BYTES]) {
         const uint32_t raw_cnt = ((uint32_t)raw[8] << 6U) | (uint32_t)(raw[9] >> 2U);
         return (~raw_cnt) & 0x3FFFU;
     }
-    const uint32_t raw_cnt =
-        ((uint32_t)(raw[7] & 0x3FU) << 5U) | (uint32_t)(raw[8] >> FIAT_V2_CNT_SHIFT);
+    const uint32_t raw_cnt = ((uint32_t)(raw[7] & 0x3FU) << 5U) |
+                             (uint32_t)(raw[8] >> FIAT_V2_CNT_SHIFT);
     return (~raw_cnt) & 0x7FFU;
 }
-
 
 static bool fiat_v2_frame_valid(const uint8_t raw[FIAT_V2_WIRE_BYTES]) {
     if(raw[0] != FIAT_V2_MARKER0 || raw[1] != FIAT_V2_MARKER1) {
@@ -182,9 +179,8 @@ static void fiat_v2_decode_fields(SubGhzProtocolDecoderFiatV2* instance) {
     instance->decoder.decode_count_bit = instance->generic.data_count_bit;
 }
 
-static bool fiat_v2_commit(
-    SubGhzProtocolDecoderFiatV2* instance,
-    const uint8_t raw[FIAT_V2_WIRE_BYTES]) {
+static bool
+    fiat_v2_commit(SubGhzProtocolDecoderFiatV2* instance, const uint8_t raw[FIAT_V2_WIRE_BYTES]) {
     if(!fiat_v2_frame_valid(raw)) {
         return false;
     }
@@ -254,10 +250,8 @@ static void fiat_v2_push_cell(SubGhzProtocolDecoderFiatV2* instance, bool level)
     fiat_v2_try_decode(instance);
 }
 
-static bool fiat_v2_feed_data_pulse(
-    SubGhzProtocolDecoderFiatV2* instance,
-    bool level,
-    uint32_t duration) {
+static bool
+    fiat_v2_feed_data_pulse(SubGhzProtocolDecoderFiatV2* instance, bool level, uint32_t duration) {
     if(fiat_v2_duration_is_short(duration)) {
         fiat_v2_push_cell(instance, level);
         return true;

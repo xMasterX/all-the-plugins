@@ -9,19 +9,19 @@
 
 #define TAG "sudoku"
 
-#define BOARD_SIZE 9
+#define BOARD_SIZE   9
 #define BOARD_SIZE_3 3
-#define FONT_SIZE 6
+#define FONT_SIZE    6
 
-#define VALUE_MASK 0x0F
-#define FLAGS_MASK ~VALUE_MASK
+#define VALUE_MASK      0x0F
+#define FLAGS_MASK      ~VALUE_MASK
 #define USER_INPUT_FLAG 0x80
 
 static_assert(USER_INPUT_FLAG > VALUE_MASK);
 
-#define EASY_GAPS 37
+#define EASY_GAPS   37
 #define NORMAL_GAPS 44
-#define HARD_GAPS 51
+#define HARD_GAPS   51
 
 typedef enum {
     GameStateRunning,
@@ -95,7 +95,7 @@ static int32_t get_mode_gaps(int32_t index) {
 }
 
 #define SAVE_VERSION 2
-#define SAVE_FILE APP_DATA_PATH("save.dat")
+#define SAVE_FILE    APP_DATA_PATH("save.dat")
 
 static bool load_game(SudokuState* state) {
     Storage* storage = furi_record_open(RECORD_STORAGE);

@@ -3,6 +3,6 @@
 
 #include "../app.h"
 
-void storage_init(App *app);
+void storage_init(App* app);
 
 #endif // INIT_H

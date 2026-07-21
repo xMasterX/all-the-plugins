@@ -55,22 +55,21 @@ void setup() {
 
 // Helper function to check if current state is a menu state
 bool isMenuState(int state) {
-    return (state >= STATE_MENU_INTRO && state <= STATE_MENU_CREDITS) || 
-           (state == STATE_REBOOT);
+    return (state >= STATE_MENU_INTRO && state <= STATE_MENU_CREDITS) || (state == STATE_REBOOT);
 }
 
 void loop() {
     if(!arduboy.nextFrame()) return;
 
     arduboy.pollButtons();
-    
+
     // Handle display inversion for menu vs game states
     if(isMenuState(gameState)) {
         arduboy.invert(true);
     } else {
         arduboy.invert(false);
     }
-    
+
     drawTiles();
     updateEyes();
 

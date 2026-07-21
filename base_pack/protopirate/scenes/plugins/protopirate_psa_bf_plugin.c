@@ -273,7 +273,8 @@ static bool
                 show_bf_progress(app);
             } else {
                 if(ctx == ProtoPiratePsaBfContextSubDecode) {
-                    g_host_api->send_custom_event(app, ProtoPirateCustomEventPsaBruteforceComplete);
+                    g_host_api->send_custom_event(
+                        app, ProtoPirateCustomEventPsaBruteforceComplete);
                 } else {
                     bf_finish_and_show_result(app, NULL);
                 }

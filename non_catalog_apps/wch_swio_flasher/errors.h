@@ -26,7 +26,6 @@ SOFTWARE.
 #pragma once
 
 typedef enum {
-
     WchSwioFlasher_Ok = 0,
     WchSwioFlasher_Error_Timeout = -1000,
     WchSwioFlasher_Error_SwdResetDetected = -1001,

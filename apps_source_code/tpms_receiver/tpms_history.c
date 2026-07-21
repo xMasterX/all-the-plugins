@@ -7,7 +7,7 @@
 #include <furi.h>
 
 #define TPMS_HISTORY_MAX 50
-#define TAG "TPMSHistory"
+#define TAG              "TPMSHistory"
 
 typedef struct {
     FuriString* item_str;

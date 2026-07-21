@@ -71,57 +71,60 @@ bool mfp_scene_card_info_on_event(void*, SceneManagerEvent);
 void mfp_scene_card_info_on_exit(void*);
 
 static const SceneManagerHandlers mfp_scene_handlers = {
-    .on_enter_handlers = (void(*[])(void*)){
-        mfp_scene_start_on_enter,
-        mfp_scene_read_on_enter,
-        mfp_scene_saved_on_enter,
-        mfp_scene_dict_select_on_enter,
-        mfp_scene_read_all_on_enter,
-        mfp_scene_read_all_result_on_enter,
-        mfp_scene_actions_on_enter,
-        mfp_scene_save_name_on_enter,
-        mfp_scene_save_success_on_enter,
-        mfp_scene_delete_confirm_on_enter,
-        mfp_scene_delete_success_on_enter,
-        mfp_scene_dump_view_on_enter,
-        mfp_scene_emulate_setup_on_enter,
-        mfp_scene_emulate_on_enter,
-        mfp_scene_card_info_on_enter,
-    },
-    .on_event_handlers = (bool(*[])(void*, SceneManagerEvent)){
-        mfp_scene_start_on_event,
-        mfp_scene_read_on_event,
-        mfp_scene_saved_on_event,
-        mfp_scene_dict_select_on_event,
-        mfp_scene_read_all_on_event,
-        mfp_scene_read_all_result_on_event,
-        mfp_scene_actions_on_event,
-        mfp_scene_save_name_on_event,
-        mfp_scene_save_success_on_event,
-        mfp_scene_delete_confirm_on_event,
-        mfp_scene_delete_success_on_event,
-        mfp_scene_dump_view_on_event,
-        mfp_scene_emulate_setup_on_event,
-        mfp_scene_emulate_on_event,
-        mfp_scene_card_info_on_event,
-    },
-    .on_exit_handlers = (void(*[])(void*)){
-        mfp_scene_start_on_exit,
-        mfp_scene_read_on_exit,
-        mfp_scene_saved_on_exit,
-        mfp_scene_dict_select_on_exit,
-        mfp_scene_read_all_on_exit,
-        mfp_scene_read_all_result_on_exit,
-        mfp_scene_actions_on_exit,
-        mfp_scene_save_name_on_exit,
-        mfp_scene_save_success_on_exit,
-        mfp_scene_delete_confirm_on_exit,
-        mfp_scene_delete_success_on_exit,
-        mfp_scene_dump_view_on_exit,
-        mfp_scene_emulate_setup_on_exit,
-        mfp_scene_emulate_on_exit,
-        mfp_scene_card_info_on_exit,
-    },
+    .on_enter_handlers =
+        (void (*[])(void*)){
+            mfp_scene_start_on_enter,
+            mfp_scene_read_on_enter,
+            mfp_scene_saved_on_enter,
+            mfp_scene_dict_select_on_enter,
+            mfp_scene_read_all_on_enter,
+            mfp_scene_read_all_result_on_enter,
+            mfp_scene_actions_on_enter,
+            mfp_scene_save_name_on_enter,
+            mfp_scene_save_success_on_enter,
+            mfp_scene_delete_confirm_on_enter,
+            mfp_scene_delete_success_on_enter,
+            mfp_scene_dump_view_on_enter,
+            mfp_scene_emulate_setup_on_enter,
+            mfp_scene_emulate_on_enter,
+            mfp_scene_card_info_on_enter,
+        },
+    .on_event_handlers =
+        (bool (*[])(void*, SceneManagerEvent)){
+            mfp_scene_start_on_event,
+            mfp_scene_read_on_event,
+            mfp_scene_saved_on_event,
+            mfp_scene_dict_select_on_event,
+            mfp_scene_read_all_on_event,
+            mfp_scene_read_all_result_on_event,
+            mfp_scene_actions_on_event,
+            mfp_scene_save_name_on_event,
+            mfp_scene_save_success_on_event,
+            mfp_scene_delete_confirm_on_event,
+            mfp_scene_delete_success_on_event,
+            mfp_scene_dump_view_on_event,
+            mfp_scene_emulate_setup_on_event,
+            mfp_scene_emulate_on_event,
+            mfp_scene_card_info_on_event,
+        },
+    .on_exit_handlers =
+        (void (*[])(void*)){
+            mfp_scene_start_on_exit,
+            mfp_scene_read_on_exit,
+            mfp_scene_saved_on_exit,
+            mfp_scene_dict_select_on_exit,
+            mfp_scene_read_all_on_exit,
+            mfp_scene_read_all_result_on_exit,
+            mfp_scene_actions_on_exit,
+            mfp_scene_save_name_on_exit,
+            mfp_scene_save_success_on_exit,
+            mfp_scene_delete_confirm_on_exit,
+            mfp_scene_delete_success_on_exit,
+            mfp_scene_dump_view_on_exit,
+            mfp_scene_emulate_setup_on_exit,
+            mfp_scene_emulate_on_exit,
+            mfp_scene_card_info_on_exit,
+        },
     .scene_num = MfpSceneNum,
 };
 
@@ -145,8 +148,8 @@ static MfpApp* mfp_app_alloc(void) {
 
     /* Defaults */
     memset(app->key, 0x00, MFP_AES_KEY_SIZE);
-    app->key_type       = MfpKeyA;
-    app->target_sector  = 0;
+    app->key_type = MfpKeyA;
+    app->target_sector = 0;
     app->allow_overwrite = true;
 
     /* Storage */
@@ -161,27 +164,26 @@ static MfpApp* mfp_app_alloc(void) {
         if(!storage_file_exists(app->storage, readme_path)) {
             File* f = storage_file_alloc(app->storage);
             if(storage_file_open(f, readme_path, FSAM_WRITE, FSOM_CREATE_ALWAYS)) {
-                const char* readme =
-                    "MFP Reader — user data folder\n"
-                    "\n"
-                    "Place your MIFARE Plus AES key dictionaries here\n"
-                    "as .dic files. They will appear in the dictionary\n"
-                    "picker shown after pressing Dump.\n"
-                    "\n"
-                    "Format: one 32-character hex AES key per line.\n"
-                    "Lines starting with # are comments.\n"
-                    "\n"
-                    "Example:\n"
-                    "  # my test card\n"
-                    "  FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF\n"
-                    "  A0A1A2A3A4A5A6A7A8A9AAABACADAEAF\n"
-                    "\n"
-                    "Dumps are saved next to this file as\n"
-                    "<name>.mfp (Version 2 format).\n"
-                    "\n"
-                    "mfp_default_keys.dic is created on first launch\n"
-                    "with well-known factory / development keys. You\n"
-                    "can edit it or create new .dic files alongside.\n";
+                const char* readme = "MFP Reader — user data folder\n"
+                                     "\n"
+                                     "Place your MIFARE Plus AES key dictionaries here\n"
+                                     "as .dic files. They will appear in the dictionary\n"
+                                     "picker shown after pressing Dump.\n"
+                                     "\n"
+                                     "Format: one 32-character hex AES key per line.\n"
+                                     "Lines starting with # are comments.\n"
+                                     "\n"
+                                     "Example:\n"
+                                     "  # my test card\n"
+                                     "  FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF\n"
+                                     "  A0A1A2A3A4A5A6A7A8A9AAABACADAEAF\n"
+                                     "\n"
+                                     "Dumps are saved next to this file as\n"
+                                     "<name>.mfp (Version 2 format).\n"
+                                     "\n"
+                                     "mfp_default_keys.dic is created on first launch\n"
+                                     "with well-known factory / development keys. You\n"
+                                     "can edit it or create new .dic files alongside.\n";
                 storage_file_write(f, readme, strlen(readme));
                 storage_file_close(f);
             }
@@ -194,42 +196,41 @@ static MfpApp* mfp_app_alloc(void) {
         if(!storage_file_exists(app->storage, dict_path)) {
             File* f = storage_file_alloc(app->storage);
             if(storage_file_open(f, dict_path, FSAM_WRITE, FSOM_CREATE_ALWAYS)) {
-                const char* dict =
-                    "# MIFARE Plus AES default keys\n"
-                    "# One 32-char hex key per line. '#' starts a comment.\n"
-                    "# Edit this file or create additional .dic files in the\n"
-                    "# same folder — they'll all show up under Dump -> Dict.\n"
-                    "\n"
-                    "# --- Factory zero / all-FF blanks ---\n"
-                    "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF\n"
-                    "00000000000000000000000000000000\n"
-                    "\n"
-                    "# --- NXP documented MAD / application defaults ---\n"
-                    "A0A1A2A3A4A5A6A7A8A9AAABACADAEAF\n"
-                    "B0B1B2B3B4B5B6B7B8B9BABBBCBDBEBF\n"
-                    "C0C1C2C3C4C5C6C7C8C9CACBCCCDCECF\n"
-                    "D0D1D2D3D4D5D6D7D8D9DADBDCDDDEDF\n"
-                    "\n"
-                    "# --- NFC Forum NDEF application key ---\n"
-                    "D3F7D3F7D3F7D3F7D3F7D3F7D3F7D3F7\n"
-                    "\n"
-                    "# --- Sequential byte patterns (common dev defaults) ---\n"
-                    "00010203040506070809101112131415\n"
-                    "01020304050607080910111213141516\n"
-                    "0102030405060708090A0B0C0D0E0F10\n"
-                    "000102030405060708090A0B0C0D0E0F\n"
-                    "0F0E0D0C0B0A09080706050403020100\n"
-                    "\n"
-                    "# --- Repeating byte patterns ---\n"
-                    "11111111111111111111111111111111\n"
-                    "22222222222222222222222222222222\n"
-                    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
-                    "55555555555555555555555555555555\n"
-                    "DEADBEEFDEADBEEFDEADBEEFDEADBEEF\n"
-                    "CAFEBABECAFEBABECAFEBABECAFEBABE\n"
-                    "\n"
-                    "# --- NXP demo key from app notes ---\n"
-                    "2B7E151628AED2A6ABF7158809CF4F3C\n";
+                const char* dict = "# MIFARE Plus AES default keys\n"
+                                   "# One 32-char hex key per line. '#' starts a comment.\n"
+                                   "# Edit this file or create additional .dic files in the\n"
+                                   "# same folder — they'll all show up under Dump -> Dict.\n"
+                                   "\n"
+                                   "# --- Factory zero / all-FF blanks ---\n"
+                                   "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF\n"
+                                   "00000000000000000000000000000000\n"
+                                   "\n"
+                                   "# --- NXP documented MAD / application defaults ---\n"
+                                   "A0A1A2A3A4A5A6A7A8A9AAABACADAEAF\n"
+                                   "B0B1B2B3B4B5B6B7B8B9BABBBCBDBEBF\n"
+                                   "C0C1C2C3C4C5C6C7C8C9CACBCCCDCECF\n"
+                                   "D0D1D2D3D4D5D6D7D8D9DADBDCDDDEDF\n"
+                                   "\n"
+                                   "# --- NFC Forum NDEF application key ---\n"
+                                   "D3F7D3F7D3F7D3F7D3F7D3F7D3F7D3F7\n"
+                                   "\n"
+                                   "# --- Sequential byte patterns (common dev defaults) ---\n"
+                                   "00010203040506070809101112131415\n"
+                                   "01020304050607080910111213141516\n"
+                                   "0102030405060708090A0B0C0D0E0F10\n"
+                                   "000102030405060708090A0B0C0D0E0F\n"
+                                   "0F0E0D0C0B0A09080706050403020100\n"
+                                   "\n"
+                                   "# --- Repeating byte patterns ---\n"
+                                   "11111111111111111111111111111111\n"
+                                   "22222222222222222222222222222222\n"
+                                   "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
+                                   "55555555555555555555555555555555\n"
+                                   "DEADBEEFDEADBEEFDEADBEEFDEADBEEF\n"
+                                   "CAFEBABECAFEBABECAFEBABECAFEBABE\n"
+                                   "\n"
+                                   "# --- NXP demo key from app notes ---\n"
+                                   "2B7E151628AED2A6ABF7158809CF4F3C\n";
                 storage_file_write(f, dict, strlen(dict));
                 storage_file_close(f);
             }
@@ -244,8 +245,8 @@ static MfpApp* mfp_app_alloc(void) {
     app->nfc = nfc_alloc();
 
     /* Dictionary */
-    app->dict_path   = furi_string_alloc();
-    app->dict_buf    = NULL;
+    app->dict_path = furi_string_alloc();
+    app->dict_buf = NULL;
     app->dict_key_count = 0;
 
     /* Read-all scan */
@@ -254,7 +255,7 @@ static MfpApp* mfp_app_alloc(void) {
 
     /* GUI */
     app->view_dispatcher = view_dispatcher_alloc();
-    app->scene_manager   = scene_manager_alloc(&mfp_scene_handlers, app);
+    app->scene_manager = scene_manager_alloc(&mfp_scene_handlers, app);
 
     view_dispatcher_set_event_callback_context(app->view_dispatcher, app);
     view_dispatcher_set_custom_event_callback(app->view_dispatcher, mfp_custom_event_cb);

@@ -148,7 +148,8 @@ void radio_tx_signal(ProtoViewApp* app, FuriHalSubGhzAsyncTxCallback data_feeder
     FURI_LOG_E(TAG, "Switched to frequency: %lu", value);
 
     subghz_devices_start_async_tx(app->radio_device, data_feeder, ctx);
-    while(!subghz_devices_is_async_complete_tx(app->radio_device)) furi_delay_ms(10);
+    while(!subghz_devices_is_async_complete_tx(app->radio_device))
+        furi_delay_ms(10);
     subghz_devices_stop_async_tx(app->radio_device);
     subghz_devices_idle(app->radio_device);
 

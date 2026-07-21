@@ -21,8 +21,7 @@ public:
     SelectCategoryScreen(
         bool canCreateNew,
         CategoryType categoryType,
-        function<void(CategoryType, const char*)> categorySelectedHandler
-    ) {
+        function<void(CategoryType, const char*)> categorySelectedHandler) {
         this->categoryType = categoryType;
         this->categorySelectedHandler = categorySelectedHandler;
 
@@ -34,9 +33,10 @@ public:
         }
 
         if(categoryType == User) {
-            menu->AddItem("<Default/Uncategorized>", [categoryType, categorySelectedHandler](uint32_t) {
-                return categorySelectedHandler(categoryType, NULL);
-            });
+            menu->AddItem(
+                "<Default/Uncategorized>", [categoryType, categorySelectedHandler](uint32_t) {
+                    return categorySelectedHandler(categoryType, NULL);
+                });
         }
 
         AppFileSysytem().GetCategories(&categories, categoryType);
@@ -56,7 +56,8 @@ private:
             return;
         }
         if(nameInput == NULL) {
-            nameInput = new TextInputUiView("Enter category name", MIN_CAT_NAME_LENGTH, MAX_CAT_NAME_LENGTH);
+            nameInput = new TextInputUiView(
+                "Enter category name", MIN_CAT_NAME_LENGTH, MAX_CAT_NAME_LENGTH);
             nameInput->SetOnDestroyHandler([this]() { this->nameInput = NULL; });
             nameInput->SetResultHandler(HANDLER_1ARG(&SelectCategoryScreen::addAndSelectCategory));
         }
@@ -64,7 +65,9 @@ private:
     }
 
     void addCategory(char* name) {
-        menu->AddItem(name, [this, name](uint32_t) { return this->categorySelectedHandler(this->categoryType, name); });
+        menu->AddItem(name, [this, name](uint32_t) {
+            return this->categorySelectedHandler(this->categoryType, name);
+        });
     }
 
     void addAndSelectCategory(char* name) {

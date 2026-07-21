@@ -2,9 +2,9 @@
 #include <storage/storage.h>
 #include <stdarg.h>
 
-#define DEBUG_LOG_PATH APP_DATA_PATH("debug.log")
-#define DEBUG_LOG_MAX_SIZE (50 * 1024)  // 50KB max log size
-#define DEBUG_LOG_KEEP_SIZE (25 * 1024)  // Keep most recent 25KB when rotating
+#define DEBUG_LOG_PATH      APP_DATA_PATH("debug.log")
+#define DEBUG_LOG_MAX_SIZE  (50 * 1024) // 50KB max log size
+#define DEBUG_LOG_KEEP_SIZE (25 * 1024) // Keep most recent 25KB when rotating
 
 static Storage* debug_storage = NULL;
 static File* debug_file = NULL;
@@ -14,11 +14,11 @@ static FuriMutex* debug_mutex = NULL;
 static void debug_rotate_log(void) {
     FileInfo file_info;
     if(storage_common_stat(debug_storage, DEBUG_LOG_PATH, &file_info) != FSE_OK) {
-        return;  // File doesn't exist, nothing to rotate
+        return; // File doesn't exist, nothing to rotate
     }
 
     if(file_info.size <= DEBUG_LOG_MAX_SIZE) {
-        return;  // File not too large yet
+        return; // File not too large yet
     }
 
     // Read the last DEBUG_LOG_KEEP_SIZE bytes
@@ -90,7 +90,7 @@ void flipper_wedge_debug_init(void) {
 
 void flipper_wedge_debug_log(const char* tag, const char* format, ...) {
     if(!debug_file || !debug_storage || !debug_mutex) {
-        return;  // Not initialized
+        return; // Not initialized
     }
 
     furi_mutex_acquire(debug_mutex, FuriWaitForever);

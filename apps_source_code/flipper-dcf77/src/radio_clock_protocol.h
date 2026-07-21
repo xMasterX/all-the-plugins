@@ -8,8 +8,8 @@
 #include "radio_clock.h"
 #include "radio_clock_pulse.h"
 
-#define RADIO_CLOCK_FRAME_BYTES 8U
-#define RADIO_CLOCK_FRAME_SECONDS 60U
+#define RADIO_CLOCK_FRAME_BYTES         8U
+#define RADIO_CLOCK_FRAME_SECONDS       60U
 #define RADIO_CLOCK_MAX_SECOND_SEGMENTS 8U
 
 typedef struct {

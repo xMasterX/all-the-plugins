@@ -36,8 +36,7 @@ void mfp_scene_save_success_on_enter(void* ctx) {
 
 bool mfp_scene_save_success_on_event(void* ctx, SceneManagerEvent event) {
     MfpApp* app = ctx;
-    if(event.type == SceneManagerEventTypeCustom &&
-       event.event == SaveSuccessEventTimeout) {
+    if(event.type == SceneManagerEventTypeCustom && event.event == SaveSuccessEventTimeout) {
         /* Return to the ReadAllResult view — that's where the user
          * came from via the Actions menu. Skip past Actions + Save
          * scenes in the stack. */

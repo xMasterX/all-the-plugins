@@ -15,7 +15,7 @@
  * @param key_mode Which 4-byte segment of the key to modify (0-3)
  * @param key_out Output buffer for the generated key (16 bytes)
  */
- void calculate_key_from_index(uint32_t index, uint8_t key_mode, uint8_t* key_out) {
+void calculate_key_from_index(uint32_t index, uint8_t key_mode, uint8_t* key_out) {
     // Clear key buffer using 32-bit operations for efficiency
     uint32_t* key32 = (uint32_t*)key_out;
     key32[0] = 0;
@@ -27,8 +27,8 @@
     // Splits index into 4 parts and arranges them in optimal testing order:
     key32[key_mode] = ((index & 0x0000007F) << 25) | // Lowest 7 bits -> highest byte
                       ((index & 0x00003F80) << 10) | // Next 7 bits -> second byte
-                      ((index & 0x001FC000) >> 5)  | // Next 7 bits -> third byte
-                      ((index & 0x0FE00000) >> 20);  // Highest 7 bits -> lowest byte
+                      ((index & 0x001FC000) >> 5) | // Next 7 bits -> third byte
+                      ((index & 0x0FE00000) >> 20); // Highest 7 bits -> lowest byte
 }
 
 /**
@@ -40,20 +40,20 @@
  * @param key Source key buffer
  * @param offset Starting position in key buffer
  */
- void format_key_segment(char* str, size_t str_size, const uint8_t* key, size_t offset) {
+void format_key_segment(char* str, size_t str_size, const uint8_t* key, size_t offset) {
     // Format 8 bytes of key data as hex pairs with space in middle
     // Example output: "01234567 89ABCDEF"
     snprintf(
         str,
         str_size,
         "%02X%02X%02X%02X %02X%02X%02X%02X",
-        key[offset],      // First byte
-        key[offset + 1],  // Second byte
-        key[offset + 2],  // Third byte
-        key[offset + 3],  // Fourth byte
-        key[offset + 4],  // Fifth byte
-        key[offset + 5],  // Sixth byte
-        key[offset + 6],  // Seventh byte
-        key[offset + 7]   // Eighth byte
+        key[offset], // First byte
+        key[offset + 1], // Second byte
+        key[offset + 2], // Third byte
+        key[offset + 3], // Fourth byte
+        key[offset + 4], // Fifth byte
+        key[offset + 5], // Sixth byte
+        key[offset + 6], // Seventh byte
+        key[offset + 7] // Eighth byte
     );
 }

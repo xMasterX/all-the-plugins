@@ -58,7 +58,7 @@ static void load_suica_data(void* context, FlipperFormat* format, bool is_metrof
     if(!is_metroflip_file) {
         return;
     }
-    
+
     uint8_t* byte_array_buffer = (uint8_t*)malloc(FELICA_DATA_BLOCK_SIZE);
     FuriString* entry_preamble = furi_string_alloc();
     // Read the travel history entries

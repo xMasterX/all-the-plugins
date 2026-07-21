@@ -35,10 +35,10 @@ typedef struct {
     int highscore;
 } SlotsHighscore;
 
-#define START_MONEY 1500;
-#define START_BET 300;
-#define SLOTS_RAND_MAX 5;
-#define DEFAULT_SPEED 16;
+#define START_MONEY         1500;
+#define START_BET           300;
+#define SLOTS_RAND_MAX      5;
+#define DEFAULT_SPEED       16;
 #define HIGHSCORES_FILENAME APP_DATA_PATH("slotmachine.save")
 
 uint8_t DEFAULT_SPINNING_TIMES = 10;

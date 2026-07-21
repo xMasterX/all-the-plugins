@@ -11,10 +11,10 @@
 
 #define BORDER_OFFSET 1
 #define MARGIN_OFFSET 3
-#define BLOCK_HEIGHT 6
-#define BLOCK_WIDTH 6
+#define BLOCK_HEIGHT  6
+#define BLOCK_WIDTH   6
 
-#define FIELD_WIDTH 10
+#define FIELD_WIDTH  10
 #define FIELD_HEIGHT 20
 
 #define FIELD_X_OFFSET 3
@@ -30,7 +30,11 @@ typedef struct Point {
 
 // Rotation logic taken from
 // https://www.youtube.com/watch?v=yIpk5TJ_uaI
-typedef enum { OffsetTypeCommon, OffsetTypeI, OffsetTypeO } OffsetType;
+typedef enum {
+    OffsetTypeCommon,
+    OffsetTypeI,
+    OffsetTypeO
+} OffsetType;
 
 // Since we only support rotating clockwise, these are actual translation values,
 // not values to be subtracted to get translation values
@@ -66,7 +70,11 @@ static Piece shapes[] = {
     {.p = {{5, 1}, {5, 0}, {6, 0}, {6, 1}}, .rotIdx = 0, .offsetType = OffsetTypeO} // O
 };
 
-typedef enum { GameStatePlaying, GameStateGameOver, GameStatePaused } GameState;
+typedef enum {
+    GameStatePlaying,
+    GameStateGameOver,
+    GameStatePaused
+} GameState;
 
 typedef struct {
     bool playField[FIELD_HEIGHT][FIELD_WIDTH];

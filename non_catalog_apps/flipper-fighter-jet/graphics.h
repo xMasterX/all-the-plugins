@@ -10,8 +10,8 @@
 #include <stdlib.h>
 #include "types.h"
 
-void drawEnemy(Canvas *canvas, double dir, fighter_jet_t enemy);
-void drawCompass(Canvas *canvas, double direction);
-void drawMinimap(Canvas *canvas, double dir, fighter_jet_t *enemies, size_t enemiesCount);
-void drawJet(Canvas *canvas, turning_t turning, bool shooting);
-void drawExplosion(Canvas *canvas);
+void drawEnemy(Canvas* canvas, double dir, fighter_jet_t enemy);
+void drawCompass(Canvas* canvas, double direction);
+void drawMinimap(Canvas* canvas, double dir, fighter_jet_t* enemies, size_t enemiesCount);
+void drawJet(Canvas* canvas, turning_t turning, bool shooting);
+void drawExplosion(Canvas* canvas);

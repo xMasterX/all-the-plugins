@@ -187,7 +187,7 @@ void fdxb_maker_construct_data(FdxbMaker* app) {
     bit_lib_set_bit(bytes, 63, data->animal);
 
     // 64-87: Trailer (application data)
-    if (data->trailer_mode == FdxbTrailerModeTemperature) {
+    if(data->trailer_mode == FdxbTrailerModeTemperature) {
         // https://forum.dangerousthings.com/t/6799/3
         uint8_t temperature = (uint8_t)round((data->temperature - 74) / 0.2);
         uint8_t temp_rev = bit_lib_reverse_8_fast(temperature);
@@ -198,8 +198,7 @@ void fdxb_maker_construct_data(FdxbMaker* app) {
         bit_lib_set_bit(bytes, 72, parity);
         bit_lib_set_bits(bytes, 73, 0, 7);
         bit_lib_set_bits(bytes, 80, 0, 8);
-    }
-    else {
+    } else {
         uint32_t trailer_rev = data->trailer << (32 - 24);
         bit_lib_reverse_bits((uint8_t*)&trailer_rev, 0, 32);
 
@@ -239,15 +238,13 @@ void fdxb_maker_deconstruct_data(FdxbMaker* app) {
 
     bool temperature_present = (calc_parity == parity) && !extra_trailer;
 
-    if (block_status) {
-        if (temperature_present) {
+    if(block_status) {
+        if(temperature_present) {
             data->trailer_mode = FdxbTrailerModeTemperature;
-        }
-        else {
+        } else {
             data->trailer_mode = FdxbTrailerModeAppData;
         }
-    }
-    else {
+    } else {
         data->trailer_mode = FdxbTrailerModeOff;
     }
 
@@ -273,7 +270,7 @@ void fdxb_maker_deconstruct_data(FdxbMaker* app) {
     uint32_t trailer = bit_lib_get_bits_32(bytes, 64, 24) << 8;
     bit_lib_reverse_bits((uint8_t*)&trailer, 0, 32);
 
-    if (temperature_present) {
+    if(temperature_present) {
         uint8_t temp_byte = bit_lib_reverse_8_fast(bit_lib_get_bits(bytes, 64, 8));
         data->temperature = temp_byte * 0.2 + 74;
     }
@@ -301,7 +298,7 @@ bool fdxb_maker_save_key(FdxbMaker* app) {
 
     fdxb_maker_make_app_folder(app);
 
-    if (furi_string_end_with(app->file_path, LFRFID_APP_FILENAME_EXTENSION)) {
+    if(furi_string_end_with(app->file_path, LFRFID_APP_FILENAME_EXTENSION)) {
         size_t filename_start = furi_string_search_rchar(app->file_path, '/');
         furi_string_left(app->file_path, filename_start);
     }
@@ -329,7 +326,7 @@ bool fdxb_maker_load_key_from_file_select(FdxbMaker* app) {
     bool result =
         dialog_file_browser_show(app->dialogs, app->file_path, app->file_path, &browser_options);
 
-    if (result) {
+    if(result) {
         result = fdxb_maker_load_key_data(app, app->file_path, true);
     }
 
@@ -347,16 +344,14 @@ bool fdxb_maker_load_key_data(FdxbMaker* app, FuriString* path, bool show_dialog
     ProtocolId protocol_id;
 
     protocol_id = lfrfid_dict_file_load(app->tmp_dict, furi_string_get_cstr(path));
-    if (protocol_id == PROTOCOL_NO) {
-        if (show_dialog) dialog_message_show_storage_error(app->dialogs, "Cannot load\nkey file");
-    }
-    else if (protocol_id != LFRFIDProtocolFDXB) {
-        if (show_dialog)
+    if(protocol_id == PROTOCOL_NO) {
+        if(show_dialog) dialog_message_show_storage_error(app->dialogs, "Cannot load\nkey file");
+    } else if(protocol_id != LFRFIDProtocolFDXB) {
+        if(show_dialog)
             dialog_message_show_storage_error(app->dialogs, "File is not in\nFDX-B format");
-    }
-    else {
+    } else {
         path_extract_filename(path, app->file_name, true);
-        if (lfrfid_dict_file_load(app->dict, furi_string_get_cstr(path)) == LFRFIDProtocolFDXB) {
+        if(lfrfid_dict_file_load(app->dict, furi_string_get_cstr(path)) == LFRFIDProtocolFDXB) {
             success = true;
             fdxb_maker_deconstruct_data(app);
         }
@@ -368,7 +363,7 @@ bool fdxb_maker_load_key_data(FdxbMaker* app, FuriString* path, bool show_dialog
 bool fdxb_maker_save_key_data(FdxbMaker* app, FuriString* path) {
     bool result = lfrfid_dict_file_save(app->dict, LFRFIDProtocolFDXB, furi_string_get_cstr(path));
 
-    if (!result) {
+    if(!result) {
         dialog_message_show_storage_error(app->dialogs, "Cannot save\nkey file");
     }
 
@@ -378,21 +373,19 @@ bool fdxb_maker_save_key_data(FdxbMaker* app, FuriString* path) {
 bool fdxb_maker_save_key_and_switch_scenes(FdxbMaker* app) {
     fdxb_maker_construct_data(app);
 
-    if (scene_manager_get_scene_state(app->scene_manager, FdxbMakerSceneStart) ==
-        FdxbMakerMenuIndexNew) {
+    if(scene_manager_get_scene_state(app->scene_manager, FdxbMakerSceneStart) ==
+       FdxbMakerMenuIndexNew) {
         scene_manager_next_scene(app->scene_manager, FdxbMakerSceneSaveName);
         return true;
-    }
-    else {
-        if (!furi_string_empty(app->file_name)) {
+    } else {
+        if(!furi_string_empty(app->file_name)) {
             fdxb_maker_delete_key(app);
         }
 
-        if (fdxb_maker_save_key(app)) {
+        if(fdxb_maker_save_key(app)) {
             scene_manager_next_scene(app->scene_manager, FdxbMakerSceneSaveSuccess);
             return true;
-        }
-        else {
+        } else {
             return scene_manager_search_and_switch_to_previous_scene(
                 app->scene_manager, FdxbMakerSceneSelectKey);
         }
@@ -402,7 +395,7 @@ bool fdxb_maker_save_key_and_switch_scenes(FdxbMaker* app) {
 void fdxb_maker_make_app_folder(FdxbMaker* app) {
     furi_assert(app);
 
-    if (!storage_simply_mkdir(app->storage, LFRFID_APP_FOLDER)) {
+    if(!storage_simply_mkdir(app->storage, LFRFID_APP_FOLDER)) {
         dialog_message_show_storage_error(app->dialogs, "Cannot create\nRFID app folder");
     }
 }
@@ -424,7 +417,7 @@ void fdxb_maker_text_store_clear(FdxbMaker* app) {
 
 void fdxb_maker_widget_callback(GuiButtonType result, InputType type, void* context) {
     FdxbMaker* app = context;
-    if (type == InputTypeShort) {
+    if(type == InputTypeShort) {
         view_dispatcher_send_custom_event(app->view_dispatcher, result);
     }
 }

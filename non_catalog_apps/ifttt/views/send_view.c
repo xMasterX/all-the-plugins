@@ -8,7 +8,9 @@
 #include <string.h>
 #include <stdio.h>
 
-typedef enum ESerialCommand { ESerialCommand_Send } ESerialCommand;
+typedef enum ESerialCommand {
+    ESerialCommand_Send
+} ESerialCommand;
 
 struct SendView {
     View* view;

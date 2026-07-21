@@ -13,32 +13,31 @@
 /** go to trace log level in the dev environment */
 void set_log_level() {
 #ifdef FURI_DEBUG
-  furi_log_set_level(FuriLogLevelTrace);
+    furi_log_set_level(FuriLogLevelTrace);
 #else
-  furi_log_set_level(FuriLogLevelInfo);
+    furi_log_set_level(FuriLogLevelInfo);
 #endif
 }
 
 /** entrypoint */
-int32_t app(void *p) {
-  UNUSED(p);
-  set_log_level();
+int32_t app(void* p) {
+    UNUSED(p);
+    set_log_level();
 
-  // create the app context struct, scene manager, and view dispatcher
-  FURI_LOG_I(TAG, "Test app starting...");
-  App *app = init();
+    // create the app context struct, scene manager, and view dispatcher
+    FURI_LOG_I(TAG, "Test app starting...");
+    App* app = init();
 
-  // set the scene and launch the main loop
-  Gui *gui = furi_record_open(RECORD_GUI);
-  view_dispatcher_attach_to_gui(app->view_dispatcher, gui,
-                                ViewDispatcherTypeFullscreen);
-  scene_manager_next_scene(app->scene_manager, MainMenu);
-  FURI_LOG_D(TAG, "Starting dispatcher...");
-  view_dispatcher_run(app->view_dispatcher);
+    // set the scene and launch the main loop
+    Gui* gui = furi_record_open(RECORD_GUI);
+    view_dispatcher_attach_to_gui(app->view_dispatcher, gui, ViewDispatcherTypeFullscreen);
+    scene_manager_next_scene(app->scene_manager, MainMenu);
+    FURI_LOG_D(TAG, "Starting dispatcher...");
+    view_dispatcher_run(app->view_dispatcher);
 
-  // free all memory
-  FURI_LOG_I(TAG, "Test app finishing...");
-  furi_record_close(RECORD_GUI);
-  app_free(app);
-  return 0;
+    // free all memory
+    FURI_LOG_I(TAG, "Test app finishing...");
+    furi_record_close(RECORD_GUI);
+    app_free(app);
+    return 0;
 }

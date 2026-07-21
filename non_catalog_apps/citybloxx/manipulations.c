@@ -6,7 +6,7 @@
 #endif
 #include <furi.h>
 
-#define DEG_TO_RAD(deg) ((deg)*M_PI / 180.0)
+#define DEG_TO_RAD(deg) ((deg) * M_PI / 180.0)
 
 #define MIN3(a, b, c) MIN(MIN((a), (b)), (c))
 #define MAX3(a, b, c) MAX(MAX((a), (b)), (c))
@@ -39,10 +39,12 @@ void line_rotate(Line* line, Point around, float deg) {
 }
 
 void line_group_translate(Line* line_group, uint8_t count, int32_t x, int32_t y) {
-    for(uint8_t i = 0; i < count; i++) line_translate(&line_group[i], x, y);
+    for(uint8_t i = 0; i < count; i++)
+        line_translate(&line_group[i], x, y);
 }
 void line_group_rotate(Line* line_group, uint8_t count, Point around, float deg) {
-    for(uint8_t i = 0; i < count; i++) line_rotate(&line_group[i], around, deg);
+    for(uint8_t i = 0; i < count; i++)
+        line_rotate(&line_group[i], around, deg);
 }
 Point line_group_get_center(Line* line_group, uint8_t count) {
     // Finding the corners

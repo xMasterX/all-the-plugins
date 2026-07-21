@@ -34,44 +34,44 @@ extern "C" {
 #define MAX_PLAYLIST_NAME_LEN 50
 
 typedef enum {
-   NfcPlaylistView_Submenu,
-   NfcPlaylistView_Widget,
-   NfcPlaylistView_FileBrowser,
-   NfcPlaylistView_VariableItemList,
-   NfcPlaylistView_TextInput,
-   NfcPlaylistView_DialogEx
+    NfcPlaylistView_Submenu,
+    NfcPlaylistView_Widget,
+    NfcPlaylistView_FileBrowser,
+    NfcPlaylistView_VariableItemList,
+    NfcPlaylistView_TextInput,
+    NfcPlaylistView_DialogEx
 } NfcPlaylistViews;
 
 typedef struct {
-   FileBrowser* view;
-   FuriString* output;
+    FileBrowser* view;
+    FuriString* output;
 } NfcPlaylistFileBrowserView;
 
 typedef struct {
-   TextInput* view;
-   char* output;
+    TextInput* view;
+    char* output;
 } NfcPlaylistTextInputView;
 
 typedef struct {
-   Submenu* submenu;
-   Widget* widget;
-   NfcPlaylistFileBrowserView file_browser;
-   NfcPlaylistTextInputView text_input;
-   VariableItemList* variable_item_list;
-   DialogEx* dialog_ex;
+    Submenu* submenu;
+    Widget* widget;
+    NfcPlaylistFileBrowserView file_browser;
+    NfcPlaylistTextInputView text_input;
+    VariableItemList* variable_item_list;
+    DialogEx* dialog_ex;
 } NfcPlaylistView;
 
 typedef struct {
-   NfcPlaylistWorkerSettings* settings;
-   NfcPlaylistWorker* worker;
+    NfcPlaylistWorkerSettings* settings;
+    NfcPlaylistWorker* worker;
 } NfcPlaylistWorkerInfo;
 
 typedef struct {
-   SceneManager* scene_manager;
-   ViewDispatcher* view_dispatcher;
-   NotificationApp* notification_app;
-   NfcPlaylistView views;
-   NfcPlaylistWorkerInfo worker_info;
+    SceneManager* scene_manager;
+    ViewDispatcher* view_dispatcher;
+    NotificationApp* notification_app;
+    NfcPlaylistView views;
+    NfcPlaylistWorkerInfo worker_info;
 } NfcPlaylist;
 
 /**

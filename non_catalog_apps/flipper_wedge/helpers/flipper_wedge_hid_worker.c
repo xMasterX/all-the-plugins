@@ -32,9 +32,7 @@ static int32_t flipper_wedge_hid_worker_thread(void* context) {
     // Wait for stop signal
     while(true) {
         uint32_t events = furi_thread_flags_wait(
-            FlipperWedgeHidWorkerEventStop,
-            FuriFlagWaitAny,
-            FuriWaitForever);
+            FlipperWedgeHidWorkerEventStop, FuriFlagWaitAny, FuriWaitForever);
 
         if(events & FlipperWedgeHidWorkerEventStop) {
             FURI_LOG_I(TAG, "Worker thread received stop signal");
@@ -80,7 +78,7 @@ void flipper_wedge_hid_worker_free(FlipperWedgeHidWorker* worker) {
 
 void flipper_wedge_hid_worker_start(FlipperWedgeHidWorker* worker, FlipperWedgeHidWorkerMode mode) {
     furi_assert(worker);
-    furi_assert(!worker->thread);  // Don't start if already running
+    furi_assert(!worker->thread); // Don't start if already running
 
     FURI_LOG_I(TAG, "Starting worker thread with mode=%d", mode);
     flipper_wedge_debug_log(TAG, "Starting worker thread (mode=%d)", mode);
@@ -88,7 +86,7 @@ void flipper_wedge_hid_worker_start(FlipperWedgeHidWorker* worker, FlipperWedgeH
     worker->mode = mode;
     worker->thread = furi_thread_alloc_ex(
         "FlipperWedgeHidWorker",
-        2048,  // Stack size
+        2048, // Stack size
         flipper_wedge_hid_worker_thread,
         worker);
 

@@ -385,6 +385,5 @@ void int_input_set_result_callback(
 }
 
 void int_input_set_header_text(IntInput* int_input, const char* text) {
-    with_view_model(
-        int_input->view, IntInputModel * model, { model->header = text; }, true);
+    with_view_model(int_input->view, IntInputModel * model, { model->header = text; }, true);
 }

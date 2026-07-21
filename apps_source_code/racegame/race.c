@@ -11,21 +11,26 @@
 
 #define BORDER_OFFSET 1
 #define MARGIN_OFFSET 3
-#define BLOCK_HEIGHT 6
-#define BLOCK_WIDTH 6
+#define BLOCK_HEIGHT  6
+#define BLOCK_WIDTH   6
 
-#define FIELD_WIDTH 11
-#define FIELD_HEIGHT 24
+#define FIELD_WIDTH        11
+#define FIELD_HEIGHT       24
 #define PARALLEL_OBSTACLES 3
 
-typedef enum { GameStatePlaying, GameStateGameOver } GameState;
+typedef enum {
+    GameStatePlaying,
+    GameStateGameOver
+} GameState;
 
 typedef struct Point {
     // Also used for offset data, which is sometimes negative
     int8_t x, y;
 } Point;
 
-typedef enum { CarObstacle } ObstacleType;
+typedef enum {
+    CarObstacle
+} ObstacleType;
 
 typedef struct Obstacle {
     ObstacleType type;

@@ -8,9 +8,9 @@
 #include <m-array.h>
 
 #define FRAME_HEIGHT 12
-#define MAX_LEN_PX 112
-#define MENU_ITEMS 4u
-#define UNLOCK_CNT 3
+#define MAX_LEN_PX   112
+#define MENU_ITEMS   4u
+#define UNLOCK_CNT   3
 
 #define SUBGHZ_RAW_THRESHOLD_MIN -90.0f
 
@@ -459,8 +459,7 @@ View* pcsg_view_receiver_get_view(PCSGReceiver* pcsg_receiver) {
 uint16_t pcsg_view_receiver_get_idx_menu(PCSGReceiver* pcsg_receiver) {
     furi_assert(pcsg_receiver);
     uint32_t idx = 0;
-    with_view_model(
-        pcsg_receiver->view, PCSGReceiverModel * model, { idx = model->idx; }, false);
+    with_view_model(pcsg_receiver->view, PCSGReceiverModel * model, { idx = model->idx; }, false);
     return idx;
 }
 

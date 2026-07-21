@@ -306,9 +306,7 @@ bool uhf_reader_view_read_input_callback(InputEvent* event, void* context) {
             with_view_model(
                 App->ViewRead,
                 UHFReaderConfigModel * model,
-                {
-                    model->IsScrolling = (event->type == InputTypePress);
-                },
+                { model->IsScrolling = (event->type == InputTypePress); },
                 true);
             return true;
         }
@@ -410,16 +408,14 @@ bool uhf_reader_view_read_input_callback(InputEvent* event, void* context) {
             return true;
         }
 
-        
         //If the down button is pressed, then show the view epc screen
         else if(event->key == InputKeyDown && !App->IsReading) {
             view_set_previous_callback(App->ViewEpc, uhf_reader_navigation_read_callback);
             view_dispatcher_switch_to_view(App->ViewDispatcher, UHFReaderViewEpcDump);
             return true;
         }
-        
-    }
-    else if(event->type == InputTypePress) {
+
+    } else if(event->type == InputTypePress) {
         //Handles the start button being pressed
         if(event->key == InputKeyOk) {
             view_dispatcher_send_custom_event(App->ViewDispatcher, UHFReaderEventIdOkPressed);
@@ -532,19 +528,19 @@ bool uhf_reader_view_read_custom_event_callback(uint32_t event, void* context) {
         with_view_model(App->ViewRead, UHFReaderConfigModel * _model, { UNUSED(_model); }, Redraw);
         return true;
     }
-    
-    //Handles the worker exiting after a read 
+
+    //Handles the worker exiting after a read
     case UHFCustomEventWorkerExit: {
         bool Redraw = true;
         App->IsReading = false;
 
-        //Stop the worker 
+        //Stop the worker
         uhf_worker_stop(App->YRM100XWorker);
 
-        //Get the tag read 
+        //Get the tag read
         UHFTag* TestTag = App->YRM100XWorker->uhf_tag_wrapper->uhf_tag;
 
-        //Parse all of the memory banks 
+        //Parse all of the memory banks
         char* TempEpc = convertToHexString(TestTag->epc->data, TestTag->epc->size);
         char* TempTid = convertToHexString(TestTag->tid->data, TestTag->tid->size);
         char* TempPass = convertToHexString(TestTag->reserved->access_password, 4);
@@ -553,7 +549,6 @@ bool uhf_reader_view_read_custom_event_callback(uint32_t event, void* context) {
         char* TempUser = convertToHexString(TestTag->user->data, TestTag->user->size);
         char* TempCrc = uint16_to_hex_string(TestTag->epc->crc);
         char* TempPc = uint16_to_hex_string(TestTag->epc->pc);
-        
 
         //If any of the banks returned empty, create visual placeholders to indicate to the user that something failed to read.
         if(strcmp(TempUser, " ") == 0 || TempUser == NULL) {
@@ -632,7 +627,6 @@ bool uhf_reader_view_read_custom_event_callback(uint32_t event, void* context) {
                         { model->IsReading = App->IsReading; },
                         true);
                 } else {
-
                     with_view_model(
                         App->ViewRead,
                         UHFReaderConfigModel * model,

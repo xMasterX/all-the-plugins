@@ -32,18 +32,15 @@ const NotificationSequence seq_c_minor = {
 };
 
 const char* const dcf77_bitnames[] = {
-    "Start minute", "Civil 1",   "Civil 2",   "Civil 3",  "Civil 4",
-    "Civil 5",      "Civil 6",   "Civil 7",   "Civil 8",  "Civil 9",
-    "Civil 10",     "Civil 11",  "Civil 12",  "Civil 13", "Civil 14",
-    "Abnormal",     "DST change","UTC+02",    "UTC+01",   "Leap sec",
-    "Start time",   "Minutes 1", "Minutes 2", "Minutes 3","Minutes 4",
-    "Minutes 5",    "Minutes 6", "Minutes 7", "Minutes P","Hours 1",
-    "Hours 2",      "Hours 3",   "Hours 4",   "Hours 5",  "Hours 6",
-    "Hours P",      "Day 1",     "Day 2",     "Day 3",    "Day 4",
-    "Day 5",        "Day 6",     "Weekday 1", "Weekday 2","Weekday 4",
-    "Month 1",      "Month 2",   "Month 3",   "Month 4",  "Month 5",
-    "Year 1",       "Year 2",    "Year 3",    "Year 4",   "Year 5",
-    "Year 6",       "Year 7",    "Year 8",    "Date P",   "End",
+    "Start minute", "Civil 1",   "Civil 2",    "Civil 3",   "Civil 4",   "Civil 5",   "Civil 6",
+    "Civil 7",      "Civil 8",   "Civil 9",    "Civil 10",  "Civil 11",  "Civil 12",  "Civil 13",
+    "Civil 14",     "Abnormal",  "DST change", "UTC+02",    "UTC+01",    "Leap sec",  "Start time",
+    "Minutes 1",    "Minutes 2", "Minutes 3",  "Minutes 4", "Minutes 5", "Minutes 6", "Minutes 7",
+    "Minutes P",    "Hours 1",   "Hours 2",    "Hours 3",   "Hours 4",   "Hours 5",   "Hours 6",
+    "Hours P",      "Day 1",     "Day 2",      "Day 3",     "Day 4",     "Day 5",     "Day 6",
+    "Weekday 1",    "Weekday 2", "Weekday 4",  "Month 1",   "Month 2",   "Month 3",   "Month 4",
+    "Month 5",      "Year 1",    "Year 2",     "Year 3",    "Year 4",    "Year 5",    "Year 6",
+    "Year 7",       "Year 8",    "Date P",     "End",
 };
 
 typedef struct {
@@ -74,13 +71,13 @@ typedef struct {
     DateTime experimental_preset_datetime;
 } Dcf77SavedSettings;
 
-#define DCF77_SETTINGS_DIR EXT_PATH("apps_data/dcf77")
-#define DCF77_SETTINGS_PATH EXT_PATH("apps_data/dcf77/settings.bin")
-#define DCF77_SETTINGS_MAGIC 0x44
-#define DCF77_SETTINGS_VERSION 11
-#define DCF77_SUBGHZ_FALLBACK_FREQ 433670000U
-#define DCF77_SUBGHZ_DEFAULT_FSK_TONE_INDEX 12U
-#define DCF77_SUBGHZ_DEFAULT_TX_TIMEOUT_INDEX 8U
+#define DCF77_SETTINGS_DIR                       EXT_PATH("apps_data/dcf77")
+#define DCF77_SETTINGS_PATH                      EXT_PATH("apps_data/dcf77/settings.bin")
+#define DCF77_SETTINGS_MAGIC                     0x44
+#define DCF77_SETTINGS_VERSION                   11
+#define DCF77_SUBGHZ_FALLBACK_FREQ               433670000U
+#define DCF77_SUBGHZ_DEFAULT_FSK_TONE_INDEX      12U
+#define DCF77_SUBGHZ_DEFAULT_TX_TIMEOUT_INDEX    8U
 #define DCF77_SUBGHZ_DEFAULT_SPEAKER_VALUE_INDEX 25U
 
 static void dcf77_app_init_signal_defaults(AppFSM* app_fsm) {
@@ -240,7 +237,8 @@ uint8_t dcf77_app_get_tx_ratio_y(const AppFSM* app_fsm) {
 }
 
 void dcf77_app_update_tx_ratio_texts(AppFSM* app_fsm) {
-    snprintf(app_fsm->tx_ratio_x_text, sizeof(app_fsm->tx_ratio_x_text), "%u", app_fsm->tx_ratio_x);
+    snprintf(
+        app_fsm->tx_ratio_x_text, sizeof(app_fsm->tx_ratio_x_text), "%u", app_fsm->tx_ratio_x);
     snprintf(
         app_fsm->tx_ratio_y_text,
         sizeof(app_fsm->tx_ratio_y_text),
@@ -259,12 +257,14 @@ void dcf77_app_set_tx_ratio_y_index(AppFSM* app_fsm, uint8_t y_index) {
     }
 
     app_fsm->tx_ratio_y_index = y_index;
-    app_fsm->tx_ratio_x = dcf77_tx_ratio_x_clamp(app_fsm->tx_ratio_x, dcf77_app_get_tx_ratio_y(app_fsm));
+    app_fsm->tx_ratio_x =
+        dcf77_tx_ratio_x_clamp(app_fsm->tx_ratio_x, dcf77_app_get_tx_ratio_y(app_fsm));
     dcf77_app_update_tx_ratio_texts(app_fsm);
 }
 
 bool dcf77_app_should_send_frame(const AppFSM* app_fsm, uint32_t frame_index) {
-    return dcf77_tx_ratio_should_send(frame_index, app_fsm->tx_ratio_x, dcf77_app_get_tx_ratio_y(app_fsm));
+    return dcf77_tx_ratio_should_send(
+        frame_index, app_fsm->tx_ratio_x, dcf77_app_get_tx_ratio_y(app_fsm));
 }
 
 static void dcf77_app_init_subghz_bands(AppFSM* app_fsm) {
@@ -333,14 +333,16 @@ void dcf77_app_update_subghz_texts(AppFSM* app_fsm) {
 void dcf77_app_set_experimental_time_enabled(AppFSM* app_fsm, bool enabled) {
     app_fsm->experimental_time_settings.enabled = enabled;
     dcf77_experimental_time_normalize_settings(
-        &app_fsm->experimental_time_settings, &app_fsm->experimental_time_settings.preset_datetime);
+        &app_fsm->experimental_time_settings,
+        &app_fsm->experimental_time_settings.preset_datetime);
     dcf77_app_update_experimental_time_texts(app_fsm);
 }
 
 void dcf77_app_set_experimental_time_source(AppFSM* app_fsm, Dcf77ExperimentalTimeSource source) {
     app_fsm->experimental_time_settings.source = source;
     dcf77_experimental_time_normalize_settings(
-        &app_fsm->experimental_time_settings, &app_fsm->experimental_time_settings.preset_datetime);
+        &app_fsm->experimental_time_settings,
+        &app_fsm->experimental_time_settings.preset_datetime);
     dcf77_app_update_experimental_time_texts(app_fsm);
 }
 
@@ -359,7 +361,8 @@ void dcf77_app_set_experimental_time_direction(
     Dcf77ExperimentalTimeDirection direction) {
     app_fsm->experimental_time_settings.direction = direction;
     dcf77_experimental_time_normalize_settings(
-        &app_fsm->experimental_time_settings, &app_fsm->experimental_time_settings.preset_datetime);
+        &app_fsm->experimental_time_settings,
+        &app_fsm->experimental_time_settings.preset_datetime);
     dcf77_app_update_experimental_time_texts(app_fsm);
 }
 
@@ -384,7 +387,8 @@ void dcf77_app_set_experimental_time_speed_index(AppFSM* app_fsm, uint8_t speed_
     }
 
     dcf77_experimental_time_normalize_settings(
-        &app_fsm->experimental_time_settings, &app_fsm->experimental_time_settings.preset_datetime);
+        &app_fsm->experimental_time_settings,
+        &app_fsm->experimental_time_settings.preset_datetime);
     app_fsm->experimental_time_speed_index = dcf77_app_get_experimental_time_speed_index(app_fsm);
     dcf77_app_update_experimental_time_texts(app_fsm);
 }
@@ -395,7 +399,8 @@ void dcf77_app_set_experimental_speedup(AppFSM* app_fsm, uint8_t speedup) {
         app_fsm->experimental_time_settings.slowdown = 1U;
     }
     dcf77_experimental_time_normalize_settings(
-        &app_fsm->experimental_time_settings, &app_fsm->experimental_time_settings.preset_datetime);
+        &app_fsm->experimental_time_settings,
+        &app_fsm->experimental_time_settings.preset_datetime);
     app_fsm->experimental_time_speed_index = dcf77_app_get_experimental_time_speed_index(app_fsm);
     dcf77_app_update_experimental_time_texts(app_fsm);
 }
@@ -406,7 +411,8 @@ void dcf77_app_set_experimental_slowdown(AppFSM* app_fsm, uint8_t slowdown) {
         app_fsm->experimental_time_settings.speedup = 1U;
     }
     dcf77_experimental_time_normalize_settings(
-        &app_fsm->experimental_time_settings, &app_fsm->experimental_time_settings.preset_datetime);
+        &app_fsm->experimental_time_settings,
+        &app_fsm->experimental_time_settings.preset_datetime);
     app_fsm->experimental_time_speed_index = dcf77_app_get_experimental_time_speed_index(app_fsm);
     dcf77_app_update_experimental_time_texts(app_fsm);
 }
@@ -444,10 +450,7 @@ void dcf77_app_update_debug_texts(AppFSM* app_fsm) {
         app_fsm->gpio_baseband_pin_number,
         true);
     dcf77_debug_format_pin_text(
-        app_fsm->gpio_rf_text,
-        sizeof(app_fsm->gpio_rf_text),
-        app_fsm->gpio_rf_pin_number,
-        true);
+        app_fsm->gpio_rf_text, sizeof(app_fsm->gpio_rf_text), app_fsm->gpio_rf_pin_number, true);
     dcf77_debug_format_gpio_rf_duty_text(
         app_fsm->gpio_rf_duty_text,
         sizeof(app_fsm->gpio_rf_duty_text),
@@ -526,9 +529,7 @@ void dcf77_app_sound_set(AppFSM* app_fsm, bool enabled) {
         }
     }
 
-    furi_hal_speaker_start(
-        dcf77_subghz_note_freq_hz(app_fsm->speaker_value_index - 1U),
-        0.6f);
+    furi_hal_speaker_start(dcf77_subghz_note_freq_hz(app_fsm->speaker_value_index - 1U), 0.6f);
     app_fsm->speaker_active = true;
 }
 
@@ -620,7 +621,8 @@ static void dcf77_app_restore_saved_subghz_frequencies(
     int32_t selected_band = dcf77_app_find_subghz_band_by_start(app_fsm, selected_band_start);
 
     for(uint8_t i = 0; i < saved_band_count && i < DCF77_SUBGHZ_MAX_BANDS; i++) {
-        const int32_t band_index = dcf77_app_find_subghz_band_by_start(app_fsm, saved_band_starts[i]);
+        const int32_t band_index =
+            dcf77_app_find_subghz_band_by_start(app_fsm, saved_band_starts[i]);
 
         if(band_index >= 0) {
             const Dcf77SubGhzBand band = dcf77_app_get_subghz_band(app_fsm, (uint8_t)band_index);
@@ -630,7 +632,8 @@ static void dcf77_app_restore_saved_subghz_frequencies(
     }
 
     if(selected_band < 0) {
-        selected_band = dcf77_app_find_subghz_band_for_frequency(app_fsm, DCF77_SUBGHZ_FALLBACK_FREQ);
+        selected_band =
+            dcf77_app_find_subghz_band_for_frequency(app_fsm, DCF77_SUBGHZ_FALLBACK_FREQ);
     }
 
     if(selected_band < 0) {
@@ -640,12 +643,10 @@ static void dcf77_app_restore_saved_subghz_frequencies(
     dcf77_app_set_subghz_band(app_fsm, (uint8_t)selected_band);
 }
 
-
 bool dcf77_app_settings_save(const AppFSM* app_fsm) {
     Storage* storage = furi_record_open(RECORD_STORAGE);
-    const bool dir_ready =
-        storage_common_exists(storage, DCF77_SETTINGS_DIR) ||
-        (storage_simply_mkdir(storage, DCF77_SETTINGS_DIR) == true);
+    const bool dir_ready = storage_common_exists(storage, DCF77_SETTINGS_DIR) ||
+                           (storage_simply_mkdir(storage, DCF77_SETTINGS_DIR) == true);
     furi_record_close(RECORD_STORAGE);
 
     if(!dir_ready) {
@@ -754,7 +755,8 @@ static void dcf77_app_settings_load(AppFSM* app_fsm) {
 
     dcf77_app_init_signal_defaults(app_fsm);
     dcf77_app_init_subghz_bands(app_fsm);
-    dcf77_experimental_time_reset_settings(&app_fsm->experimental_time_settings, &default_datetime);
+    dcf77_experimental_time_reset_settings(
+        &app_fsm->experimental_time_settings, &default_datetime);
     app_fsm->gpio_baseband_pin_number = GPIO_BASEBAND_PIN_DEFAULT;
     app_fsm->gpio_rf_pin_number = GPIO_RF_PIN_NONE;
     app_fsm->gpio_rf_duty_cycle = GPIO_RF_DUTY_CYCLE_DEFAULT;
@@ -764,8 +766,13 @@ static void dcf77_app_settings_load(AppFSM* app_fsm) {
     app_fsm->tx_ratio_y_index = 0U;
 
     if(saved_struct_load(
-           DCF77_SETTINGS_PATH, &settings, sizeof(settings), DCF77_SETTINGS_MAGIC, DCF77_SETTINGS_VERSION)) {
-        dcf77_app_restore_saved_signal_freqs(app_fsm, settings.signal_freqs, RadioClockSignalCount);
+           DCF77_SETTINGS_PATH,
+           &settings,
+           sizeof(settings),
+           DCF77_SETTINGS_MAGIC,
+           DCF77_SETTINGS_VERSION)) {
+        dcf77_app_restore_saved_signal_freqs(
+            app_fsm, settings.signal_freqs, RadioClockSignalCount);
         if(settings.current_signal >= RadioClockSignalCount) {
             settings.current_signal = RadioClockSignalDcf77;
         }
@@ -803,10 +810,12 @@ static void dcf77_app_settings_load(AppFSM* app_fsm) {
         app_fsm->experimental_time_settings.direction = settings.experimental_stop_time;
         app_fsm->experimental_time_settings.speedup = settings.experimental_speedup;
         app_fsm->experimental_time_settings.slowdown = settings.experimental_slowdown;
-        app_fsm->experimental_time_settings.preset_datetime = settings.experimental_preset_datetime;
+        app_fsm->experimental_time_settings.preset_datetime =
+            settings.experimental_preset_datetime;
         dcf77_experimental_time_normalize_settings(
             &app_fsm->experimental_time_settings, &default_datetime);
-        app_fsm->experimental_time_speed_index = dcf77_app_get_experimental_time_speed_index(app_fsm);
+        app_fsm->experimental_time_speed_index =
+            dcf77_app_get_experimental_time_speed_index(app_fsm);
         dcf77_app_restore_saved_subghz_frequencies(
             app_fsm,
             settings.subghz_band_starts,
@@ -824,7 +833,8 @@ static void dcf77_app_settings_load(AppFSM* app_fsm) {
         dcf77_app_set_tx_ratio_y_index(app_fsm, 0U);
         dcf77_app_set_tx_ratio_x(app_fsm, 1U);
         dcf77_app_set_signal_frequency(app_fsm, app_fsm->signal_freqs[RadioClockSignalDcf77]);
-        app_fsm->experimental_time_speed_index = dcf77_app_get_experimental_time_speed_index(app_fsm);
+        app_fsm->experimental_time_speed_index =
+            dcf77_app_get_experimental_time_speed_index(app_fsm);
     }
 
     dcf77_app_update_experimental_time_texts(app_fsm);

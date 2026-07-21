@@ -3,10 +3,10 @@
 
 void nearby_files_scene_file_list_on_enter(void* context) {
     NearbyFilesApp* app = context;
-    
+
     // Populate list with found files
     nearby_files_populate_list(app);
-    
+
     // Switch to variable item list view
     view_dispatcher_switch_to_view(app->view_dispatcher, NearbyFilesViewVariableItemList);
 }
@@ -14,7 +14,7 @@ void nearby_files_scene_file_list_on_enter(void* context) {
 bool nearby_files_scene_file_list_on_event(void* context, SceneManagerEvent event) {
     NearbyFilesApp* app = context;
     bool consumed = false;
-    
+
     if(event.type == SceneManagerEventTypeCustom) {
         if(event.event == NearbyFilesCustomEventFileSelected) {
             consumed = true;
@@ -24,7 +24,7 @@ bool nearby_files_scene_file_list_on_event(void* context, SceneManagerEvent even
         scene_manager_next_scene(app->scene_manager, NearbyFilesSceneMenu);
         consumed = true;
     }
-    
+
     return consumed;
 }
 

@@ -47,7 +47,7 @@ bool fsd_can_transmit(const FSDState* state) {
 void fsd_handle_bms_hv(FSDState* state, const CANFRAME* frame) {
     if(frame->data_lenght < 4) return;
     uint16_t raw_v = ((uint16_t)frame->buffer[1] << 8) | frame->buffer[0];
-    int16_t  raw_i = (int16_t)(((uint16_t)frame->buffer[3] << 8) | frame->buffer[2]);
+    int16_t raw_i = (int16_t)(((uint16_t)frame->buffer[3] << 8) | frame->buffer[2]);
     state->pack_voltage_v = raw_v * 0.01f;
     state->pack_current_a = raw_i * 0.1f;
     state->bms_seen = true;
@@ -109,10 +109,14 @@ TeslaHWVersion fsd_detect_hw_version(const CANFRAME* frame) {
     uint8_t das_hw = (frame->buffer[0] >> 6) & 0x03;
     switch(das_hw) {
     case 0:
-    case 1:  return TeslaHW_Legacy;  // HW1/HW2/EAP retrofit — uses 0x3EE/0x045
-    case 2:  return TeslaHW_HW3;
-    case 3:  return TeslaHW_HW4;
-    default: return TeslaHW_Unknown;
+    case 1:
+        return TeslaHW_Legacy; // HW1/HW2/EAP retrofit — uses 0x3EE/0x045
+    case 2:
+        return TeslaHW_HW3;
+    case 3:
+        return TeslaHW_HW4;
+    default:
+        return TeslaHW_Unknown;
     }
 }
 
@@ -125,54 +129,73 @@ void fsd_handle_follow_distance(FSDState* state, const CANFRAME* frame) {
 
     if(state->hw_version == TeslaHW_HW3) {
         switch(fd) {
-        case 1: state->speed_profile = 2; break;
-        case 2: state->speed_profile = 1; break;
-        case 3: state->speed_profile = 0; break;
-        default: break;
+        case 1:
+            state->speed_profile = 2;
+            break;
+        case 2:
+            state->speed_profile = 1;
+            break;
+        case 3:
+            state->speed_profile = 0;
+            break;
+        default:
+            break;
         }
     } else {
         switch(fd) {
-        case 1: state->speed_profile = 3; break;
-        case 2: state->speed_profile = 2; break;
-        case 3: state->speed_profile = 1; break;
-        case 4: state->speed_profile = 0; break;
-        case 5: state->speed_profile = 4; break;
-        default: break;
+        case 1:
+            state->speed_profile = 3;
+            break;
+        case 2:
+            state->speed_profile = 2;
+            break;
+        case 3:
+            state->speed_profile = 1;
+            break;
+        case 4:
+            state->speed_profile = 0;
+            break;
+        case 5:
+            state->speed_profile = 4;
+            break;
+        default:
+            break;
         }
     }
 }
 
 bool fsd_ap_first_allows(const FSDState* state, uint32_t now_ms) {
-    if(!state->ap_first) return true;            // gate off -> always allow
+    if(!state->ap_first) return true; // gate off -> always allow
     // 2 = AVAILABLE (AP offered, NOT engaged); 3 = ACTIVE_NOMINAL is the first
     // genuinely-engaged state. Injecting at 2 fired 0x3EE while AP was off (#108).
-    if(state->das_ap_state < DAS_APSTATE_ENGAGED) return false;  // AP not engaged yet
-    if(state->ap_first_edge) return true;        // experimental: inject at engage onset, no debounce
+    if(state->das_ap_state < DAS_APSTATE_ENGAGED) return false; // AP not engaged yet
+    if(state->ap_first_edge) return true; // experimental: inject at engage onset, no debounce
     // AP engaged: require it to have held stable for the debounce window.
     return (now_ms - state->ap_unstable_tick_ms) >= AP_FIRST_STABLE_MS;
 }
 
 bool fsd_soft_engage_allows(FSDState* state) {
-    if(!state->soft_engage) return true;             // gate off
-    if(state->soft_engage_latched) return true;      // already engaged this cycle
+    if(!state->soft_engage) return true; // gate off
+    if(state->soft_engage_latched) return true; // already engaged this cycle
     // Hold until the wheel is near-centred so the DAS's path recompute at
     // FSD-enable is small (the steer-jerk is worse on curves — #108). If 0x129
     // isn't on the bus, steering_angle_deg stays 0 and this latches immediately
     // (degrades to AP-First-only, no worse than before).
     float a = state->steering_angle_deg;
     if(a < 0.0f) a = -a;
-    if(a > SOFT_ENGAGE_ANGLE_DEG) return false;      // turning — hold activation
-    state->soft_engage_latched = true;               // centred — begin and latch
+    if(a > SOFT_ENGAGE_ANGLE_DEG) return false; // turning — hold activation
+    state->soft_engage_latched = true; // centred — begin and latch
     return true;
 }
 
 void fsd_abort_guard_update(FSDState* state) {
     if(!state->abort_guard) return;
     if(state->das_ap_state < DAS_APSTATE_ENGAGED) {
-        state->abort_guard_latched = false;          // clean disengage re-arms
-    } else if(state->das_ap_state == DAS_APSTATE_ABORTING ||
-              state->das_ap_state == DAS_APSTATE_ABORTED) {
-        state->abort_guard_latched = true;           // abort seen -> suppress injection
+        state->abort_guard_latched = false; // clean disengage re-arms
+    } else if(
+        state->das_ap_state == DAS_APSTATE_ABORTING ||
+        state->das_ap_state == DAS_APSTATE_ABORTED) {
+        state->abort_guard_latched = true; // abort seen -> suppress injection
     }
 }
 
@@ -196,8 +219,7 @@ bool fsd_handle_autopilot_frame(FSDState* state, CANFRAME* frame, uint32_t now_m
     // Minimal Inject: once the per-engagement burst budget is spent, stop modifying
     // for the rest of this engagement so injection stays at engage onset, off the
     // later abort edge. ap_inject_count is reset to 0 on disengage (#108).
-    if(state->ap_first_minimal && state->ap_inject_count >= AP_MINIMAL_INJECT_FRAMES)
-        return false;
+    if(state->ap_first_minimal && state->ap_inject_count >= AP_MINIMAL_INJECT_FRAMES) return false;
 
     uint8_t mux = fsd_read_mux_id(frame);
     bool fsd_ui = fsd_is_selected_in_ui(frame, state->force_fsd);
@@ -278,7 +300,7 @@ bool fsd_handle_autopilot_frame(FSDState* state, CANFRAME* frame, uint32_t now_m
 
     if(modified) {
         state->frames_modified++;
-        if(state->ap_first_minimal) state->ap_inject_count++;  // spend one burst frame (#108)
+        if(state->ap_first_minimal) state->ap_inject_count++; // spend one burst frame (#108)
     }
     return modified;
 }
@@ -311,8 +333,7 @@ bool fsd_handle_legacy_autopilot(FSDState* state, CANFRAME* frame, uint32_t now_
     if(!fsd_abort_guard_allows(state)) return false;
     // Minimal Inject: stop modifying once this engagement's burst budget is spent,
     // so injection lands at engage onset, not the later abort edge (#108).
-    if(state->ap_first_minimal && state->ap_inject_count >= AP_MINIMAL_INJECT_FRAMES)
-        return false;
+    if(state->ap_first_minimal && state->ap_inject_count >= AP_MINIMAL_INJECT_FRAMES) return false;
 
     uint8_t mux = fsd_read_mux_id(frame);
     bool fsd_ui = fsd_is_selected_in_ui(frame, state->force_fsd);
@@ -334,7 +355,7 @@ bool fsd_handle_legacy_autopilot(FSDState* state, CANFRAME* frame, uint32_t now_
 
     if(modified) {
         state->frames_modified++;
-        if(state->ap_first_minimal) state->ap_inject_count++;  // spend one burst frame (#108)
+        if(state->ap_first_minimal) state->ap_inject_count++; // spend one burst frame (#108)
     }
     return modified;
 }
@@ -501,19 +522,15 @@ void fsd_handle_das_status_hw4(FSDState* state, const CANFRAME* frame) {
     if(hw4_state != 1u) {
         state->das_hw4_byte1_moved = true;
         state->das_hw4_byte0_pin_count = 0;
-    } else if(!state->das_hw4_use_byte0 && !state->das_hw4_byte1_moved &&
-              b0_state >= 2u) {
-        if(state->das_hw4_byte0_pin_count < 3u)
-            state->das_hw4_byte0_pin_count++;
-        if(state->das_hw4_byte0_pin_count >= 3u)
-            state->das_hw4_use_byte0 = true;
+    } else if(!state->das_hw4_use_byte0 && !state->das_hw4_byte1_moved && b0_state >= 2u) {
+        if(state->das_hw4_byte0_pin_count < 3u) state->das_hw4_byte0_pin_count++;
+        if(state->das_hw4_byte0_pin_count >= 3u) state->das_hw4_use_byte0 = true;
     }
     state->das_ap_state = state->das_hw4_use_byte0 ? b0_state : hw4_state;
     // DAS_autopilotHandsOnState: bit42|4 → byte5 bits[5:2]
     state->das_hands_on_state = (frame->buffer[5] >> 2) & 0x0F;
     // DAS_autoLaneChangeState: bit46|5 → byte5 bits[7:6] + byte6 bits[2:0]
-    state->das_lane_change = ((frame->buffer[5] >> 6) & 0x03) |
-                             ((frame->buffer[6] & 0x07) << 2);
+    state->das_lane_change = ((frame->buffer[5] >> 6) & 0x03) | ((frame->buffer[6] & 0x07) << 2);
     // DAS_laneDepartureWarning: bit37|3 → byte4 bits[7:5]
     // (not stored separately, included in lane_change context)
     // DAS_sideCollisionWarning: bit32|2 → byte4 bits[1:0]
@@ -603,7 +620,10 @@ bool fsd_handle_gtw_shield(FSDState* state, CANFRAME* frame) {
             // Auto-arm once all 8 muxes are captured
             bool all_valid = true;
             for(int m = 0; m < 8; m++) {
-                if(!state->gtw_snapshot_valid[m]) { all_valid = false; break; }
+                if(!state->gtw_snapshot_valid[m]) {
+                    all_valid = false;
+                    break;
+                }
             }
             if(all_valid) state->gtw_shield_armed = true;
         }
@@ -758,8 +778,9 @@ bool fsd_handle_track_mode_inject(FSDState* state, CANFRAME* frame) {
 // VCLEFT_switchStatus mux=1 signal positions (opendbc tesla_model3_vehicle.dbc):
 //   swcRightPressed    : startbit 12, 2 bits  → byte 1 bits 4-5
 //   swcRightScrollTicks: startbit 24, 6 bits signed → byte 3 bits 0-5
-#define SCROLL_SWC_PRESSED_PRESSED   1u   // "pressed" value (per @JakNo bench; pending re-confirm)
-#define SCROLL_SWC_SCROLLTICKS_UP    1u   // one detent up; 6-bit signed (+1). Direction pending @JakNo confirm
+#define SCROLL_SWC_PRESSED_PRESSED 1u // "pressed" value (per @JakNo bench; pending re-confirm)
+#define SCROLL_SWC_SCROLLTICKS_UP \
+    1u // one detent up; 6-bit signed (+1). Direction pending @JakNo confirm
 // Phase durations per @JakNo's #82 flow (milliseconds, approximate — tune on-car)
 #define SCROLL_T_PRESS1_MS  250u
 #define SCROLL_T_SCROLL1_MS 150u
@@ -775,9 +796,9 @@ static void scroll_set_scrollticks(CANFRAME* frame, uint8_t v) {
 
 bool fsd_handle_scroll_press_inject(FSDState* state, CANFRAME* frame, uint32_t now_ms) {
     if(!state->scroll_press_ap) return false;
-    if(state->hw_version != TeslaHW_HW4) return false;     // HW4-only per v2.15 scope
-    if(state->op_mode != OpMode_Service) return false;     // Service mode safety gate
-    if(frame->data_lenght < 4) return false;               // need byte 3 for scrollTicks
+    if(state->hw_version != TeslaHW_HW4) return false; // HW4-only per v2.15 scope
+    if(state->op_mode != OpMode_Service) return false; // Service mode safety gate
+    if(frame->data_lenght < 4) return false; // need byte 3 for scrollTicks
 
     // VCLEFT_switchStatusIndex (mux) at byte 0 bits 0-1. Right-scroll lives on mux=1.
     uint8_t mux = frame->buffer[0] & 0x03;
@@ -795,7 +816,7 @@ bool fsd_handle_scroll_press_inject(FSDState* state, CANFRAME* frame, uint32_t n
 
     // Rising-edge fire trigger: AP UNAVAIL(0)→AVAIL(1) while armed.
     if(state->scroll_press_state == 0 && state->scroll_press_armed && ap == 1) {
-        state->scroll_press_state = 1;          // enter phase 1 (press1)
+        state->scroll_press_state = 1; // enter phase 1 (press1)
         state->scroll_press_armed = false;
         state->scroll_press_phase_ms = now_ms;
     }
@@ -995,8 +1016,8 @@ static uint32_t nag_xorshift32(void) {
 }
 
 // Torque random walk state
-static int16_t nag_torq_walk = 2230;       // raw starting = 1.80 Nm
-static uint8_t nag_exc_frames = 0;         // frames in grip excursion
+static int16_t nag_torq_walk = 2230; // raw starting = 1.80 Nm
+static uint8_t nag_exc_frames = 0; // frames in grip excursion
 static uint16_t nag_frames_until_exc = 175; // frames until next excursion
 // ── EPAS-faithful (Mode-C) nag path (v2.17, #100) ───────────────────────────
 // A demand-state-driven steering-torque model ported from the nicolozak
@@ -1007,8 +1028,8 @@ static uint16_t nag_frames_until_exc = 175; // frames until next excursion
 // it opposite the steering angle. Raw torque: 2048 = 0 Nm, raw = 2048 + Nm*100.
 static uint8_t nag_hands_level_from_raw(int16_t raw) {
     int16_t a = (raw >= 2048) ? (raw - 2048) : (2048 - raw);
-    if(a >= 200) return 2;   // |torque| >= 2.0 Nm
-    if(a >= 100) return 1;   // |torque| >= 1.0 Nm
+    if(a >= 200) return 2; // |torque| >= 2.0 Nm
+    if(a >= 100) return 1; // |torque| >= 1.0 Nm
     return 0;
 }
 
@@ -1019,31 +1040,45 @@ static int16_t nag_clamp_torque(int16_t raw) {
     return raw;
 }
 
-static bool nag_faithful_modec(FSDState* state, const CANFRAME* frame,
-                               CANFRAME* out, uint32_t now_ms) {
-    uint8_t das = state->das_hands_on_state;   // DAS hands-on demand state
+static bool
+    nag_faithful_modec(FSDState* state, const CANFRAME* frame, CANFRAME* out, uint32_t now_ms) {
+    uint8_t das = state->das_hands_on_state; // DAS hands-on demand state
 
     // ── transition memory ──
-    static uint8_t  prev_das       = 0xFF;
-    static uint32_t s1_enter_ms    = 0;
-    static uint32_t s2_enter_ms    = 0;
+    static uint8_t prev_das = 0xFF;
+    static uint32_t s1_enter_ms = 0;
+    static uint32_t s2_enter_ms = 0;
     static uint32_t strong_enter_ms = 0;
-    static int16_t  last_raw       = 2048;
-    static uint8_t  last_level     = 0;
+    static int16_t last_raw = 2048;
+    static uint8_t last_level = 0;
     static uint32_t s2_hold_until_ms = 0;
-    static int16_t  s2_hold_raw    = 2048;
-    static uint8_t  s2_hold_level  = 0;
-    static bool     s2_level2_active = false;
-    static int16_t  mild_walk      = 2048;
+    static int16_t s2_hold_raw = 2048;
+    static uint8_t s2_hold_level = 0;
+    static bool s2_level2_active = false;
+    static int16_t mild_walk = 2048;
 
-    bool is_strong   = (das == 3 || das == 4 || das == 5);
+    bool is_strong = (das == 3 || das == 4 || das == 5);
     bool prev_strong = (prev_das == 3 || prev_das == 4 || prev_das == 5);
-    if(prev_das != 1 && das == 1) { s1_enter_ms = now_ms; }
-    if(das != 1) { s1_enter_ms = 0; }
-    if(prev_das != 2 && das == 2) { s2_enter_ms = now_ms; }
-    if(das != 2) { s2_enter_ms = 0; s2_hold_until_ms = 0; s2_level2_active = false; }
-    if(!prev_strong && is_strong) { strong_enter_ms = now_ms; }
-    if(!is_strong) { strong_enter_ms = 0; }
+    if(prev_das != 1 && das == 1) {
+        s1_enter_ms = now_ms;
+    }
+    if(das != 1) {
+        s1_enter_ms = 0;
+    }
+    if(prev_das != 2 && das == 2) {
+        s2_enter_ms = now_ms;
+    }
+    if(das != 2) {
+        s2_enter_ms = 0;
+        s2_hold_until_ms = 0;
+        s2_level2_active = false;
+    }
+    if(!prev_strong && is_strong) {
+        strong_enter_ms = now_ms;
+    }
+    if(!is_strong) {
+        strong_enter_ms = 0;
+    }
     prev_das = das;
 
     // Global gate: AP active, and demand state not satisfied/suspended.
@@ -1051,11 +1086,12 @@ static bool nag_faithful_modec(FSDState* state, const CANFRAME* frame,
     // (DAS_APSTATE_ENGAGED=3). Nag suppression is intentionally relevant down to
     // AVAILABLE, so this stays at < 2u by design (#108).
     if(state->das_ap_state < 2u || das == 0 || das == 8 || das == 15) {
-        last_raw = 2048; last_level = 0;
-        return false;  // pass the real EPAS frame through unmodified
+        last_raw = 2048;
+        last_level = 0;
+        return false; // pass the real EPAS frame through unmodified
     }
 
-    int dir = (state->steering_angle_deg > 0.0f) ? -1 : 1;  // oppose steering
+    int dir = (state->steering_angle_deg > 0.0f) ? -1 : 1; // oppose steering
     int16_t torque;
     uint8_t level;
 
@@ -1063,9 +1099,11 @@ static bool nag_faithful_modec(FSDState* state, const CANFRAME* frame,
         // Idle, but hold the last injected value for a 500 ms grace after dropping
         // from an active demand state to avoid an abrupt cutoff.
         if(s1_enter_ms != 0 && (now_ms - s1_enter_ms) < 500u) {
-            torque = last_raw; level = last_level;
+            torque = last_raw;
+            level = last_level;
         } else {
-            last_raw = 2048; last_level = 0;
+            last_raw = 2048;
+            last_level = 0;
             return false;
         }
     } else if(das == 2) {
@@ -1073,20 +1111,23 @@ static bool nag_faithful_modec(FSDState* state, const CANFRAME* frame,
         // opposite the steering angle.
         if(s2_enter_ms != 0 && (now_ms - s2_enter_ms) < 2000u) return false;
         if(now_ms < s2_hold_until_ms) {
-            torque = s2_hold_raw; level = s2_hold_level;
+            torque = s2_hold_raw;
+            level = s2_hold_level;
         } else {
-            int16_t lo = (dir < 0) ? 1848 : 2098;   // -2.0 Nm..-0.5 Nm / +0.5..+2.0
+            int16_t lo = (dir < 0) ? 1848 : 2098; // -2.0 Nm..-0.5 Nm / +0.5..+2.0
             int16_t hi = (dir < 0) ? 1998 : 2248;
             if(mild_walk < lo || mild_walk > hi) mild_walk = (int16_t)((lo + hi) / 2);
-            mild_walk += (int16_t)((nag_xorshift32() % 25u) - 12);  // ±12/frame
+            mild_walk += (int16_t)((nag_xorshift32() % 25u) - 12); // ±12/frame
             if(mild_walk < lo) mild_walk = lo;
             if(mild_walk > hi) mild_walk = hi;
             torque = mild_walk;
             level = nag_hands_level_from_raw(torque);
             int16_t a = (torque >= 2048) ? (torque - 2048) : (2048 - torque);
             bool l2 = (a >= 200);
-            if(l2 && !s2_level2_active) {  // latch first level-2 crossing for 1 s
-                s2_hold_until_ms = now_ms + 1000u; s2_hold_raw = torque; s2_hold_level = 2;
+            if(l2 && !s2_level2_active) { // latch first level-2 crossing for 1 s
+                s2_hold_until_ms = now_ms + 1000u;
+                s2_hold_raw = torque;
+                s2_hold_level = 2;
             }
             s2_level2_active = l2;
         }
@@ -1096,13 +1137,14 @@ static bool nag_faithful_modec(FSDState* state, const CANFRAME* frame,
         if(strong_enter_ms != 0 && (now_ms - strong_enter_ms) < 1000u) return false;
         uint32_t active_ms = (strong_enter_ms == 0) ? 0u : (now_ms - strong_enter_ms - 1000u);
         uint16_t phase = (uint16_t)(active_ms % 1500u);
-        int16_t mag = 210;  // 2.1 Nm
+        int16_t mag = 210; // 2.1 Nm
         if(phase < 500u) mag = (int16_t)(((int32_t)phase * 210) / 500);
         torque = (int16_t)(2048 + dir * mag);
         level = nag_hands_level_from_raw(torque);
     }
 
-    last_raw = torque; last_level = level;
+    last_raw = torque;
+    last_level = level;
 
     out->canId = CAN_ID_EPAS_STATUS;
     out->data_lenght = 8;
@@ -1110,7 +1152,7 @@ static bool nag_faithful_modec(FSDState* state, const CANFRAME* frame,
     out->req = 0;
     out->buffer[0] = frame->buffer[0];
     out->buffer[1] = frame->buffer[1];
-    torque = nag_clamp_torque(torque);   // ±1.8 Nm safety cap (#122)
+    torque = nag_clamp_torque(torque); // ±1.8 Nm safety cap (#122)
     out->buffer[2] = (frame->buffer[2] & 0xF0) | (uint8_t)((torque >> 8) & 0x0F);
     out->buffer[3] = (uint8_t)(torque & 0xFF);
     // Leave handsOnLevel untouched — real EPAS keeps byte4[7:6] at 0 even when
@@ -1132,11 +1174,13 @@ static bool nag_faithful_modec(FSDState* state, const CANFRAME* frame,
 void fsd_apply_signal_config(FSDState* state, const CANFRAME* frame, uint32_t now_ms) {
     if(state->cfg_das_id != 0 && frame->canId == state->cfg_das_id) {
         if(state->cfg_apstate_byte < 8 && frame->data_lenght > state->cfg_apstate_byte)
-            state->das_ap_state = (frame->buffer[state->cfg_apstate_byte] >>
-                                   state->cfg_apstate_shift) & state->cfg_apstate_mask;
+            state->das_ap_state =
+                (frame->buffer[state->cfg_apstate_byte] >> state->cfg_apstate_shift) &
+                state->cfg_apstate_mask;
         if(state->cfg_handson_byte < 8 && frame->data_lenght > state->cfg_handson_byte)
-            state->das_hands_on_state = (frame->buffer[state->cfg_handson_byte] >>
-                                         state->cfg_handson_shift) & state->cfg_handson_mask;
+            state->das_hands_on_state =
+                (frame->buffer[state->cfg_handson_byte] >> state->cfg_handson_shift) &
+                state->cfg_handson_mask;
         state->das_ctx_seen_ms = now_ms;
     }
     if(state->cfg_steer_id != 0 && frame->canId == state->cfg_steer_id) {
@@ -1151,7 +1195,7 @@ void fsd_apply_signal_config(FSDState* state, const CANFRAME* frame, uint32_t no
 }
 
 bool fsd_das_ctx_fresh(const FSDState* state, uint32_t now_ms) {
-    if(state->cfg_das_id == 0) return true;   // auto mode — prior behaviour
+    if(state->cfg_das_id == 0) return true; // auto mode — prior behaviour
     return (now_ms - state->das_ctx_seen_ms) <= NAG_CTX_FRESH_MS;
 }
 
@@ -1161,8 +1205,7 @@ static bool nag_in_pause(uint32_t now_ms) {
     return (now_ms % cycle) >= NAG_BURST_MS;
 }
 
-bool fsd_handle_nag_killer(FSDState* state, const CANFRAME* frame, CANFRAME* out,
-                           uint32_t now_ms) {
+bool fsd_handle_nag_killer(FSDState* state, const CANFRAME* frame, CANFRAME* out, uint32_t now_ms) {
     if(frame->data_lenght < 8) return false;
     if(!state->nag_killer) return false;
     // Freshness: with a custom DAS source configured, no-op if it's stale (#122).
@@ -1209,7 +1252,7 @@ bool fsd_handle_nag_killer(FSDState* state, const CANFRAME* frame, CANFRAME* out
     bool das_escalation = (das != 0xFF) && (das_prev == 0xFF || das > das_prev);
     bool demand_now = (hands_on == 0 || hands_on == 3);
     if((das_escalation || (demand_now && !state->nag_demand_active)) && nag_exc_frames == 0) {
-        nag_exc_frames = 3 + (nag_xorshift32() % 3);          // 3-5 frame pulse
+        nag_exc_frames = 3 + (nag_xorshift32() % 3); // 3-5 frame pulse
         nag_frames_until_exc = 125 + (nag_xorshift32() % 100); // reset 5-9 s cooldown
     }
     state->nag_demand_active = demand_now;
@@ -1247,7 +1290,7 @@ bool fsd_handle_nag_killer(FSDState* state, const CANFRAME* frame, CANFRAME* out
 
     out->buffer[0] = frame->buffer[0];
     out->buffer[1] = frame->buffer[1];
-    torq = nag_clamp_torque(torq);   // ±1.8 Nm safety cap (#122)
+    torq = nag_clamp_torque(torq); // ±1.8 Nm safety cap (#122)
     out->buffer[2] = (frame->buffer[2] & 0xF0) | (uint8_t)((torq >> 8) & 0x0F);
     out->buffer[3] = (uint8_t)(torq & 0xFF);
     // Clear existing handsOnLevel bits (7:6) before setting level=1.

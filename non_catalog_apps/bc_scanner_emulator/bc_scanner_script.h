@@ -18,7 +18,10 @@ typedef enum {
     BarCodeStateFileError,
 } BarCodeWorkerState;
 
-typedef enum { FileIsEmpty, FileOpenError } FileError;
+typedef enum {
+    FileIsEmpty,
+    FileOpenError
+} FileError;
 
 typedef struct {
     BarCodeWorkerState state;

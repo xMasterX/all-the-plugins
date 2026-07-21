@@ -61,8 +61,7 @@ static void protopirate_receiver_info_build_normal_widget(ProtoPirateApp* app) {
             const char* protocol_name = furi_string_get_cstr(protocol);
             if(strcmp(protopirate_protocol_catalog_canonical_name(protocol_name), "PSA") == 0)
                 is_psa = true;
-            app->emulate_disabled_for_loaded =
-                !protopirate_protocol_catalog_can_tx(protocol_name);
+            app->emulate_disabled_for_loaded = !protopirate_protocol_catalog_can_tx(protocol_name);
         }
         furi_string_free(protocol);
     }
@@ -259,7 +258,8 @@ bool protopirate_scene_receiver_info_on_event(void* context, SceneManagerEvent e
                 if(rx_ff) {
                     if(protopirate_storage_save_capture_to_path(rx_ff, saved_path)) {
                         notification_message(app->notifications, &sequence_success);
-                        FURI_LOG_I(TAG, "Updated saved capture from received signal: %s", saved_path);
+                        FURI_LOG_I(
+                            TAG, "Updated saved capture from received signal: %s", saved_path);
                     } else {
                         notification_message(app->notifications, &sequence_error);
                         FURI_LOG_E(TAG, "Failed to update saved capture: %s", saved_path);

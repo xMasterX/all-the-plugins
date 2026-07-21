@@ -3,5 +3,5 @@
 
 #include <stdint.h>
 
-const uint8_t *getLevelData(uint8_t id);
-#endif  // LEVLE_OBJECTS_H
+const uint8_t* getLevelData(uint8_t id);
+#endif // LEVLE_OBJECTS_H

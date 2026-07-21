@@ -14,7 +14,11 @@ struct MfpDumpView {
 /* ---- Drawing ---- */
 
 static void draw_sector_grid(
-    Canvas* canvas, const MfpDumpViewModel* m, uint8_t x, uint8_t y, uint8_t max_width) {
+    Canvas* canvas,
+    const MfpDumpViewModel* m,
+    uint8_t x,
+    uint8_t y,
+    uint8_t max_width) {
     if(m->total_sectors == 0) return;
 
     uint8_t cell_size = 6;
@@ -39,17 +43,14 @@ static void draw_sector_grid(
         case MFP_DUMP_SECTOR_FAILED:
             /* Outlined box with diagonal cross */
             canvas_draw_frame(canvas, cx, cy, cell_size, cell_size);
-            canvas_draw_line(
-                canvas, cx + 1, cy + 1, cx + cell_size - 2, cy + cell_size - 2);
-            canvas_draw_line(
-                canvas, cx + cell_size - 2, cy + 1, cx + 1, cy + cell_size - 2);
+            canvas_draw_line(canvas, cx + 1, cy + 1, cx + cell_size - 2, cy + cell_size - 2);
+            canvas_draw_line(canvas, cx + cell_size - 2, cy + 1, cx + 1, cy + cell_size - 2);
             break;
         case MFP_DUMP_SECTOR_TRYING: {
             /* Animated marker: outlined box with center dot. The scene
              * forces periodic redraws so the "current" sector feels live. */
             canvas_draw_frame(canvas, cx, cy, cell_size, cell_size);
-            canvas_draw_box(
-                canvas, cx + cell_size / 2 - 1, cy + cell_size / 2 - 1, 2, 2);
+            canvas_draw_box(canvas, cx + cell_size / 2 - 1, cy + cell_size / 2 - 1, 2, 2);
             break;
         }
         case MFP_DUMP_SECTOR_PENDING:
@@ -67,8 +68,7 @@ static void draw_sector_grid(
 static void draw_header(Canvas* canvas, const MfpDumpViewModel* m) {
     canvas_set_font(canvas, FontSecondary);
     char header[32];
-    int n = snprintf(
-        header, sizeof(header), "SL3 %s  ", m->card_size == MfpSize4K ? "4K" : "2K");
+    int n = snprintf(header, sizeof(header), "SL3 %s  ", m->card_size == MfpSize4K ? "4K" : "2K");
     for(uint8_t i = 0; i < m->uid_len && n < (int)sizeof(header) - 3; i++) {
         n += snprintf(header + n, sizeof(header) - (size_t)n, "%02X", m->uid[i]);
     }
@@ -83,15 +83,12 @@ static void draw_scanning(Canvas* canvas, const MfpDumpViewModel* m) {
     canvas_set_font(canvas, FontPrimary);
     char buf[32];
     snprintf(
-        buf, sizeof(buf), "%u/%u sectors",
-        (unsigned)m->sectors_done, (unsigned)m->total_sectors);
+        buf, sizeof(buf), "%u/%u sectors", (unsigned)m->sectors_done, (unsigned)m->total_sectors);
     canvas_draw_str(canvas, 2, 22, buf);
 
     /* Keys info (right aligned) */
     canvas_set_font(canvas, FontSecondary);
-    snprintf(
-        buf, sizeof(buf), "%lu keys",
-        (unsigned long)(m->default_keys + m->dict_keys));
+    snprintf(buf, sizeof(buf), "%lu keys", (unsigned long)(m->default_keys + m->dict_keys));
     canvas_draw_str_aligned(canvas, 125, 22, AlignRight, AlignBottom, buf);
 
     /* Sector grid */
@@ -125,8 +122,11 @@ static void draw_terminal(Canvas* canvas, const MfpDumpViewModel* m, const char*
     canvas_set_font(canvas, FontSecondary);
     char buf[32];
     snprintf(
-        buf, sizeof(buf), "%u/%u sectors read",
-        (unsigned)m->sectors_ok, (unsigned)m->total_sectors);
+        buf,
+        sizeof(buf),
+        "%u/%u sectors read",
+        (unsigned)m->sectors_ok,
+        (unsigned)m->total_sectors);
     canvas_draw_str_aligned(canvas, 64, 48, AlignCenter, AlignBottom, buf);
 }
 
@@ -219,11 +219,5 @@ void mfp_dump_view_sync(MfpDumpView* inst, const MfpApp* app) {
 }
 
 void mfp_dump_view_set_state(MfpDumpView* inst, MfpDumpViewState state) {
-    with_view_model(
-        inst->view,
-        MfpDumpViewModel * m,
-        {
-            m->state = state;
-        },
-        true);
+    with_view_model(inst->view, MfpDumpViewModel * m, { m->state = state; }, true);
 }

@@ -11,16 +11,16 @@ char* vigenere_encrypt(const char* text, const char* key) {
     int key_index = 0;
 
     char* ciphertext = malloc(len + 1);
-    if (!ciphertext) return "memory allocation failed, try again";
+    if(!ciphertext) return "memory allocation failed, try again";
 
-    for (int i = 0; i < len; i++) {
+    for(int i = 0; i < len; i++) {
         char c = text[i];
 
-        if (isalpha(c)) {
+        if(isalpha(c)) {
             char k = key[key_index % key_len];
             int shift = tolower(k) - 'a';
 
-            if (isupper(c)) {
+            if(isupper(c)) {
                 ciphertext[i] = ((c - 'A' + shift) % 26) + 'A';
             } else {
                 ciphertext[i] = ((c - 'a' + shift) % 26) + 'a';
@@ -42,16 +42,16 @@ char* vigenere_decrypt(const char* text, const char* key) {
     int key_index = 0;
 
     char* plaintext = malloc(len + 1);
-    if (!plaintext) return "memory allocation failed, try again";
+    if(!plaintext) return "memory allocation failed, try again";
 
-    for (int i = 0; i < len; i++) {
+    for(int i = 0; i < len; i++) {
         char c = text[i];
 
-        if (isalpha(c)) {
+        if(isalpha(c)) {
             char k = key[key_index % key_len];
             int shift = tolower(k) - 'a';
 
-            if (isupper(c)) {
+            if(isupper(c)) {
                 plaintext[i] = ((c - 'A' - shift + 26) % 26) + 'A';
             } else {
                 plaintext[i] = ((c - 'a' - shift + 26) % 26) + 'a';

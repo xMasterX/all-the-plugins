@@ -8,13 +8,13 @@
 #include "../../../ui/scene_director.h"
 #include "../../../config/app/config.h"
 
-#define TOTP_CLI_COMMAND_AUTOMATION_ARG_METHOD "automation"
+#define TOTP_CLI_COMMAND_AUTOMATION_ARG_METHOD  "automation"
 #define TOTP_CLI_COMMAND_AUTOMATION_METHOD_NONE "none"
-#define TOTP_CLI_COMMAND_AUTOMATION_METHOD_USB "usb"
+#define TOTP_CLI_COMMAND_AUTOMATION_METHOD_USB  "usb"
 #ifdef TOTP_BADBT_AUTOMATION_ENABLED
 #define TOTP_CLI_COMMAND_AUTOMATION_METHOD_BT "bt"
 #endif
-#define TOTP_CLI_COMMAND_AUTOMATION_ARG_KB_LAYOUT_PREFIX "-k"
+#define TOTP_CLI_COMMAND_AUTOMATION_ARG_KB_LAYOUT_PREFIX     "-k"
 #define TOTP_CLI_COMMAND_AUTOMATION_ARG_INITIAL_DELAY_PREFIX "-w"
 
 static void print_method(AutomationMethod method, const char* color) {

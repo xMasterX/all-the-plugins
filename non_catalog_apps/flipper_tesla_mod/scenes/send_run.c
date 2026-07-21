@@ -71,15 +71,18 @@ static void send_run_write_result(TeslaFSDApp* app, uint32_t sent) {
     storage_common_mkdir(app->storage, "/ext/apps_data/tesla_mod/tests");
     storage_common_mkdir(app->storage, SEND_RESULTS_DIR);
     char path[110];
-    snprintf(path, sizeof(path), SEND_RESULTS_DIR "/send_%lu.log",
-             (unsigned long)furi_get_tick());
+    snprintf(path, sizeof(path), SEND_RESULTS_DIR "/send_%lu.log", (unsigned long)furi_get_tick());
 
     File* f = storage_file_alloc(app->storage);
     if(storage_file_open(f, path, FSAM_WRITE, FSOM_CREATE_ALWAYS)) {
         char line[160];
-        int n = snprintf(line, sizeof(line),
-                         "# Tesla CAN test result\n# profile: %s\n# app: %s\n# frames sent: %lu\n",
-                         app->send_name, TESLA_FSD_VERSION, (unsigned long)sent);
+        int n = snprintf(
+            line,
+            sizeof(line),
+            "# Tesla CAN test result\n# profile: %s\n# app: %s\n# frames sent: %lu\n",
+            app->send_name,
+            TESLA_FSD_VERSION,
+            (unsigned long)sent);
         storage_file_write(f, line, n);
         for(uint8_t i = 0; i < app->send_step_count; i++) {
             FsdProfileStep* st = &app->send_steps[i];
@@ -94,18 +97,23 @@ static void send_run_write_result(TeslaFSDApp* app, uint32_t sent) {
     storage_file_free(f);
 }
 
-static void send_run_display(TeslaFSDApp* app, const FSDState* state, bool done,
-                             const char* blocked) {
+static void
+    send_run_display(TeslaFSDApp* app, const FSDState* state, bool done, const char* blocked) {
     widget_reset(app->widget);
     char l[48];
 
-    widget_add_string_element(app->widget, 64, 2, AlignCenter, AlignTop, FontPrimary, "Send CAN Test");
+    widget_add_string_element(
+        app->widget, 64, 2, AlignCenter, AlignTop, FontPrimary, "Send CAN Test");
 
     snprintf(l, sizeof(l), "%.20s", app->send_name);
     widget_add_string_element(app->widget, 64, 14, AlignCenter, AlignTop, FontSecondary, l);
 
-    snprintf(l, sizeof(l), "%u frames   speed %.0f", app->send_step_count,
-             (double)state->vehicle_speed_kph);
+    snprintf(
+        l,
+        sizeof(l),
+        "%u frames   speed %.0f",
+        app->send_step_count,
+        (double)state->vehicle_speed_kph);
     widget_add_string_element(app->widget, 2, 26, AlignLeft, AlignTop, FontSecondary, l);
 
     const char* status;
@@ -121,10 +129,11 @@ static void send_run_display(TeslaFSDApp* app, const FSDState* state, bool done,
     widget_add_string_element(app->widget, 2, 38, AlignLeft, AlignTop, FontSecondary, status);
 
     if(!done) {
-        widget_add_button_element(app->widget, GuiButtonTypeCenter, "ARM SEND", send_run_button_cb, app);
+        widget_add_button_element(
+            app->widget, GuiButtonTypeCenter, "ARM SEND", send_run_button_cb, app);
     }
-    widget_add_string_element(app->widget, 64, 53, AlignCenter, AlignTop, FontSecondary,
-                              "parked only - BACK to stop");
+    widget_add_string_element(
+        app->widget, 64, 53, AlignCenter, AlignTop, FontSecondary, "parked only - BACK to stop");
 }
 
 static int32_t send_run_worker(void* context) {
@@ -143,9 +152,15 @@ static int32_t send_run_worker(void* context) {
     mcp->mode = (mode == OpMode_ListenOnly) ? MCP_LISTENONLY : MCP_NORMAL;
     mcp->bitRate = MCP_500KBPS;
     switch(app->mcp_clock) {
-    case 1:  mcp->clck = MCP_8MHZ;  break;
-    case 2:  mcp->clck = MCP_12MHZ; break;
-    default: mcp->clck = MCP_16MHZ; break;
+    case 1:
+        mcp->clck = MCP_8MHZ;
+        break;
+    case 2:
+        mcp->clck = MCP_12MHZ;
+        break;
+    default:
+        mcp->clck = MCP_16MHZ;
+        break;
     }
     if(mcp2515_init(mcp) != ERROR_OK) {
         view_dispatcher_send_custom_event(app->view_dispatcher, TeslaFSDEventNoDevice);
@@ -202,7 +217,8 @@ static int32_t send_run_worker(void* context) {
 void tesla_fsd_scene_send_run_on_enter(void* context) {
     TeslaFSDApp* app = context;
     widget_reset(app->widget);
-    widget_add_string_element(app->widget, 64, 28, AlignCenter, AlignCenter, FontPrimary, "Starting...");
+    widget_add_string_element(
+        app->widget, 64, 28, AlignCenter, AlignCenter, FontPrimary, "Starting...");
     view_dispatcher_switch_to_view(app->view_dispatcher, TeslaFSDViewWidget);
 
     app->worker_thread = furi_thread_alloc_ex("SendRun", 4096, send_run_worker, app);
@@ -222,7 +238,12 @@ bool tesla_fsd_scene_send_run_on_event(void* context, SceneManagerEvent event) {
         } else if(event.event == TeslaFSDEventNoDevice) {
             widget_reset(app->widget);
             widget_add_string_multiline_element(
-                app->widget, 64, 28, AlignCenter, AlignCenter, FontPrimary,
+                app->widget,
+                64,
+                28,
+                AlignCenter,
+                AlignCenter,
+                FontPrimary,
                 "CAN Module\nNot Found");
             consumed = true;
         }

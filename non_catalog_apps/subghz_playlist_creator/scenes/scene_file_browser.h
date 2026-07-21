@@ -10,10 +10,9 @@ void scene_file_browser_select(
     SubGhzPlaylistCreator* app,
     const char* start_dir,
     const char* extension,
-    SceneFileBrowserSelectCallback on_select
-);
+    SceneFileBrowserSelectCallback on_select);
 
 void scene_file_browser_show(SubGhzPlaylistCreator* app);
 
 // Add missing init view function declaration
-void scene_file_browser_init_view(SubGhzPlaylistCreator* app); 
+void scene_file_browser_init_view(SubGhzPlaylistCreator* app);

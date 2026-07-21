@@ -13,7 +13,6 @@
 
 #define TAG "Metroflip:Scene:T-Mobilitat"
 
-
 static void tmobilitat_get_control_chars(uint32_t number, char* out) {
     const char* table = "TRWAGMYFPDXBNJZSQVHLCKE";
     uint32_t r = number % 23;
@@ -35,11 +34,7 @@ static bool tmobilitat_display_card_view(Metroflip* app) {
     const uint8_t* last4 = app->hist_bytes + (app->hist_bytes_count - 4);
 
     // Convert to 32-bit unsigned integer (big-endian)
-    uint32_t card_number =
-        (last4[0] << 24) |
-        (last4[1] << 16) |
-        (last4[2] << 8)  |
-        (last4[3]);
+    uint32_t card_number = (last4[0] << 24) | (last4[1] << 16) | (last4[2] << 8) | (last4[3]);
 
     char control[3];
     tmobilitat_get_control_chars(card_number, control);
@@ -49,12 +44,23 @@ static bool tmobilitat_display_card_view(Metroflip* app) {
     uint32_t mid = (card_number / 1000) % 1000;
     uint32_t lo = card_number % 1000;
 
-    FURI_LOG_I(TAG, "Card number: %03lu %03lu %03lu%s",
-        (unsigned long)hi, (unsigned long)mid, (unsigned long)lo, control);
+    FURI_LOG_I(
+        TAG,
+        "Card number: %03lu %03lu %03lu%s",
+        (unsigned long)hi,
+        (unsigned long)mid,
+        (unsigned long)lo,
+        control);
 
     char val[METROFLIP_CARD_VIEW_VALUE_LEN];
-    snprintf(val, sizeof(val), "%03lu %03lu %03lu%s",
-        (unsigned long)hi, (unsigned long)mid, (unsigned long)lo, control);
+    snprintf(
+        val,
+        sizeof(val),
+        "%03lu %03lu %03lu%s",
+        (unsigned long)hi,
+        (unsigned long)mid,
+        (unsigned long)lo,
+        control);
 
     View* view = metroflip_card_view_alloc(app);
     metroflip_card_view_set_title(view, "T-Mobilitat");
@@ -85,15 +91,13 @@ static void tmobilitat_on_enter(Metroflip* app) {
         Widget* widget = app->widget;
         widget_reset(widget);
         FuriString* parsed_data = furi_string_alloc_set("\e#Unknown card\n");
-        widget_add_text_scroll_element(
-            widget, 0, 0, 128, 64, furi_string_get_cstr(parsed_data));
+        widget_add_text_scroll_element(widget, 0, 0, 128, 64, furi_string_get_cstr(parsed_data));
         widget_add_button_element(
             widget, GuiButtonTypeRight, "Exit", metroflip_exit_widget_callback, app);
         furi_string_free(parsed_data);
         view_dispatcher_switch_to_view(app->view_dispatcher, MetroflipViewWidget);
     }
 }
-
 
 static bool tmobilitat_on_event(Metroflip* app, SceneManagerEvent event) {
     bool consumed = false;
@@ -107,7 +111,6 @@ static bool tmobilitat_on_event(Metroflip* app, SceneManagerEvent event) {
 }
 
 static void tmobilitat_on_exit(Metroflip* app) {
-
     widget_reset(app->widget);
     popup_reset(app->popup);
 }

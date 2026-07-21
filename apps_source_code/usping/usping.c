@@ -275,7 +275,7 @@ int32_t usping_app() {
     furi_message_queue_free(event_queue);
     furi_mutex_free(plugin_state->mutex);
     free(plugin_state);
-    
+
     // Return previous state of expansion
     expansion_enable(expansion);
     furi_record_close(RECORD_EXPANSION);

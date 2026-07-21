@@ -472,9 +472,8 @@ void protopirate_history_set_matched_saved(
     item->saved_match_state = ProtoPirateSavedMatchStateDone;
 }
 
-const char* protopirate_history_get_matched_saved_path(
-    ProtoPirateHistory* instance,
-    uint16_t idx) {
+const char*
+    protopirate_history_get_matched_saved_path(ProtoPirateHistory* instance, uint16_t idx) {
     furi_check(instance);
 
     if(idx >= ProtoPirateHistoryItemArray_size(instance->data)) {

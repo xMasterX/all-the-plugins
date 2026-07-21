@@ -53,5 +53,4 @@ ProtoPirateProtocolRegistryRoute protopirate_get_protocol_registry_route(
     size_t preset_data_size,
     const char* protocol_name);
 
-const char*
-    protopirate_get_protocol_registry_route_name(ProtoPirateProtocolRegistryRoute route);
+const char* protopirate_get_protocol_registry_route_name(ProtoPirateProtocolRegistryRoute route);

@@ -15,9 +15,8 @@
 #include <dolphin/dolphin.h>
 #include "bt_trigger_icons.h"
 
-
 #define HID_BT_KEYS_STORAGE_PATH EXT_PATH("apps_data/hid_ble/.bt_hid.keys")
-#define TAG "bt_trigger"
+#define TAG                      "bt_trigger"
 
 // Enum of allowed event types
 typedef enum {

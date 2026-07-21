@@ -6,9 +6,9 @@
 
 #include "fordradiocode_icons.h"
 
-#define TAG "FordRadioCodeApp"
+#define TAG         "FordRadioCodeApp"
 #define DATA_FOLDER "/ext/apps_data/fordradiocode"
-#define FILE_PATH DATA_FOLDER "/radiocodes.bin"
+#define FILE_PATH   DATA_FOLDER "/radiocodes.bin"
 #define BUFFER_SIZE 8
 
 typedef struct {
@@ -21,7 +21,7 @@ typedef struct {
 } FordRadioCodeApp;
 
 static void draw_m_symbol(Canvas* canvas, int x) {
-	int y = 21;
+    int y = 21;
     // Left vertical
     canvas_draw_line(canvas, x, y, x, y + 13);
     canvas_draw_line(canvas, x + 1, y, x + 1, y + 13);
@@ -36,7 +36,7 @@ static void draw_m_symbol(Canvas* canvas, int x) {
 }
 
 static void draw_v_symbol(Canvas* canvas, int x) {
-	int y = 21;
+    int y = 21;
     // Diagonals
     canvas_draw_line(canvas, x, y, x + 4, y + 13);
     canvas_draw_line(canvas, x + 1, y, x + 5, y + 13);
@@ -50,26 +50,26 @@ static void render_callback(Canvas* canvas, void* ctx) {
     canvas_set_font(canvas, FontPrimary);
     canvas_draw_str_aligned(canvas, 64, 1, AlignCenter, AlignTop, "Ford Radio Codes");
 
-    if (app->file_missing) {
+    if(app->file_missing) {
         canvas_set_font(canvas, FontSecondary);
         canvas_draw_str(canvas, 0, 20, "File not found!");
         canvas_draw_str(canvas, 0, 40, "Copy radiocodes.bin to SD Card");
         canvas_draw_str(canvas, 0, 50, "/apps_data/fordradiocode/");
-    } else if (app->error) {
+    } else if(app->error) {
         canvas_set_font(canvas, FontSecondary);
         canvas_draw_str(canvas, 0, 30, app->error_msg);
     } else {
         canvas_set_font(canvas, FontBigNumbers);
         int x = 23;
-        
+
         // Display the input characters
-        for (uint8_t i = 0; i < 7; i++) {
+        for(uint8_t i = 0; i < 7; i++) {
             char current_char = app->input_buffer[i];
-            
-			// Draw the 'M' and 'V' manually, to match the size of FontBigNumbers
-            if (current_char == 'M') {
+
+            // Draw the 'M' and 'V' manually, to match the size of FontBigNumbers
+            if(current_char == 'M') {
                 draw_m_symbol(canvas, x);
-            } else if (current_char == 'V') {
+            } else if(current_char == 'V') {
                 draw_v_symbol(canvas, x);
             } else {
                 char char_str[2] = {current_char, '\0'};
@@ -77,9 +77,9 @@ static void render_callback(Canvas* canvas, void* ctx) {
             }
 
             // Display arrows for the current cursor position
-            if (i == app->cursor_pos) {
-				canvas_draw_icon(canvas, x, 12, &I_arrow_up);
-				canvas_draw_icon(canvas, x, 36, &I_arrow_down);
+            if(i == app->cursor_pos) {
+                canvas_draw_icon(canvas, x, 12, &I_arrow_up);
+                canvas_draw_icon(canvas, x, 36, &I_arrow_down);
             }
 
             x += 12;
@@ -104,12 +104,12 @@ static void process_data(FordRadioCodeApp* app) {
     long index = strtol(app->input_buffer + 1, &endptr, 10);
 
     size_t offset = (size_t)index * 2;
-    if (app->input_buffer[0] == 'V') offset += 2000000;
+    if(app->input_buffer[0] == 'V') offset += 2000000;
 
     Storage* storage = furi_record_open(RECORD_STORAGE);
     Stream* file_stream = file_stream_alloc(storage);
 
-    if (!file_stream_open(file_stream, FILE_PATH, FSAM_READ, FSOM_OPEN_EXISTING)) {
+    if(!file_stream_open(file_stream, FILE_PATH, FSAM_READ, FSOM_OPEN_EXISTING)) {
         snprintf(app->error_msg, sizeof(app->error_msg), "File read error");
         app->error = true;
         goto cleanup;
@@ -117,7 +117,7 @@ static void process_data(FordRadioCodeApp* app) {
 
     stream_seek(file_stream, offset, StreamOffsetFromStart);
     uint8_t buffer[2];
-    if (stream_read(file_stream, buffer, sizeof(buffer)) != sizeof(buffer)) {
+    if(stream_read(file_stream, buffer, sizeof(buffer)) != sizeof(buffer)) {
         snprintf(app->error_msg, sizeof(app->error_msg), "Read error");
         app->error = true;
     } else {
@@ -132,11 +132,11 @@ cleanup:
 
 static void ensure_data_folder_exists(FordRadioCodeApp* app) {
     Storage* storage = furi_record_open(RECORD_STORAGE);
-    
-    if (!storage_dir_exists(storage, DATA_FOLDER)) {
+
+    if(!storage_dir_exists(storage, DATA_FOLDER)) {
         storage_common_mkdir(storage, DATA_FOLDER);
     }
-    
+
     app->file_missing = !storage_file_exists(storage, FILE_PATH);
     furi_record_close(RECORD_STORAGE);
 }
@@ -162,48 +162,50 @@ int32_t fordradiocode_app_entry(void* p) {
     InputEvent event;
     bool running = true;
 
-    if (!app->file_missing) process_data(app);
+    if(!app->file_missing) process_data(app);
 
-    while (running) {
-        if (furi_message_queue_get(event_queue, &event, FuriWaitForever) == FuriStatusOk) {
-            if (event.type == InputTypeShort || event.type == InputTypeRepeat) {
-                switch (event.key) {
-					case InputKeyUp:
-						if (app->cursor_pos == 0) {
-							app->input_buffer[0] = (app->input_buffer[0] == 'M') ? 'V' : 'M';
-						} else {
-							app->input_buffer[app->cursor_pos] = 
-								(app->input_buffer[app->cursor_pos] == '9') ? '0' : 
-								app->input_buffer[app->cursor_pos] + 1;
-						}
-						if (!app->file_missing) process_data(app);
-						break;
+    while(running) {
+        if(furi_message_queue_get(event_queue, &event, FuriWaitForever) == FuriStatusOk) {
+            if(event.type == InputTypeShort || event.type == InputTypeRepeat) {
+                switch(event.key) {
+                case InputKeyUp:
+                    if(app->cursor_pos == 0) {
+                        app->input_buffer[0] = (app->input_buffer[0] == 'M') ? 'V' : 'M';
+                    } else {
+                        app->input_buffer[app->cursor_pos] =
+                            (app->input_buffer[app->cursor_pos] == '9') ?
+                                '0' :
+                                app->input_buffer[app->cursor_pos] + 1;
+                    }
+                    if(!app->file_missing) process_data(app);
+                    break;
 
-					case InputKeyDown:
-						if (app->cursor_pos == 0) {
-							app->input_buffer[0] = (app->input_buffer[0] == 'M') ? 'V' : 'M';
-						} else {
-							app->input_buffer[app->cursor_pos] = 
-								(app->input_buffer[app->cursor_pos] == '0') ? '9' : 
-								app->input_buffer[app->cursor_pos] - 1;
-						}
-						if (!app->file_missing) process_data(app);
-						break;
+                case InputKeyDown:
+                    if(app->cursor_pos == 0) {
+                        app->input_buffer[0] = (app->input_buffer[0] == 'M') ? 'V' : 'M';
+                    } else {
+                        app->input_buffer[app->cursor_pos] =
+                            (app->input_buffer[app->cursor_pos] == '0') ?
+                                '9' :
+                                app->input_buffer[app->cursor_pos] - 1;
+                    }
+                    if(!app->file_missing) process_data(app);
+                    break;
 
-					case InputKeyLeft:
-						if (app->cursor_pos > 0) app->cursor_pos--;
-						break;
+                case InputKeyLeft:
+                    if(app->cursor_pos > 0) app->cursor_pos--;
+                    break;
 
-					case InputKeyRight:
-						if (app->cursor_pos < 6) app->cursor_pos++;
-						break;
+                case InputKeyRight:
+                    if(app->cursor_pos < 6) app->cursor_pos++;
+                    break;
 
-					case InputKeyBack:
-						running = false;
-						break;
+                case InputKeyBack:
+                    running = false;
+                    break;
 
-					default:
-						break;
+                default:
+                    break;
                 }
                 view_port_update(view_port);
             }

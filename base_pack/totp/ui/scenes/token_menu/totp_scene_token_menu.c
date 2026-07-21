@@ -10,10 +10,14 @@
 #include "../../../config/app/config.h"
 #include <roll_value.h>
 
-#define SCREEN_HEIGHT_THIRD (SCREEN_HEIGHT / 3)
+#define SCREEN_HEIGHT_THIRD        (SCREEN_HEIGHT / 3)
 #define SCREEN_HEIGHT_THIRD_CENTER (SCREEN_HEIGHT_THIRD >> 1)
 
-typedef enum { AddNewToken, DeleteToken, AppSettings } Control;
+typedef enum {
+    AddNewToken,
+    DeleteToken,
+    AppSettings
+} Control;
 
 typedef struct {
     Control selected_control;

@@ -19,11 +19,11 @@
 
 #define APP_NAME "[ESP8266] IFTTT Virtual Button"
 
-#define CONF_SSID "wifi_ssid"
-#define CONF_PASSWORD "wifi_password"
-#define CONF_KEY "webhooks_key"
-#define CONF_EVENT "event"
-#define CONFIG_FILE_HEADER "IFTTT Virtual Button Config File"
+#define CONF_SSID           "wifi_ssid"
+#define CONF_PASSWORD       "wifi_password"
+#define CONF_KEY            "webhooks_key"
+#define CONF_EVENT          "event"
+#define CONFIG_FILE_HEADER  "IFTTT Virtual Button Config File"
 #define CONFIG_FILE_VERSION 1
 
 typedef struct {

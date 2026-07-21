@@ -2,9 +2,9 @@
 
 #define TAG "MagHelpers"
 
-#define ZERO_PREFIX 25 // n zeros prefix
-#define ZERO_BETWEEN 53 // n zeros between tracks
-#define ZERO_SUFFIX 25 // n zeros suffix
+#define ZERO_PREFIX     25 // n zeros prefix
+#define ZERO_BETWEEN    53 // n zeros between tracks
+#define ZERO_SUFFIX     25 // n zeros suffix
 #define REPEAT_DELAY_MS 50
 
 // bits per char on a given track
@@ -309,17 +309,23 @@ void mag_spoof(Mag* mag) {
             bits_t2_count,
             bits_t3_count);
         printf("T1 raw: ");
-        for(int i = 0; i < bits_t1_count / 16; i++) printf("%02x ", bits_t1_raw[i]);
+        for(int i = 0; i < bits_t1_count / 16; i++)
+            printf("%02x ", bits_t1_raw[i]);
         printf("\r\nT1 manchester: ");
-        for(int i = 0; i < bits_t1_count / 8; i++) printf("%02x ", bits_t1_manchester[i]);
+        for(int i = 0; i < bits_t1_count / 8; i++)
+            printf("%02x ", bits_t1_manchester[i]);
         printf("\r\nT2 raw: ");
-        for(int i = 0; i < bits_t2_count / 16; i++) printf("%02x ", bits_t2_raw[i]);
+        for(int i = 0; i < bits_t2_count / 16; i++)
+            printf("%02x ", bits_t2_raw[i]);
         printf("\r\nT2 manchester: ");
-        for(int i = 0; i < bits_t2_count / 8; i++) printf("%02x ", bits_t2_manchester[i]);
+        for(int i = 0; i < bits_t2_count / 8; i++)
+            printf("%02x ", bits_t2_manchester[i]);
         printf("\r\nT3 raw: ");
-        for(int i = 0; i < bits_t3_count / 16; i++) printf("%02x ", bits_t3_raw[i]);
+        for(int i = 0; i < bits_t3_count / 16; i++)
+            printf("%02x ", bits_t3_raw[i]);
         printf("\r\nT3 manchester: ");
-        for(int i = 0; i < bits_t3_count / 8; i++) printf("%02x ", bits_t3_manchester[i]);
+        for(int i = 0; i < bits_t3_count / 8; i++)
+            printf("%02x ", bits_t3_manchester[i]);
         printf("\r\nBitwise emulation done\r\n\r\n");
     }
 

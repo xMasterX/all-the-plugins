@@ -143,8 +143,6 @@ extern const Icon I_DolphinDone_80x58;
 extern const Icon I_WarningDolphinFlip_45x42;
 extern const Icon I_DolphinMafia_119x62;
 
-
-
 extern const Icon I_Suica_AsakusaA;
 extern const Icon I_Suica_BigStar;
 extern const Icon I_Suica_ChiyodaC;
@@ -221,7 +219,7 @@ extern const Icon I_Suica_TokyuLogo;
 extern const Icon I_Suica_TopUpIcon;
 extern const Icon I_Suica_TopUpPage2_0001;
 extern const Icon I_Suica_TopUpPage2_0002;
-extern const Icon I_Suica_TopUpPage2_0003;  
+extern const Icon I_Suica_TopUpPage2_0003;
 extern const Icon I_Suica_TopUpPage2_0004;
 extern const Icon I_Suica_TopUpPage2_0005;
 extern const Icon I_Suica_TopUpPage2_0006;

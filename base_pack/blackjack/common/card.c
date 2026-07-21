@@ -2,11 +2,11 @@
 #include "dml.h"
 #include "ui.h"
 
-#define CARD_DRAW_X_START 108
-#define CARD_DRAW_Y_START 38
-#define CARD_DRAW_X_SPACE 10
-#define CARD_DRAW_Y_SPACE 8
-#define CARD_DRAW_X_OFFSET 4
+#define CARD_DRAW_X_START          108
+#define CARD_DRAW_Y_START          38
+#define CARD_DRAW_X_SPACE          10
+#define CARD_DRAW_Y_SPACE          8
+#define CARD_DRAW_X_OFFSET         4
 #define CARD_DRAW_FIRST_ROW_LENGTH 7
 
 uint8_t pips[4][3] = {

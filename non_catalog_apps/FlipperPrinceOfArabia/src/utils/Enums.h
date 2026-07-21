@@ -11,15 +11,15 @@ enum class ItemType : uint8_t {
     /* 05 */ ExitDoor_Button,
     /* 06 */ ExitDoor_Button_Cropped,
     /* 07 */ FloorButton_NoEdgeTile,
-    /* 08 */ FloorButton3_UpOnly,   // << needed?      
-    /* 09 */ FloorButton3_DownOnly,   // << needed?      
+    /* 08 */ FloorButton3_UpOnly, // << needed?
+    /* 09 */ FloorButton3_DownOnly, // << needed?
     /* 10 */ Mirror_Button,
     /* 11 */ FloorButton4,
     /* __ */ InteractiveItemType_End = FloorButton4,
     /* 15 */ Skeleton = 15,
     /* 16 */ ExitDoor_SelfOpen,
-    /* 17 */ Gate,               
-    /* 18 */ Gate_StayOpen,          
+    /* 17 */ Gate,
+    /* 18 */ Gate_StayOpen,
     /* 19 */ CollpasedFloor,
     /* 20 */ Potion_Small,
     /* 21 */ Potion_Large,
@@ -56,9 +56,9 @@ enum GameState : uint8_t {
     Game_Init,
     Game,
     Game_StartLevel,
-    #ifndef SAVE_MEMORY_OTHER
+#ifndef SAVE_MEMORY_OTHER
     Menu,
-    #endif
+#endif
 };
 
 enum class Direction : uint8_t {
@@ -77,17 +77,17 @@ enum class Layer : uint8_t {
 };
 
 enum class Action : uint8_t {
-    Step                    = 0,
-    SmallStep               = 1,
-    RunStart                = 2,
-    RunRepeat               = 3,
-    SwordStep               = 4,        // Do not move from 4
-    RunJump_Normal          = 5,
-    RunJump_Level6Exit      = 6,
-    StandingJump            = 7,
-    SwordStep2              = 8,        // Do not move from 8
-    CrouchHop               = 9,
-    RunningTurn             = 10,
+    Step = 0,
+    SmallStep = 1,
+    RunStart = 2,
+    RunRepeat = 3,
+    SwordStep = 4, // Do not move from 4
+    RunJump_Normal = 5,
+    RunJump_Level6Exit = 6,
+    StandingJump = 7,
+    SwordStep2 = 8, // Do not move from 8
+    CrouchHop = 9,
+    RunningTurn = 10,
 };
 
 enum class CanJumpUpResult : uint8_t {
@@ -98,9 +98,9 @@ enum class CanJumpUpResult : uint8_t {
     JumpThenFall_HideHands,
     TurnThenJump,
     JumpDist10,
-    JumpThenFall_CollapseFloor,             
-    StepThenJumpThenFall_CollapseFloor,     
-    JumpThenFall_CollapseFloorAbove,        
+    JumpThenFall_CollapseFloor,
+    StepThenJumpThenFall_CollapseFloor,
+    JumpThenFall_CollapseFloorAbove,
 };
 
 enum class CanClimbDownResult : uint8_t {
@@ -127,8 +127,8 @@ enum class StandingJumpResult : uint8_t {
     Normal_36,
     DropLevel_36,
     DropLevel_40,
-    GrabLedge_28, 
-    GrabLedge_32, 
+    GrabLedge_28,
+    GrabLedge_32,
     GrabLedge_36,
     GrabLedge_40,
 };
@@ -178,41 +178,41 @@ enum class MenuOption : uint8_t {
 enum class TitleScreenOptions : uint8_t {
     Play,
     Resume,
-    Credits, 
+    Credits,
     High,
 };
 
 enum class TitleScreenMode : uint8_t {
-    Intro,                          // 0
-    Main,                           // 1
-    Credits,                        // 2
-    High,                           // 3
-    IntroGame_1A,                   // 4
-    CutScene_1,                     // 5
-    IntroGame_1B,                   // 6
-    CutScene_2,                     // 7
-    CutScene_3,                     // 8
-    CutScene_4,                     // 9
-    CutScene_5,                     // 10
-    CutScene_6,                     // 11
-    CutScene_8,                     // 12
-    CutScene_7_Hint,                // 13
+    Intro, // 0
+    Main, // 1
+    Credits, // 2
+    High, // 3
+    IntroGame_1A, // 4
+    CutScene_1, // 5
+    IntroGame_1B, // 6
+    CutScene_2, // 7
+    CutScene_3, // 8
+    CutScene_4, // 9
+    CutScene_5, // 10
+    CutScene_6, // 11
+    CutScene_8, // 12
+    CutScene_7_Hint, // 13
 
-    #ifndef SAVE_MEMORY_INVADER
-    CutScene_7_Transition,          // 13
-    CutScene_7_PlayGame,            // 14
-    #endif
+#ifndef SAVE_MEMORY_INVADER
+    CutScene_7_Transition, // 13
+    CutScene_7_PlayGame, // 14
+#endif
 
-    CutScene_End,                   // 16
-    IntroGame_End,                  // 17
-    TimeOut,                        // 18
-    MaxUniqueScenes                 = CutScene_End - 1
+    CutScene_End, // 16
+    IntroGame_End, // 17
+    TimeOut, // 18
+    MaxUniqueScenes = CutScene_End - 1
 };
 
 enum class WallTileResults : uint8_t {
     None,
     SolidWall,
-    GateClosed, 
+    GateClosed,
 };
 
 enum class SignType : uint8_t {
@@ -271,11 +271,6 @@ enum class GateType : uint8_t {
     Normal,
     Level6Exit,
 };
-
-
-
-
-
 
 enum class TitleFrameIndex : uint8_t {
     Credits_PoP,

@@ -16,7 +16,7 @@
 
 #define NUM_MENU_ITEMS (11)
 
-#define WIFI_deauther_TEXT_BOX_STORE_SIZE (4096)
+#define WIFI_deauther_TEXT_BOX_STORE_SIZE   (4096)
 #define WIFI_deauther_TEXT_INPUT_STORE_SIZE (512)
 
 struct WifideautherApp {

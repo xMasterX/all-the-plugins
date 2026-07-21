@@ -29,8 +29,12 @@ static void prompt_ssid(TagTinkerApp* app) {
     strncpy(app->wifi_creds_ssid, app->wifi_ssid, sizeof(app->wifi_creds_ssid) - 1);
     app->wifi_creds_ssid[sizeof(app->wifi_creds_ssid) - 1] = 0;
     text_input_set_result_callback(
-        app->text_input, text_done_cb, app,
-        app->wifi_creds_ssid, sizeof(app->wifi_creds_ssid), false);
+        app->text_input,
+        text_done_cb,
+        app,
+        app->wifi_creds_ssid,
+        sizeof(app->wifi_creds_ssid),
+        false);
     view_dispatcher_switch_to_view(app->view_dispatcher, TagTinkerViewTextInput);
 }
 
@@ -40,8 +44,12 @@ static void prompt_password(TagTinkerApp* app) {
     /* Don't pre-fill the password field for visual privacy. */
     app->wifi_creds_pwd[0] = 0;
     text_input_set_result_callback(
-        app->text_input, text_done_cb, app,
-        app->wifi_creds_pwd, sizeof(app->wifi_creds_pwd), false);
+        app->text_input,
+        text_done_cb,
+        app,
+        app->wifi_creds_pwd,
+        sizeof(app->wifi_creds_pwd),
+        false);
     view_dispatcher_switch_to_view(app->view_dispatcher, TagTinkerViewTextInput);
 }
 
@@ -64,8 +72,8 @@ bool tagtinker_scene_wifi_setup_on_event(void* ctx, SceneManagerEvent event) {
     }
     /* Both fields collected - send to ESP and pop back. */
     if(app->wifi) {
-        tagtinker_wifi_set_creds((TagTinkerWifi*)app->wifi,
-                                 app->wifi_creds_ssid, app->wifi_creds_pwd);
+        tagtinker_wifi_set_creds(
+            (TagTinkerWifi*)app->wifi, app->wifi_creds_ssid, app->wifi_creds_pwd);
     }
     /* Wipe the password from app memory once it's on the wire. */
     memset(app->wifi_creds_pwd, 0, sizeof(app->wifi_creds_pwd));

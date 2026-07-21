@@ -3,18 +3,18 @@
 #define MULTI_CONVERTER_DISPLAY_KEYS 18 // [0] to [F] + [BACK] + [SELECT]
 
 #define MULTI_CONVERTER_DISPLAY_KEY_NEGATIVE 0 // long press
-#define MULTI_CONVERTER_DISPLAY_KEY_COMMA 1 // long press
-#define MULTI_CONVERTER_DISPLAY_KEY_DEL 16
-#define MULTI_CONVERTER_DISPLAY_KEY_SELECT 17
+#define MULTI_CONVERTER_DISPLAY_KEY_COMMA    1 // long press
+#define MULTI_CONVERTER_DISPLAY_KEY_DEL      16
+#define MULTI_CONVERTER_DISPLAY_KEY_SELECT   17
 
-#define MULTI_CONVERTER_DISPLAY_CHAR_COMMA '.'
+#define MULTI_CONVERTER_DISPLAY_CHAR_COMMA    '.'
 #define MULTI_CONVERTER_DISPLAY_CHAR_NEGATIVE '-'
-#define MULTI_CONVERTER_DISPLAY_CHAR_DEL '<'
-#define MULTI_CONVERTER_DISPLAY_CHAR_SELECT '#'
-#define MULTI_CONVERTER_DISPLAY_CHAR_BLANK ' '
+#define MULTI_CONVERTER_DISPLAY_CHAR_DEL      '<'
+#define MULTI_CONVERTER_DISPLAY_CHAR_SELECT   '#'
+#define MULTI_CONVERTER_DISPLAY_CHAR_BLANK    ' '
 
 #define MULTI_CONVERTER_DISPLAY_KEY_FRAME_MARGIN 3
-#define MULTI_CONVERTER_DISPLAY_KEY_CHAR_HEIGHT 8
+#define MULTI_CONVERTER_DISPLAY_KEY_CHAR_HEIGHT  8
 
 void multi_converter_mode_display_convert(MultiConverterState* const multi_converter_state) {
     // 1.- if origin == destination (in theory user won't be allowed to choose the same options, but it's kinda "valid"...)

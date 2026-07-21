@@ -8,8 +8,10 @@
 // L8S — (L)ast (8) bits (S)traight order (non-reversed) (for pager number)
 class L8SDecoder : public PagerDecoder {
 private:
-    const uint32_t stationMask = 0b111111111111100000000000; // leading 13 bits (of 24) are station (let it be)
-    const uint32_t actionMask = 0b11100000000; // next 3 bits are action (possibly, just my guess, may be they are also station)
+    const uint32_t stationMask =
+        0b111111111111100000000000; // leading 13 bits (of 24) are station (let it be)
+    const uint32_t actionMask =
+        0b11100000000; // next 3 bits are action (possibly, just my guess, may be they are also station)
     const uint32_t pagerMask = 0b11111111; // and the last 8 bits should be enough for pager number
 
     const uint8_t stationOffset = 11;

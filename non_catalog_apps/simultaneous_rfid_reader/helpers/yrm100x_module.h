@@ -14,14 +14,11 @@
  * @author modified by haffnerriley
 */
 
-
-#define FRAME_START 0xBB
-#define FRAME_END 0x7E
-#define DEFAULT_BAUDRATE BAUD_RATES[BAUD_RATES_COUNT - 1]
+#define FRAME_START                0xBB
+#define FRAME_END                  0x7E
+#define DEFAULT_BAUDRATE           BAUD_RATES[BAUD_RATES_COUNT - 1]
 #define DEFAULT_TRANSMITTING_POWER POWER_DBM[POWER_DBM_COUNT - 1]
-#define DEFAULT_WORKING_REGION WR_US
-
-
+#define DEFAULT_WORKING_REGION     WR_US
 
 typedef struct {
     char* hw_version;
@@ -96,16 +93,17 @@ M100ResponseType m100_write_label_data_storage(
     uint32_t access_pwd);
 
 //Written by William Riley Haffner
-M100ResponseType m100_lock_label_data(M100Module* module, BankType bank, uint32_t access_pwd, LockType lockfunction);
-//Written by William Riley Haffner
-M100ResponseType m100_kill_tag(
+M100ResponseType m100_lock_label_data(
     M100Module* module,
-    uint32_t kill_pwd);
+    BankType bank,
+    uint32_t access_pwd,
+    LockType lockfunction);
+//Written by William Riley Haffner
+M100ResponseType m100_kill_tag(M100Module* module, uint32_t kill_pwd);
 
 //Written by William Riley Haffner
 uint32_t get_lock_param(uint32_t lock_param, BankType bank, LockType lockfunction);
 
-    
 uint32_t m100_get_baudrate(M100Module* module);
 void m100_enable_write_mask(M100Module* module, WriteMask mask);
 void m100_disable_write_mask(M100Module* module, WriteMask mask);

@@ -18,7 +18,8 @@ public:
 
     void SetProgress(int pagerNum, int pagersTotal) {
         float progressValue = (float)pagerNum / pagersTotal;
-        popup->SetProgress(statusStr.format("Pager %d / %d", pagerNum, pagersTotal), progressValue);
+        popup->SetProgress(
+            statusStr.format("Pager %d / %d", pagerNum, pagersTotal), progressValue);
     }
 
 private:

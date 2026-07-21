@@ -74,7 +74,9 @@ static void cancommander_scene_custom_inject_slot_label(
 
     const char* slot_args = app_custom_inject_get_slot_args(app, slot_index);
     char slot_name[24] = {0};
-    if(slot_args && cancommander_scene_custom_inject_get_arg(slot_args, "slot_name", slot_name, sizeof(slot_name)) &&
+    if(slot_args &&
+       cancommander_scene_custom_inject_get_arg(
+           slot_args, "slot_name", slot_name, sizeof(slot_name)) &&
        slot_name[0] != '\0') {
         snprintf(out, out_size, "%s", slot_name);
     } else {
@@ -88,8 +90,8 @@ static void cancommander_scene_custom_inject_ensure_running(App* app) {
         return;
     }
 
-    const bool custom_inject_active =
-        app->tool_active && app->dashboard_mode == AppDashboardCustomInject;
+    const bool custom_inject_active = app->tool_active &&
+                                      app->dashboard_mode == AppDashboardCustomInject;
     if(custom_inject_active) {
         return;
     }
@@ -192,7 +194,8 @@ bool cancommander_scene_custom_inject_menu_on_event(void* context, SceneManagerE
         return false;
     }
 
-    scene_manager_set_scene_state(app->scene_manager, cancommander_scene_custom_inject_menu, event.event);
+    scene_manager_set_scene_state(
+        app->scene_manager, cancommander_scene_custom_inject_menu, event.event);
 
     switch(event.event) {
     case CustomInjectStartTool:
@@ -227,11 +230,13 @@ bool cancommander_scene_custom_inject_menu_on_event(void* context, SceneManagerE
         return true;
 
     case CustomInjectSaveSlots:
-        scene_manager_next_scene(app->scene_manager, cancommander_scene_custom_inject_save_slots_menu);
+        scene_manager_next_scene(
+            app->scene_manager, cancommander_scene_custom_inject_save_slots_menu);
         return true;
 
     case CustomInjectLoadSlots:
-        scene_manager_next_scene(app->scene_manager, cancommander_scene_custom_inject_load_slots_menu);
+        scene_manager_next_scene(
+            app->scene_manager, cancommander_scene_custom_inject_load_slots_menu);
         return true;
 
     default:

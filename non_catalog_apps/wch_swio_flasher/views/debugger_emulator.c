@@ -53,10 +53,10 @@ static void draw_log1(Canvas* canvas, uint8_t x, uint8_t y) {
     canvas_draw_line(canvas, x, y, x, y + 4);
 }
 
-#define MAX_ANIMATION_INCREMENT 4
+#define MAX_ANIMATION_INCREMENT   4
 #define MAX_ANIMATION_VIEWPOINT_X 84
 #define MIN_ANIMATION_VIEWPOINT_X 47
-#define BLANK_WINDOW_SIZE 26
+#define BLANK_WINDOW_SIZE         26
 #define ANIMATION_COUNTER_MAX_VALUE \
     (((MAX_ANIMATION_VIEWPOINT_X - MIN_ANIMATION_VIEWPOINT_X) + BLANK_WINDOW_SIZE) * 2)
 #define ANIMATION_Y 22

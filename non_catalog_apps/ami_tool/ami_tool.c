@@ -33,8 +33,7 @@ AmiToolApp* ami_tool_alloc(void) {
 
     /* GUI record and attach */
     app->gui = furi_record_open(RECORD_GUI);
-    view_dispatcher_attach_to_gui(
-        app->view_dispatcher, app->gui, ViewDispatcherTypeFullscreen);
+    view_dispatcher_attach_to_gui(app->view_dispatcher, app->gui, ViewDispatcherTypeFullscreen);
 
     /* Submenu (main menu view) */
     app->submenu = submenu_alloc();

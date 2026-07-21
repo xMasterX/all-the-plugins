@@ -3,6 +3,6 @@
 
 #include <stdint.h>
 
-const uint8_t *getEnemyData(uint8_t id);
+const uint8_t* getEnemyData(uint8_t id);
 
-#endif  // ENEMY_OBJECTS_H
+#endif // ENEMY_OBJECTS_H

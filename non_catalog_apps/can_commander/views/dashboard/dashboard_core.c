@@ -146,39 +146,42 @@ static void dashboard_init_mode(App* app, AppDashboardMode mode) {
         dashboard_apply_template(app, "WRITE", "Sent", "0", "", "No TX sent yet");
         break;
     case AppDashboardSpeed:
-        dashboard_apply_template(app, "SPEED TEST", "Rate", "--", "msg/s", "Waiting for 1s sample");
+        dashboard_apply_template(
+            app, "SPEED TEST", "Rate", "--", "msg/s", "Waiting for 1s sample");
         break;
     case AppDashboardValtrack:
-        dashboard_apply_template(app, "VAL TRACK", "Last Change", "--", "", "Waiting for byte changes");
+        dashboard_apply_template(
+            app, "VAL TRACK", "Last Change", "--", "", "Waiting for byte changes");
         break;
     case AppDashboardUniqueIds:
         dashboard_apply_template(app, "UNIQUE IDS", "Found", "0", "ids", "Waiting for new IDs");
         break;
     case AppDashboardBittrack:
-        dashboard_apply_template(app, "BIT TRACK", "Tracking", "--", "", "Waiting for matching ID");
+        dashboard_apply_template(
+            app, "BIT TRACK", "Tracking", "--", "", "Waiting for matching ID");
         dashboard_bittrack_prepare_template(app);
         break;
     case AppDashboardReverse:
-        dashboard_apply_template(app, "BYTE WATCHER", "Phase", "Init", "", "Waiting for tool events");
+        dashboard_apply_template(
+            app, "BYTE WATCHER", "Phase", "Init", "", "Waiting for tool events");
         break;
     case AppDashboardObdPid:
         dashboard_apply_template(app, "OBD PID", "Waiting for response", "--", "", "");
         break;
     case AppDashboardDbcDecode:
-        dashboard_apply_template(app, "DBC DECODE", "Signal", "--", "", "Waiting for decoded values");
+        dashboard_apply_template(
+            app, "DBC DECODE", "Signal", "--", "", "Waiting for decoded values");
         break;
-    case AppDashboardCustomInject:
-        {
-            char slot_value[8] = {0};
-            snprintf(
-                slot_value,
-                sizeof(slot_value),
-                "%u",
-                (unsigned)(app_custom_inject_get_active_slot(app) + 1U));
-            dashboard_apply_template(
-                app, "CUSTOM INJECT", "Slot", slot_value, "", "Waiting for slot data");
-        }
-        break;
+    case AppDashboardCustomInject: {
+        char slot_value[8] = {0};
+        snprintf(
+            slot_value,
+            sizeof(slot_value),
+            "%u",
+            (unsigned)(app_custom_inject_get_active_slot(app) + 1U));
+        dashboard_apply_template(
+            app, "CUSTOM INJECT", "Slot", slot_value, "", "Waiting for slot data");
+    } break;
     case AppDashboardReplay:
         dashboard_apply_template(app, "REPLAY", "State", "IDLE", "", "Waiting for tool ready");
         break;
@@ -237,10 +240,17 @@ void dashboard_set_mode(App* app, AppDashboardMode mode) {
                     slot->frame_id = signal->def.id;
                     slot->in_range = true;
                     if(signal->signal_name[0] != '\0') {
-                        strncpy(slot->signal_name, signal->signal_name, sizeof(slot->signal_name) - 1U);
+                        strncpy(
+                            slot->signal_name,
+                            signal->signal_name,
+                            sizeof(slot->signal_name) - 1U);
                         slot->signal_name[sizeof(slot->signal_name) - 1U] = '\0';
                     } else {
-                        snprintf(slot->signal_name, sizeof(slot->signal_name), "SID%u", (unsigned)signal->def.sid);
+                        snprintf(
+                            slot->signal_name,
+                            sizeof(slot->signal_name),
+                            "SID%u",
+                            (unsigned)signal->def.sid);
                         slot->signal_name[sizeof(slot->signal_name) - 1U] = '\0';
                     }
                     strncpy(slot->unit, signal->def.unit, sizeof(slot->unit) - 1U);

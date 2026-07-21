@@ -6,37 +6,37 @@
 #include <flipper_format/flipper_format_i.h>
 
 // Settings
-#define VK_THERMO_SETTINGS_FILE_VERSION 1
-#define CONFIG_FILE_DIRECTORY_PATH EXT_PATH("apps_data/vk_thermo")
-#define VK_THERMO_SETTINGS_SAVE_PATH CONFIG_FILE_DIRECTORY_PATH "/vk_thermo.conf"
-#define VK_THERMO_SETTINGS_SAVE_PATH_TMP VK_THERMO_SETTINGS_SAVE_PATH ".tmp"
-#define VK_THERMO_SETTINGS_HEADER "VkThermo Settings"
-#define VK_THERMO_SETTINGS_KEY_HAPTIC "Haptic"
-#define VK_THERMO_SETTINGS_KEY_LED "Led"
-#define VK_THERMO_SETTINGS_KEY_SPEAKER "Speaker"
-#define VK_THERMO_SETTINGS_KEY_TEMP_UNIT "TempUnit"
+#define VK_THERMO_SETTINGS_FILE_VERSION   1
+#define CONFIG_FILE_DIRECTORY_PATH        EXT_PATH("apps_data/vk_thermo")
+#define VK_THERMO_SETTINGS_SAVE_PATH      CONFIG_FILE_DIRECTORY_PATH "/vk_thermo.conf"
+#define VK_THERMO_SETTINGS_SAVE_PATH_TMP  VK_THERMO_SETTINGS_SAVE_PATH ".tmp"
+#define VK_THERMO_SETTINGS_HEADER         "VkThermo Settings"
+#define VK_THERMO_SETTINGS_KEY_HAPTIC     "Haptic"
+#define VK_THERMO_SETTINGS_KEY_LED        "Led"
+#define VK_THERMO_SETTINGS_KEY_SPEAKER    "Speaker"
+#define VK_THERMO_SETTINGS_KEY_TEMP_UNIT  "TempUnit"
 #define VK_THERMO_SETTINGS_KEY_EH_TIMEOUT "EhTimeout"
-#define VK_THERMO_SETTINGS_KEY_DEBUG "Debug"
+#define VK_THERMO_SETTINGS_KEY_DEBUG      "Debug"
 
 // Log storage
 #define VK_THERMO_LOG_MAX_ENTRIES 50
 #define VK_THERMO_CSV_LEGACY_PATH CONFIG_FILE_DIRECTORY_PATH "/readings.csv"
-#define VK_THERMO_UID_LENGTH 8
+#define VK_THERMO_UID_LENGTH      8
 
 typedef struct {
-    uint8_t uid[VK_THERMO_UID_LENGTH];  // ISO15693 UID is 8 bytes
+    uint8_t uid[VK_THERMO_UID_LENGTH]; // ISO15693 UID is 8 bytes
     uint32_t timestamp;
-    char device_type[16];        // "thermo112", "thermo117", "thermo119", "temptress"
+    char device_type[16]; // "thermo112", "thermo117", "thermo119", "temptress"
     float temperature_celsius;
-    float temperature2_celsius;  // Secondary temp (0.0 if N/A)
-    bool has_dual_temps;         // true for Temptress
+    float temperature2_celsius; // Secondary temp (0.0 if N/A)
+    bool has_dual_temps; // true for Temptress
     bool valid;
 } VkThermoLogEntry;
 
 typedef struct {
     VkThermoLogEntry entries[VK_THERMO_LOG_MAX_ENTRIES];
     uint8_t count;
-    uint8_t head;  // Circular buffer head
+    uint8_t head; // Circular buffer head
 } VkThermoLog;
 
 // Settings functions

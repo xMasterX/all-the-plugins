@@ -11,7 +11,7 @@
 #define TAG "MusicPlayer"
 
 #define MUSIC_PLAYER_APP_PATH_FOLDER ANY_PATH("music_player")
-#define MUSIC_PLAYER_APP_EXTENSION "*"
+#define MUSIC_PLAYER_APP_EXTENSION   "*"
 
 #define MUSIC_PLAYER_SEMITONE_HISTORY_SIZE 4
 

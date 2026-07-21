@@ -14,11 +14,11 @@
 #define USB_EP0_SIZE 8
 
 #define USB_MIDI_EP_SIZE 64
-#define USB_MIDI_EP_IN 0x81
-#define USB_MIDI_EP_OUT 0x01
+#define USB_MIDI_EP_IN   0x81
+#define USB_MIDI_EP_OUT  0x01
 
 #define EP_CFG_DECONFIGURE 0
-#define EP_CFG_CONFIGURE 1
+#define EP_CFG_CONFIGURE   1
 
 enum {
     USB_STR_ZERO,

@@ -32,21 +32,21 @@
 
 #define TAG "ProtoPirateEmulatePlugin"
 
-#define MIN_TX_TIME           666U
-#define MIN_TX_TIME_KIA_V3_V4 1600U
+#define MIN_TX_TIME              666U
+#define MIN_TX_TIME_KIA_V3_V4    1600U
 #define TX_PRESET_PATCH_MAX_SIZE 128U
 
-#define EMU_PRESET_KEY_PROTOCOL  "Protocol"
-#define EMU_PRESET_KEY_FREQUENCY "Frequency"
-#define EMU_PRESET_KEY_PRESET    "Preset"
-#define EMU_PRESET_KEY_SERIAL    "Serial"
-#define EMU_PRESET_KEY_BTN       "Btn"
-#define EMU_PRESET_KEY_CNT       "Cnt"
-#define EMU_PRESET_KEY_TYPE      "Type"
-#define EMU_PRESET_KEY_HITAG2_KEY "Hitag2 Key"
+#define EMU_PRESET_KEY_PROTOCOL     "Protocol"
+#define EMU_PRESET_KEY_FREQUENCY    "Frequency"
+#define EMU_PRESET_KEY_PRESET       "Preset"
+#define EMU_PRESET_KEY_SERIAL       "Serial"
+#define EMU_PRESET_KEY_BTN          "Btn"
+#define EMU_PRESET_KEY_CNT          "Cnt"
+#define EMU_PRESET_KEY_TYPE         "Type"
+#define EMU_PRESET_KEY_HITAG2_KEY   "Hitag2 Key"
 #define EMU_PRESET_KEY_HITAG2_EPOCH "Hitag2 Epoch"
-#define EMU_CUSTOM_PRESET_KEY    "Custom_preset_data"
-#define EMU_FIAT_V1_KEY_TEXT_LEN 12U
+#define EMU_CUSTOM_PRESET_KEY       "Custom_preset_data"
+#define EMU_FIAT_V1_KEY_TEXT_LEN    12U
 
 typedef struct {
     uint32_t original_counter;
@@ -470,14 +470,10 @@ static bool emulate_context_try_init_transmitter(ProtoPirateApp* app, EmulateCon
         return false;
     }
 
-    bool registry_ready = g_host_api && g_host_api->apply_protocol_registry_for_context &&
-                          g_host_api->apply_protocol_registry_for_context(
-                              app,
-                              ctx->preset,
-                              ctx->freq,
-                              resolved_preset.data,
-                              resolved_preset.size,
-                              registry_name);
+    bool registry_ready =
+        g_host_api && g_host_api->apply_protocol_registry_for_context &&
+        g_host_api->apply_protocol_registry_for_context(
+            app, ctx->preset, ctx->freq, resolved_preset.data, resolved_preset.size, registry_name);
     emulate_resolved_preset_release(&resolved_preset);
     if(!registry_ready) {
         FURI_LOG_E(TAG, "Failed to apply protocol registry for emulate preset");
@@ -975,12 +971,13 @@ static bool emulate_input_callback(InputEvent* event, void* context) {
     return false;
 }
 
-static bool get_tx_preset_byte(const uint8_t* preset_data, size_t preset_size, uint8_t* preset_offset) {
+static bool
+    get_tx_preset_byte(const uint8_t* preset_data, size_t preset_size, uint8_t* preset_offset) {
     if(!preset_data || !preset_offset) return false;
 
     size_t offset = 0;
     size_t scan_limit = preset_size < TX_PRESET_PATCH_MAX_SIZE ? preset_size :
-                                                               TX_PRESET_PATCH_MAX_SIZE;
+                                                                 TX_PRESET_PATCH_MAX_SIZE;
     while((offset < scan_limit) && preset_data[offset]) {
         offset += 2;
     }
@@ -1143,7 +1140,8 @@ static void plugin_on_enter(void* context) {
 
     const char* canonical_protocol =
         protopirate_protocol_catalog_canonical_name(furi_string_get_cstr(ctx->protocol_name));
-    if(canonical_protocol && strcmp(furi_string_get_cstr(ctx->protocol_name), canonical_protocol) != 0) {
+    if(canonical_protocol &&
+       strcmp(furi_string_get_cstr(ctx->protocol_name), canonical_protocol) != 0) {
         furi_string_set(ctx->protocol_name, canonical_protocol);
         flipper_format_rewind(ctx->flipper_format);
         flipper_format_insert_or_update_string_cstr(
@@ -1257,8 +1255,8 @@ static bool plugin_on_event(void* context, SceneManagerEvent event) {
                         }
 
                         uint8_t preset_offset = 0;
-                        if(!patchable ||
-                           !get_tx_preset_byte(preset_data, resolved_preset.size, &preset_offset)) {
+                        if(!patchable || !get_tx_preset_byte(
+                                             preset_data, resolved_preset.size, &preset_offset)) {
                             FURI_LOG_I(TAG, INVALID_PRESET);
                         } else {
                             uint8_t fm_byte = preset_data[preset_offset];
@@ -1400,8 +1398,8 @@ static void plugin_on_exit(void* context) {
     if(g_host_api && g_host_api->storage_delete_temp) g_host_api->storage_delete_temp();
 
     if(app->radio_initialized && app->txrx && app->txrx->environment && app->txrx->preset &&
-       app->txrx->preset->data && app->txrx->preset->name &&
-       g_host_api && g_host_api->apply_protocol_registry_for_context) {
+       app->txrx->preset->data && app->txrx->preset->name && g_host_api &&
+       g_host_api->apply_protocol_registry_for_context) {
         const char* preset_name = furi_string_get_cstr(app->txrx->preset->name);
         if(preset_name) {
             if(!g_host_api->apply_protocol_registry_for_context(

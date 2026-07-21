@@ -5,26 +5,26 @@
 
 #define DICE_TYPES 8
 
-#define HISTORY_SIZE 10
-#define HISTORY_COL HISTORY_SIZE / 2
+#define HISTORY_SIZE         10
+#define HISTORY_COL          HISTORY_SIZE / 2
 #define HISTORY_START_POST_X 2
 #define HISTORY_START_POST_Y 10
-#define HISTORY_STEP_X 66
-#define HISTORY_STEP_Y 10
-#define HISTORY_X_GAP 11
+#define HISTORY_STEP_X       66
+#define HISTORY_STEP_Y       10
+#define HISTORY_X_GAP        11
 
-#define MAX_DICE_COUNT 10
+#define MAX_DICE_COUNT  10
 #define MAX_COIN_FRAMES 9
 #define MAX_DICE_FRAMES 4
 
-#define DICE_X 45
-#define DICE_Y 6
+#define DICE_X   45
+#define DICE_Y   6
 #define DICE_Y_T 0
 
 #define DICE_GAP 44
 
 #define RESULT_BORDER_X 44
-#define RESULT_OFFSET 20
+#define RESULT_OFFSET   20
 
 #define SWIPE_DIST 11
 
@@ -81,7 +81,10 @@ static const Dice dice_types[] = {
     {100, 0, 0, "d100"},
 };
 
-typedef enum { EventTypeTick, EventTypeKey } EventType;
+typedef enum {
+    EventTypeTick,
+    EventTypeKey
+} EventType;
 typedef enum {
     SelectState,
     SwipeLeftState,

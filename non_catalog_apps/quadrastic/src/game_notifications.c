@@ -23,8 +23,14 @@
 #include "game.h"
 
 const NotificationSequence sequence_earn_point = {
-    &message_green_255, &message_vibro_on,  &message_note_c7, &message_delay_50,
-    &message_sound_off, &message_vibro_off, &message_green_0, NULL,
+    &message_green_255,
+    &message_vibro_on,
+    &message_note_c7,
+    &message_delay_50,
+    &message_sound_off,
+    &message_vibro_off,
+    &message_green_0,
+    NULL,
 };
 
 const NotificationSequence sequence_game_over = {
@@ -67,15 +73,13 @@ const NotificationSequence sequence_game_over = {
     NULL,
 };
 
-void
-game_notify(GameContext* game_context, const NotificationSequence* sequence)
-{
+void game_notify(GameContext* game_context, const NotificationSequence* sequence) {
     static const NotificationMessage* notification[30];
 
     size_t input_index = 0;
     size_t result_index = 0;
 
-    for (; (*sequence)[input_index] != NULL; ++input_index) {
+    for(; (*sequence)[input_index] != NULL; ++input_index) {
         const NotificationMessage* item = (*sequence)[input_index];
 
         bool is_sound = item->type == NotificationMessageTypeSoundOn ||
@@ -87,9 +91,9 @@ game_notify(GameContext* game_context, const NotificationSequence* sequence)
 
         bool is_vibro = item->type == NotificationMessageTypeVibro;
 
-        if ((is_sound && game_context->sound == StateOff) ||
-            (is_vibro && game_context->vibro == StateOff) ||
-            (is_led && game_context->led == StateOff)) {
+        if((is_sound && game_context->sound == StateOff) ||
+           (is_vibro && game_context->vibro == StateOff) ||
+           (is_led && game_context->led == StateOff)) {
             continue;
         }
 
@@ -97,10 +101,9 @@ game_notify(GameContext* game_context, const NotificationSequence* sequence)
         ++result_index;
     }
 
-    for (size_t index = result_index; index < 30; ++index) {
+    for(size_t index = result_index; index < 30; ++index) {
         notification[index] = NULL;
     }
 
-    notification_message(game_context->notification,
-                         (const NotificationSequence*)notification);
+    notification_message(game_context->notification, (const NotificationSequence*)notification);
 }

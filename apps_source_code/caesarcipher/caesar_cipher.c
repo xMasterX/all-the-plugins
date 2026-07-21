@@ -129,7 +129,6 @@ int32_t caesar_cipher_app() {
     Gui* gui = furi_record_open(RECORD_GUI);
     //gui_add_view_port(gui, view_port, GuiLayerFullscreen);
 
-
     FURI_LOG_D("caesar_cipher", "Adding text input view to dispatcher");
     view_dispatcher_add_view(
         caesar_state->view_dispatcher, 0, text_input_get_view(caesar_state->text_input));

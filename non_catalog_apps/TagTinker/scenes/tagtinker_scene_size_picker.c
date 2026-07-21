@@ -33,8 +33,7 @@ static void polarity_changed(VariableItem* item) {
     TagTinkerApp* app = variable_item_get_context(item);
     app->invert_text = (variable_item_get_current_value_index(item) == 1);
 
-    variable_item_set_current_value_text(
-        item, app->invert_text ? "W on B" : "B on W");
+    variable_item_set_current_value_text(item, app->invert_text ? "W on B" : "B on W");
 }
 
 static void padding_changed(VariableItem* item) {
@@ -61,9 +60,15 @@ static void setting_cb(void* ctx, uint32_t index) {
     app->compression_mode = TagTinkerCompressionAuto;
     app->signal_mode = TagTinkerSignalPP4;
 
-    FURI_LOG_I(TAGTINKER_TAG, "TX: %ux%u pg=%u inv=%d pad=%u%% reps=%u",
-        app->esl_width, app->esl_height, app->img_page, app->invert_text, 
-        app->text_padding_pct, app->data_frame_repeats);
+    FURI_LOG_I(
+        TAGTINKER_TAG,
+        "TX: %ux%u pg=%u inv=%d pad=%u%% reps=%u",
+        app->esl_width,
+        app->esl_height,
+        app->img_page,
+        app->invert_text,
+        app->text_padding_pct,
+        app->data_frame_repeats);
 
     /* Auto-save to recents */
     tagtinker_recents_add(app, app->text_input_buf);
@@ -82,8 +87,8 @@ void tagtinker_scene_size_picker_on_enter(void* ctx) {
     variable_item_list_reset(app->var_item_list);
 
     /* Page */
-    VariableItem* item_pg = variable_item_list_add(
-        app->var_item_list, "Page", 8, page_changed, app);
+    VariableItem* item_pg =
+        variable_item_list_add(app->var_item_list, "Page", 8, page_changed, app);
     variable_item_set_current_value_index(item_pg, text_page_to_index(app->img_page));
     {
         char buf[4];
@@ -92,15 +97,14 @@ void tagtinker_scene_size_picker_on_enter(void* ctx) {
     }
 
     /* Polarity */
-    VariableItem* item_col = variable_item_list_add(
-        app->var_item_list, "Polarity", 2, polarity_changed, app);
+    VariableItem* item_col =
+        variable_item_list_add(app->var_item_list, "Polarity", 2, polarity_changed, app);
     variable_item_set_current_value_index(item_col, app->invert_text ? 1 : 0);
-    variable_item_set_current_value_text(
-        item_col, app->invert_text ? "W on B" : "B on W");
+    variable_item_set_current_value_text(item_col, app->invert_text ? "W on B" : "B on W");
 
     /* Padding */
-    VariableItem* item_pad = variable_item_list_add(
-        app->var_item_list, "Padding", 9, padding_changed, app);
+    VariableItem* item_pad =
+        variable_item_list_add(app->var_item_list, "Padding", 9, padding_changed, app);
     variable_item_set_current_value_index(item_pad, app->text_padding_pct / 5);
     {
         char buf[8];

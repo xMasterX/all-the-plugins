@@ -62,10 +62,7 @@ bool cancommander_scene_dbc_save_config_menu_on_event(void* context, SceneManage
     switch(event.event) {
     case DbcSaveConfigSetName:
         app_begin_edit(
-            app,
-            app->dbc_config_save_name,
-            sizeof(app->dbc_config_save_name),
-            "Config Name");
+            app, app->dbc_config_save_name, sizeof(app->dbc_config_save_name), "Config Name");
         scene_manager_next_scene(app->scene_manager, cancommander_scene_text_input);
         return true;
 

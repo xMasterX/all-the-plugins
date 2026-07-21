@@ -39,24 +39,24 @@
 #include "tx_ratio.h"
 
 // the TAG is used for displaying a relevant prefix in logs. update it.
-#define TAG "__ARHA_FLIPPERAPP"
-#define DCF77_SECONDS_PER_MINUTE 60
-#define DCF77_LPTIM_HZ 32768U
-#define DCF77_FULL_SECOND_TICKS DCF77_LPTIM_HZ
-#define DCF77_ZERO_HIGH_TICKS ((DCF77_LPTIM_HZ * 9U) / 10U)
-#define DCF77_ONE_HIGH_TICKS ((DCF77_LPTIM_HZ * 8U) / 10U)
-#define DCF77_MIN_TIMER_TICKS 8U
-#define STARTUP_SCREEN_MS 1000U
-#define SYNC_ON_START 0
-#define DEBUG_SYNC_FRAME 0
-#define SUBGHZ_OOK_INVERT 0
-#define LF_FREQ_DEFAULT 77500U
-#define LF_FREQ_MIN 20000U
-#define LF_FREQ_MAX 200000U
-#define LF_FREQ_STEP 500U
-#define DCF77_LF_FREQ_ITEM_VALUES 255U
-#define GPIO_BASEBAND_PIN_DEFAULT 7U
-#define GPIO_RF_PIN_NONE 0U
+#define TAG                        "__ARHA_FLIPPERAPP"
+#define DCF77_SECONDS_PER_MINUTE   60
+#define DCF77_LPTIM_HZ             32768U
+#define DCF77_FULL_SECOND_TICKS    DCF77_LPTIM_HZ
+#define DCF77_ZERO_HIGH_TICKS      ((DCF77_LPTIM_HZ * 9U) / 10U)
+#define DCF77_ONE_HIGH_TICKS       ((DCF77_LPTIM_HZ * 8U) / 10U)
+#define DCF77_MIN_TIMER_TICKS      8U
+#define STARTUP_SCREEN_MS          1000U
+#define SYNC_ON_START              0
+#define DEBUG_SYNC_FRAME           0
+#define SUBGHZ_OOK_INVERT          0
+#define LF_FREQ_DEFAULT            77500U
+#define LF_FREQ_MIN                20000U
+#define LF_FREQ_MAX                200000U
+#define LF_FREQ_STEP               500U
+#define DCF77_LF_FREQ_ITEM_VALUES  255U
+#define GPIO_BASEBAND_PIN_DEFAULT  7U
+#define GPIO_RF_PIN_NONE           0U
 #define GPIO_RF_DUTY_CYCLE_DEFAULT 50U
 // #define TIME_ZERO 15
 // #define TIME_ONE 5
@@ -143,7 +143,7 @@ typedef struct AppFSM {
     uint32_t signal_freqs[RadioClockSignalCount];
 
     uint8_t bit_number; // 0 - 59
-    uint8_t bit_value;  // 0/1/marker for byte-debug screens
+    uint8_t bit_value; // 0/1/marker for byte-debug screens
     uint8_t current_pulse;
     volatile bool output_state;
     volatile bool output_dirty;
@@ -303,7 +303,9 @@ void dcf77_app_update_experimental_time_texts(AppFSM* app_fsm);
 void dcf77_app_set_experimental_time_enabled(AppFSM* app_fsm, bool enabled);
 void dcf77_app_set_experimental_time_source(AppFSM* app_fsm, Dcf77ExperimentalTimeSource source);
 void dcf77_app_set_experimental_preset_datetime(AppFSM* app_fsm, const DateTime* datetime);
-void dcf77_app_set_experimental_time_direction(AppFSM* app_fsm, Dcf77ExperimentalTimeDirection direction);
+void dcf77_app_set_experimental_time_direction(
+    AppFSM* app_fsm,
+    Dcf77ExperimentalTimeDirection direction);
 void dcf77_app_set_experimental_time_speed_index(AppFSM* app_fsm, uint8_t speed_index);
 void dcf77_app_set_experimental_speedup(AppFSM* app_fsm, uint8_t speedup);
 void dcf77_app_set_experimental_slowdown(AppFSM* app_fsm, uint8_t slowdown);

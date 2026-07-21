@@ -6,7 +6,7 @@
 #include <furi_hal_infrared.h>
 #include <gui/gui.h>
 
-#define TAG "IR Scope"
+#define TAG  "IR Scope"
 #define COLS 128
 #define ROWS 8
 
@@ -26,7 +26,8 @@ static void state_set_autoscale(IRScopeState* state) {
 static void canvas_draw_str_outline(Canvas* canvas, int x, int y, const char* str) {
     canvas_set_color(canvas, ColorWhite);
     for(int y1 = -1; y1 <= 1; ++y1)
-        for(int x1 = -1; x1 <= 1; ++x1) canvas_draw_str(canvas, x + x1, y + y1, str);
+        for(int x1 = -1; x1 <= 1; ++x1)
+            canvas_draw_str(canvas, x + x1, y + y1, str);
 
     canvas_set_color(canvas, ColorBlack);
     canvas_draw_str(canvas, x, y, str);

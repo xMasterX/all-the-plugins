@@ -4,7 +4,7 @@
 #include "common.h"
 
 #define ASSETS_LEVELS_COUNT 9
-#define MAX_LEVELS_PER_SET 100
+#define MAX_LEVELS_PER_SET  100
 
 extern char* assetLevels[];
 

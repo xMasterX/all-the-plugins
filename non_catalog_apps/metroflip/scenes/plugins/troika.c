@@ -15,13 +15,11 @@
 #include "../../api/metroflip/metroflip_api.h"
 #include "../../metroflip_plugins.h"
 
-
 #include <datetime.h>
 #include <furi/core/string.h>
 #include <furi_hal_rtc.h>
 
 #define TAG "Metroflip:Scene:Troika"
-
 
 void render_section_header(
     FuriString* str,
@@ -1331,7 +1329,6 @@ bool mosgortrans_parse_transport_block(const MfClassicBlock* block, FuriString* 
     return true;
 }
 
-
 /* Helper: extract key overview fields (number, balance/trips) from a transport block.
  * Returns true if the block was recognized and fields were extracted. */
 static bool troika_extract_block_summary(
@@ -1456,7 +1453,6 @@ static bool troika_extract_block_summary(
     return true;
 }
 
-
 const MfClassicKeyPair troika_1k_keys[16] = {
     {.a = 0xa0a1a2a3a4a5, .b = 0xfbf225dc5d58},
     {.a = 0xa82607b01c0d, .b = 0x2910989b6880},
@@ -1570,8 +1566,7 @@ static bool troika_display_card_view(const MfClassicData* data, Metroflip* app, 
     // Verify key
     const MfClassicSectorTrailer* sec_tr =
         mf_classic_get_sector_trailer_by_sector(data, cfg.data_sector);
-    const uint64_t key =
-        bit_lib_bytes_to_num_be(sec_tr->key_a.data, COUNT_OF(sec_tr->key_a.data));
+    const uint64_t key = bit_lib_bytes_to_num_be(sec_tr->key_a.data, COUNT_OF(sec_tr->key_a.data));
     if(key != cfg.keys[cfg.data_sector].a) return false;
 
     // Parse all three transport sections using existing parser
@@ -1579,8 +1574,7 @@ static bool troika_display_card_view(const MfClassicData* data, Metroflip* app, 
     FuriString* ground_result = furi_string_alloc();
     FuriString* tat_result = furi_string_alloc();
 
-    bool is_metro_data_present =
-        mosgortrans_parse_transport_block(&data->block[32], metro_result);
+    bool is_metro_data_present = mosgortrans_parse_transport_block(&data->block[32], metro_result);
     bool is_ground_data_present =
         mosgortrans_parse_transport_block(&data->block[28], ground_result);
     bool is_tat_data_present = mosgortrans_parse_transport_block(&data->block[16], tat_result);
@@ -1794,7 +1788,8 @@ static void troika_on_enter(Metroflip* app) {
         furi_record_close(RECORD_STORAGE);
     } else {
         Popup* popup = app->popup;
-        popup_set_header(popup, "Scanning...\nApply card\nto the back", 68, 30, AlignLeft, AlignTop);
+        popup_set_header(
+            popup, "Scanning...\nApply card\nto the back", 68, 30, AlignLeft, AlignTop);
         popup_set_icon(popup, 0, 3, &I_RFIDDolphinReceive_97x61);
 
         view_dispatcher_switch_to_view(app->view_dispatcher, MetroflipViewPopup);
@@ -1850,7 +1845,6 @@ static bool troika_on_event(Metroflip* app, SceneManagerEvent event) {
 }
 
 static void troika_on_exit(Metroflip* app) {
-
     widget_reset(app->widget);
     popup_reset(app->popup);
     metroflip_app_blink_stop(app);

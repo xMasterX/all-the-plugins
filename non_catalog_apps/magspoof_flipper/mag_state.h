@@ -14,9 +14,9 @@
 #include "helpers/mag_types.h"
 
 #define MAG_STATE_HEADER "Mag State"
-#define MAG_STATE_VER 2
-#define MAG_STATE_DIR STORAGE_APP_DATA_PATH_PREFIX
-#define MAG_STATE_PATH MAG_STATE_DIR "/mag_state.txt"
+#define MAG_STATE_VER    2
+#define MAG_STATE_DIR    STORAGE_APP_DATA_PATH_PREFIX
+#define MAG_STATE_PATH   MAG_STATE_DIR "/mag_state.txt"
 
 typedef struct {
     MagTxState tx;

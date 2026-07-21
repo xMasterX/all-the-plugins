@@ -26,19 +26,18 @@ void cancommander_scene_dbc_menu_on_enter(void* context) {
 
     submenu_reset(app->submenu);
 
-    submenu_add_item(app->submenu, "DBC Clear", DbcClear, cancommander_scene_dbc_menu_callback, app);
+    submenu_add_item(
+        app->submenu, "DBC Clear", DbcClear, cancommander_scene_dbc_menu_callback, app);
     submenu_add_item(app->submenu, "DBC Add", DbcAdd, cancommander_scene_dbc_menu_callback, app);
-    submenu_add_item(app->submenu, "DBC Remove", DbcRemove, cancommander_scene_dbc_menu_callback, app);
+    submenu_add_item(
+        app->submenu, "DBC Remove", DbcRemove, cancommander_scene_dbc_menu_callback, app);
     submenu_add_item(app->submenu, "DBC List", DbcList, cancommander_scene_dbc_menu_callback, app);
     submenu_add_item(
-        app->submenu,
-        "Save DBC Profile",
-        DbcSaveConfig,
-        cancommander_scene_dbc_menu_callback,
-        app);
+        app->submenu, "Save DBC Profile", DbcSaveConfig, cancommander_scene_dbc_menu_callback, app);
 
     submenu_set_selected_item(
-        app->submenu, scene_manager_get_scene_state(app->scene_manager, cancommander_scene_dbc_menu));
+        app->submenu,
+        scene_manager_get_scene_state(app->scene_manager, cancommander_scene_dbc_menu));
 
     view_dispatcher_switch_to_view(app->view_dispatcher, AppViewSubmenu);
 }

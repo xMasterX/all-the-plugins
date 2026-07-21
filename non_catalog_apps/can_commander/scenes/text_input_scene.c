@@ -13,14 +13,14 @@ static void cancommander_scene_byte_input_done(void* context) {
     if(app->input_hex_mode == AppHexInputU8 && app->input_hex_count >= 1U) {
         snprintf(app->input_work, sizeof(app->input_work), "%02X", app->input_hex_store[0]);
     } else if(app->input_hex_mode == AppHexInputU16 && app->input_hex_count >= 2U) {
-        uint32_t value = ((uint32_t)app->input_hex_store[0] << 8) | ((uint32_t)app->input_hex_store[1]);
+        uint32_t value = ((uint32_t)app->input_hex_store[0] << 8) |
+                         ((uint32_t)app->input_hex_store[1]);
         value &= 0x7FFUL;
         snprintf(app->input_work, sizeof(app->input_work), "%lX", (unsigned long)value);
     } else if(app->input_hex_mode == AppHexInputU32 && app->input_hex_count >= 4U) {
-        const uint32_t value = ((uint32_t)app->input_hex_store[0] << 24) |
-                               ((uint32_t)app->input_hex_store[1] << 16) |
-                               ((uint32_t)app->input_hex_store[2] << 8) |
-                               ((uint32_t)app->input_hex_store[3]);
+        const uint32_t value =
+            ((uint32_t)app->input_hex_store[0] << 24) | ((uint32_t)app->input_hex_store[1] << 16) |
+            ((uint32_t)app->input_hex_store[2] << 8) | ((uint32_t)app->input_hex_store[3]);
         snprintf(app->input_work, sizeof(app->input_work), "%lX", (unsigned long)value);
     } else if(app->input_hex_mode == AppHexInputBytes && app->input_hex_count > 0U) {
         size_t pos = 0U;
@@ -71,7 +71,8 @@ void cancommander_scene_text_input_on_enter(void* context) {
         sizeof(app->input_work),
         true);
 
-    text_input_set_header_text(app->text_input, app->input_header ? app->input_header : "Edit Args");
+    text_input_set_header_text(
+        app->text_input, app->input_header ? app->input_header : "Edit Args");
 
     view_dispatcher_switch_to_view(app->view_dispatcher, AppViewTextInput);
 }

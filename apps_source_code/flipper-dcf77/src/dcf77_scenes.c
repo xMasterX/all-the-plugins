@@ -51,7 +51,8 @@ static const char* const dcf77_experimental_time_toggle_labels[] = {"No", "Yes"}
 static const char* const dcf77_experimental_time_source_labels[] = {"Flipper", "Preset"};
 static const char* const dcf77_experimental_time_direction_labels[] = {"Back", "Stop", "Fwd"};
 
-static uint8_t dcf77_experimental_time_direction_to_index(Dcf77ExperimentalTimeDirection direction) {
+static uint8_t
+    dcf77_experimental_time_direction_to_index(Dcf77ExperimentalTimeDirection direction) {
     if(direction >= Dcf77ExperimentalTimeDirectionCount) {
         return 2U;
     }
@@ -80,12 +81,7 @@ static void dcf77_lf_settings_sync(AppFSM* app_fsm) {
         app_fsm->lf_freq_item, dcf77_app_get_lf_freq_index(app_fsm->lf_freq));
     variable_item_set_current_value_text(app_fsm->lf_freq_item, app_fsm->lf_freq_text);
     with_view_model(
-        variable_item_list_get_view(app_fsm->lf_settings),
-        void * model,
-        {
-            UNUSED(model);
-        },
-        true);
+        variable_item_list_get_view(app_fsm->lf_settings), void* model, { UNUSED(model); }, true);
 }
 
 static void dcf77_tx_ratio_settings_sync(AppFSM* app_fsm) {
@@ -97,10 +93,8 @@ static void dcf77_tx_ratio_settings_sync(AppFSM* app_fsm) {
     variable_item_set_current_value_text(app_fsm->lf_tx_ratio_y_item, app_fsm->tx_ratio_y_text);
     with_view_model(
         variable_item_list_get_view(app_fsm->tx_ratio_settings),
-        void * model,
-        {
-            UNUSED(model);
-        },
+        void* model,
+        { UNUSED(model); },
         true);
 }
 
@@ -110,7 +104,8 @@ static void dcf77_experimental_time_settings_sync(AppFSM* app_fsm) {
         app_fsm->experimental_time_settings.enabled ? 1U : 0U);
     variable_item_set_current_value_text(
         app_fsm->experimental_time_enabled_item,
-        dcf77_experimental_time_toggle_labels[app_fsm->experimental_time_settings.enabled ? 1U : 0U]);
+        dcf77_experimental_time_toggle_labels
+            [app_fsm->experimental_time_settings.enabled ? 1U : 0U]);
     variable_item_set_current_value_index(
         app_fsm->experimental_time_source_item, app_fsm->experimental_time_settings.source);
     variable_item_set_current_value_text(
@@ -132,10 +127,8 @@ static void dcf77_experimental_time_settings_sync(AppFSM* app_fsm) {
         app_fsm->experimental_speed_item, app_fsm->experimental_speed_text);
     with_view_model(
         variable_item_list_get_view(app_fsm->experimental_time_settings_view),
-        void * model,
-        {
-            UNUSED(model);
-        },
+        void* model,
+        { UNUSED(model); },
         true);
 }
 
@@ -161,8 +154,7 @@ static void dcf77_lf_settings_select_next_signal(AppFSM* app_fsm, int8_t directi
 }
 
 static void dcf77_subghz_settings_sync(AppFSM* app_fsm) {
-    variable_item_set_current_value_index(
-        app_fsm->subghz_tx_item, app_fsm->subghz_signal_mode);
+    variable_item_set_current_value_index(app_fsm->subghz_tx_item, app_fsm->subghz_signal_mode);
     variable_item_set_current_value_text(
         app_fsm->subghz_tx_item, dcf77_subghz_mode_labels[app_fsm->subghz_signal_mode]);
     variable_item_set_current_value_index(
@@ -180,13 +172,12 @@ static void dcf77_subghz_settings_sync(AppFSM* app_fsm) {
         app_fsm->subghz_timeout_item, (uint8_t)dcf77_subghz_tx_timeout_count());
     variable_item_set_current_value_index(
         app_fsm->subghz_timeout_item, app_fsm->subghz_tx_timeout_index);
-    variable_item_set_current_value_text(app_fsm->subghz_timeout_item, app_fsm->subghz_timeout_text);
+    variable_item_set_current_value_text(
+        app_fsm->subghz_timeout_item, app_fsm->subghz_timeout_text);
     with_view_model(
         variable_item_list_get_view(app_fsm->subghz_settings),
-        void * model,
-        {
-            UNUSED(model);
-        },
+        void* model,
+        { UNUSED(model); },
         true);
 }
 
@@ -197,8 +188,7 @@ static void dcf77_debug_settings_sync(AppFSM* app_fsm) {
     variable_item_set_current_value_text(
         app_fsm->debug_gpio_baseband_item, app_fsm->gpio_baseband_text);
     variable_item_set_current_value_index(
-        app_fsm->debug_gpio_rf_item,
-        dcf77_debug_gpio_rf_pin_index(app_fsm->gpio_rf_pin_number));
+        app_fsm->debug_gpio_rf_item, dcf77_debug_gpio_rf_pin_index(app_fsm->gpio_rf_pin_number));
     variable_item_set_current_value_text(app_fsm->debug_gpio_rf_item, app_fsm->gpio_rf_text);
     variable_item_set_current_value_index(
         app_fsm->debug_gpio_duty_item,
@@ -210,14 +200,13 @@ static void dcf77_debug_settings_sync(AppFSM* app_fsm) {
     variable_item_set_current_value_text(app_fsm->debug_led_item, app_fsm->led_text);
     variable_item_set_current_value_index(app_fsm->debug_screen_item, app_fsm->screen_mode);
     variable_item_set_current_value_text(app_fsm->debug_screen_item, app_fsm->screen_text);
-    variable_item_set_current_value_index(app_fsm->debug_speaker_item, app_fsm->speaker_value_index);
+    variable_item_set_current_value_index(
+        app_fsm->debug_speaker_item, app_fsm->speaker_value_index);
     variable_item_set_current_value_text(app_fsm->debug_speaker_item, app_fsm->speaker_text);
     with_view_model(
         variable_item_list_get_view(app_fsm->debug_settings),
-        void * model,
-        {
-            UNUSED(model);
-        },
+        void* model,
+        { UNUSED(model); },
         true);
 }
 
@@ -294,8 +283,10 @@ void dcf77_app_switch_to_gpio_rf_warning(AppFSM* app_fsm, uint8_t pending_pin) {
 
 static void dcf77_app_switch_to_subghz_freq_input(AppFSM* app_fsm) {
     const int32_t current_khz = (int32_t)(dcf77_app_get_subghz_frequency(app_fsm) / 1000U);
-    const int32_t min_khz = (int32_t)(app_fsm->subghz_band_starts[app_fsm->subghz_band_index] / 1000U);
-    const int32_t max_khz = (int32_t)(app_fsm->subghz_band_ends[app_fsm->subghz_band_index] / 1000U);
+    const int32_t min_khz =
+        (int32_t)(app_fsm->subghz_band_starts[app_fsm->subghz_band_index] / 1000U);
+    const int32_t max_khz =
+        (int32_t)(app_fsm->subghz_band_ends[app_fsm->subghz_band_index] / 1000U);
 
     number_input_set_result_callback(
         app_fsm->subghz_freq_input,
@@ -311,8 +302,7 @@ static void dcf77_app_switch_to_subghz_freq_input(AppFSM* app_fsm) {
 static void dcf77_app_switch_to_preset_time_input(AppFSM* app_fsm) {
     DateTime preset_datetime = app_fsm->experimental_time_settings.preset_datetime;
 
-    dcf77_experimental_time_input_set(
-        app_fsm->preset_time_input, &preset_datetime);
+    dcf77_experimental_time_input_set(app_fsm->preset_time_input, &preset_datetime);
     app_fsm->screen = AppScreenPresetTimeInput;
     view_dispatcher_switch_to_view(app_fsm->view_dispatcher, Dcf77ViewPresetTimeInput);
 }
@@ -324,7 +314,9 @@ static void dcf77_prepare_tx_minute_frames(AppFSM* app_fsm, const DateTime* rtc_
     dcf77_experimental_time_seed_runtime(
         &app_fsm->experimental_time_runtime, &app_fsm->experimental_time_settings, rtc_snapshot);
     dcf77_experimental_time_get_current_frame_minute(
-        &app_fsm->experimental_time_settings, &app_fsm->experimental_time_runtime, &current_minute);
+        &app_fsm->experimental_time_settings,
+        &app_fsm->experimental_time_runtime,
+        &current_minute);
     dcf77_logic_prepare_minute(app_fsm, &current_minute, false);
 
     dcf77_experimental_time_get_frame_datetime(
@@ -599,7 +591,8 @@ bool dcf77_experimental_time_settings_input_callback(InputEvent* event, void* ct
         return false;
     }
 
-    selected = variable_item_list_get_selected_item_index(app_fsm->experimental_time_settings_view);
+    selected =
+        variable_item_list_get_selected_item_index(app_fsm->experimental_time_settings_view);
 
     switch(event->key) {
     case InputKeyUp:
@@ -631,7 +624,8 @@ bool dcf77_experimental_time_settings_input_callback(InputEvent* event, void* ct
             return true;
         }
         if(selected == Dcf77ExperimentalTimeSettingDirection &&
-           dcf77_experimental_time_direction_to_index(app_fsm->experimental_time_settings.direction) > 0U) {
+           dcf77_experimental_time_direction_to_index(
+               app_fsm->experimental_time_settings.direction) > 0U) {
             dcf77_app_set_experimental_time_direction(
                 app_fsm,
                 dcf77_experimental_time_direction_from_index(
@@ -643,7 +637,8 @@ bool dcf77_experimental_time_settings_input_callback(InputEvent* event, void* ct
         }
         if(selected == Dcf77ExperimentalTimeSettingSpeed &&
            app_fsm->experimental_time_speed_index > 0U) {
-            dcf77_app_set_experimental_time_speed_index(app_fsm, app_fsm->experimental_time_speed_index - 1U);
+            dcf77_app_set_experimental_time_speed_index(
+                app_fsm, app_fsm->experimental_time_speed_index - 1U);
             dcf77_experimental_time_settings_apply(app_fsm);
             return true;
         }
@@ -662,7 +657,8 @@ bool dcf77_experimental_time_settings_input_callback(InputEvent* event, void* ct
             return true;
         }
         if(selected == Dcf77ExperimentalTimeSettingDirection &&
-           dcf77_experimental_time_direction_to_index(app_fsm->experimental_time_settings.direction) < 2U) {
+           dcf77_experimental_time_direction_to_index(
+               app_fsm->experimental_time_settings.direction) < 2U) {
             dcf77_app_set_experimental_time_direction(
                 app_fsm,
                 dcf77_experimental_time_direction_from_index(
@@ -674,7 +670,8 @@ bool dcf77_experimental_time_settings_input_callback(InputEvent* event, void* ct
         }
         if(selected == Dcf77ExperimentalTimeSettingSpeed &&
            app_fsm->experimental_time_speed_index < 14U) {
-            dcf77_app_set_experimental_time_speed_index(app_fsm, app_fsm->experimental_time_speed_index + 1U);
+            dcf77_app_set_experimental_time_speed_index(
+                app_fsm, app_fsm->experimental_time_speed_index + 1U);
             dcf77_experimental_time_settings_apply(app_fsm);
             return true;
         }
@@ -750,7 +747,8 @@ bool dcf77_subghz_settings_input_callback(InputEvent* event, void* ctx) {
         variable_item_list_set_selected_item(app_fsm->subghz_settings, selected);
         return true;
     case InputKeyLeft:
-        if(selected == Dcf77SubGhzSettingTransmit && app_fsm->subghz_signal_mode > SubGhzSignalModeDisabled) {
+        if(selected == Dcf77SubGhzSettingTransmit &&
+           app_fsm->subghz_signal_mode > SubGhzSignalModeDisabled) {
             dcf77_app_set_subghz_signal_mode(
                 app_fsm, (SubGhzSignalMode)(app_fsm->subghz_signal_mode - 1));
             dcf77_subghz_settings_apply(app_fsm);
@@ -915,8 +913,7 @@ bool dcf77_debug_settings_input_callback(InputEvent* event, void* ctx) {
         }
         if(selected == Dcf77DebugSettingDutyCycle) {
             dcf77_app_set_gpio_rf_duty_cycle(
-                app_fsm,
-                dcf77_debug_gpio_rf_duty_step(app_fsm->gpio_rf_duty_cycle, -1));
+                app_fsm, dcf77_debug_gpio_rf_duty_step(app_fsm->gpio_rf_duty_cycle, -1));
             dcf77_debug_settings_apply(app_fsm);
             return true;
         }
@@ -961,8 +958,7 @@ bool dcf77_debug_settings_input_callback(InputEvent* event, void* ctx) {
         }
         if(selected == Dcf77DebugSettingDutyCycle) {
             dcf77_app_set_gpio_rf_duty_cycle(
-                app_fsm,
-                dcf77_debug_gpio_rf_duty_step(app_fsm->gpio_rf_duty_cycle, 1));
+                app_fsm, dcf77_debug_gpio_rf_duty_step(app_fsm->gpio_rf_duty_cycle, 1));
             dcf77_debug_settings_apply(app_fsm);
             return true;
         }
@@ -1132,8 +1128,7 @@ bool dcf77_navigation_callback(void* ctx) {
     }
 
     if(app_fsm->screen == AppScreenExperimentalTimeSettings ||
-       app_fsm->screen == AppScreenTxRatioSettings ||
-       app_fsm->screen == AppScreenSubGhzSettings ||
+       app_fsm->screen == AppScreenTxRatioSettings || app_fsm->screen == AppScreenSubGhzSettings ||
        app_fsm->screen == AppScreenDebugSettings) {
         dcf77_app_switch_to_advanced_menu(app_fsm);
         return true;
@@ -1196,11 +1191,6 @@ void dcf77_tick_callback(void* ctx) {
     if(app_fsm->screen == AppScreenTx && now - app_fsm->last_tx_refresh_tick >= 500U) {
         app_fsm->last_tx_refresh_tick = now;
         with_view_model(
-            app_fsm->tx_view,
-            Dcf77AppViewModel * tx_model,
-            {
-                UNUSED(tx_model);
-            },
-            true);
+            app_fsm->tx_view, Dcf77AppViewModel * tx_model, { UNUSED(tx_model); }, true);
     }
 }

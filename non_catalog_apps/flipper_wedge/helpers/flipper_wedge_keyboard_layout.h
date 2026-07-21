@@ -4,22 +4,22 @@
 #include <storage/storage.h>
 #include <furi_hal_usb_hid.h>
 
-#define FLIPPER_WEDGE_LAYOUT_NAME_MAX 32
-#define FLIPPER_WEDGE_LAYOUT_PATH_MAX 128
+#define FLIPPER_WEDGE_LAYOUT_NAME_MAX   32
+#define FLIPPER_WEDGE_LAYOUT_PATH_MAX   128
 #define FLIPPER_WEDGE_LAYOUTS_DIRECTORY EXT_PATH("apps_data/flipper_wedge/layouts")
 
 // Built-in layout identifiers
 typedef enum {
-    FlipperWedgeLayoutDefault,  // Use firmware HID_ASCII_TO_KEY
-    FlipperWedgeLayoutNumPad,   // Use numpad keycodes for 0-9, A-F
-    FlipperWedgeLayoutCustom,   // Load from file
+    FlipperWedgeLayoutDefault, // Use firmware HID_ASCII_TO_KEY
+    FlipperWedgeLayoutNumPad, // Use numpad keycodes for 0-9, A-F
+    FlipperWedgeLayoutCustom, // Load from file
     FlipperWedgeLayoutCount,
 } FlipperWedgeLayoutType;
 
 // Single character mapping
 typedef struct {
-    uint16_t keycode;  // HID keycode (lower 8 bits) + modifiers (upper 8 bits)
-    bool defined;      // true if explicitly defined in layout
+    uint16_t keycode; // HID keycode (lower 8 bits) + modifiers (upper 8 bits)
+    bool defined; // true if explicitly defined in layout
 } FlipperWedgeKeyMapping;
 
 // Complete keyboard layout
@@ -27,7 +27,7 @@ typedef struct {
     char name[FLIPPER_WEDGE_LAYOUT_NAME_MAX];
     char file_path[FLIPPER_WEDGE_LAYOUT_PATH_MAX];
     FlipperWedgeLayoutType type;
-    FlipperWedgeKeyMapping map[128];  // ASCII 0-127
+    FlipperWedgeKeyMapping map[128]; // ASCII 0-127
 } FlipperWedgeKeyboardLayout;
 
 /** Allocate keyboard layout

@@ -22,12 +22,23 @@ void lidaremulator_scene_start_on_enter(void* context) {
     SceneManager* scene_manager = lidaremulator->scene_manager;
     furi_check(scene_manager);
 
-    submenu_add_item(submenu, "Predefined GUNs", SubmenuIndexPredefinedGUNs, lidaremulator_scene_start_submenu_callback, lidaremulator);
-    submenu_add_item(submenu, "Settings", SubmenuIndexSettings, lidaremulator_scene_start_submenu_callback, lidaremulator);
+    submenu_add_item(
+        submenu,
+        "Predefined GUNs",
+        SubmenuIndexPredefinedGUNs,
+        lidaremulator_scene_start_submenu_callback,
+        lidaremulator);
+    submenu_add_item(
+        submenu,
+        "Settings",
+        SubmenuIndexSettings,
+        lidaremulator_scene_start_submenu_callback,
+        lidaremulator);
 
     uint32_t submenu_index = scene_manager_get_scene_state(scene_manager, LidarEmulatorSceneStart);
     submenu_set_selected_item(submenu, submenu_index);
-    scene_manager_set_scene_state(scene_manager, LidarEmulatorSceneStart, SubmenuIndexPredefinedGUNs);
+    scene_manager_set_scene_state(
+        scene_manager, LidarEmulatorSceneStart, SubmenuIndexPredefinedGUNs);
 
     view_dispatcher_switch_to_view(lidaremulator->view_dispatcher, LidarEmulatorViewSubmenu);
 }
@@ -48,7 +59,7 @@ bool lidaremulator_scene_start_on_event(void* context, SceneManagerEvent event) 
             scene_manager_next_scene(scene_manager, LidarEmulatorSceneSettings);
         } else if(submenu_index == SubmenuIndexPredefinedGUNs) {
             scene_manager_next_scene(scene_manager, LidarEmulatorScenePredefinedGUNs);
-        } 
+        }
 
         consumed = true;
     }
@@ -59,6 +70,6 @@ bool lidaremulator_scene_start_on_event(void* context, SceneManagerEvent event) 
 void lidaremulator_scene_start_on_exit(void* context) {
     LidarEmulatorApp* lidaremulator = context;
     furi_check(lidaremulator);
-    
+
     submenu_reset(lidaremulator->submenu);
 }
