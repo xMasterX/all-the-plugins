@@ -1,3 +1,0 @@
-/ext/nfc/RickRoll.nfc
-/ext/nfc/Website.nfc
-/ext/nfc/Phone_number.nfc

@@ -1,6 +1,0 @@
-dist/*
-.vscode
-.clangd
-.editorconfig
-.env
-.ufbt

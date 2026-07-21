@@ -1,9 +1,0 @@
-venv
-dist/*
-.vscode
-.clang-format
-.clangd
-.editorconfig
-.env
-.ufbt
-.github

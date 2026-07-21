@@ -1,8 +1,0 @@
-.ufbt/
-build/
-dist/
-__pycache__/
-*.pyc
-compile_commands.json
-ext/
-Thumbs.db
