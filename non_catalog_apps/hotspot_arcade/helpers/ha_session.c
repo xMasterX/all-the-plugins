@@ -179,8 +179,10 @@ static void content_stream_pack(
         // Trim the line to decide whether it is a separator.
         const char* s = p;
         const char* e = eol;
-        while(s < e && (*s == ' ' || *s == '\t' || *s == '\r')) s++;
-        while(e > s && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\r')) e--;
+        while(s < e && (*s == ' ' || *s == '\t' || *s == '\r'))
+            s++;
+        while(e > s && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\r'))
+            e--;
 
         bool sep = (s == e) || (e - s == 3 && strncmp(s, "---", 3) == 0);
         if(sep) {
@@ -297,9 +299,11 @@ static void ha_content_stream_packs(HotspotArcadeApp* app) {
     for(unsigned g = 0; g < sizeof(more) / sizeof(more[0]); g++) {
         topics = 0;
         furi_string_printf(dir, "%s/%s", HA_USER_PACKS_DIR, more[g].sub);
-        ha_content_stream_dir(app, storage, furi_string_get_cstr(dir), more[g].game, seen, &topics);
+        ha_content_stream_dir(
+            app, storage, furi_string_get_cstr(dir), more[g].game, seen, &topics);
         furi_string_printf(dir, "%s/%s", HA_BUNDLED_PACKS_DIR, more[g].sub);
-        ha_content_stream_dir(app, storage, furi_string_get_cstr(dir), more[g].game, seen, &topics);
+        ha_content_stream_dir(
+            app, storage, furi_string_get_cstr(dir), more[g].game, seen, &topics);
     }
 
     furi_string_free(dir);

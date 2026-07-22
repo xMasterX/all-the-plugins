@@ -50,8 +50,8 @@
 #define HA_BUNDLED_WEB_DIR HA_ASSETS_DIR "/web"
 #define HA_USER_WEB_DIR    HA_DATA_DIR "/web"
 
-#define HA_BUNDLED_PACKS_DIR HA_ASSETS_DIR "/packs"
-#define HA_USER_PACKS_DIR    HA_DATA_DIR "/packs"
+#define HA_BUNDLED_PACKS_DIR  HA_ASSETS_DIR "/packs"
+#define HA_USER_PACKS_DIR     HA_DATA_DIR "/packs"
 // Compatibility: packs used to live in a trivia-only directory. Still read so a
 // user's existing SD content does not vanish. Remove one release after the packs/
 // layout ships.
@@ -159,6 +159,7 @@ typedef struct HotspotArcadeApp {
     // `flashing` blocks Back while a write is in progress (can't be aborted safely).
     FuriThread* flash_thread;
     FuriString* flash_manifest; // selected flash.txt path
+    bool flash_auto_boot; // pulse DTR/RTS instead of asking for BOOT/RESET
     volatile bool flashing; // true once connected (blocks Back mid-write)
     volatile bool flash_cancel; // set on exit to stop the download-mode poll
     volatile uint8_t flash_img, flash_cnt, flash_pct;
