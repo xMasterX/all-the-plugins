@@ -284,6 +284,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Flipper Keyller | ![Media Badge] | [by EstebanFuentealba](https://github.com/EstebanFuentealba/Flipper-Keyller) |  | [![Author Badge]](https://lab.flipper.net/apps/executor_keychain) |
 | Flipper ATM | ![Media Badge] | [by apfxtech](https://github.com/apfxtech/FlipperATM) |  | ![None Badge] |
 | Morse Master | ![Media Badge] | [by w84death](https://github.com/w84death/morse-master) |  | [![Author Badge]](https://lab.flipper.net/apps/morse_master) |
+| MP3 Player | ![Media Badge] | [by coolshrimp](https://github.com/coolshrimp/flipperzero-mp3-player) |  | ![None Badge] |
 | Mifare Fuzzer | ![NFC Badge] | [by spheeere98](https://github.com/spheeere98/mifare_fuzzer) | Fixed crash on exit. / Update!: Ported to new NFC API [by @Sil333033](https://github.com/Flipper-XFW/Xtreme-Firmware/commit/ac5744328a28b73fb5022ce7baaa4332a824a739) | [![UFW Badge]](https://lab.flipper.net/apps/mifare_fuzzer) |
 | Seader | ![NFC Badge] | [by bettse](https://github.com/bettse/seader/tree/main) | `Interface with a SAM from the Flipper Zero over UART` | [![Author Badge]](https://lab.flipper.net/apps/seader) |
 | VB Lab Migration Assistant | ![NFC Badge] | [by GMMan (cyanic)](https://github.com/GMMan/flipperzero-vb-migrate) |  | [![Author Badge]](https://lab.flipper.net/apps/vb_migrate) |
