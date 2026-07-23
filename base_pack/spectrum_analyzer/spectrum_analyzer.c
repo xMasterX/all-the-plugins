@@ -184,7 +184,7 @@ static void spectrum_analyzer_render_callback(Canvas* const canvas, void* ctx) {
         canvas_draw_str_aligned(canvas, 127, 4, AlignRight, AlignTop, tmp_str);
     }
 
-    // Draw cross and label
+    // Draw cross on the current peak
     if(model->max_rssi > PEAK_THRESHOLD) {
         // Compress height to max of 64 values (255>>2)
         uint8_t max_y = MAX((model->max_rssi_dec - model->vscroll) >> 2, 0);
@@ -213,7 +213,8 @@ static void spectrum_analyzer_render_callback(Canvas* const canvas, void* ctx) {
         canvas_draw_line(canvas, (uint8_t)x1, (uint8_t)y1, (uint8_t)x2, (uint8_t)y2);
     }
 
-    // Label: keep showing the last locked peak even after the signal is gone
+    // Peak label: latched, so it survives after the signal is gone; hidden
+    // while the mode/modulation overlay occupies the top-right corner
     if((model->last_peak_rssi > PEAK_THRESHOLD) && !model->mode_change &&
        !model->modulation_change) {
         char temp_str[36];
@@ -245,6 +246,7 @@ static void spectrum_analyzer_worker_callback(
     float max_rssi,
     uint8_t max_rssi_dec,
     uint8_t max_rssi_channel,
+    uint32_t max_rssi_frequency,
     void* context) {
     SpectrumAnalyzer* spectrum_analyzer = context;
     furi_check(
@@ -256,12 +258,11 @@ static void spectrum_analyzer_worker_callback(
     model->max_rssi_dec = max_rssi_dec;
     model->max_rssi_channel = max_rssi_channel;
 
-    // Remember the last peak, frequency is stored in Hz so it stays
-    // valid after the view is retuned
+    // Latch the peak with the absolute frequency (Hz) the worker measured
+    // it at, so the held label stays correct after the view is retuned
     if(max_rssi > PEAK_THRESHOLD) {
         model->last_peak_rssi = max_rssi;
-        model->last_peak_frequency =
-            model->channel0_frequency + (max_rssi_channel * model->spacing);
+        model->last_peak_frequency = max_rssi_frequency;
     }
 
     furi_mutex_release(spectrum_analyzer->model_mutex);
@@ -410,7 +411,7 @@ void spectrum_analyzer_calculate_frequencies(SpectrumAnalyzerModel* model) {
 }
 
 static void spectrum_analyzer_load_settings(SpectrumAnalyzerModel* model) {
-    SpectrumAnalyzerSettings settings;
+    SpectrumAnalyzerSettings settings = {0};
     if(!saved_struct_load(
            SPECTRUM_ANALYZER_SETTINGS_PATH,
            &settings,
@@ -420,10 +421,12 @@ static void spectrum_analyzer_load_settings(SpectrumAnalyzerModel* model) {
         return;
     }
 
-    // Ignore saved values that are out of range, keep defaults instead
+    // If any saved value is out of range, discard the whole file and keep
+    // all defaults
     if((settings.center_freq < MIN_300) || (settings.center_freq > MAX_900) ||
        (settings.width > PRECISE) || (settings.modulation > NARROW_MODULATION) ||
        (settings.vscroll > MAX_VSCROLL)) {
+        FURI_LOG_W("Spectrum", "Discarding out-of-range saved settings");
         return;
     }
 
