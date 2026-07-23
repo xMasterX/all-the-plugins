@@ -27,12 +27,14 @@
 #define MP3_SETTINGS_PATH     APP_DATA_PATH("settings.bin")
 #define MP3_LIBRARY_PATH_FILE APP_DATA_PATH("music_path.txt")
 #define MP3_SETTINGS_MAGIC    0x4DU
-#define MP3_SETTINGS_VERSION  1U
+#define MP3_SETTINGS_VERSION  2U
+#define MP3_SETTINGS_COUNT    5
 
 typedef enum {
     Mp3ScreenMain,
     Mp3ScreenSongs,
     Mp3ScreenSettings,
+    Mp3ScreenFolderBrowser,
     Mp3ScreenAbout,
     Mp3ScreenNowPlaying,
 } Mp3Screen;
@@ -61,6 +63,14 @@ typedef struct {
 } Mp3SettingsV1;
 
 typedef struct {
+    uint8_t volume;
+    uint8_t repeat;
+    uint8_t output;
+    uint8_t reserved;
+    char music_path[MAX_MUSIC_PATH];
+} Mp3SettingsV2;
+
+typedef struct {
     FuriMessageQueue* input_queue;
     ViewPort* view_port;
     Gui* gui;
@@ -79,6 +89,14 @@ typedef struct {
     uint8_t song_count;
     int16_t current_song;
 
+    /* The folder browser reuses songs[] to hold directory names, so opening it
+     invalidates the library until the next scan. */
+    uint8_t folder_selection;
+    uint8_t folder_count;
+    char folder_path[MAX_MUSIC_PATH];
+    /* Set when the app is launched with a file path (Open From Archive). */
+    char current_path[MAX_MUSIC_PATH];
+
     uint8_t volume;
     Mp3RepeatMode repeat;
     Mp3Output output;
@@ -94,36 +112,61 @@ typedef struct {
     char status[48];
 } Mp3App;
 
+static void mp3_load_music_directory(Mp3App* app);
+
+static bool mp3_valid_music_path(const char* path) {
+    return strncmp(path, "/ext", 4) == 0 && (path[4] == '\0' || path[4] == '/');
+}
+
 static void mp3_load_settings(Mp3App* app) {
-    Mp3SettingsV1 settings = {0};
+    strlcpy(app->music_directory, MUSIC_DIRECTORY, sizeof(app->music_directory));
+
+    Mp3SettingsV2 settings = {0};
     FuriString* path = furi_string_alloc_set(MP3_SETTINGS_PATH);
     storage_common_resolve_path_and_ensure_app_directory(app->storage, path);
-    const bool loaded = saved_struct_load(
-        furi_string_get_cstr(path),
-        &settings,
-        sizeof(settings),
-        MP3_SETTINGS_MAGIC,
-        MP3_SETTINGS_VERSION);
+    const char* path_cstr = furi_string_get_cstr(path);
+    bool have_path = false;
+
+    if(saved_struct_load(
+           path_cstr, &settings, sizeof(settings), MP3_SETTINGS_MAGIC, MP3_SETTINGS_VERSION)) {
+        settings.music_path[sizeof(settings.music_path) - 1U] = '\0';
+        if(settings.volume <= 100 && settings.repeat <= Mp3RepeatAll &&
+           settings.output <= Mp3OutputPam8403) {
+            app->volume = settings.volume;
+            app->repeat = (Mp3RepeatMode)settings.repeat;
+            app->output = (Mp3Output)settings.output;
+            if(mp3_valid_music_path(settings.music_path)) {
+                strlcpy(app->music_directory, settings.music_path, sizeof(app->music_directory));
+                have_path = true;
+            }
+        }
+    } else {
+        Mp3SettingsV1 legacy = {0};
+        if(saved_struct_load(path_cstr, &legacy, sizeof(legacy), MP3_SETTINGS_MAGIC, 1U) &&
+           legacy.volume <= 100 && legacy.repeat <= Mp3RepeatAll &&
+           legacy.output <= Mp3OutputPam8403) {
+            app->volume = legacy.volume;
+            app->repeat = (Mp3RepeatMode)legacy.repeat;
+            app->output = (Mp3Output)legacy.output;
+        }
+    }
     furi_string_free(path);
 
-    if(loaded && settings.volume <= 100 && settings.repeat <= Mp3RepeatAll &&
-       settings.output <= Mp3OutputPam8403) {
-        app->volume = settings.volume;
-        app->repeat = (Mp3RepeatMode)settings.repeat;
-        app->output = (Mp3Output)settings.output;
-    }
-    app->settings_dirty = false;
+    if(!have_path) mp3_load_music_directory(app);
+    /* Migrated from v1 settings or music_path.txt: persist as v2 on exit. */
+    app->settings_dirty = !have_path;
 }
 
 static bool mp3_save_settings(Mp3App* app) {
     if(!app->settings_dirty) return true;
 
-    const Mp3SettingsV1 settings = {
+    Mp3SettingsV2 settings = {
         .volume = app->volume,
         .repeat = (uint8_t)app->repeat,
         .output = (uint8_t)app->output,
         .reserved = 0,
     };
+    strlcpy(settings.music_path, app->music_directory, sizeof(settings.music_path));
     FuriString* path = furi_string_alloc_set(MP3_SETTINGS_PATH);
     storage_common_resolve_path_and_ensure_app_directory(app->storage, path);
     const bool saved = saved_struct_save(
@@ -165,6 +208,8 @@ static void mp3_set_status(Mp3App* app, const char* message) {
     app->show_status = true;
 }
 
+/* Legacy path source: reads music_path.txt once so upgrades keep their folder.
+   New installs never create the file; the folder browser writes settings.bin. */
 static void mp3_load_music_directory(Mp3App* app) {
     strlcpy(app->music_directory, MUSIC_DIRECTORY, sizeof(app->music_directory));
 
@@ -202,18 +247,9 @@ static void mp3_load_music_directory(Mp3App* app) {
         while(end > app->music_directory + 4U && end[-1] == '/')
             *--end = '\0';
 
-        if(strncmp(app->music_directory, "/ext", 4) != 0 ||
-           (app->music_directory[4] != '\0' && app->music_directory[4] != '/')) {
+        if(!mp3_valid_music_path(app->music_directory)) {
             strlcpy(app->music_directory, MUSIC_DIRECTORY, sizeof(app->music_directory));
             mp3_set_status(app, "Invalid music_path.txt");
-        }
-    } else {
-        storage_file_free(file);
-        file = storage_file_alloc(app->storage);
-        if(storage_file_open(file, config_cstr, FSAM_WRITE, FSOM_CREATE_ALWAYS)) {
-            static const char default_path[] = MUSIC_DIRECTORY "\n";
-            storage_file_write(file, default_path, sizeof(default_path) - 1U);
-            storage_file_close(file);
         }
     }
     storage_file_free(file);
@@ -224,7 +260,6 @@ static void mp3_scan_songs(Mp3App* app) {
     app->scanning = true;
     view_port_update(app->view_port);
     app->song_count = 0;
-    mp3_load_music_directory(app);
 
     File* directory = storage_file_alloc(app->storage);
     uint16_t scanned_entries = 0;
@@ -260,6 +295,91 @@ static void mp3_scan_songs(Mp3App* app) {
 
     if(app->song_selection >= app->song_count) app->song_selection = 0;
     app->song_offset = 0;
+}
+
+/* Directory picker for the music library, borrowed from FlipBoy: browse with
+   OK on [..] and folder names, confirm with [Use this folder]. Folder names
+   live in songs[] while browsing, so leaving the browser always rescans. */
+
+static int mp3_name_compare(const char* left, const char* right) {
+    while(*left && *right) {
+        const int delta = tolower((unsigned char)*left) - tolower((unsigned char)*right);
+        if(delta) return delta;
+        left++;
+        right++;
+    }
+    return (unsigned char)*left - (unsigned char)*right;
+}
+
+static void mp3_scan_folders(Mp3App* app) {
+    app->folder_count = 0;
+    app->folder_selection = 0;
+
+    File* directory = storage_file_alloc(app->storage);
+    if(storage_dir_open(directory, app->folder_path)) {
+        FileInfo info;
+        char name[MAX_FILENAME];
+        uint16_t scanned_entries = 0;
+        while(app->folder_count < MAX_SONGS &&
+              storage_dir_read(directory, &info, name, sizeof(name))) {
+            if(++scanned_entries >= MAX_SCAN_ENTRIES) break;
+            if(!file_info_is_dir(&info) || name[0] == '.') continue;
+            strlcpy(app->songs[app->folder_count++].filename, name, MAX_FILENAME);
+        }
+    }
+    storage_dir_close(directory);
+    storage_file_free(directory);
+
+    for(int16_t i = 1; i < app->folder_count; i++) {
+        const Mp3Song entry = app->songs[i];
+        int16_t position = i;
+        while(position > 0 &&
+              mp3_name_compare(app->songs[position - 1].filename, entry.filename) > 0) {
+            app->songs[position] = app->songs[position - 1];
+            position--;
+        }
+        app->songs[position] = entry;
+    }
+}
+
+static void mp3_open_folder_browser(Mp3App* app) {
+    mp3_playback_stop(app->playback);
+    app->playing = false;
+    app->current_song = -1;
+    app->current_path[0] = '\0';
+    app->library_loaded = false;
+    app->song_count = 0;
+
+    strlcpy(app->folder_path, app->music_directory, sizeof(app->folder_path));
+    if(strncmp(app->folder_path, "/ext", 4) != 0)
+        strlcpy(app->folder_path, "/ext", sizeof(app->folder_path));
+    mp3_scan_folders(app);
+    app->screen = Mp3ScreenFolderBrowser;
+}
+
+static void mp3_folder_parent(char* path) {
+    if(strcmp(path, "/ext") == 0) return;
+    char* slash = strrchr(path, '/');
+    if(!slash || slash <= path + 4)
+        strlcpy(path, "/ext", MAX_MUSIC_PATH);
+    else
+        *slash = '\0';
+}
+
+static void mp3_folder_enter(Mp3App* app, const char* name) {
+    const size_t used = strlen(app->folder_path);
+    if(used + 1U + strlen(name) >= sizeof(app->folder_path)) return;
+    app->folder_path[used] = '/';
+    strlcpy(app->folder_path + used + 1U, name, sizeof(app->folder_path) - used - 1U);
+    mp3_scan_folders(app);
+}
+
+static uint8_t mp3_list_start(uint8_t selection, uint8_t count, uint8_t visible) {
+    if(count <= visible || selection < 2) return 0;
+    uint8_t start = selection - 1;
+    const uint8_t max_start = count - visible;
+    if(start > max_start) start = max_start;
+    return start;
 }
 
 static const char* mp3_repeat_name(Mp3RepeatMode repeat) {
@@ -323,8 +443,8 @@ static void mp3_draw_songs(Canvas* canvas, const Mp3App* app) {
     if(app->song_count == 0) {
         canvas_set_font(canvas, FontSecondary);
         canvas_draw_str(canvas, 4, 29, "No MP3 files found");
-        canvas_draw_str(canvas, 4, 43, "Check music_path.txt");
-        canvas_draw_str(canvas, 4, 56, "in apps_data/mp3_player");
+        canvas_draw_str(canvas, 4, 43, "Pick a folder under");
+        canvas_draw_str(canvas, 4, 56, "Settings > Music folder");
         return;
     }
 
@@ -338,22 +458,50 @@ static void mp3_draw_songs(Canvas* canvas, const Mp3App* app) {
 
 static void mp3_draw_settings(Canvas* canvas, const Mp3App* app) {
     mp3_draw_header(canvas, "Settings");
-    char value[32];
+    char rows[MP3_SETTINGS_COUNT][32];
 
-    snprintf(value, sizeof(value), "Volume       %u%%", app->volume);
-    mp3_draw_row(canvas, 25, value, app->settings_selection == 0);
-    snprintf(value, sizeof(value), "Repeat       %s", mp3_repeat_name(app->repeat));
-    mp3_draw_row(canvas, 37, value, app->settings_selection == 1);
-    snprintf(value, sizeof(value), "Output       %s", mp3_output_name(app->output));
-    mp3_draw_row(canvas, 49, value, app->settings_selection == 2);
-    mp3_draw_row(canvas, 61, "Rescan library", app->settings_selection == 3);
+    snprintf(rows[0], sizeof(rows[0]), "Volume       %u%%", app->volume);
+    snprintf(rows[1], sizeof(rows[1]), "Repeat       %s", mp3_repeat_name(app->repeat));
+    snprintf(rows[2], sizeof(rows[2]), "Output       %s", mp3_output_name(app->output));
+    const char* folder = strrchr(app->music_directory, '/');
+    folder = folder && folder[1] ? folder + 1 : app->music_directory;
+    snprintf(rows[3], sizeof(rows[3]), "Music folder %.13s", folder);
+    strlcpy(rows[4], "Rescan library", sizeof(rows[4]));
+
+    const uint8_t start =
+        mp3_list_start(app->settings_selection, MP3_SETTINGS_COUNT, VISIBLE_ROWS);
+    for(uint8_t row = 0; row < VISIBLE_ROWS; row++) {
+        const uint8_t index = start + row;
+        if(index >= MP3_SETTINGS_COUNT) break;
+        mp3_draw_row(canvas, 25 + row * 12, rows[index], index == app->settings_selection);
+    }
+}
+
+static void mp3_draw_folder_browser(Canvas* canvas, const Mp3App* app) {
+    /* The header shows where the browser currently is; rows list the choices. */
+    const char* current = strrchr(app->folder_path, '/');
+    current = current && current[1] ? current + 1 : app->folder_path;
+    char header[24];
+    snprintf(header, sizeof(header), "Dir: %.16s", current);
+    mp3_draw_header(canvas, header);
+
+    const uint8_t item_count = app->folder_count + 2;
+    const uint8_t start = mp3_list_start(app->folder_selection, item_count, VISIBLE_ROWS);
+    for(uint8_t row = 0; row < VISIBLE_ROWS; row++) {
+        const uint8_t index = start + row;
+        if(index >= item_count) break;
+        const char* label = index == 0 ? "[Use this folder]" :
+                            index == 1 ? "[..]" :
+                                         app->songs[index - 2].filename;
+        mp3_draw_row(canvas, 25 + row * 12, label, index == app->folder_selection);
+    }
 }
 
 /* The full pinout is longer than the screen, so About scrolls with Up/Down.
    A NULL entry draws a horizontal separator rule instead of text; every text
    line is kept short enough to fit the 128px width in FontSecondary. */
 static const char* const about_lines[] = {
-    "MP3 Player v3.4",
+    "MP3 Player v3.5",
     "Created by Coolshrimp",
     NULL,
     "MAX98357A:",
@@ -437,27 +585,33 @@ static void mp3_draw_now_playing(Canvas* canvas, const Mp3App* app) {
     canvas_draw_str(canvas, 5, 10, "MP3");
     mp3_draw_battery(canvas);
 
-    if(app->current_song < 0 || app->song_count == 0) {
+    if(app->current_song < 0 && app->current_path[0] == '\0') {
         canvas_draw_str_aligned(canvas, 64, 30, AlignCenter, AlignBottom, "Nothing selected");
         canvas_draw_str_aligned(canvas, 64, 45, AlignCenter, AlignBottom, "Choose a song first");
         return;
     }
 
-    char track[16];
-    snprintf(
-        track,
-        sizeof(track),
-        "%u/%u",
-        (unsigned)(app->current_song + 1),
-        (unsigned)app->song_count);
-    canvas_draw_str_aligned(canvas, 52, 10, AlignCenter, AlignBottom, track);
+    if(app->current_song >= 0) {
+        char track[16];
+        snprintf(
+            track,
+            sizeof(track),
+            "%u/%u",
+            (unsigned)(app->current_song + 1),
+            (unsigned)app->song_count);
+        canvas_draw_str_aligned(canvas, 52, 10, AlignCenter, AlignBottom, track);
+    }
     char volume[10];
     snprintf(volume, sizeof(volume), "V%u", app->volume);
     canvas_draw_str_aligned(canvas, 106, 10, AlignRight, AlignBottom, volume);
 
-    const Mp3Song* song = &app->songs[app->current_song];
     char title[MAX_FILENAME];
-    mp3_make_title(song->filename, title, sizeof(title));
+    if(app->current_song >= 0) {
+        mp3_make_title(app->songs[app->current_song].filename, title, sizeof(title));
+    } else {
+        const char* name = strrchr(app->current_path, '/');
+        mp3_make_title(name ? name + 1 : app->current_path, title, sizeof(title));
+    }
     canvas_draw_str_aligned(canvas, 64, 24, AlignCenter, AlignBottom, title);
 
     const uint32_t position = app->seeking ? app->seek_target_ms :
@@ -505,6 +659,9 @@ static void mp3_draw_callback(Canvas* canvas, void* context) {
     case Mp3ScreenSettings:
         mp3_draw_settings(canvas, app);
         break;
+    case Mp3ScreenFolderBrowser:
+        mp3_draw_folder_browser(canvas, app);
+        break;
     case Mp3ScreenAbout:
         mp3_draw_about(canvas, app);
         break;
@@ -532,10 +689,17 @@ static void mp3_input_callback(InputEvent* event, void* context) {
 }
 
 static bool mp3_build_song_path(const Mp3App* app, char* path, size_t path_size) {
-    if(app->current_song < 0 || app->current_song >= app->song_count) return false;
-    const int length = snprintf(
-        path, path_size, "%s/%s", app->music_directory, app->songs[app->current_song].filename);
-    return length >= 0 && (size_t)length < path_size;
+    if(app->current_song >= 0 && app->current_song < app->song_count) {
+        const int length = snprintf(
+            path, path_size, "%s/%s", app->music_directory, app->songs[app->current_song].filename);
+        return length >= 0 && (size_t)length < path_size;
+    }
+    /* Launched with a file argument (Open From Archive): play that file. */
+    if(app->current_path[0]) {
+        strlcpy(path, app->current_path, path_size);
+        return true;
+    }
+    return false;
 }
 
 static AudioOutput mp3_audio_output(Mp3Output output) {
@@ -590,7 +754,7 @@ static void mp3_change_song(Mp3App* app, int8_t direction) {
 }
 
 static void mp3_toggle_playback(Mp3App* app) {
-    if(app->current_song < 0) {
+    if(app->current_song < 0 && app->current_path[0] == '\0') {
         mp3_set_status(app, "Select a song first");
         return;
     }
@@ -613,8 +777,12 @@ static void mp3_poll_playback(Mp3App* app) {
         } else if(app->repeat == Mp3RepeatOne) {
             mp3_start_current(app);
         } else if(app->repeat == Mp3RepeatAll) {
-            app->current_song = (app->current_song + 1) % app->song_count;
-            app->song_selection = app->current_song;
+            /* With no library loaded (file launched from Archive) there is nothing
+         to advance to, so Repeat All behaves like Repeat One. */
+            if(app->song_count) {
+                app->current_song = (app->current_song + 1) % app->song_count;
+                app->song_selection = app->current_song;
+            }
             mp3_start_current(app);
         }
     }
@@ -664,6 +832,7 @@ static void mp3_handle_songs(Mp3App* app, InputKey key) {
     } else if(key == InputKeyOk && app->song_count) {
         mp3_playback_stop(app->playback);
         app->current_song = app->song_selection;
+        app->current_path[0] = '\0';
         app->playing = false;
         app->screen = Mp3ScreenNowPlaying;
         mp3_start_current(app);
@@ -680,9 +849,10 @@ static void mp3_handle_settings(Mp3App* app, InputKey key) {
         mp3_save_settings(app);
         app->screen = Mp3ScreenMain;
     } else if(key == InputKeyUp) {
-        app->settings_selection = app->settings_selection ? app->settings_selection - 1 : 3;
+        app->settings_selection = app->settings_selection ? app->settings_selection - 1 :
+                                                            MP3_SETTINGS_COUNT - 1;
     } else if(key == InputKeyDown) {
-        app->settings_selection = (app->settings_selection + 1) % 4;
+        app->settings_selection = (app->settings_selection + 1) % MP3_SETTINGS_COUNT;
     } else if(app->settings_selection == 0 && (key == InputKeyLeft || key == InputKeyRight)) {
         const uint8_t previous = app->volume;
         if(key == InputKeyRight && app->volume < 100) app->volume += 10;
@@ -698,11 +868,39 @@ static void mp3_handle_settings(Mp3App* app, InputKey key) {
         app->output = (app->output + (key == InputKeyRight ? 1U : 2U)) % 3U;
         app->settings_dirty = true;
     } else if(app->settings_selection == 3 && key == InputKeyOk) {
+        mp3_open_folder_browser(app);
+    } else if(app->settings_selection == 4 && key == InputKeyOk) {
         mp3_playback_stop(app->playback);
         app->playing = false;
         app->current_song = -1;
         mp3_scan_songs(app);
         if(app->song_count) mp3_set_status(app, "Library refreshed");
+    }
+}
+
+static void mp3_handle_folder_browser(Mp3App* app, InputKey key) {
+    const uint8_t item_count = app->folder_count + 2;
+    if(key == InputKeyUp) {
+        app->folder_selection = app->folder_selection ? app->folder_selection - 1 : item_count - 1;
+    } else if(key == InputKeyDown) {
+        app->folder_selection = (app->folder_selection + 1) % item_count;
+    } else if(key == InputKeyOk) {
+        if(app->folder_selection == 0) {
+            strlcpy(app->music_directory, app->folder_path, sizeof(app->music_directory));
+            app->settings_dirty = true;
+            mp3_save_settings(app);
+            mp3_scan_songs(app);
+            app->screen = Mp3ScreenSettings;
+            if(app->song_count) mp3_set_status(app, "Music folder saved");
+        } else if(app->folder_selection == 1) {
+            mp3_folder_parent(app->folder_path);
+            mp3_scan_folders(app);
+        } else {
+            mp3_folder_enter(app, app->songs[app->folder_selection - 2].filename);
+        }
+    } else if(key == InputKeyBack) {
+        mp3_scan_songs(app);
+        app->screen = Mp3ScreenSettings;
     }
 }
 
@@ -800,6 +998,9 @@ static bool mp3_handle_input(Mp3App* app, const InputEvent* event) {
     case Mp3ScreenSettings:
         mp3_handle_settings(app, event->key);
         break;
+    case Mp3ScreenFolderBrowser:
+        mp3_handle_folder_browser(app, event->key);
+        break;
     case Mp3ScreenAbout:
         mp3_handle_about(app, event->key);
         break;
@@ -818,7 +1019,6 @@ static Mp3App* mp3_app_alloc(void) {
     app->current_song = -1;
     app->volume = 50;
     app->storage = furi_record_open(RECORD_STORAGE);
-    mp3_load_music_directory(app);
     mp3_load_settings(app);
     app->playback = mp3_playback_alloc();
     app->input_queue = furi_message_queue_alloc(16, sizeof(InputEvent));
@@ -842,10 +1042,19 @@ static void mp3_app_free(Mp3App* app) {
 }
 
 int32_t app_main(void* parameter) {
-    UNUSED(parameter);
     Mp3App* app = mp3_app_alloc();
     bool running = true;
     InputEvent event;
+
+    /* Firmwares that support opening files in an app pass the file path as the
+     launch argument. Play it directly without loading the library. */
+    const char* args = parameter;
+    if(args && args[0]) {
+        strlcpy(app->current_path, args, sizeof(app->current_path));
+        app->screen = Mp3ScreenNowPlaying;
+        furi_delay_ms(100);
+        mp3_start_current(app);
+    }
 
     while(running) {
         if(furi_message_queue_get(app->input_queue, &event, furi_ms_to_ticks(250)) ==

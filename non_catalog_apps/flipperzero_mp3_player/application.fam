@@ -5,8 +5,11 @@ App(
     entry_point="app_main",
     requires=["gui", "storage"],
     stack_size=8192,
-    fap_version=(3, 4),
+    fap_version=(3, 5),
     fap_category="Media",
     fap_icon="music_icon.png",
+    fap_author="Coolshrimp",
+    fap_weburl="https://github.com/coolshrimp/flipperzero-mp3-player",
+    fap_description="Play any MP3 through the internal speaker, a MAX98357A I2S amplifier, or a filtered PAM8403.",
     targets=["f7"],
 )
