@@ -171,6 +171,17 @@ void ha_esp_port_enter_bootloader(void) {
     ha_rts_deinit();
 }
 
+void ha_esp_port_reset_target(void) {
+    // Plain reset: pulse DTR without holding IO0, so the chip comes up running
+    // the firmware we just wrote instead of back in the bootloader.
+    ha_dtr_set(false);
+    ha_dtr_init();
+    ha_dtr_set(true);
+    loader_port_delay_ms(HA_RESET_HOLD_TIME_MS);
+    ha_dtr_set(false);
+    ha_dtr_deinit();
+}
+
 // The library calls these itself on every connect attempt. Driving the reset
 // dance (and OTG power) once per attempt would make the poll unusable, so the
 // sequence lives in ha_esp_port_enter_bootloader() and the flasher fires it once.
