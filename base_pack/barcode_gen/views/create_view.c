@@ -323,6 +323,25 @@ void create_view_free_model(CreateView* create_view_object) {
         true);
 }
 
+/**
+ * Shows a message in the message view
+ * @param message the message to display
+ * @param next_view the view to switch to when the message is dismissed
+*/
+static void show_message(CreateView* create_view_object, const char* message, uint32_t next_view) {
+    with_view_model(
+        create_view_object->barcode_app->message_view->view,
+        MessageViewModel * model,
+        {
+            model->message = message;
+            model->next_view = next_view;
+        },
+        true);
+
+    view_dispatcher_switch_to_view(
+        create_view_object->barcode_app->view_dispatcher, MessageErrorView);
+}
+
 void remove_barcode(CreateView* create_view_object) {
     Storage* storage = furi_record_open(RECORD_STORAGE);
 
@@ -353,20 +372,8 @@ void remove_barcode(CreateView* create_view_object) {
         true);
     furi_record_close(RECORD_STORAGE);
 
-    with_view_model(
-        create_view_object->barcode_app->message_view->view,
-        MessageViewModel * model,
-        {
-            if(success) {
-                model->message = "File Deleted";
-            } else {
-                model->message = "Could not delete file";
-            }
-        },
-        true);
-
-    view_dispatcher_switch_to_view(
-        create_view_object->barcode_app->view_dispatcher, MessageErrorView);
+    show_message(
+        create_view_object, success ? "File Deleted" : "Could not delete file", MainMenuView);
 }
 
 void save_barcode(CreateView* create_view_object) {
@@ -390,18 +397,22 @@ void save_barcode(CreateView* create_view_object) {
 
     if(file_name == NULL || furi_string_empty(file_name)) {
         FURI_LOG_E(TAG, "File Name cannot be empty");
+        show_message(create_view_object, "File name\ncannot be empty", CreateBarcodeView);
         return;
     }
     if(barcode_data == NULL || furi_string_empty(barcode_data)) {
         FURI_LOG_E(TAG, "Barcode Data cannot be empty");
+        show_message(create_view_object, "Barcode data\ncannot be empty", CreateBarcodeView);
         return;
     }
     if(barcode_type == NULL) {
         FURI_LOG_E(TAG, "Type not defined");
+        show_message(create_view_object, "Barcode type\nis not selected", CreateBarcodeView);
         return;
     }
 
     bool success = false;
+    const char* error_message = "A saving error\nhas occurred";
 
     FuriString* full_file_path = furi_string_alloc_set(DEFAULT_USER_BARCODES);
     furi_string_push_back(full_file_path, '/');
@@ -409,6 +420,9 @@ void save_barcode(CreateView* create_view_object) {
     furi_string_cat_str(full_file_path, BARCODE_EXTENSION);
 
     Storage* storage = furi_record_open(RECORD_STORAGE);
+
+    //ensure the barcodes folder exists before saving
+    storage_simply_mkdir(storage, DEFAULT_USER_BARCODES);
 
     if(mode == EditMode) {
         if(!furi_string_empty(file_path)) {
@@ -432,8 +446,14 @@ void save_barcode(CreateView* create_view_object) {
 
     bool file_opened_status = false;
     if(mode == NewMode) {
-        file_opened_status =
-            flipper_format_file_open_new(ff, furi_string_get_cstr(full_file_path));
+        //open_new fails on existing files, check first to give a clear error message
+        if(storage_file_exists(storage, furi_string_get_cstr(full_file_path))) {
+            FURI_LOG_E(TAG, "File \"%s\" already exists", furi_string_get_cstr(full_file_path));
+            error_message = "A file with this\nname already exists";
+        } else {
+            file_opened_status =
+                flipper_format_file_open_new(ff, furi_string_get_cstr(full_file_path));
+        }
     } else if(mode == EditMode) {
         file_opened_status =
             flipper_format_file_open_always(ff, furi_string_get_cstr(full_file_path));
@@ -466,20 +486,12 @@ void save_barcode(CreateView* create_view_object) {
     flipper_format_free(ff);
     furi_record_close(RECORD_STORAGE);
 
-    with_view_model(
-        create_view_object->barcode_app->message_view->view,
-        MessageViewModel * model,
-        {
-            if(success) {
-                model->message = "File Saved!";
-            } else {
-                model->message = "A saving error has occurred";
-            }
-        },
-        true);
-
-    view_dispatcher_switch_to_view(
-        create_view_object->barcode_app->view_dispatcher, MessageErrorView);
+    if(success) {
+        show_message(create_view_object, "File Saved!", MainMenuView);
+    } else {
+        //go back to the create view so the entered data is not lost
+        show_message(create_view_object, error_message, CreateBarcodeView);
+    }
 }
 
 void create_view_free(CreateView* create_view_object) {

@@ -183,7 +183,10 @@ void edit_barcode_item(BarcodeApp* app) {
             with_view_model(
                 app->message_view->view,
                 MessageViewModel * model,
-                { model->message = get_error_code_message(reason); },
+                {
+                    model->message = get_error_code_message(reason);
+                    model->next_view = MainMenuView;
+                },
                 true);
 
             view_dispatcher_switch_to_view(
@@ -275,7 +278,6 @@ uint32_t exit_callback(void* context) {
 void free_app(BarcodeApp* app) {
     FURI_LOG_I(TAG, "Freeing Data");
 
-    init_folder();
     free_types();
 
     view_dispatcher_remove_view(app->view_dispatcher, TextInputView);
@@ -320,6 +322,7 @@ int32_t barcode_main(void* p) {
     UNUSED(p);
     BarcodeApp* app = malloc(sizeof(BarcodeApp));
     init_types();
+    init_folder();
     app->event_queue = furi_message_queue_alloc(8, sizeof(InputEvent));
 
     // Register view port in GUI

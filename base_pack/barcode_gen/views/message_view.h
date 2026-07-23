@@ -11,6 +11,8 @@ typedef struct {
 
 typedef struct {
     const char* message;
+    //the view to switch to when the message is dismissed
+    uint32_t next_view;
 } MessageViewModel;
 
 MessageView* message_view_allocate(BarcodeApp* barcode_app);

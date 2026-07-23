@@ -8,7 +8,7 @@ static void app_draw_callback(Canvas* canvas, void* ctx) {
 
     canvas_clear(canvas);
     if(message_view_model->message != NULL) {
-        canvas_draw_str_aligned(
+        elements_multiline_text_aligned(
             canvas, 62, 30, AlignCenter, AlignCenter, message_view_model->message);
     }
 
@@ -23,15 +23,23 @@ static bool app_input_callback(InputEvent* input_event, void* ctx) {
 
     MessageView* message_view_object = ctx;
 
+    bool dismissed = false;
     if(input_event->key == InputKeyBack) {
-        view_dispatcher_switch_to_view(
-            message_view_object->barcode_app->view_dispatcher, MainMenuView);
+        dismissed = true;
     }
-    if(input_event->type == InputTypeShort) {
-        if(input_event->key == InputKeyOk) {
-            view_dispatcher_switch_to_view(
-                message_view_object->barcode_app->view_dispatcher, MainMenuView);
-        }
+    if(input_event->type == InputTypeShort && input_event->key == InputKeyOk) {
+        dismissed = true;
+    }
+
+    if(dismissed) {
+        uint32_t next_view = MainMenuView;
+        with_view_model(
+            message_view_object->view,
+            MessageViewModel * model,
+            { next_view = model->next_view; },
+            false);
+        view_dispatcher_switch_to_view(
+            message_view_object->barcode_app->view_dispatcher, next_view);
     }
 
     return true;
