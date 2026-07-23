@@ -13,4 +13,5 @@ App(
     fap_libs=["assets", "hwdrivers"],
     fap_icon="icon.png",
     fap_category="Sub-GHz",
+    fap_version="1.2",
 )
