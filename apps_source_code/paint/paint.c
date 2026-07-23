@@ -3,6 +3,7 @@
 #include <gui/gui.h>
 #include <input/input.h>
 #include <storage/storage.h>
+#include <toolbox/saved_struct.h>
 #include <string.h>
 
 #define BOARD_WIDTH  32
@@ -12,9 +13,10 @@
 #define PAINT_SAVE_PATH     APP_DATA_PATH("canvas.bin")
 #define PAINT_SAVE_TMP_PATH APP_DATA_PATH("canvas.bin.tmp")
 
-//file header so a foreign file is not loaded as a canvas
-//(truncation is caught by the exact-size reads)
-static const char paint_save_magic[4] = {'P', 'N', 'T', '1'};
+//saved_struct tags the file with this magic + version and a checksum, so a
+//foreign, truncated or corrupt save is rejected on load
+#define PAINT_SAVE_MAGIC   0x50
+#define PAINT_SAVE_VERSION 1
 
 typedef enum {
     PaintModeMove, //cursor moves without touching the board
@@ -105,58 +107,38 @@ static bool paint_is_move_event(InputType type) {
 }
 
 static void paint_load(PaintData* paint_state) {
-    Storage* storage = furi_record_open(RECORD_STORAGE);
-    File* file = storage_file_alloc(storage);
-    if(storage_file_open(file, PAINT_SAVE_PATH, FSAM_READ, FSOM_OPEN_EXISTING)) {
-        char magic[sizeof(paint_save_magic)];
-        bool loaded = storage_file_read(file, magic, sizeof(magic)) == sizeof(magic) &&
-                      memcmp(magic, paint_save_magic, sizeof(magic)) == 0 &&
-                      storage_file_read(file, paint_state->board, sizeof(paint_state->board)) ==
-                          sizeof(paint_state->board);
-        if(loaded) {
-            //a bool must hold 0 or 1, file bytes can hold anything
-            uint8_t* cells = (uint8_t*)paint_state->board;
-            for(size_t i = 0; i < sizeof(paint_state->board); i++) {
-                cells[i] = (cells[i] != 0);
-            }
-        } else {
-            FURI_LOG_W("paint", "invalid save file, starting with an empty canvas");
-            memset(paint_state->board, 0, sizeof(paint_state->board));
-        }
-    } else if(storage_file_get_error(file) != FSE_NOT_EXIST) {
-        //a missing file is a normal first run; anything else is worth a trace
-        FURI_LOG_W("paint", "cannot read the save file: %s", storage_file_get_error_desc(file));
+    //a missing or corrupt save just leaves the initialized empty canvas
+    if(!saved_struct_load(
+           PAINT_SAVE_PATH,
+           paint_state->board,
+           sizeof(paint_state->board),
+           PAINT_SAVE_MAGIC,
+           PAINT_SAVE_VERSION)) {
+        memset(paint_state->board, 0, sizeof(paint_state->board));
     }
-    storage_file_close(file);
-    storage_file_free(file);
-    furi_record_close(RECORD_STORAGE);
 }
 
 static bool paint_save(const PaintData* paint_state) {
+    //write to a temporary file first, then rename it over the real save, so a
+    //failed write cannot destroy the previously saved canvas
+    if(!saved_struct_save(
+           PAINT_SAVE_TMP_PATH,
+           paint_state->board,
+           sizeof(paint_state->board),
+           PAINT_SAVE_MAGIC,
+           PAINT_SAVE_VERSION)) {
+        FURI_LOG_E("paint", "cannot write the canvas");
+        return false;
+    }
+
     Storage* storage = furi_record_open(RECORD_STORAGE);
-    File* file = storage_file_alloc(storage);
-    //write to a temporary file first so a failed write cannot destroy
-    //the previous save
-    bool saved = storage_file_open(file, PAINT_SAVE_TMP_PATH, FSAM_WRITE, FSOM_CREATE_ALWAYS) &&
-                 storage_file_write(file, paint_save_magic, sizeof(paint_save_magic)) ==
-                     sizeof(paint_save_magic) &&
-                 storage_file_write(file, paint_state->board, sizeof(paint_state->board)) ==
-                     sizeof(paint_state->board) &&
-                 storage_file_sync(file);
-    if(!saved) {
-        FURI_LOG_E("paint", "cannot save the canvas: %s", storage_file_get_error_desc(file));
-    }
-    storage_file_close(file);
-    if(saved) {
-        FS_Error error = storage_common_rename(storage, PAINT_SAVE_TMP_PATH, PAINT_SAVE_PATH);
-        if(error != FSE_OK) {
-            saved = false;
-            FURI_LOG_E("paint", "cannot save the canvas: %s", storage_error_get_desc(error));
-        }
-    }
-    storage_file_free(file);
+    FS_Error error = storage_common_rename(storage, PAINT_SAVE_TMP_PATH, PAINT_SAVE_PATH);
     furi_record_close(RECORD_STORAGE);
-    return saved;
+    if(error != FSE_OK) {
+        FURI_LOG_E("paint", "cannot save the canvas: %s", storage_error_get_desc(error));
+        return false;
+    }
+    return true;
 }
 
 int32_t paint_app(void* p) {
