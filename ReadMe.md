@@ -141,7 +141,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Etch-A-Sketch | ![Games Badge] | [by SimplyMinimal](https://github.com/SimplyMinimal/FlipperZero-Etch-A-Sketch) |  | ![None Badge] |
 | Pong | ![Games Badge] | [by nmrr](https://github.com/nmrr/flipperzero-pong) | Modified by [SimplyMinimal](https://github.com/SimplyMinimal/FlipperZero-Pong) | [![UFW Badge]](https://lab.flipper.net/apps/flipper_pong) |
 | Game of Life (Updated to work by tgxn) | ![Games Badge] | [by itsyourbedtime](https://github.com/tgxn/flipperzero-firmware/blob/dev/applications/game_of_life/game_of_life.c) |  | [![UFW Badge]](https://lab.flipper.net/apps/gameoflife) |
-| Mandelbrot Set | ![Games Badge] | [by Possibly-Matt](https://github.com/Possibly-Matt/flipperzero-firmware-wPlugins) |  | [![UFW Badge]](https://lab.flipper.net/apps/mandelbrotset) |
+| Mandelbrot Set | ![Games Badge] | by Possibly-Matt |  | [![UFW Badge]](https://lab.flipper.net/apps/mandelbrotset) |
 | Monty Hall | ![Games Badge] | [by DevMilanIan](https://github.com/RogueMaster/flipperzero-firmware-wPlugins/pull/203) |  | [![UFW Badge]](https://lab.flipper.net/apps/montyhall) |
 | Nu Pogodi! (Ну, погоди!) | ![Games Badge] | [by sionyx](https://github.com/sionyx/flipper_nupogodi) |  | [![UFW Badge]](https://lab.flipper.net/apps/nupogodi) |
 | Paint | ![Games Badge] | [by iinsaane](https://github.com/iinsaane) |  | [![UFW Badge]](https://lab.flipper.net/apps/paint) |
