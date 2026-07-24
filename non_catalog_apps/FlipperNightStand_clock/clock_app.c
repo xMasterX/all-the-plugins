@@ -60,6 +60,7 @@ void handle_up() {
         led = false;
         notification_message(notif, &led_off);
         brightness += 5;
+        if(brightness > 100) brightness = 100;
     }
     set_backlight_brightness((float)(brightness / 100.f));
 }
@@ -68,6 +69,7 @@ void handle_down() {
     dspBrightnessBarFrames = dspBrightnessBarDisplayFrames;
     if(brightness > 0) {
         brightness -= 5;
+        if(brightness < 0) brightness = 0;
         if(brightness == 0) { //trigger only on the first brightness 5 -> 0 transition
             led = true;
             notification_message(notif, &led_on);
@@ -150,15 +152,10 @@ static void clock_render_callback(Canvas* const canvas, void* ctx) {
         snprintf(
             time_string, TIME_LEN, CLOCK_TIME_FORMAT, curr_dt.hour, curr_dt.minute, curr_dt.second);
     } else {
-        bool pm = curr_dt.hour > 12;
         bool pm12 = curr_dt.hour >= 12;
-        snprintf(
-            time_string,
-            TIME_LEN,
-            CLOCK_TIME_FORMAT,
-            pm ? curr_dt.hour - 12 : curr_dt.hour,
-            curr_dt.minute,
-            curr_dt.second);
+        uint8_t hour12 = curr_dt.hour % 12;
+        if(hour12 == 0) hour12 = 12;
+        snprintf(time_string, TIME_LEN, CLOCK_TIME_FORMAT, hour12, curr_dt.minute, curr_dt.second);
 
         snprintf(
             meridian_string,
@@ -309,7 +306,7 @@ int32_t clock_app(void* p) {
     notif = furi_record_open(RECORD_NOTIFICATION);
 
     float SavedBrightness = notif->settings.display_brightness;
-    brightness = SavedBrightness * 100; // Keep current brightness by default
+    brightness = (int)roundf(SavedBrightness * 100.f); // Keep current brightness by default
 
     uint32_t Saved_display_off_delay_ms = notif->settings.display_off_delay_ms;
     notif->settings.display_off_delay_ms = 0;
@@ -327,6 +324,12 @@ int32_t clock_app(void* p) {
 
     if(timer == NULL) {
         FURI_LOG_E(TAG, "Cannot create timer");
+        //restore the notification settings mutated above before bailing out
+        notif->settings.display_off_delay_ms = Saved_display_off_delay_ms;
+        notification_message(notif, &sequence_display_backlight_enforce_auto);
+        notification_message(notif, &led_reset);
+        furi_record_close(RECORD_NOTIFICATION);
+        view_port_free(view_port);
         furi_mutex_free(plugin_state->mutex);
         furi_message_queue_free(plugin_state->event_queue);
         free(plugin_state);
@@ -387,7 +390,6 @@ int32_t clock_app(void* p) {
     view_port_enabled_set(view_port, false);
     gui_remove_view_port(gui, view_port);
     furi_record_close(RECORD_GUI);
-    furi_record_close(RECORD_NOTIFICATION);
     view_port_free(view_port);
     furi_message_queue_free(plugin_state->event_queue);
     furi_mutex_free(plugin_state->mutex);
@@ -399,6 +401,8 @@ int32_t clock_app(void* p) {
     notification_message(notif, &sequence_display_backlight_enforce_auto);
     set_backlight_brightness(SavedBrightness);
     notification_message(notif, &led_reset);
+
+    furi_record_close(RECORD_NOTIFICATION);
 
     return 0;
 }
