@@ -324,6 +324,12 @@ int32_t clock_app(void* p) {
 
     if(timer == NULL) {
         FURI_LOG_E(TAG, "Cannot create timer");
+        //restore the notification settings mutated above before bailing out
+        notif->settings.display_off_delay_ms = Saved_display_off_delay_ms;
+        notification_message(notif, &sequence_display_backlight_enforce_auto);
+        notification_message(notif, &led_reset);
+        furi_record_close(RECORD_NOTIFICATION);
+        view_port_free(view_port);
         furi_mutex_free(plugin_state->mutex);
         furi_message_queue_free(plugin_state->event_queue);
         free(plugin_state);
