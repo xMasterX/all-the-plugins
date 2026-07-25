@@ -41,7 +41,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | NFC Magic | ![NFC Badge] |  | [![Official Badge]](https://lab.flipper.net/apps/nfc_magic) |
 | NFC Eink Tags | ![NFC Badge] | [by RebornedBrain](https://github.com/flipperdevices/flipperzero-good-faps/pull/245/files) | [![Official Badge]](https://lab.flipper.net/apps/nfc_eink) |
 | NFC/RFID detector | ![Tools Badge] |  | [![Official Badge]](https://lab.flipper.net/apps/nfc_rfid_detector) |
-| Simple Clock | ![Tools Badge] | [original by CompaqDisc](https://gist.github.com/CompaqDisc/4e329c501bd03c1e801849b81f48ea61), timer by GMMan, included in OFW<br>Part of UFW as main app [sources](https://github.com/DarkFlippers/unleashed-firmware/tree/dev/applications/main/clock_app) | [![Official Badge]](https://lab.flipper.net/apps/clock) |
+| NightStand Clock | ![Tools Badge] | [by nymda](https://github.com/nymda/FlipperNightStand) | Fixes [by Willy-JL](https://github.com/Willy-JL) & [mishamyte](https://github.com/mishamyte) & Alarm by @xMasterX <br>Part of UFW as main app [sources](https://github.com/DarkFlippers/unleashed-firmware/tree/dev/applications/main/clock_app) | ![None Badge] |
 | Weather Station | ![SubGhz Badge] | added External Radio Support | [![Official Badge]](https://lab.flipper.net/apps/weather_station) |
 | USB Keyboard & Mouse | ![USB Badge] | Renamed, added Mouse `Clicker`/`Jiggler`, Added `PTT`, `Movie` by @hryamzik - Moved back to [firmware repo](https://github.com/DarkFlippers/unleashed-firmware/tree/dev/applications/system) | ![None Badge] |
 | Bluetooth Remote | ![BT Badge] | Renamed, added Mouse `Clicker`/`Jiggler` & `Tikshorts`, Added `PTT`, `Movie` by @hryamzik - Moved back to [firmware repo](https://github.com/DarkFlippers/unleashed-firmware/tree/dev/applications/system) | ![None Badge] |
@@ -344,7 +344,6 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Chronometer | ![Tools Badge] | [by nmrr](https://github.com/nmrr/flipperzero-chronometer) |  | ![None Badge] |
 | HEX Editor | ![Tools Badge] | [by dunaevai135](https://github.com/dunaevai135/flipper-zero-hex_editor) |  | [![UFW Badge]](https://lab.flipper.net/apps/hex_editor) |
 | Multi Counter | ![Tools Badge] | [by JadePossible](https://github.com/JadePossible/Flipper-Multi-Counter) |  | [![Author Badge]](https://lab.flipper.net/apps/multi_counter) |
-| NightStand Clock | ![Tools Badge] | [by nymda](https://github.com/nymda/FlipperNightStand) | Fixes [by Willy-JL](https://github.com/Willy-JL) | ![None Badge] |
 | Password Generator | ![Tools Badge] | [by anakod](https://github.com/anakod/flipper_passgen) | Proper random [by henrygab](https://github.com/anakod/flipper_passgen/pull/6) | [![UFW Badge]](https://lab.flipper.net/apps/passgen) |
 | Pomodoro Timer | ![Tools Badge] | [by sbrin](https://github.com/sbrin/flipperzero_pomodoro) |  | [![UFW Badge]](https://lab.flipper.net/apps/pomodoro_timer) |
 | QR Code | ![Tools Badge] | [by bmatcuk](https://github.com/bmatcuk/flipperzero-qrcode) |  | [![Author Badge]](https://lab.flipper.net/apps/qrcode) |
