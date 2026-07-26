@@ -1,0 +1,16 @@
+# Apps that cannot be built by the "Build changed apps" workflow.
+#
+# The workflow builds each changed app with standalone `ufbt`, which only has
+# the SDK's public headers. Some apps (mostly in non_catalog_apps/) need
+# firmware-internal headers - assets_icons.h, lib/subghz/protocol_items.h and
+# friends - that only exist when the app is compiled inside the firmware tree.
+# Those cannot build here no matter what, so list them and the workflow skips
+# them instead of reporting a failure nobody can fix.
+#
+# One `pack/appname` path per line, matching the app's directory. Blank lines
+# and lines starting with `#` are ignored.
+#
+# This list is deliberately empty right now. The workflow's first phase is
+# report-only (see BUILD_BLOCKING in .github/workflows/pr-build.yml), so let it
+# run for a while, collect the apps that actually fail, and add them here before
+# turning the gate on. Guessing the list up front would skip apps that build fine.

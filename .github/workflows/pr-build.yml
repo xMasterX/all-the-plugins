@@ -1,0 +1,245 @@
+# Build every app a PR touches, so a change that doesn't compile is caught before
+# it's merged. The pack carries 300+ apps and building all of them on every PR is
+# not viable, so this walks the PR diff down to `pack/appname` directories and
+# builds only what actually changed.
+#
+# Apps are built with standalone `ufbt` against the Unleashed SDK - the same index
+# and channel a maintainer uses locally - NOT inside the firmware tree. Some apps
+# need firmware-internal headers (assets_icons.h, lib/subghz/protocol_items.h and
+# friends) that only exist when compiled downstream in the firmware, and can never
+# build this way. Those are listed in .github/no-standalone-build.txt and skipped.
+#
+# ---------------------------------------------------------------------------
+# PHASE 1 - REPORT ONLY. The build step below is `continue-on-error: true`, so a
+# failing app is listed in the run's summary table but does not fail the check or
+# block a merge. Let it run for a while, see which apps genuinely can't build
+# standalone, add them to .github/no-standalone-build.txt, and then delete that
+# one line to turn this into a real gate. Search for PHASE 1 below.
+# ---------------------------------------------------------------------------
+#
+# `pull_request`, never `pull_request_target`: this compiles code straight from the
+# PR, so it has to run with the fork's read-only token and no access to secrets.
+
+name: Build changed apps
+
+on:
+  pull_request:
+    paths:
+      - "base_pack/**"
+      - "apps_source_code/**"
+      - "non_catalog_apps/**"
+  workflow_dispatch:
+    inputs:
+      apps:
+        description: "Space-separated app dirs, e.g. `base_pack/tetris_game apps_source_code/4inrow_game`"
+        required: true
+        type: string
+
+# No checkout credentials, no writes: this job only reads the tree and compiles.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  UFBT_INDEX_URL: https://up.unleashedflip.com/directory.json
+  UFBT_CHANNEL: dev
+  UFBT_HW_TARGET: f7
+
+jobs:
+  detect:
+    name: Detect changed apps
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      apps: ${{ steps.detect.outputs.apps }}
+      count: ${{ steps.detect.outputs.count }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # On a PR, checkout lands on the merge commit: HEAD^1 is the base branch
+          # tip and HEAD is base+PR, so diffing the two yields exactly the changes
+          # this PR introduces. Depth 2 is all that needs fetching for that.
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Collect app dirs
+        id: detect
+        env:
+          EVENT: ${{ github.event_name }}
+          # Read through env, never interpolated into the script body - a branch or
+          # input value must not be able to break out into the shell.
+          DISPATCH_APPS: ${{ inputs.apps }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            # Deliberately unquoted: the input is a space-separated list to split.
+            printf '%s\n' $DISPATCH_APPS | sort -u > candidates.txt
+          else
+            git diff --name-only HEAD^1 HEAD \
+              | { grep -E '^(base_pack|apps_source_code|non_catalog_apps)/[^/]+/' || true; } \
+              | cut -d/ -f1-2 | sort -u > candidates.txt
+          fi
+
+          # Drop anything that isn't a buildable app: deleted directories, files
+          # moved out of an app, and the apps known not to build standalone.
+          skiplist="$(grep -vE '^[[:space:]]*(#|$)' .github/no-standalone-build.txt 2>/dev/null || true)"
+          : > selected.txt
+          : > skipped.txt
+          while read -r dir; do
+            [ -n "$dir" ] || continue
+            if [ ! -f "$dir/application.fam" ]; then
+              echo "$dir - no application.fam (deleted, or not an app directory)" >> skipped.txt
+            elif printf '%s\n' "$skiplist" | grep -qxF "$dir"; then
+              echo "$dir - listed in .github/no-standalone-build.txt" >> skipped.txt
+            else
+              echo "$dir" >> selected.txt
+            fi
+          done < candidates.txt
+
+          count="$(wc -l < selected.txt | tr -d '[:space:]')"
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "apps=$(jq -R -s -c 'split("\n") | map(select(length > 0))' < selected.txt)" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## Apps to build"
+            echo ""
+            if [ "$count" = "0" ]; then
+              echo "Nothing to build - no changed app directory needs compiling."
+            else
+              sed 's/^/- `/; s/$/`/' selected.txt
+            fi
+            if [ -s skipped.txt ]; then
+              echo ""
+              echo "### Skipped"
+              echo ""
+              sed 's/^/- /' skipped.txt
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    name: ${{ matrix.app }}
+    needs: detect
+    if: needs.detect.outputs.count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false # one broken app must not hide the results for the others
+      max-parallel: 6
+      matrix:
+        app: ${{ fromJSON(needs.detect.outputs.apps) }}
+    steps:
+      # First, so the result-recording steps below always have a slug to name
+      # their artifact with - even if the SDK fetch blows up before the build.
+      - name: Slug for artifact names
+        id: slug
+        env:
+          APP_DIR: ${{ matrix.app }}
+        run: echo "value=${APP_DIR//\//__}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      # Mostly here for the ARM toolchain, which is large and changes rarely. The
+      # SDK itself moves with the `dev` channel, so `ufbt update` below still
+      # re-fetches it; a static key means a hit skips the save and avoids all the
+      # matrix jobs racing to write the same cache. Bump -v1 to invalidate.
+      - name: Cache ufbt SDK and toolchain
+        uses: actions/cache@v6
+        with:
+          path: ~/.ufbt
+          key: ufbt-${{ env.UFBT_HW_TARGET }}-${{ env.UFBT_CHANNEL }}-v1
+
+      - name: Install ufbt
+        run: pip install --disable-pip-version-check ufbt
+
+      - name: Fetch Unleashed SDK
+        run: |
+          ufbt update \
+            --index-url "$UFBT_INDEX_URL" \
+            --channel "$UFBT_CHANNEL" \
+            --hw-target "$UFBT_HW_TARGET"
+
+      # PHASE 1 - REPORT ONLY: delete `continue-on-error` to make a failed build
+      # fail the check. See the header comment before flipping it.
+      - name: Build
+        id: build
+        continue-on-error: true
+        env:
+          APP_DIR: ${{ matrix.app }}
+        run: |
+          set -euo pipefail
+          cd "$APP_DIR"
+          ufbt
+
+      - name: Record result
+        if: always()
+        env:
+          APP_DIR: ${{ matrix.app }}
+          OUTCOME: ${{ steps.build.outcome }}
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          printf '%s\t%s\n' "$APP_DIR" "$OUTCOME" \
+            > "results/${{ steps.slug.outputs.value }}.tsv"
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-result-${{ steps.slug.outputs.value }}
+          path: results/*.tsv
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Upload built fap
+        if: steps.build.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: fap-${{ steps.slug.outputs.value }}
+          path: ${{ matrix.app }}/dist/*.fap
+          retention-days: 14
+          if-no-files-found: warn # a fap can legitimately land elsewhere
+
+  summary:
+    name: Build summary
+    needs: [detect, build]
+    if: always() && needs.detect.outputs.count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download results
+        uses: actions/download-artifact@v7
+        with:
+          pattern: build-result-*
+          merge-multiple: true
+          path: results
+
+      - name: Render summary
+        run: |
+          set -euo pipefail
+          {
+            echo "## Build results"
+            echo ""
+            echo "| App | Result |"
+            echo "| --- | --- |"
+            cat results/*.tsv 2>/dev/null | sort | while IFS="$(printf '\t')" read -r app outcome; do
+              [ -n "$app" ] || continue
+              if [ "$outcome" = "success" ]; then
+                echo "| \`$app\` | ✅ built |"
+              else
+                echo "| \`$app\` | ❌ failed |"
+              fi
+            done
+            echo ""
+            echo "> Phase 1: report-only. A failure above does not block this PR yet."
+            echo "> If an app can never build standalone, add it to \`.github/no-standalone-build.txt\`."
+          } >> "$GITHUB_STEP_SUMMARY"
