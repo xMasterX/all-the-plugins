@@ -11,9 +11,14 @@
 - [ ] I have performed a self-review of my own code
 - [ ] I have commented my code, particularly in hard-to-understand areas
 - [ ] My code is released under GPLv3 license and can be edited, or published according to the opensource license
+- [ ] I have bumped `fap_version` in the app's `application.fam`
+- [ ] I have added an entry to the app's `CHANGELOG.md` describing the change
 
 # AI usage disclosure (Fill this out):
 
+Tick exactly one - leaving all three blank reads as "not filled out" rather than "no AI".
+
+- [ ] No AI assistance.
 - [ ] Partially AI assisted (clarify below which code was AI assisted and briefly explain what it does).
 - [ ] Fully AI generated (explain what all the generated code does in moderate detail).
 

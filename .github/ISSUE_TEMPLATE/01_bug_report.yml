@@ -14,6 +14,17 @@ body:
       description: Which app is affected? (name as it appears in the app menu)
     validations:
       required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      description: >
+        The app's own version, not the firmware version. Read `fap_version` from
+        the app's `application.fam` - in its folder in this repo, or in the app's
+        folder on your microSD.
+      placeholder: e.g. 1.4
+    validations:
+      required: true
   - type: textarea
     id: description
     attributes:
@@ -30,13 +41,25 @@ body:
         1. Open the app...
         2. Press '...'
         3. See the issue
+    validations:
+      required: true
   - type: input
     id: version
     attributes:
       label: Firmware version
       description: Which Unleashed firmware version are you running?
   - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Paste any logs or other text output here.
+      # Rendered as a code block so logs arrive intact instead of being reflowed
+      # as Markdown. This is the only field with `render`: it also disables file
+      # attachments, which is a fair trade for logs but not for anything else -
+      # hence the separate catch-all below, where photos of the screen can go.
+      render: Text
+  - type: textarea
     id: anything-else
     attributes:
       label: Anything else?
-      description: Logs, photos, or anything else that helps.
+      description: Screenshots, photos of the Flipper screen, or anything else that helps.

@@ -6,6 +6,10 @@ body:
     attributes:
       value: |
         Use this to request a new app be added to the pack.
+
+        The pack is redistributed under GPLv3, so an app can only be included if its
+        license allows that. Please check the source repo before opening the request -
+        it is the most common reason one can't be accepted.
   - type: input
     id: app
     attributes:
@@ -17,6 +21,24 @@ body:
     attributes:
       label: Source / repository link
       description: Link to the app's source code.
+    validations:
+      required: true
+  - type: dropdown
+    id: license
+    attributes:
+      label: License
+      description: >
+        What license is the app's source published under? Pick "No license file" if
+        the repo has none - that means it is not redistributable by default, however
+        permissive it looks.
+      options:
+        - GPL-3.0
+        - GPL-2.0
+        - MIT
+        - Apache-2.0
+        - BSD (2- or 3-clause)
+        - Other (please say which below)
+        - No license file / unclear
     validations:
       required: true
   - type: textarea
