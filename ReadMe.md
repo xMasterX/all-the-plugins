@@ -68,6 +68,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | **SubGHz WarDriving** | ![SubGhz Badge] | [by Dmitry422](https://github.com/Dmitry422/subghz_wardriving) | Collect and autosave subghz signals with GPS (NMEA-UART) module, based on features from Momentum FW (by @WillyJL) | ![None Badge] |
 | **NFC Maker** plugin | ![NFC Badge] | [by Willy-JL](https://github.com/Flipper-XFW/Xtreme-Firmware/tree/dev/applications/external/nfc_maker) | make tags with URLs, Wifi and other things | ![None Badge] |
 | MIFARE Classic Editor | ![NFC Badge] | [by TollyH](https://github.com/TollyH/flipper-apps/tree/main/mfc-editor) | edit dumps on flipper | [![Author Badge]](https://lab.flipper.net/apps/mfc_editor) |
+| **Flipper Share NFC** | ![NFC Badge] | [by lomalkin](https://github.com/lomalkin/flipper-zero-apps/blob/-/flipper_share_nfc) | | [![Author Badge]](https://lab.flipper.net/apps/flipper_share_nfc) |
 | **RFID Fuzzer** | ![RFID Badge] | [by @gid9798](https://github.com/DarkFlippers/Multi_Fuzzer) | original by Ganapati & xMasterX | [![UFW Badge]](https://lab.flipper.net/apps/fuzzer_rfid) |
 | **iButton Fuzzer** | ![iButton Badge] | [by @gid9798](https://github.com/DarkFlippers/Multi_Fuzzer) | original by xMasterX | [![UFW Badge]](https://lab.flipper.net/apps/fuzzer_ibtn) |
 | **iButton Converter** | ![iButton Badge] | [by @Leptopt1los](https://github.com/Leptopt1los/ibutton_converter) | | [![UFW Badge]](https://lab.flipper.net/apps/ibutton_converter) |
