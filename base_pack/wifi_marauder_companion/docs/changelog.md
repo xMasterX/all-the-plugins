@@ -34,9 +34,9 @@ Thanks to @justcallmekoko for adding app support for the new features in Maraude
 Bug fixes and improvements!
 
 - Back to working on latest official firmware ( @GeorgeBotsev )
-- Now the Evil Portal and wardrive dumps will be saved to a new directory apps_data/marauder/dumps, and the "-serial" argument for all commands will respect your "save pcaps" app setting ( @Willy-JL )
+- Now the Evil Portal and wardrive dumps will be saved to a new directory apps_data/marauder/dumps, and the "-serial" argument for all commands will respect your "save pcaps" app setting ( @WillyJL )
 - You'll also notice an apps_data/marauder/html directory, to support migrating from the standalone Evil Portal ( @RogueMaster )
-- Fixes an issue with loading scripts due to upstream toolchain changes ( @Willy-JL , @vollukas )
+- Fixes an issue with loading scripts due to upstream toolchain changes ( @WillyJL , @vollukas )
 
 As always, make sure you're running the latest version of Marauder FW on your wifi board: https://github.com/justcallmekoko/ESP32Marauder/releases/latest
 
@@ -45,7 +45,7 @@ As always, make sure you're running the latest version of Marauder FW on your wi
 
 ## v0.7.0
 
-Unified serial update! No more complicated wiring of 2x UART connections - all your boards are supported now, with PCAPs and text both going over just ONE, SINGLE serial channel! Thanks to @Willy-JL for adding this amazing feature and fixing up the app for the new APIs.
+Unified serial update! No more complicated wiring of 2x UART connections - all your boards are supported now, with PCAPs and text both going over just ONE, SINGLE serial channel! Thanks to @WillyJL for adding this amazing feature and fixing up the app for the new APIs.
 
 Requires Marauder **FW v0.13.7** (or newer) flashed to your wifi board: https://github.com/justcallmekoko/ESP32Marauder/releases/latest
 

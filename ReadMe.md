@@ -41,7 +41,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | NFC Magic | ![NFC Badge] |  | [![Official Badge]](https://lab.flipper.net/apps/nfc_magic) |
 | NFC Eink Tags | ![NFC Badge] | [by RebornedBrain](https://github.com/flipperdevices/flipperzero-good-faps/pull/245/files) | [![Official Badge]](https://lab.flipper.net/apps/nfc_eink) |
 | NFC/RFID detector | ![Tools Badge] |  | [![Official Badge]](https://lab.flipper.net/apps/nfc_rfid_detector) |
-| NightStand Clock | ![Tools Badge] | [by nymda](https://github.com/nymda/FlipperNightStand) | Fixes [by Willy-JL](https://github.com/Willy-JL) & [mishamyte](https://github.com/mishamyte) & Alarm by @xMasterX <br>Part of UFW as main app [sources](https://github.com/DarkFlippers/unleashed-firmware/tree/dev/applications/main/clock_app) | ![None Badge] |
+| NightStand Clock | ![Tools Badge] | [by nymda](https://github.com/nymda/FlipperNightStand) | Fixes [by WillyJL](https://github.com/WillyJL) & [mishamyte](https://github.com/mishamyte) & Alarm by @xMasterX <br>Part of UFW as main app [sources](https://github.com/DarkFlippers/unleashed-firmware/tree/dev/applications/main/clock_app) | ![None Badge] |
 | Weather Station | ![SubGhz Badge] | added External Radio Support | [![Official Badge]](https://lab.flipper.net/apps/weather_station) |
 | USB Keyboard & Mouse | ![USB Badge] | Renamed, added Mouse `Clicker`/`Jiggler`, Added `PTT`, `Movie` by @hryamzik - Moved back to [firmware repo](https://github.com/DarkFlippers/unleashed-firmware/tree/dev/applications/system) | ![None Badge] |
 | Bluetooth Remote | ![BT Badge] | Renamed, added Mouse `Clicker`/`Jiggler` & `Tikshorts`, Added `PTT`, `Movie` by @hryamzik - Moved back to [firmware repo](https://github.com/DarkFlippers/unleashed-firmware/tree/dev/applications/system) | ![None Badge] |
@@ -66,7 +66,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | **Flipper Share** | ![SubGhz Badge] | [by lomalkin](https://github.com/lomalkin/flipper-zero-apps/blob/-/flipper_share) | | [![Author Badge]](https://lab.flipper.net/apps/flipper_share) |
 | **ProtoPirate** | ![SubGhz Badge] | [by RocketGod](https://github.com/RocketGod-git/ProtoPirate) | Keyfob analysis toolkit that can decode and decrypt keys (no emulation) | ![None Badge] |
 | **SubGHz WarDriving** | ![SubGhz Badge] | [by Dmitry422](https://github.com/Dmitry422/subghz_wardriving) | Collect and autosave subghz signals with GPS (NMEA-UART) module, based on features from Momentum FW (by @WillyJL) | ![None Badge] |
-| **NFC Maker** plugin | ![NFC Badge] | [by Willy-JL](https://github.com/Flipper-XFW/Xtreme-Firmware/tree/dev/applications/external/nfc_maker) | make tags with URLs, Wifi and other things | ![None Badge] |
+| **NFC Maker** plugin | ![NFC Badge] | [by WillyJL](https://github.com/Flipper-XFW/Xtreme-Firmware/tree/dev/applications/external/nfc_maker) | make tags with URLs, Wifi and other things | ![None Badge] |
 | MIFARE Classic Editor | ![NFC Badge] | [by TollyH](https://github.com/TollyH/flipper-apps/tree/main/mfc-editor) | edit dumps on flipper | [![Author Badge]](https://lab.flipper.net/apps/mfc_editor) |
 | **Flipper Share NFC** | ![NFC Badge] | [by lomalkin](https://github.com/lomalkin/flipper-zero-apps/blob/-/flipper_share_nfc) | | [![Author Badge]](https://lab.flipper.net/apps/flipper_share_nfc) |
 | **RFID Fuzzer** | ![RFID Badge] | [by @gid9798](https://github.com/DarkFlippers/Multi_Fuzzer) | original by Ganapati & xMasterX | [![UFW Badge]](https://lab.flipper.net/apps/fuzzer_rfid) |
@@ -79,9 +79,9 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Barcode Generator | ![Tools Badge] | [by Kingal1337](https://github.com/Kingal1337/flipper-barcode-generator) |  | [![UFW Badge]](https://lab.flipper.net/apps/barcode_app) |
 | **TOTP (Authenticator)** | ![Tools Badge] | [by akopachov](https://github.com/akopachov/flipper-zero_authenticator) |  | [![Author Badge]](https://lab.flipper.net/apps/totp) |
 | HEX Viewer | ![Tools Badge] | [by QtRoS](https://github.com/QtRoS/flipper-zero-hex-viewer) |  | [![UFW Badge]](https://lab.flipper.net/apps/hex_viewer) |
-| Text Viewer | ![Tools Badge] | [by Willy-JL](https://github.com/Flipper-XFW/Xtreme-Firmware/tree/dev/applications/external/text_viewer) | original by kowalski7cc & kyhwana | [![UFW Badge]](https://lab.flipper.net/apps/text_viewer) |
+| Text Viewer | ![Tools Badge] | [by WillyJL](https://github.com/Flipper-XFW/Xtreme-Firmware/tree/dev/applications/external/text_viewer) | original by kowalski7cc & kyhwana | [![UFW Badge]](https://lab.flipper.net/apps/text_viewer) |
 | DTMF Dolphin | ![Tools Badge] | [by litui](https://github.com/litui/dtmf_dolphin) |  | [![UFW Badge]](https://lab.flipper.net/apps/dtmf_dolphin) |
-| **Quac! Remote** | ![Tools Badge] | [by rdefeo](https://github.com/rdefeo/quac) | Various fixes by @Willy-JL, Last SubGHz and Link file Fixes by @xMasterX, and first subghz fixes by Dmitry | [![Author Badge]](https://lab.flipper.net/apps/quac) |
+| **Quac! Remote** | ![Tools Badge] | [by rdefeo](https://github.com/rdefeo/quac) | Various fixes by @WillyJL, Last SubGHz and Link file Fixes by @xMasterX, and first subghz fixes by Dmitry | [![Author Badge]](https://lab.flipper.net/apps/quac) |
 | **FlipNote (Text Editor)** | ![Tools Badge] | [by morty517](https://github.com/morty517/flipnote) | + added custom keyboard with extra symbols | [![Author Badge]](https://lab.flipper.net/apps/flipnote) |
 | **PocketLab** | ![Tools Badge] | [by PerfectoWeb](https://github.com/PerfectoWeb/flipper-pocketlab) | Learn how to use flipper - on flipper! | [![Author Badge]](https://lab.flipper.net/apps/pocketlab) |
 | ESP8266 Deauther plugin | ![GPIO Badge] | [by SequoiaSan](https://github.com/SequoiaSan/FlipperZero-Wifi-ESP8266-Deauther-Module) |  | ![None Badge] |
@@ -101,7 +101,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | WAV Player | ![Media Badge] | [OFW: DrZlo13](https://github.com/flipperdevices/flipperzero-firmware/tree/zlo/wav-player) | Fixed and improved by [LTVA1](https://github.com/LTVA1/wav_player) -> Also outputs audio on `PA6` `3(A6)` pin | [![UFW Badge]](https://lab.flipper.net/apps/wav_player) |
 | Metronome | ![Media Badge] | [by panki27](https://github.com/panki27/Metronome) |  | [![UFW Badge]](https://lab.flipper.net/apps/metronome) |
 | Morse Code | ![Media Badge] | [by wh00hw](https://github.com/wh00hw/MorseCodeFAP) |  | [![UFW Badge]](https://lab.flipper.net/apps/morse_code) |
-| BLE Spam | ![BT Badge] | [by @Willy-JL & @ECTO-1A & @Spooks4576](https://github.com/Next-Flip/Momentum-Apps/tree/dev/ble_spam) |  | ![None Badge] |
+| BLE Spam | ![BT Badge] | [by @WillyJL & @ECTO-1A & @Spooks4576](https://github.com/Next-Flip/Momentum-Apps/tree/dev/ble_spam) |  | ![None Badge] |
 | FindMy Flipper | ![BT Badge] | [by @MatthewKuKanich](https://github.com/MatthewKuKanich/FindMyFlipper) | Please Read [how to add keys here](https://github.com/MatthewKuKanich/FindMyFlipper) | [![Author Badge]](https://lab.flipper.net/apps/findmy) |
 
 ### Games
@@ -129,7 +129,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 |---|:---:|---|---|:---:|
 | BT Camera Trigger | ![BT Badge] | [by Nem0oo](https://github.com/Nem0oo/flipper-zero-bluetooth-trigger) |  | [![UFW Badge]](https://lab.flipper.net/apps/bt_trigger) |
 | Bluetooth remote Keynote for Kodi | ![BT Badge] | [by coded-with-claws](https://github.com/coded-with-claws/flipperzero-tools) | read more details in original repo | ![None Badge] |
-| PC Monitor | ![BT Badge] | [by TheSainEyereg](https://github.com/TheSainEyereg/flipper-pc-monitor) | (+ App fixes for new api by @Willy-JL) - PC App (backend) is required! [Download here](https://github.com/TheSainEyereg/flipper-pc-monitor-backend/releases) | [![Author Badge]](https://lab.flipper.net/apps/pc_monitor) |
+| PC Monitor | ![BT Badge] | [by TheSainEyereg](https://github.com/TheSainEyereg/flipper-pc-monitor) | (+ App fixes for new api by @WillyJL) - PC App (backend) is required! [Download here](https://github.com/TheSainEyereg/flipper-pc-monitor-backend/releases) | [![Author Badge]](https://lab.flipper.net/apps/pc_monitor) |
 | Agentic Remote BLE | ![BT Badge] | [by Kasen Sansonetti & Wetware Labs.](https://github.com/Wet-wr-Labs/claupper) |  | [![Author Badge]](https://lab.flipper.net/apps/claude_remote_usb) |
 | Droid Beacon | ![BT Badge] | [by Spandox](https://github.com/spandox2/droidbeacon) | Emulate Galaxy's Edge BLE park location beacons for Droid Depot droids | ![None Badge] |
 | 4 in row | ![Games Badge] | [by leo-need-more-coffee](https://github.com/leo-need-more-coffee/flipperzero-4inrow) |  | [![UFW Badge]](https://lab.flipper.net/apps/4inrow) |
@@ -201,10 +201,10 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Bar code scanner emulator via COM port | ![GPIO Badge] | [by polarikus](https://github.com/polarikus/flipper-zero_bc_scanner_emulator) |  | [![Author Badge]](https://lab.flipper.net/apps/bc_scanner) |
 | ESP32->Flipper Camera | ![GPIO Badge] | [by Z4urce](https://github.com/Z4urce/flipperzero-camera) |  | ![None Badge] |
 | RC2014 ColecoVision | ![GPIO Badge] | [by ezod](https://github.com/ezod/flipperzero-rc2014-coleco) |  | ![None Badge] |
-| ESP Flasher | ![GPIO Badge] | [by 0xchocolate](https://github.com/0xchocolate/flipperzero-esp-flasher) | QuickFlash mode and other changes [by @Willy-JL](https://github.com/Flipper-XFW/Xtreme-Apps/tree/dev/esp_flasher), Marauder [firmware source](https://github.com/justcallmekoko/ESP32Marauder), BlackMagic [firmware source](https://github.com/flipperdevices/blackmagic-esp32-s2) | [![Author Badge]](https://lab.flipper.net/apps/esp_flasher) |
-| IFTTT Virtual Button for ESP8266 | ![GPIO Badge] | [by Ferrazzi](https://github.com/Ferrazzi/FlipperZero_IFTTT_Virtual_Button) | Fixes [by Willy-JL](https://github.com/Flipper-XFW/Xtreme-Firmware/commit/ae321fb5f4c616d3965546926b1b4b446eef8d86) | ![None Badge] |
+| ESP Flasher | ![GPIO Badge] | [by 0xchocolate](https://github.com/0xchocolate/flipperzero-esp-flasher) | QuickFlash mode and other changes [by @WillyJL](https://github.com/Flipper-XFW/Xtreme-Apps/tree/dev/esp_flasher), Marauder [firmware source](https://github.com/justcallmekoko/ESP32Marauder), BlackMagic [firmware source](https://github.com/flipperdevices/blackmagic-esp32-s2) | [![Author Badge]](https://lab.flipper.net/apps/esp_flasher) |
+| IFTTT Virtual Button for ESP8266 | ![GPIO Badge] | [by Ferrazzi](https://github.com/Ferrazzi/FlipperZero_IFTTT_Virtual_Button) | Fixes [by WillyJL](https://github.com/Flipper-XFW/Xtreme-Firmware/commit/ae321fb5f4c616d3965546926b1b4b446eef8d86) | ![None Badge] |
 | Wifi Deauth v2 for ESP8266 | ![GPIO Badge] | [by Timmotools](https://github.com/Timmotools/flipperzero_esp8266_deautherv2) |  | ![None Badge] |
-| Evil captive portal | ![GPIO Badge] | [by bigbrodude6119](https://github.com/bigbrodude6119/flipper-zero-evil-portal) | WIP -> +2 new features [by leedave](https://github.com/leedave/flipper-zero-evil-portal/tree/leedave/ap_rename) + Fixed and modded [by Willy-JL](https://github.com/Flipper-XFW/Xtreme-Firmware/tree/dev/applications/external/evil_portal) | ![None Badge] |
+| Evil captive portal | ![GPIO Badge] | [by bigbrodude6119](https://github.com/bigbrodude6119/flipper-zero-evil-portal) | WIP -> +2 new features [by leedave](https://github.com/leedave/flipper-zero-evil-portal/tree/leedave/ap_rename) + Fixed and modded [by WillyJL](https://github.com/Flipper-XFW/Xtreme-Firmware/tree/dev/applications/external/evil_portal) | ![None Badge] |
 | Flashlight | ![GPIO Badge] | [by xMasterX](https://github.com/xMasterX/flipper-flashlight) |  | [![UFW Badge]](https://lab.flipper.net/apps/flashlight) |
 | Pwnagotchi->Flipper interface | ![GPIO Badge] | [by Matt-London](https://github.com/Matt-London/pwnagotchi-flipper) |  | ![None Badge] |
 | Geiger Counter | ![GPIO Badge] | [by nmrr](https://github.com/nmrr/flipperzero-geigercounter) | works with external module! | [![UFW Badge]](https://lab.flipper.net/apps/flipper_geiger) |
@@ -275,8 +275,8 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Flizzer Tracker | ![Media Badge] | [by LTVA1](https://github.com/LTVA1/flizzer_tracker) |  | [![Author Badge]](https://lab.flipper.net/apps/flizzer_tracker) |
 | Music Beeper | ![Media Badge] | [by qqMajiKpp / Haseo](https://github.com/qqmajikpp/) |  | ![None Badge] |
 | Ocarina | ![Media Badge] | [by invalidna-me](https://github.com/invalidna-me/flipperzero-ocarina) |  | [![UFW Badge]](https://lab.flipper.net/apps/ocarina) |
-| Text 2 SAM | ![Media Badge] | [by Round-Pi](https://github.com/Round-Pi/flipperzero-text2sam) | Fixes [by Willy-JL](https://github.com/Flipper-XFW/Xtreme-Firmware/commit/e688f81b53b0138d80de4b609daf1f9fca5be647) | [![UFW Badge]](https://lab.flipper.net/apps/text2sam) |
-| Tuning Fork | ![Media Badge] | [by besya](https://github.com/besya/flipperzero-tuning-fork) | Fixes [by Willy-JL](https://github.com/Flipper-XFW/Xtreme-Firmware/commit/44023851f7349b6ae9ca9f9bd9228d795a7e04c0) | [![UFW Badge]](https://lab.flipper.net/apps/tuning_fork) |
+| Text 2 SAM | ![Media Badge] | [by Round-Pi](https://github.com/Round-Pi/flipperzero-text2sam) | Fixes [by WillyJL](https://github.com/Flipper-XFW/Xtreme-Firmware/commit/e688f81b53b0138d80de4b609daf1f9fca5be647) | [![UFW Badge]](https://lab.flipper.net/apps/text2sam) |
+| Tuning Fork | ![Media Badge] | [by besya](https://github.com/besya/flipperzero-tuning-fork) | Fixes [by WillyJL](https://github.com/Flipper-XFW/Xtreme-Firmware/commit/44023851f7349b6ae9ca9f9bd9228d795a7e04c0) | [![UFW Badge]](https://lab.flipper.net/apps/tuning_fork) |
 | USB Midi | ![Media Badge] | [by DrZlo13](https://github.com/DrZlo13/flipper-zero-usb-midi) |  | ![None Badge] |
 | Video Player | ![Media Badge] | [by LTVA1](https://github.com/LTVA1/flipper-zero-video-player) | <- Follow link to download examples and learn how to convert videos | ![None Badge] |
 | Music Tracker | ![Media Badge] | [by DrZlo13](https://github.com/DrZlo13/flipper-zero-music-tracker) |  | [![UFW Badge]](https://lab.flipper.net/apps/zero_tracker) |
@@ -335,7 +335,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Brainfuck interpreter | ![Tools Badge] | [by nymda](https://github.com/nymda/FlipperZeroBrainfuck) |  | [![UFW Badge]](https://lab.flipper.net/apps/brainfuck) |
 | Ceasar Cipher | ![Tools Badge] | [by panki27](https://github.com/panki27/caesar-cipher) |  | [![UFW Badge]](https://lab.flipper.net/apps/caesar_cipher) |
 | Calculator | ![Tools Badge] | [by iinsaane](https://github.com/iinsaane) |  | [![UFW Badge]](https://lab.flipper.net/apps/calculator) |
-| CLI-GUI Bridge | ![Tools Badge] | [by ranchordo](https://github.com/ranchordo/flipperzero-cli-bridge) | Fixes [by Willy-JL](https://github.com/Willy-JL) | ![None Badge] |
+| CLI-GUI Bridge | ![Tools Badge] | [by ranchordo](https://github.com/ranchordo/flipperzero-cli-bridge) | Fixes [by WillyJL](https://github.com/WillyJL) | ![None Badge] |
 | Count Down Timer | ![Tools Badge] | [by 0w0mewo](https://github.com/0w0mewo/fpz_cntdown_timer) |  | [![UFW Badge]](https://lab.flipper.net/apps/cntdown_tim) |
 | Counter | ![Tools Badge] | [by Krulknul](https://github.com/Krulknul/dolphin-counter) |  | [![UFW Badge]](https://lab.flipper.net/apps/counter) |
 | DCF77 Transmitter | ![Tools Badge] | [by arha](https://github.com/arha/flipper-dcf77) |  | [![UFW Badge]](https://lab.flipper.net/apps/dcf77) |

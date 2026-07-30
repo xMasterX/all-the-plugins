@@ -1,7 +1,7 @@
 #include "lovespouse.h"
 #include "_protocols.h"
 
-// Hacked together by @Willy-JL
+// Hacked together by @WillyJL
 // Discovered by @mandomat
 // Blog post at https://mandomat.github.io/2023-11-13-denial-of-pleasure/
 

@@ -97,6 +97,6 @@ Other icons and graphics were
 taken from the Flipper Zero firmware.
 
 The icons used in the key input method menu were picked by
-[Willy-JL](https://github.com/Willy-JL).
+[WillyJL](https://github.com/WillyJL).
 
 
