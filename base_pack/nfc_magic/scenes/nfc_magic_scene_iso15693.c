@@ -60,6 +60,9 @@ bool nfc_magic_scene_iso15693_on_event(void* context, SceneManagerEvent event) {
             scene_manager_next_scene(app->scene_manager, NfcMagicSceneWriteConfirm);
             consumed = true;
         } else if(event.event == SubmenuIndexIso15693WriteUid) {
+            // Clear the flag here too: it survives from a previous Wipe otherwise, and the shared
+            // result screens read it to choose their verb.
+            app->iso15693_is_wipe_mode = false;
             scene_manager_next_scene(app->scene_manager, NfcMagicSceneIso15693WriteInput);
             consumed = true;
         } else if(event.event == SubmenuIndexIso15693Info) {

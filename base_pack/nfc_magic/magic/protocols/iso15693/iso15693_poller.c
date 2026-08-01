@@ -253,13 +253,10 @@ static bool iso15693_poller_block_is_empty(
 // A refusal anywhere else has some other cause -- a block locked on the target, or a transient RF
 // error -- and we cannot tell which, so it stays a real failure. Guessing "capacity" for those is
 // what let the UI print a fabricated card size in a success tone.
-static void iso15693_poller_excuse_empty_tail(
-    Iso15693Poller* instance,
-    uint16_t attempted,
-    uint8_t block_size) {
+static void iso15693_poller_excuse_empty_tail(Iso15693Poller* instance, uint8_t block_size) {
     Iso15693PollerResult* result = &instance->result;
 
-    for(uint16_t block = attempted; block-- > 0;) {
+    for(uint16_t block = result->blocks_total; block-- > 0;) {
         const uint8_t mask = (uint8_t)(1u << (block % 8));
         if(!(result->failed_bitmap[block / 8] & mask)) break; // tail ended: the card took this one
         if(!iso15693_poller_block_is_empty(instance->clone_source, block, block_size)) {
@@ -295,8 +292,6 @@ static void iso15693_poller_write_blocks(Iso15693Poller* instance, Iso15693_3Pol
     const uint8_t block_size = iso15693_3_get_block_size(image);
     Iso15693PollerResult* result = &instance->result;
 
-    result->blocks_total = block_count;
-
     // Nothing can be attempted. Recorded as its own outcome rather than left to be inferred from a
     // zero failure count, which is how a wipe that sent no frames at all used to report Success.
     if(block_count == 0 || block_size == 0 || block_size > ISO15693_MAX_BLOCK_SIZE) {
@@ -305,10 +300,10 @@ static void iso15693_poller_write_blocks(Iso15693Poller* instance, Iso15693_3Pol
     }
 
     const uint8_t zeros[ISO15693_MAX_BLOCK_SIZE] = {0};
-    uint16_t attempted = 0;
 
-    // Publish the denominator before the loop so the progress events carry a meaningful "of N" from
-    // the first one. Corrected below to what was actually attempted.
+    // What we will actually attempt, which is not what the card advertised when the image claims
+    // more than the 256 blocks a uint8_t block number can address. Set before the loop so the
+    // progress events carry a meaningful "of N" from the first one.
     result->blocks_total = (block_count < ISO15693_POLLER_MAX_BLOCKS) ? block_count :
                                                                         ISO15693_POLLER_MAX_BLOCKS;
 
@@ -318,10 +313,9 @@ static void iso15693_poller_write_blocks(Iso15693Poller* instance, Iso15693_3Pol
     // wipe writes zero there, so nothing latches. Skipping them would instead leave four blocks of
     // real user data behind on every gen2 card, where they are ordinary memory: a certain cost to
     // avoid a change the sequence cannot trigger.
-    for(uint16_t block = 0; block < block_count && block < ISO15693_POLLER_MAX_BLOCKS; block++) {
+    for(uint16_t block = 0; block < result->blocks_total; block++) {
         const uint8_t* block_data = wipe ? zeros :
                                            iso15693_3_get_block_data(image, (uint8_t)block);
-        attempted = block + 1;
 
         if(iso15693_3_poller_write_block(iso_poller, block_data, (uint8_t)block, block_size) ==
            Iso15693_3ErrorNone) {
@@ -336,12 +330,8 @@ static void iso15693_poller_write_blocks(Iso15693Poller* instance, Iso15693_3Pol
         iso15693_poller_report(instance, Iso15693PollerEventWriteProgress);
     }
 
-    // Report what we actually tried, not what the card advertised: the two differ when the image
-    // claims more than the 256 blocks a uint8_t block number can address.
-    result->blocks_total = attempted;
-
     // Only a clone has a notion of "the source had nothing there anyway".
-    if(!wipe) iso15693_poller_excuse_empty_tail(instance, attempted, block_size);
+    if(!wipe) iso15693_poller_excuse_empty_tail(instance, block_size);
 
     if(result->blocks_written == 0) {
         result->pass = Iso15693BlockPassNothingWritten;
@@ -362,7 +352,7 @@ static void iso15693_poller_write_blocks(Iso15693Poller* instance, Iso15693_3Pol
 static Iso15693PollerEvent iso15693_poller_write_outcome(Iso15693Poller* instance) {
     const Iso15693PollerResult* result = &instance->result;
 
-    // NotRun means this mode writes no blocks at all (Write UID), so there is nothing to judge here.
+    // NotRun is Write UID: no block pass ran, so only the identity/gen1 tests below apply.
     if(result->pass == Iso15693BlockPassNoGeometry ||
        result->pass == Iso15693BlockPassNothingWritten) {
         return Iso15693PollerEventFail;
@@ -370,7 +360,7 @@ static Iso15693PollerEvent iso15693_poller_write_outcome(Iso15693Poller* instanc
 
     const bool gen1_clone = (instance->mode == Iso15693PollerModeClone) && result->used_gen1;
     const bool identity_lost = result->afi_failed || result->dsfid_failed;
-    if(result->failed_count > 0 || gen1_clone || identity_lost) {
+    if(result->pass == Iso15693BlockPassPartial || gen1_clone || identity_lost) {
         return Iso15693PollerEventPartial;
     }
     return Iso15693PollerEventSuccess;
@@ -414,7 +404,7 @@ static NfcCommand
 // Once a UID read-back proves the card really is magic, lay down the clone's payload: the source's
 // AFI/DSFID first, then every data block. Nothing here runs until that proof exists.
 static NfcCommand
-    iso15693_poller_finish_clone(Iso15693Poller* instance, Iso15693_3Poller* iso_poller) {
+    iso15693_poller_finish_write(Iso15693Poller* instance, Iso15693_3Poller* iso_poller) {
     if(instance->mode == Iso15693PollerModeClone) {
         iso15693_poller_write_identity(instance, iso_poller);
         iso15693_poller_write_blocks(instance, iso_poller);
@@ -478,7 +468,7 @@ static NfcCommand
         }
         if(memcmp(readback, instance->target_uid, ISO15693_3_UID_SIZE) == 0) {
             // gen2 took: the card is magic. Safe to write the payload now.
-            return iso15693_poller_finish_clone(instance, iso_poller);
+            return iso15693_poller_finish_write(instance, iso_poller);
         }
         if(memcmp(readback, instance->original_uid, ISO15693_3_UID_SIZE) == 0) {
             // gen2 changed nothing: a gen1 card, or an ordinary tag. gen1 uses standard WRITE BLOCK,
@@ -508,7 +498,7 @@ static NfcCommand
         // gen1 set the UID (NOTE: gen1 path is not hardware-validated). Record it so a clone reports
         // Partial and flags that blocks 56/57/62/63 now hold UID/commit bytes, not the source's data.
         instance->result.used_gen1 = true;
-        return iso15693_poller_finish_clone(instance, iso_poller);
+        return iso15693_poller_finish_write(instance, iso_poller);
     }
     }
 }
