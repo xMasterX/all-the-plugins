@@ -22,6 +22,7 @@ static void
         break;
     case Iso15693PollerEventPartial:
     case Iso15693PollerEventCardDetected:
+    case Iso15693PollerEventWriteProgress:
         break; // not emitted in Write UID mode
     }
 }

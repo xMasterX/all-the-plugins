@@ -24,6 +24,7 @@ static void nfc_magic_iso15693_get_info_poller_callback(Iso15693PollerEvent even
     case Iso15693PollerEventPartial:
     case Iso15693PollerEventFail:
     case Iso15693PollerEventCardDetected:
+    case Iso15693PollerEventWriteProgress:
         break; // not emitted in Info mode
     }
 }

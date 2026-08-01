@@ -49,6 +49,8 @@ typedef struct {
     uint16_t over_capacity; // refused blocks in the empty tail past the card's real capacity
     uint8_t failed_bitmap[ISO15693_POLLER_BLOCK_BITMAP_SIZE]; // bit N set = block N refused
     bool used_gen1; // the gen1 fallback set the UID (so blocks 56/57/62/63 were overwritten)
+    bool afi_failed; // the source reported an AFI and the card refused to take it
+    bool dsfid_failed; // ditto for DSFID
 } Iso15693PollerResult;
 
 // Every consumer switches on this, so each value states exactly what it does and does not promise.
@@ -59,6 +61,7 @@ typedef enum {
     Iso15693PollerEventFail, // backdoor write refused (not magic), or no block could be written
     Iso15693PollerEventCardLost, // no card in the field / card removed before the operation finished
     Iso15693PollerEventCardDetected, // a magic candidate activated (drives the write popup UI)
+    Iso15693PollerEventWriteProgress, // one more block attempted; read the result for the counts
 } Iso15693PollerEvent;
 
 typedef void (*Iso15693PollerCallback)(Iso15693PollerEvent event, void* context);
@@ -89,10 +92,13 @@ void iso15693_poller_start_write_uid(
     void* context);
 
 // Full clone: write `source`'s UID (magic backdoor) and every data block (standard WRITE BLOCK) onto
-// a magic card. `source` is an ISO15693-3 image loaded from a saved .nfc. Data blocks are written
-// first, then the UID. Emits CardDetected on the first activation, then Success (UID matched, every
-// block took), Partial (UID matched, some blocks refused or gen1 was used), Fail (UID refused, or no
-// block could be written) or CardLost.
+// a magic card. `source` is an ISO15693-3 image loaded from a saved .nfc.
+//
+// The UID goes FIRST and the data blocks only follow once the read-back proves the card took it, so
+// a tag that turns out not to be magic keeps its data. Emits CardDetected on the first activation
+// and WriteProgress per block, then Success (UID matched, every block took), Partial (UID matched,
+// some blocks refused, AFI/DSFID refused, or gen1 was used), Fail (UID refused, or no block could be
+// written) or CardLost.
 void iso15693_poller_start_clone(
     Iso15693Poller* instance,
     const Iso15693_3Data* source,

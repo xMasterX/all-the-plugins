@@ -39,6 +39,17 @@ the copy advertises the same chip identity.
 - **A write-protected card is not called "not a magic tag".** Refusing every block says nothing about
   whether the UID can be changed — and a wipe never sends a UID frame at all — so that case gets its
   own message instead.
+- **The UID is written first, and the data only follows once the read-back proves it took.** Any
+  NfcV tag that activates is a magic *candidate* — the protocol offers no way to confirm it without
+  writing — so an ordinary tag used to have every block overwritten before the app discovered it
+  wasn't magic. gen2's backdoor is a custom command an ordinary tag ignores, which makes it a
+  non-destructive probe; only the gen1 fallback touches real memory, and then just blocks
+  56/57/62/63. The confirm screen says so.
+- **Live "Writing X / N" progress**, as the USCUID-UL clone already had; a 64-block write no longer
+  sits on a motionless popup.
+- **AFI / DSFID that the card refuses are reported.** Nothing reads those back — the verify step
+  issues INVENTORY, which returns only the UID — so a failure is recorded and surfaced rather than
+  discarded. A clone whose AFI didn't take is invisible to an AFI-filtered reader, and now says so.
 - **gen1 fidelity is surfaced.** The gen1 backdoor overwrites data blocks 56/57/62/63 — the UID
   (56/57) plus unlock/commit (62/63) — so a gen1 clone can't reproduce a source that uses them. If the
   source has data there, the confirm warns before the write; if the clone actually fell back to gen1,

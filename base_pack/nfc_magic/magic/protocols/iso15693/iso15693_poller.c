@@ -181,12 +181,17 @@ static void iso15693_poller_send_backdoor_uid_gen2(
     bit_buffer_free(rx);
 }
 
-// Best-effort: make the clone match the source's AFI / DSFID via the standard ISO15693 WRITE AFI /
-// WRITE DSFID commands (only for fields the source actually reported). Frames: 02 27 <afi> and
-// 02 29 <dsfid> (+CRC). Failures are ignored -- these are identity extras, not the core clone.
+// Make the clone match the source's AFI / DSFID via the standard ISO15693 WRITE AFI / WRITE DSFID
+// commands (only for fields the source actually reported). Frames: 02 27 <afi> and 02 29 <dsfid>
+// (+CRC).
+//
+// Unlike the backdoor UID frames, these have no read-back to fall back on -- the verify step issues
+// INVENTORY, which returns the UID and nothing else. So a failure here has to be recorded rather
+// than shrugged off: readers in AFI-filtered deployments ignore a tag whose AFI doesn't match, and
+// a clone that silently kept the card's own AFI would look perfect and not work.
 static void
-    iso15693_poller_write_identity(Iso15693_3Poller* iso_poller, const Iso15693_3Data* source) {
-    const Iso15693_3SystemInfo* sys = &source->system_info;
+    iso15693_poller_write_identity(Iso15693Poller* instance, Iso15693_3Poller* iso_poller) {
+    const Iso15693_3SystemInfo* sys = &instance->clone_source->system_info;
     BitBuffer* tx = bit_buffer_alloc(ISO15693_POLLER_BUF_SIZE);
     BitBuffer* rx = bit_buffer_alloc(ISO15693_POLLER_BUF_SIZE);
 
@@ -195,14 +200,20 @@ static void
         bit_buffer_append_byte(tx, ISO15693_MAGIC_FLAGS);
         bit_buffer_append_byte(tx, ISO15693_MAGIC_CMD_WRITE_DSFID);
         bit_buffer_append_byte(tx, sys->dsfid);
-        iso15693_3_poller_send_frame(iso_poller, tx, rx, ISO15693_3_FDT_WRITE_POLL_FC);
+        if(iso15693_3_poller_send_frame(iso_poller, tx, rx, ISO15693_3_FDT_WRITE_POLL_FC) !=
+           Iso15693_3ErrorNone) {
+            instance->result.dsfid_failed = true;
+        }
     }
     if(sys->flags & ISO15693_3_SYSINFO_FLAG_AFI) {
         bit_buffer_reset(tx);
         bit_buffer_append_byte(tx, ISO15693_MAGIC_FLAGS);
         bit_buffer_append_byte(tx, ISO15693_MAGIC_CMD_WRITE_AFI);
         bit_buffer_append_byte(tx, sys->afi);
-        iso15693_3_poller_send_frame(iso_poller, tx, rx, ISO15693_3_FDT_WRITE_POLL_FC);
+        if(iso15693_3_poller_send_frame(iso_poller, tx, rx, ISO15693_3_FDT_WRITE_POLL_FC) !=
+           Iso15693_3ErrorNone) {
+            instance->result.afi_failed = true;
+        }
     }
 
     bit_buffer_free(tx);
@@ -296,6 +307,11 @@ static void iso15693_poller_write_blocks(Iso15693Poller* instance, Iso15693_3Pol
     const uint8_t zeros[ISO15693_MAX_BLOCK_SIZE] = {0};
     uint16_t attempted = 0;
 
+    // Publish the denominator before the loop so the progress events carry a meaningful "of N" from
+    // the first one. Corrected below to what was actually attempted.
+    result->blocks_total = (block_count < ISO15693_POLLER_MAX_BLOCKS) ? block_count :
+                                                                        ISO15693_POLLER_MAX_BLOCKS;
+
     // A wipe does reach the gen1 UID registers: on gen1 they are ordinary data blocks (56/57/62/63)
     // addressed by the ordinary WRITE BLOCK opcode, which is the frame this loop sends. Clearing
     // them is deliberate and safe -- arming a gen1 UID change needs 0x6996 in the commit block and a
@@ -310,10 +326,14 @@ static void iso15693_poller_write_blocks(Iso15693Poller* instance, Iso15693_3Pol
         if(iso15693_3_poller_write_block(iso_poller, block_data, (uint8_t)block, block_size) ==
            Iso15693_3ErrorNone) {
             result->blocks_written++;
-            continue;
+        } else {
+            result->failed_count++;
+            result->failed_bitmap[block / 8] |= (uint8_t)(1u << (block % 8));
         }
-        result->failed_count++;
-        result->failed_bitmap[block / 8] |= (uint8_t)(1u << (block % 8));
+
+        // Report per block, like the USCUID-UL poller does per page: a 64-block clone is several
+        // seconds of radio work, and a popup that never moves reads as a hang.
+        iso15693_poller_report(instance, Iso15693PollerEventWriteProgress);
     }
 
     // Report what we actually tried, not what the card advertised: the two differ when the image
@@ -349,7 +369,10 @@ static Iso15693PollerEvent iso15693_poller_write_outcome(Iso15693Poller* instanc
     }
 
     const bool gen1_clone = (instance->mode == Iso15693PollerModeClone) && result->used_gen1;
-    if(result->failed_count > 0 || gen1_clone) return Iso15693PollerEventPartial;
+    const bool identity_lost = result->afi_failed || result->dsfid_failed;
+    if(result->failed_count > 0 || gen1_clone || identity_lost) {
+        return Iso15693PollerEventPartial;
+    }
     return Iso15693PollerEventSuccess;
 }
 
@@ -367,9 +390,28 @@ static Iso15693_3Error
     return error;
 }
 
+// Once a UID read-back proves the card really is magic, lay down the clone's payload: the source's
+// AFI/DSFID first, then every data block. Nothing here runs until that proof exists.
+static NfcCommand
+    iso15693_poller_finish_clone(Iso15693Poller* instance, Iso15693_3Poller* iso_poller) {
+    if(instance->mode == Iso15693PollerModeClone) {
+        iso15693_poller_write_identity(instance, iso_poller);
+        iso15693_poller_write_blocks(instance, iso_poller);
+    }
+    iso15693_poller_report(instance, iso15693_poller_write_outcome(instance));
+    return NfcCommandStop;
+}
+
 // Drives one write-mode step. Runs on the Nfc worker thread with the field active. Returns the
 // NfcCommand for the poller: Reset power-cycles the field (so the next Ready verifies a freshly
 // re-powered card), Stop ends the operation.
+//
+// Order matters for safety. The backdoor UID write goes FIRST and the data blocks only follow once
+// the read-back proves the card accepted it. Detection cannot tell a magic ISO15693 tag from an
+// ordinary one -- any NfcV tag that activates is only a candidate -- so writing data first meant an
+// ordinary tag was overwritten wholesale before the app discovered it wasn't magic. gen2's backdoor
+// is a custom command an ordinary tag ignores, which makes it a genuinely non-destructive probe;
+// only the gen1 fallback touches real memory, and then just four blocks.
 static NfcCommand
     iso15693_poller_write_step(Iso15693Poller* instance, Iso15693_3Poller* iso_poller) {
     uint8_t readback[ISO15693_3_UID_SIZE] = {0};
@@ -402,11 +444,6 @@ static NfcCommand
                 if(sys->block_size > 0) cfg_blocksize = (uint8_t)(sys->block_size - 1);
             }
             if(sys->flags & ISO15693_3_SYSINFO_FLAG_IC_REF) cfg_icref = sys->ic_ref;
-
-            // Match AFI/DSFID, then write the data blocks. The UID + geometry go last (below), so a
-            // data-block write can't overwrite the UID/commit.
-            iso15693_poller_write_identity(iso_poller, instance->clone_source);
-            iso15693_poller_write_blocks(instance, iso_poller);
         }
 
         iso15693_poller_send_backdoor_uid_gen2(
@@ -421,12 +458,13 @@ static NfcCommand
             return NfcCommandStop;
         }
         if(memcmp(readback, instance->target_uid, ISO15693_3_UID_SIZE) == 0) {
-            iso15693_poller_report(instance, iso15693_poller_write_outcome(instance));
-            return NfcCommandStop;
+            // gen2 took: the card is magic. Safe to write the payload now.
+            return iso15693_poller_finish_clone(instance, iso_poller);
         }
         if(memcmp(readback, instance->original_uid, ISO15693_3_UID_SIZE) == 0) {
-            // gen2 changed nothing: a gen1 card, or a non-magic tag. Try the gen1 sequence. This is
-            // a standard (destructive) WRITE BLOCK, so the write is gated behind a user confirm.
+            // gen2 changed nothing: a gen1 card, or an ordinary tag. gen1 uses standard WRITE BLOCK,
+            // so this is the first frame that can damage an ordinary tag -- but it reaches only
+            // blocks 56/57/62/63, and the user confirmed a write that says so. Still no data blocks.
             iso15693_poller_send_backdoor_uid_gen1(iso_poller, instance->target_uid);
             instance->write_state = Iso15693WriteStateVerifyGen1;
             return NfcCommandReset;
@@ -442,13 +480,16 @@ static NfcCommand
             iso15693_poller_report(instance, Iso15693PollerEventCardLost);
             return NfcCommandStop;
         }
-        const bool ok = memcmp(readback, instance->target_uid, ISO15693_3_UID_SIZE) == 0;
+        if(memcmp(readback, instance->target_uid, ISO15693_3_UID_SIZE) != 0) {
+            // Not magic by either method. The gen1 attempt did write blocks 56/57/62/63, but no
+            // source data went down, so an ordinary tag loses four blocks rather than all of them.
+            iso15693_poller_report(instance, Iso15693PollerEventFail);
+            return NfcCommandStop;
+        }
         // gen1 set the UID (NOTE: gen1 path is not hardware-validated). Record it so a clone reports
         // Partial and flags that blocks 56/57/62/63 now hold UID/commit bytes, not the source's data.
-        if(ok) instance->result.used_gen1 = true;
-        iso15693_poller_report(
-            instance, ok ? iso15693_poller_write_outcome(instance) : Iso15693PollerEventFail);
-        return NfcCommandStop;
+        instance->result.used_gen1 = true;
+        return iso15693_poller_finish_clone(instance, iso_poller);
     }
     }
 }

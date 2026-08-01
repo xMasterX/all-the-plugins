@@ -175,6 +175,13 @@ static void
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventCardDetected);
         break;
+    case Iso15693PollerEventWriteProgress:
+        // Same live counter the USCUID-UL poller drives, via the same app fields and event.
+        instance->write_progress_current = instance->iso15693_result.blocks_written;
+        instance->write_progress_total = instance->iso15693_result.blocks_total;
+        view_dispatcher_send_custom_event(
+            instance->view_dispatcher, NfcMagicCustomEventWorkerProgress);
+        break;
     case Iso15693PollerEventSuccess:
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventWorkerSuccess);
@@ -193,6 +200,13 @@ static void
     }
 }
 
+// Which protocols can wipe, in one place: the header and the live progress line both read it, and
+// they used to disagree because each tested a different flag.
+static bool nfc_magic_scene_write_is_wiping(NfcMagicApp* instance) {
+    return instance->uscuid_ul_is_wipe_mode ||
+           (instance->protocol == NfcMagicProtocolIso15693 && instance->iso15693_is_wipe_mode);
+}
+
 static void nfc_magic_scene_write_setup_view(NfcMagicApp* instance) {
     Popup* popup = instance->popup;
     popup_reset(popup);
@@ -203,10 +217,7 @@ static void nfc_magic_scene_write_setup_view(NfcMagicApp* instance) {
         popup_set_text(
             instance->popup, "Apply the\nsame card\nto the back", 128, 32, AlignRight, AlignCenter);
     } else {
-        // Every protocol that can wipe has to be listed here, or its wipe reads as "Writing".
-        const bool wiping =
-            instance->uscuid_ul_is_wipe_mode ||
-            (instance->protocol == NfcMagicProtocolIso15693 && instance->iso15693_is_wipe_mode);
+        const bool wiping = nfc_magic_scene_write_is_wiping(instance);
         popup_set_icon(popup, 12, 23, &I_Loading_24);
         popup_set_header(
             popup,
@@ -317,7 +328,7 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
                 instance->text_store,
                 sizeof(instance->text_store),
                 "%s\n%u / %u",
-                instance->uscuid_ul_is_wipe_mode ? "Wiping" : "Writing",
+                nfc_magic_scene_write_is_wiping(instance) ? "Wiping" : "Writing",
                 instance->write_progress_current,
                 instance->write_progress_total);
             popup_set_header(

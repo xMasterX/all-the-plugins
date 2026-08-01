@@ -74,6 +74,17 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             }
             furi_string_push_back(text, '\n');
         }
+        if(result->afi_failed || result->dsfid_failed) {
+            // No read-back covers these, so name them explicitly: a clone that looks right but has
+            // the wrong AFI is invisible to an AFI-filtered reader.
+            furi_string_cat_printf(
+                text,
+                "The card would not take the source's %s, so a reader that filters on it won't see "
+                "this copy.\n",
+                (result->afi_failed && result->dsfid_failed) ? "AFI or DSFID" :
+                result->afi_failed                           ? "AFI" :
+                                                               "DSFID");
+        }
         if(result->used_gen1) {
             // The clone fell back to the gen1 method, which stamps the UID (56/57) plus unlock/commit
             // (62/63) into those data blocks -- so they no longer match the source.
