@@ -17,15 +17,14 @@ void nfc_magic_scene_iso15693_write_confirm_on_enter(void* context) {
     Widget* widget = instance->widget;
 
     // 8 spaced bytes overflow the 128px width and wrap, which would push the warning off-screen, so
-    // show the UID compactly (two 4-byte groups) on one line and keep each warning line short. The
-    // text box fits ~4 lines at FontSecondary; every line below stays within the width.
+    // show the UID compactly (two 4-byte groups) on one line. Keep the whole box to 3 short lines
+    // (UID + 2 warning): a 4th line gets squashed into the ~38px the buttons leave below the title.
     FuriString* temp_str = furi_string_alloc();
     for(size_t i = 0; i < ISO15693_3_UID_SIZE; ++i) {
         furi_string_cat_printf(temp_str, "%02X", instance->iso15693_target_uid[i]);
         if(i == 3) furi_string_push_back(temp_str, ' ');
     }
-    furi_string_cat_str(
-        temp_str, "\nOnly magic ISO15693.\ngen1 can overwrite\ndata on normal tags.");
+    furi_string_cat_str(temp_str, "\nOnly magic ISO15693\ntags accept this.");
 
     widget_add_string_element(widget, 3, 0, AlignLeft, AlignTop, FontPrimary, "Write UID?");
     widget_add_text_box_element(
@@ -56,7 +55,7 @@ bool nfc_magic_scene_iso15693_write_confirm_on_event(void* context, SceneManager
         if(event.event == GuiButtonTypeLeft) {
             consumed = scene_manager_previous_scene(instance->scene_manager);
         } else if(event.event == GuiButtonTypeCenter) {
-            scene_manager_next_scene(instance->scene_manager, NfcMagicSceneIso15693Write);
+            scene_manager_next_scene(instance->scene_manager, NfcMagicSceneWrite);
             consumed = true;
         }
     }

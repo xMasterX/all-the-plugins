@@ -73,6 +73,7 @@ enum NfcMagicAppCustomEvent {
     NfcMagicCustomEventTextInputDone,
     NfcMagicCustomEventIso15693CardDetected,
     NfcMagicCustomEventIso15693CardDetectFailed,
+    NfcMagicCustomEventIso15693NotGen2,
 };
 
 typedef struct {
@@ -108,7 +109,27 @@ typedef enum {
     NfcMagicIso15693WriteFailReasonPartial, // clone: UID written but some data blocks failed
     NfcMagicIso15693WriteFailReasonOverCapacity, // clone OK, but the card now advertises more blocks
         // than it physically holds (the extra were empty, so nothing was lost) -- a success with a note
+    NfcMagicIso15693WriteFailReasonNothingWiped, // wipe: not one block accepted the zero-write
+    NfcMagicIso15693WriteFailReasonEmptySource, // clone: the source image has no data blocks to write
+    NfcMagicIso15693WriteFailReasonNothingCloned, // clone: the UID took but not one data block did, so
+        // the card carries the source's UID and none of its data
 } NfcMagicIso15693WriteFailReason;
+
+// Which ISO15693 operation the shared write scene is running. Replaces the old is-wipe bool, now that
+// Write-UID runs there too rather than in a scene of its own.
+typedef enum {
+    NfcMagicIso15693ModeClone, // write a saved .nfc image onto the card
+    NfcMagicIso15693ModeWipe, // zero the card's data blocks (56/57/62/63 skipped)
+    NfcMagicIso15693ModeWriteUid, // write a hand-entered UID and nothing else
+} NfcMagicIso15693Mode;
+
+// Which flow reached the gen1 opt-in screen. The two consent to different things (a clone writes every
+// data block, a Write-UID writes only the UID registers) and return to different write scenes. Stored
+// as the opt-in scene's state by whichever scene routes to it.
+typedef enum {
+    NfcMagicIso15693Gen1OptinFromClone,
+    NfcMagicIso15693Gen1OptinFromWriteUid,
+} NfcMagicIso15693Gen1OptinSource;
 
 struct NfcMagicApp {
     ViewDispatcher* view_dispatcher;
@@ -154,17 +175,17 @@ struct NfcMagicApp {
     // iso15693_poller_alloc -> nfc_poller_alloc(Iso15693_3) calls nfc_config() on the shared Nfc,
     // and holding that config would make the scanner's first nfc_config() furi_check-fail.
     Iso15693Poller* iso15693_poller;
-    Iso15693Data* iso15693_data; // last read result, kept so the info scene survives the poller free
+    Iso15693_3Data*
+        iso15693_data; // last read result, kept so the info scene survives the poller free
     uint8_t
         iso15693_target_uid[ISO15693_3_UID_SIZE]; // MSB-first UID to write to a magic ISO15693 card
-    bool iso15693_is_wipe_mode; // ISO15693 write scene: wipe (zero blocks) vs clone (from a file)
-    uint16_t iso15693_clone_blocks_total; // ISO15693 clone: data blocks on the source image
-    uint16_t iso15693_clone_failed_count; // ISO15693 clone: in-range blocks that couldn't be written
-    uint16_t
-        iso15693_clone_over_capacity; // ISO15693 clone: source blocks past the target's capacity
-    uint8_t iso15693_clone_failed_bitmap
-        [ISO15693_POLLER_BLOCK_BITMAP_SIZE]; // bit N = source block N failed
-    bool iso15693_clone_used_gen1; // ISO15693 clone: gen1 fallback set the UID (overwrote blocks 56/57/62/63)
+    NfcMagicIso15693Mode iso15693_mode; // which ISO15693 operation the shared write scene is running
+    bool iso15693_force_gen1; // ISO15693 clone / Write-UID: run the opt-in gen1 attempt (set by the
+        // gen1 opt-in scene, cleared when a fresh clone or Write-UID is started from the menu)
+    // Outcome of the last ISO15693 clone or wipe, fetched once per terminal event. See
+    // Iso15693PollerResult in iso15693_poller.h for the per-field meaning and its mode dependence.
+    Iso15693PollerResult iso15693_result;
+    // AFI/DSFID -- decided by GET SYSTEM INFO read-back, not by the write's return value
 
     Gen4* gen4_data;
 

@@ -12,10 +12,7 @@ void nfc_magic_scene_iso15693_write_input_on_enter(void* context) {
 
     // Seed the editor with the card's current UID if it has already been read (via "Info"),
     // otherwise start from a valid E0-prefixed template.
-    memcpy(
-        instance->iso15693_target_uid,
-        instance->iso15693_data->iso15693_3_data->uid,
-        ISO15693_3_UID_SIZE);
+    memcpy(instance->iso15693_target_uid, instance->iso15693_data->uid, ISO15693_3_UID_SIZE);
     if(instance->iso15693_target_uid[0] != 0xE0) {
         memset(instance->iso15693_target_uid, 0, ISO15693_3_UID_SIZE);
         instance->iso15693_target_uid[0] = 0xE0;
