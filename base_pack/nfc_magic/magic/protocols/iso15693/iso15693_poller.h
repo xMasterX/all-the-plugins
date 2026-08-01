@@ -29,7 +29,8 @@ typedef enum {
 // where a zero failure count would otherwise read as success.
 typedef enum {
     Iso15693BlockPassNotRun, // mode writes no blocks (Info / Write UID)
-    Iso15693BlockPassNoGeometry, // card or image reported no usable block geometry
+    Iso15693BlockPassNoSourceBlocks, // clone: the source image carries no blocks to write
+    Iso15693BlockPassNoGeometry, // wipe: the card reported no usable block geometry
     Iso15693BlockPassNothingWritten, // every attempted block was refused
     Iso15693BlockPassPartial, // some blocks written, some refused
     Iso15693BlockPassComplete, // every attempted block was accepted
@@ -47,8 +48,10 @@ typedef struct {
     uint16_t blocks_written; // blocks the card accepted
     uint16_t failed_count; // blocks refused that we needed to place (bit set in failed_bitmap)
     uint16_t over_capacity; // refused blocks in the empty tail past the card's real capacity
+    uint16_t gen1_reserved; // blocks left alone because gen1 uses them as UID/unlock/commit
     uint8_t failed_bitmap[ISO15693_POLLER_BLOCK_BITMAP_SIZE]; // bit N set = block N refused
     bool used_gen1; // the gen1 fallback set the UID (so blocks 56/57/62/63 were overwritten)
+    bool card_lost; // the card stopped answering during the block pass
     bool afi_failed; // the source reported an AFI and the card refused to take it
     bool dsfid_failed; // ditto for DSFID
 } Iso15693PollerResult;

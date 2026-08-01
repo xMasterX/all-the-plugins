@@ -72,6 +72,21 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             }
             furi_string_push_back(body, '\n');
         }
+        if(result->pass == Iso15693BlockPassNoSourceBlocks) {
+            // Not the card's doing: the UID landed, the file simply had no blocks in it.
+            furi_string_cat_str(
+                body,
+                "The UID was written, but the source file contains no block data, so nothing else "
+                "was copied.\n");
+        }
+        if(result->gen1_reserved > 0) {
+            // Deliberately not written: see iso15693_poller_write_next_block.
+            furi_string_cat_printf(
+                body,
+                "%u block(s) were left holding the gen1 UID registers instead of your file's "
+                "data.\n",
+                result->gen1_reserved);
+        }
         if(result->over_capacity > 0) {
             // Excused blocks are absent from failed_count, so without this they would simply be
             // missing from the arithmetic on screen.

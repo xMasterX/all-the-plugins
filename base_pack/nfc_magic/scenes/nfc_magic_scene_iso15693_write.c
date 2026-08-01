@@ -5,6 +5,11 @@ static void
     nfc_magic_scene_iso15693_write_poller_callback(Iso15693PollerEvent event, void* context) {
     NfcMagicApp* instance = context;
 
+    // Publish our own result even though no block pass runs: this scene shares the fail screen with
+    // the clone/wipe flow, which reads blocks_written to decide whether a lost card had already been
+    // modified. Left stale, a previous clone's count made a UID-only write claim it changed data.
+    instance->iso15693_result = *iso15693_poller_get_result(instance->iso15693_poller);
+
     // Write UID runs no block pass, so Partial and CardDetected never arrive here. Matched
     // explicitly rather than swept into a trailing else: this scene's else used to mean "Fail", so a
     // newly added event would have been reported to the user as a failed write.

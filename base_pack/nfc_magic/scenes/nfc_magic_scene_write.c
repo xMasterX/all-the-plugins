@@ -177,7 +177,11 @@ static void
         break;
     case Iso15693PollerEventWriteProgress:
         // Same live counter the USCUID-UL poller drives, via the same app fields and event.
-        instance->write_progress_current = instance->iso15693_result.blocks_written;
+        // Attempted, not accepted: counting only successes leaves the popup frozen through a run of
+        // refused blocks, which is exactly when the user most wants to see movement.
+        instance->write_progress_current = instance->iso15693_result.blocks_written +
+                                           instance->iso15693_result.failed_count +
+                                           instance->iso15693_result.gen1_reserved;
         instance->write_progress_total = instance->iso15693_result.blocks_total;
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventWorkerProgress);
@@ -234,6 +238,7 @@ static void nfc_magic_scene_write_setup_view(NfcMagicApp* instance) {
 void nfc_magic_scene_write_on_enter(void* context) {
     NfcMagicApp* instance = context;
 
+    memset(&instance->iso15693_result, 0, sizeof(instance->iso15693_result));
     instance->write_progress_current = 0;
     instance->write_progress_total = 0;
     instance->write_failed_count = 0;
