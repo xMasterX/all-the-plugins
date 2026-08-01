@@ -390,6 +390,27 @@ static Iso15693_3Error
     return error;
 }
 
+// Report the outcome of a block pass that has just run, and stop.
+//
+// "Not one block was written" has two very different causes: the card's memory is write-protected,
+// or the card left the field partway through. They look identical from the write errors alone, so
+// probe once before blaming the card -- otherwise pulling a card mid-write is reported as a
+// write-protected tag, which is the same class of wrong diagnosis as the old "not a magic tag".
+static NfcCommand
+    iso15693_poller_report_block_outcome(Iso15693Poller* instance, Iso15693_3Poller* iso_poller) {
+    Iso15693PollerEvent outcome = iso15693_poller_write_outcome(instance);
+
+    if(instance->result.pass == Iso15693BlockPassNothingWritten) {
+        uint8_t readback[ISO15693_3_UID_SIZE] = {0};
+        if(iso15693_poller_verify_inventory(iso_poller, readback) != Iso15693_3ErrorNone) {
+            outcome = Iso15693PollerEventCardLost;
+        }
+    }
+
+    iso15693_poller_report(instance, outcome);
+    return NfcCommandStop;
+}
+
 // Once a UID read-back proves the card really is magic, lay down the clone's payload: the source's
 // AFI/DSFID first, then every data block. Nothing here runs until that proof exists.
 static NfcCommand
@@ -398,8 +419,7 @@ static NfcCommand
         iso15693_poller_write_identity(instance, iso_poller);
         iso15693_poller_write_blocks(instance, iso_poller);
     }
-    iso15693_poller_report(instance, iso15693_poller_write_outcome(instance));
-    return NfcCommandStop;
+    return iso15693_poller_report_block_outcome(instance, iso_poller);
 }
 
 // Drives one write-mode step. Runs on the Nfc worker thread with the field active. Returns the
@@ -422,8 +442,7 @@ static NfcCommand
         // backdoor write or field reset.
         if(instance->mode == Iso15693PollerModeWipe) {
             iso15693_poller_write_blocks(instance, iso_poller);
-            iso15693_poller_report(instance, iso15693_poller_write_outcome(instance));
-            return NfcCommandStop;
+            return iso15693_poller_report_block_outcome(instance, iso_poller);
         }
         // Remember the current UID so the destructive gen1 fallback only runs if gen2 left the
         // card untouched. The poller read the UID into its data during activation.
