@@ -19,17 +19,26 @@ the copy advertises the same chip identity.
 - **Clone from a saved `.nfc`** — writes the UID (magic backdoor), all data blocks, and the source's
   identity (IC ref / block geometry / AFI / DSFID) so the copy advertises the same chip. gen2 sets
   UID + geometry via the `0xE0` magic command; a gen1 card falls back to the block-write backdoor.
-- **Wipe** — zero every writable data block; the UID is left unchanged.
+- **Wipe** — zero every data block; the UID is left unchanged. On gen1 the UID registers are
+  ordinary data blocks, so a wipe does clear them — which cannot change the UID, since arming that
+  needs `0x6996` in the commit block and a wipe writes zero.
 - **Write UID** — manual magic backdoor UID write with a confirmation screen.
 
 ### Behaviour
-- **Writes every source block and reports only real data loss.** WRITE BLOCK on these cards is gated
-  by physical memory, not the advertised block count (verified on hardware), so the clone attempts
-  every block: a non-empty block that won't write is reported as **Partial** (named); an empty block
-  past the card's real capacity loses nothing, so it stays a **Success** — but one flagged with a
-  note that the card now advertises more blocks than it physically holds (a reader probing the top
-  blocks sees them error/zero, and real data can't be stored there). A card that advertises a larger
-  geometry than it physically holds (fake-flash) clones faithfully for the blocks that fit.
+- **Success / Partial / Fail follow the same rule as the other magic types** (see `gen2_poller.c`):
+  nothing refused is a **Success**, nothing written is a **Fail**, anything between is a **Partial**
+  that always states the count — "Wrote 54 of 64 blocks". A card that refuses every block, or that
+  reports no usable memory layout, can no longer report success having written nothing.
+- **A refused block is only called a capacity limit when that is measurable.** WRITE BLOCK on these
+  cards is gated by physical memory, not the advertised block count (verified on hardware), so the
+  clone attempts every block. Refused blocks that are empty *and* form a contiguous run at the very
+  top are past the card's real capacity: nothing is lost, so it stays a **Success** — flagged with a
+  note that the card now advertises more blocks than it physically holds. A refusal anywhere else
+  could be a locked block, a transient error or a capacity limit, and the app does not guess: it is
+  reported as a **Partial** naming the blocks, without inventing a cause.
+- **A write-protected card is not called "not a magic tag".** Refusing every block says nothing about
+  whether the UID can be changed — and a wipe never sends a UID frame at all — so that case gets its
+  own message instead.
 - **gen1 fidelity is surfaced.** The gen1 backdoor overwrites data blocks 56/57/62/63 — the UID
   (56/57) plus unlock/commit (62/63) — so a gen1 clone can't reproduce a source that uses them. If the
   source has data there, the confirm warns before the write; if the clone actually fell back to gen1,

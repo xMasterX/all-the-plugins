@@ -20,61 +20,61 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
     const bool card_lost = (reason == NfcMagicIso15693WriteFailReasonCardLost);
     const bool partial = (reason == NfcMagicIso15693WriteFailReasonPartial);
     const bool over_capacity = (reason == NfcMagicIso15693WriteFailReasonOverCapacity);
+    const bool nothing_written = (reason == NfcMagicIso15693WriteFailReasonNothingWritten);
+    const bool wipe = instance->iso15693_is_wipe_mode;
+    const Iso15693PollerResult* result = &instance->iso15693_result;
 
-    // Partial and over-capacity are soft (successful) outcomes; card-lost / not-magic are errors.
+    // Partial and over-capacity are soft (successful) outcomes; the rest are errors.
     notification_message(
         instance->notifications, (partial || over_capacity) ? &sequence_success : &sequence_error);
 
     if(over_capacity) {
-        // The clone matched the source, but the card ended up advertising more blocks than it
-        // physically holds (the extra source blocks were empty, so nothing was lost). Success, but
-        // worth flagging: a reader that probes the top blocks sees them error/zero, and you can't
-        // store real data there.
-        const uint16_t advertised = instance->iso15693_clone_blocks_total;
-        const uint16_t extra = instance->iso15693_clone_over_capacity;
-        const uint16_t physical = (advertised > extra) ? (uint16_t)(advertised - extra) :
-                                                         advertised;
+        // The clone matched the source, and the only blocks the card refused were empty ones in a
+        // contiguous run at the top -- so nothing was lost, but the card now advertises more blocks
+        // than it physically holds. Worth flagging: a reader probing the top blocks sees them
+        // error/zero, and real data can't be stored there.
+        //
+        // Only the tail case reaches this screen, so subtracting it from the total is a real
+        // measurement rather than a guess (see iso15693_poller_excuse_empty_tail).
         FuriString* text = furi_string_alloc();
         furi_string_cat_printf(
             text,
-            "Copy matches source. Card holds %u of %u blocks; the top %u were empty. It now "
-            "advertises more than it physically has.",
-            physical,
-            advertised,
-            extra);
+            "Every block with data was copied. The card took %u of %u blocks; the top %u are empty "
+            "and would not write, so it advertises more than it physically has.",
+            result->blocks_written,
+            result->blocks_total,
+            result->over_capacity);
         widget_add_string_element(
             widget, 3, 0, AlignLeft, AlignTop, FontPrimary, "Clone complete");
         // Scrolling element (not a fixed text box) so the note isn't silently clipped past the height.
         widget_add_text_scroll_element(widget, 0, 14, 128, 38, furi_string_get_cstr(text));
         furi_string_free(text);
     } else if(partial) {
-        // Full-width text box (no icon) so the detail can wrap. Partial means some NON-EMPTY source
-        // blocks wouldn't write -- that data is past the card's real capacity (or the blocks are
-        // locked), so it couldn't be cloned. Name the blocks. (Empty blocks that don't fit lose
-        // nothing and never reach here -- they stay a clean Success.)
+        // Some blocks were placed and some were refused. Lead with the count so "partial" is never
+        // read as "complete", and do not name a cause we cannot prove: a refusal can be a locked
+        // block on the target, a transient error, or the card's real capacity, and this code has no
+        // way to tell them apart. (Empty blocks refused in a run at the top are excused as capacity
+        // by the poller and reach the over-capacity screen instead.)
         FuriString* text = furi_string_alloc();
-        furi_string_cat_str(
-            text, instance->iso15693_is_wipe_mode ? "Wiped.\n" : "UID + data cloned.\n");
-        if(instance->iso15693_clone_failed_count > 0) {
+        furi_string_cat_printf(
+            text,
+            wipe ? "Cleared %u of %u blocks.\n" : "Wrote %u of %u blocks, plus the UID.\n",
+            result->blocks_written,
+            result->blocks_total);
+        if(result->failed_count > 0) {
             furi_string_cat_printf(
                 text,
-                instance->iso15693_is_wipe_mode ? "%u block(s) wouldn't clear: " :
-                                                  "%u block(s) didn't fit the card: ",
-                instance->iso15693_clone_failed_count);
-            uint16_t shown = 0;
-            for(uint16_t block = 0; block < ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8; block++) {
-                if(instance->iso15693_clone_failed_bitmap[block / 8] & (1u << (block % 8))) {
-                    if(shown >= 20) {
-                        furi_string_cat_str(text, "...");
-                        break;
-                    }
+                wipe ? "%u would not clear (locked): " :
+                       "%u refused (locked, or past the card's real capacity): ",
+                result->failed_count);
+            for(uint16_t block = 0; block < ISO15693_POLLER_MAX_BLOCKS; block++) {
+                if(result->failed_bitmap[block / 8] & (1u << (block % 8))) {
                     furi_string_cat_printf(text, "%u ", block);
-                    shown++;
                 }
             }
             furi_string_push_back(text, '\n');
         }
-        if(instance->iso15693_clone_used_gen1) {
+        if(result->used_gen1) {
             // The clone fell back to the gen1 method, which stamps the UID (56/57) plus unlock/commit
             // (62/63) into those data blocks -- so they no longer match the source.
             furi_string_cat_str(
@@ -88,14 +88,49 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             AlignLeft,
             AlignTop,
             FontPrimary,
-            instance->iso15693_is_wipe_mode ? "Wipe partial" : "Clone partial");
-        widget_add_text_box_element(
-            widget, 0, 14, 128, 38, AlignLeft, AlignTop, furi_string_get_cstr(text), false);
+            wipe ? "Wipe partial" : "Clone partial");
+        // Scrolling, not a fixed box: the block list has no useful upper bound, and a text box
+        // silently drops whatever runs past its height.
+        widget_add_text_scroll_element(widget, 0, 14, 128, 38, furi_string_get_cstr(text));
+        furi_string_free(text);
+    } else if(nothing_written) {
+        // The card answered but would not take a single block. That is a write-protected memory, and
+        // it says nothing about whether the UID can be changed -- so this must not read as "not a
+        // magic tag", which would have the user discard a card whose UID write may work fine.
+        FuriString* text = furi_string_alloc();
+        if(result->pass == Iso15693BlockPassNoGeometry) {
+            furi_string_cat_str(
+                text,
+                "This card did not report a usable memory layout, so no block could be addressed.");
+        } else {
+            furi_string_cat_printf(
+                text,
+                "The card refused all %u blocks, so its memory is write-protected. Its UID may "
+                "still be writable.",
+                result->blocks_total);
+        }
+        widget_add_string_element(
+            widget,
+            3,
+            0,
+            AlignLeft,
+            AlignTop,
+            FontPrimary,
+            wipe ? "Nothing wiped" : "Nothing written");
+        widget_add_text_scroll_element(widget, 0, 14, 128, 38, furi_string_get_cstr(text));
         furi_string_free(text);
     } else {
-        const char* message = card_lost ?
-                                  "Card removed\nbefore the write\ncould finish." :
-                                  "Not a magic tag.\nThis card doesn't\nsupport UID write.";
+        // The block pass runs before the UID verify, so by the time a card goes missing it may
+        // already hold some of the new data. Say so -- "removed before it could finish" on its own
+        // reads as "nothing happened", and the user would not think to re-check the card.
+        const char* message;
+        if(card_lost) {
+            message = (result->blocks_written > 0) ?
+                          "Card removed\nmid-write. Some\nblocks were\nalready changed." :
+                          "Card removed\nbefore the write\ncould finish.";
+        } else {
+            message = "Not a magic tag.\nThis card doesn't\nsupport UID write.";
+        }
         widget_add_icon_element(widget, 83, 22, &I_WarningDolphinFlip_45x42);
         widget_add_string_element(
             widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Write failed");

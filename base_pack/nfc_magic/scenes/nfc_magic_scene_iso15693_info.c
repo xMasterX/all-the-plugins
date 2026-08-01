@@ -6,7 +6,7 @@ void nfc_magic_scene_iso15693_info_on_enter(void* context) {
     NfcMagicApp* instance = context;
     widget_reset(instance->widget);
 
-    const Iso15693_3Data* iso_data = instance->iso15693_data->iso15693_3_data;
+    const Iso15693_3Data* iso_data = instance->iso15693_data;
     const Iso15693_3SystemInfo* sys_info = &iso_data->system_info;
 
     FuriString* temp_str = furi_string_alloc();

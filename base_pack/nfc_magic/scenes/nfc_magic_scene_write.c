@@ -161,39 +161,35 @@ static void
     nfc_magic_scene_write_iso15693_poller_callback(Iso15693PollerEvent event, void* context) {
     NfcMagicApp* instance = context;
 
-    if(event == Iso15693PollerEventCardDetected) {
+    // Snapshot the block result for every terminal event, on this thread, before the event is
+    // queued: the GUI thread frees the poller in on_exit. Fail needs it too, to tell a card that
+    // refused every block apart from one that isn't magic.
+    if(event != Iso15693PollerEventCardDetected) {
+        instance->iso15693_result = *iso15693_poller_get_result(instance->iso15693_poller);
+    }
+
+    switch(event) {
+    case Iso15693PollerEventCardDetected:
         // First activation: flip the popup off "Apply the same card" to "Writing" (mirrors the other
         // magic pollers, which all emit a card-detected event).
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventCardDetected);
-    } else if(event == Iso15693PollerEventSuccess) {
-        // Read the clone stats on success too, so the Success handler can distinguish an exact clone
-        // from one where the card ended up advertising more blocks than it physically holds
-        // (over-capacity with empty tail -- no data lost, but worth a note).
-        iso15693_poller_get_clone_result(
-            instance->iso15693_poller,
-            &instance->iso15693_clone_blocks_total,
-            &instance->iso15693_clone_failed_count,
-            &instance->iso15693_clone_over_capacity,
-            instance->iso15693_clone_failed_bitmap,
-            &instance->iso15693_clone_used_gen1);
+        break;
+    case Iso15693PollerEventSuccess:
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventWorkerSuccess);
-    } else if(event == Iso15693PollerEventPartial) {
-        iso15693_poller_get_clone_result(
-            instance->iso15693_poller,
-            &instance->iso15693_clone_blocks_total,
-            &instance->iso15693_clone_failed_count,
-            &instance->iso15693_clone_over_capacity,
-            instance->iso15693_clone_failed_bitmap,
-            &instance->iso15693_clone_used_gen1);
+        break;
+    case Iso15693PollerEventPartial:
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventWorkerPartial);
-    } else if(event == Iso15693PollerEventCardLost) {
+        break;
+    case Iso15693PollerEventCardLost:
         view_dispatcher_send_custom_event(instance->view_dispatcher, NfcMagicCustomEventCardLost);
-    } else { // Iso15693PollerEventFail: backdoor write not accepted (not a magic tag)
+        break;
+    case Iso15693PollerEventFail:
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventWorkerFail);
+        break;
     }
 }
 
@@ -207,10 +203,14 @@ static void nfc_magic_scene_write_setup_view(NfcMagicApp* instance) {
         popup_set_text(
             instance->popup, "Apply the\nsame card\nto the back", 128, 32, AlignRight, AlignCenter);
     } else {
+        // Every protocol that can wipe has to be listed here, or its wipe reads as "Writing".
+        const bool wiping =
+            instance->uscuid_ul_is_wipe_mode ||
+            (instance->protocol == NfcMagicProtocolIso15693 && instance->iso15693_is_wipe_mode);
         popup_set_icon(popup, 12, 23, &I_Loading_24);
         popup_set_header(
             popup,
-            instance->uscuid_ul_is_wipe_mode ? "Wiping\nDon't move..." : "Writing\nDon't move...",
+            wiping ? "Wiping\nDon't move..." : "Writing\nDon't move...",
             52,
             32,
             AlignLeft,
@@ -328,7 +328,7 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
             // physically holds (empty over-capacity, no data lost) gets a distinct "clone complete,
             // with a note" screen instead of the plain Success.
             if(instance->protocol == NfcMagicProtocolIso15693 &&
-               instance->iso15693_clone_over_capacity > 0) {
+               instance->iso15693_result.over_capacity > 0) {
                 scene_manager_set_scene_state(
                     instance->scene_manager,
                     NfcMagicSceneIso15693WriteFail,
@@ -359,10 +359,18 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
             consumed = true;
         } else if(event.event == NfcMagicCustomEventWorkerFail) {
             if(instance->protocol == NfcMagicProtocolIso15693) {
+                // A block pass that placed nothing means the card's memory is write-protected, or it
+                // reported no usable geometry. "Not a magic tag" would be wrong on both counts there
+                // -- a wipe never sends a UID frame at all -- and would have the user bin a card
+                // whose UID write may well work.
+                const Iso15693BlockPass pass = instance->iso15693_result.pass;
+                const bool nothing_written = (pass == Iso15693BlockPassNothingWritten) ||
+                                             (pass == Iso15693BlockPassNoGeometry);
                 scene_manager_set_scene_state(
                     instance->scene_manager,
                     NfcMagicSceneIso15693WriteFail,
-                    NfcMagicIso15693WriteFailReasonNotMagic);
+                    nothing_written ? NfcMagicIso15693WriteFailReasonNothingWritten :
+                                      NfcMagicIso15693WriteFailReasonNotMagic);
                 scene_manager_next_scene(instance->scene_manager, NfcMagicSceneIso15693WriteFail);
             } else {
                 scene_manager_next_scene(instance->scene_manager, NfcMagicSceneWriteFail);

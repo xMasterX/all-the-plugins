@@ -5,14 +5,24 @@ static void
     nfc_magic_scene_iso15693_write_poller_callback(Iso15693PollerEvent event, void* context) {
     NfcMagicApp* instance = context;
 
-    if(event == Iso15693PollerEventSuccess) {
+    // Write UID runs no block pass, so Partial and CardDetected never arrive here. Matched
+    // explicitly rather than swept into a trailing else: this scene's else used to mean "Fail", so a
+    // newly added event would have been reported to the user as a failed write.
+    switch(event) {
+    case Iso15693PollerEventSuccess:
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventWorkerSuccess);
-    } else if(event == Iso15693PollerEventCardLost) {
+        break;
+    case Iso15693PollerEventCardLost:
         view_dispatcher_send_custom_event(instance->view_dispatcher, NfcMagicCustomEventCardLost);
-    } else { // Iso15693PollerEventFail: card present but backdoor write not accepted (not magic)
+        break;
+    case Iso15693PollerEventFail: // card present but the backdoor write was not accepted
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventWorkerFail);
+        break;
+    case Iso15693PollerEventPartial:
+    case Iso15693PollerEventCardDetected:
+        break; // not emitted in Write UID mode
     }
 }
 

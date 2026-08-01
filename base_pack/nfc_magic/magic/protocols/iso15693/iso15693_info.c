@@ -1,12 +1,13 @@
 #include "iso15693_info.h"
 
 #include <stdint.h>
+#include <stddef.h>
 
 // ISO/IEC 7816-6 manufacturer byte decoding
 
 typedef struct {
     uint8_t manufacturer_byte;
-    char* desc;
+    const char* desc;
 } ManufacturerName;
 
 // based on ISO/IEC JTC1/SC17 STANDING DOCUMENT 5 (Updated March 2018) Register of IC manufacturers
@@ -124,18 +125,15 @@ static const ManufacturerName manufacturer_mapping[] = {
     {0x00, "Unknown"} // must be the last entry
 };
 
-char* iso15693_info_get_manufacturer_name(uint8_t vendor_id) {
-    int i;
-    // The Flipper Zero C standard doesn't allow variable-length arrays on the stack,
-    // so we use sizeof() to get the length of the array at compile time.
-    int len = sizeof(manufacturer_mapping) / sizeof(ManufacturerName);
+const char* iso15693_info_get_manufacturer_name(uint8_t vendor_id) {
+    const size_t len = sizeof(manufacturer_mapping) / sizeof(manufacturer_mapping[0]);
 
-    for(i = 0; i < len; ++i)
-        if(vendor_id == manufacturer_mapping[i].manufacturer_byte)
+    for(size_t i = 0; i < len; ++i) {
+        if(vendor_id == manufacturer_mapping[i].manufacturer_byte) {
             return manufacturer_mapping[i].desc;
-
-    //No match, return default
-    return manufacturer_mapping[len - 1].desc;
+        }
+    }
+    return manufacturer_mapping[len - 1].desc; // sentinel "Unknown", always last
 }
 
 // Chip ID encoding
@@ -144,7 +142,7 @@ typedef struct {
     uint8_t manufacturer; // chip info is manufacturer specific
     uint8_t chip_id;
     uint8_t mask; // relevant bits
-    char* desc;
+    const char* desc;
 } ChipInfo;
 
 static const ChipInfo chip_id_mapping[] = {
@@ -227,19 +225,14 @@ static const ChipInfo chip_id_mapping[] = {
     {0x00, 0x00, 0x00, "no tag-info available"} // must be the last entry
 };
 
-char* iso15693_info_get_chip_info(uint8_t vendor_id, uint8_t chip_id) {
+// Most specific match wins: a longer mask means more of the chip id had to match.
+static const char* iso15693_info_get_chip_info(uint8_t vendor_id, uint8_t chip_id) {
     int i = 0;
     int best = -1;
     while(chip_id_mapping[i].mask > 0) {
         if(vendor_id == chip_id_mapping[i].manufacturer &&
            (chip_id & chip_id_mapping[i].mask) == chip_id_mapping[i].chip_id) {
-            if(best == -1) {
-                best = i;
-            } else {
-                if(chip_id_mapping[i].mask > chip_id_mapping[best].mask) {
-                    best = i;
-                }
-            }
+            if(best == -1 || chip_id_mapping[i].mask > chip_id_mapping[best].mask) best = i;
         }
         i++;
     }
@@ -255,9 +248,10 @@ char* iso15693_info_get_chip_info(uint8_t vendor_id, uint8_t chip_id) {
 #define ISO15693_INFO_NXP_MANUFACTURER (0x04U)
 
 // NXP I-Code SLI/SLIX/SLIX2 refinement. uid[2] is the IC family and uid[3] carries a 2-bit type
-// indicator at bits 3-4 (mask 0x18): 0x10 => SLIX, 0x08 => SLIX2, 0x00 => plain SLI. This mirrors
-// the SDK's iso15693_get_type() (Iso15693UidLayout.type_indicator) and proxmark3's masked UID table.
-char* iso15693_info_get_chip_info_ex(const uint8_t* uid) {
+// indicator at bits 3-4 (mask 0x18): 0x00 => plain SLI, 0x08 => SLIX2, 0x10 => SLIX, 0x18 => DNA /
+// NTAG 5. Mirrors proxmark3's masked UID table in cmdhf15.c (getTagInfo_15); the SDK's own decode
+// covers SLIX only, in slix_get_type().
+const char* iso15693_info_get_chip_info_ex(const uint8_t* uid) {
     const uint8_t vendor_id = uid[1];
     const uint8_t chip_id = uid[2];
 
