@@ -107,7 +107,7 @@ struct Iso15693Poller {
     // it) and per-block write results.
     Iso15693_3Data* clone_source;
     uint16_t clone_blocks_total; // clone: blocks on the source image, less 56/57/62/63 on a gen1 run
-        // (they carry the UID, not source data). wipe: wipeable (non-backdoor) block count on the card
+        // (they carry the UID, not source data). wipe: the card's full advertised block count
     // Clone mode: blocks that failed to write and count as a real problem: either they held source
     // data (lost), or they were empty failures that did NOT form a clean capacity tail (so we can't
     // call them over-capacity). Drives Partial. Wipe mode: reused as the count of blocks that still
@@ -504,6 +504,25 @@ static uint16_t iso15693_poller_wipe_blocks(
     uint8_t zeros[ISO15693_MAX_BLOCK_SIZE] = {0};
     const uint8_t size = block_size > sizeof(zeros) ? (uint8_t)sizeof(zeros) : block_size;
     uint16_t wiped = 0;
+
+    // De-arm before touching anything else.
+    //
+    // Clearing the gen1 registers is safe only because a wipe cannot ARM a UID change -- that needs
+    // 0x6996 in the commit block. It says nothing about a card that is arm(ed) ALREADY: the gen1
+    // sequence writes commit = 0x6996 and never clears it (proxmark's SetTag15693Uid doesn't
+    // either), so a card that has had a gen1 UID written plausibly still holds it. The main loop
+    // below runs ascending, which would then write zeros into the UID registers (56/57) while the
+    // commit register is still armed -- exactly the gen1 UID-write sequence with a zero payload,
+    // leaving a UID of all zeroes that no longer starts with 0xE0 and may not inventory at all.
+    //
+    // Writing the commit block first removes that ordering hazard entirely. The main loop writes
+    // these two again; a second zero-write costs nothing.
+    if(ISO15693_MAGIC_BLK_COMMIT < block_count) {
+        iso15693_3_poller_write_block(iso_poller, zeros, ISO15693_MAGIC_BLK_COMMIT, size);
+    }
+    if(ISO15693_MAGIC_BLK_UNLOCK < block_count) {
+        iso15693_3_poller_write_block(iso_poller, zeros, ISO15693_MAGIC_BLK_UNLOCK, size);
+    }
     for(uint16_t block = 0; block < block_count && block < ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8;
         block++) {
         iso15693_poller_report_progress(instance, block + 1, block_count);

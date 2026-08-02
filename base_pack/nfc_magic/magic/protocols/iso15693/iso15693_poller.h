@@ -117,9 +117,9 @@ void iso15693_poller_start_clone_gen1(
 typedef struct {
     // The blocks this run attempted and reports against, which is mode-dependent: the source block
     // count for a gen2 clone, that count MINUS the 4 skipped backdoor registers for a gen1 clone, or
-    // the card's wipeable (non-backdoor) block count for a wipe. NOTE failed_bitmap is indexed by TRUE
-    // block number, so a set bit can sit above blocks_total -- scan the whole bitmap, not
-    // [0, blocks_total).
+    // the card's full advertised block count for a wipe (which skips nothing).
+    // NOTE failed_bitmap is indexed by TRUE block number, so a set bit can sit above blocks_total --
+    // scan the whole bitmap, not [0, blocks_total).
     uint16_t blocks_total;
     // Blocks that failed and count as a real problem: they held source data (lost), or were empty
     // failures that weren't a clean top-of-card tail. -> Partial. In wipe mode, blocks that still held
@@ -153,10 +153,12 @@ void iso15693_poller_get_result(Iso15693Poller* instance, Iso15693PollerResult* 
 // would overwrite -- so the write flow can warn before a possible gen1 clone. Source inspection only.
 bool iso15693_poller_source_uses_gen1_blocks(const Iso15693_3Data* source);
 
-// Wipe: write zeros to every data block on the card (UID left unchanged, like proxmark's
-// 'hf 15 wipe'. Blocks 56/57/62/63 are cleared too: zeroing them cannot arm a gen1 UID change,
-// which needs 0x6996 in the commit block, so the UID survives either way). Reports CardDetected (first activation), then Success / Partial (some blocks failed) /
-// Fail (nothing could be wiped) / CardLost -- the last of which also covers a card lifted DURING the
+// Wipe: write zeros to every data block on the card, like proxmark's 'hf 15 wipe'. The UID is left
+// unchanged. Blocks 56/57/62/63 are cleared too -- on gen2 they are ordinary user data, and on gen1
+// the commit register is cleared FIRST so the card cannot be armed while its UID registers are
+// zeroed.
+// Reports CardDetected (first activation), then Success / Partial (some blocks failed) / Fail
+// (nothing could be wiped) / CardLost -- the last of which also covers a card lifted DURING the
 // loop, so blocks that never got the chance aren't reported as blocks the card refused to clear.
 // Per-block detail is available via iso15693_poller_get_result().
 void iso15693_poller_start_wipe(
