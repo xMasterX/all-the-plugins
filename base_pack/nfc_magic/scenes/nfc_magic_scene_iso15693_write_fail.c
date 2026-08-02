@@ -15,170 +15,181 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
     NfcMagicApp* instance = context;
     Widget* widget = instance->widget;
 
-    const NfcMagicIso15693WriteFailReason reason =
+    const uint32_t reason =
         scene_manager_get_scene_state(instance->scene_manager, NfcMagicSceneIso15693WriteFail);
     const bool card_lost = (reason == NfcMagicIso15693WriteFailReasonCardLost);
-    const bool soft = (reason == NfcMagicIso15693WriteFailReasonPartial) ||
-                      (reason == NfcMagicIso15693WriteFailReasonOverCapacity);
-    const bool wipe = instance->iso15693_is_wipe_mode;
-    const Iso15693PollerResult* result = &instance->iso15693_result;
+    const bool partial = (reason == NfcMagicIso15693WriteFailReasonPartial);
+    const bool over_capacity = (reason == NfcMagicIso15693WriteFailReasonOverCapacity);
+    const bool nothing_wiped = (reason == NfcMagicIso15693WriteFailReasonNothingWiped);
+    const bool empty_source = (reason == NfcMagicIso15693WriteFailReasonEmptySource);
+    const bool nothing_cloned = (reason == NfcMagicIso15693WriteFailReasonNothingCloned);
+    const bool wipe_mode = (instance->iso15693_mode == NfcMagicIso15693ModeWipe);
 
-    // Partial and over-capacity are soft (successful) outcomes; the rest are errors.
-    notification_message(instance->notifications, soft ? &sequence_success : &sequence_error);
+    // Over-capacity is a clean success (nothing was lost) -> success tone. Partial means something
+    // didn't write, and card-lost / not-magic / nothing-wiped / empty-source are outright failures ->
+    // error tone.
+    notification_message(
+        instance->notifications, over_capacity ? &sequence_success : &sequence_error);
 
-    // Each reason produces a title and a body; a NULL title means the compact icon layout below.
-    // Switching on the enum with no default gets -Wswitch coverage, so a new reason cannot be added
-    // without deciding what it says.
-    const char* title = NULL;
-    FuriString* body = furi_string_alloc();
-
-    switch(reason) {
-    case NfcMagicIso15693WriteFailReasonOverCapacity:
-        // Every block holding data was copied; the only refusals were empty ones in a contiguous run
-        // at the top, so nothing was lost -- but the card now advertises more blocks than it
-        // physically holds, and a reader probing the top sees them error/zero. Because only the tail
-        // case reaches here, these counts are measured rather than guessed (see
-        // iso15693_poller_excuse_empty_tail).
-        title = "Clone complete";
+    if(over_capacity) {
+        // Clean success: every source block was written, the card just advertises more blocks than it
+        // physically holds (the extra source blocks were empty, so nothing was lost). Concise summary
+        // here, gen2-style; the exact empty top blocks are behind "Details". We confirm the writes
+        // were accepted, not a byte-for-byte read-back, so the wording says "written", not "matches".
+        const uint16_t advertised = instance->iso15693_result.blocks_total;
+        const uint16_t extra = instance->iso15693_result.over_capacity;
+        // The over-capacity gate guarantees >=1 block wrote, so extra < advertised.
+        const uint16_t physical = (uint16_t)(advertised - extra);
+        widget_add_string_element(
+            widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Clone finished");
+        FuriString* text = furi_string_alloc();
         furi_string_printf(
-            body,
-            "Every block with data was copied. The card took %u of %u blocks; the top %u are empty "
-            "and would not write, so it advertises more than it physically has.",
-            result->blocks_written,
-            result->blocks_total,
-            result->over_capacity);
-        break;
-
-    case NfcMagicIso15693WriteFailReasonPartial:
-        // Lead with the count so "partial" is never read as "complete", and do not name a cause we
-        // cannot prove: a refusal can be a locked block on the target, a transient error, or the
-        // card's real capacity, and nothing here can tell them apart.
-        title = wipe ? "Wipe partial" : "Clone partial";
+            text,
+            "All data written.\nHolds %u/%u blocks.\nTop %u were empty.",
+            physical,
+            advertised,
+            extra);
+        widget_add_string_multiline_element(
+            widget, 4, 20, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(text));
+        furi_string_free(text);
+    } else if(partial) {
+        // Summary only -- counts here, the per-block list behind "Details" -- mirroring the Gen2 /
+        // USCUID-UL partial screens. Partial means some blocks wouldn't write (real source data lost,
+        // or empty failures that weren't a clean capacity tail), or a clone fell back to gen1.
+        const uint16_t total = instance->iso15693_result.blocks_total;
+        // Everything that didn't write: real-data losses plus any empty blocks past capacity.
+        const uint16_t not_written =
+            instance->iso15693_result.failed_count + instance->iso15693_result.over_capacity;
+        const uint16_t ok = (total >= not_written) ? (uint16_t)(total - not_written) : 0;
+        widget_add_string_element(
+            widget,
+            64,
+            0,
+            AlignCenter,
+            AlignTop,
+            FontPrimary,
+            wipe_mode ? "Wipe partial" : "Clone partial");
+        FuriString* text = furi_string_alloc();
         furi_string_printf(
-            body,
-            wipe ? "Cleared %u of %u blocks.\n" : "Wrote %u of %u blocks, plus the UID.\n",
-            result->blocks_written,
-            result->blocks_total);
-        if(result->failed_count > 0) {
-            furi_string_cat_printf(
-                body,
-                wipe ? "%u would not clear (locked): " :
-                       "%u refused (locked, or past the card's real capacity): ",
-                result->failed_count);
-            for(uint16_t block = 0; block < result->blocks_total; block++) {
-                if(result->failed_bitmap[block / 8] & (1u << (block % 8))) {
-                    furi_string_cat_printf(body, "%u ", block);
-                }
-            }
-            furi_string_push_back(body, '\n');
+            text,
+            wipe_mode ? "Wiped %u/%u blocks\nNot cleared: %u" :
+                        "Cloned %u/%u blocks\nNot written: %u",
+            ok,
+            total,
+            not_written);
+        // The body sits at y=20 with the button row below it, so only three FontSecondary lines fit:
+        // the two count lines plus ONE qualifier. Show the most significant (real data loss > gen1 UID
+        // clobber > AFI/DSFID). A lower-priority caveat is dropped from THIS screen only -- "Details"
+        // below is offered whenever any caveat applies and lists all of them, so nothing is unreachable.
+        if(instance->iso15693_result.capacity_confirmed &&
+           instance->iso15693_result.failed_count > 0) {
+            // Real data was lost because those blocks are a persistent, contiguous run at the top of
+            // the card -> the card is physically smaller than the source. (An empty top tail loses
+            // nothing and is reported as an over-capacity success, not here.)
+            furi_string_cat_str(text, "\nCard too small");
+        } else if(instance->iso15693_result.used_gen1) {
+            // gen1 fallback stamped the UID/commit into blocks 56/57/62/63, so they differ.
+            furi_string_cat_str(text, "\ngen1: 56/57/62/63 differ");
+        } else if(instance->iso15693_result.identity_failed) {
+            // All data blocks took, but the card rejected the AFI/DSFID write.
+            furi_string_cat_str(text, "\nAFI/DSFID not set");
         }
-        if(result->pass == Iso15693BlockPassNoSourceBlocks) {
-            // Not the card's doing: the UID landed, the file simply had no blocks in it.
-            furi_string_cat_str(
-                body,
-                "The UID was written, but the source file contains no block data, so nothing else "
-                "was copied.\n");
-        }
-        if(result->gen1_reserved > 0) {
-            // Deliberately not written: see iso15693_poller_write_next_block.
-            furi_string_cat_printf(
-                body,
-                "%u block(s) were left holding the gen1 UID registers instead of your file's "
-                "data.\n",
-                result->gen1_reserved);
-        }
-        if(result->over_capacity > 0) {
-            // Excused blocks are absent from failed_count, so without this they would simply be
-            // missing from the arithmetic on screen.
-            furi_string_cat_printf(
-                body,
-                "%u empty block(s) past the card's real capacity were skipped; no data was lost "
-                "there.\n",
-                result->over_capacity);
-        }
-        if(result->afi_failed || result->dsfid_failed) {
-            // No read-back covers these, so name them explicitly: a clone that looks right but has
-            // the wrong AFI is invisible to an AFI-filtered reader.
-            const char* field = (result->afi_failed && result->dsfid_failed) ? "AFI or DSFID" :
-                                result->afi_failed                           ? "AFI" :
-                                                                               "DSFID";
-            furi_string_cat_printf(
-                body,
-                "The card would not take the source's %s, so a reader that filters on it won't see "
-                "this copy.\n",
-                field);
-        }
-        if(result->used_gen1) {
-            // gen1 stamps the UID (56/57) plus unlock/commit (62/63) into those data blocks, so they
-            // no longer match the source.
-            furi_string_cat_str(
-                body,
-                "gen1 method: blocks 56/57/62/63 hold UID + unlock/commit, not your file's data.");
-        }
-        break;
-
-    case NfcMagicIso15693WriteFailReasonNothingWritten:
-        // The card answered but took nothing. That is a write-protected memory, and it says nothing
-        // about whether the UID can be changed -- so it must not read as "not a magic tag", which
-        // would have the user discard a card whose UID write may work fine.
-        title = wipe ? "Nothing wiped" : "Nothing written";
-        if(result->pass == Iso15693BlockPassNoGeometry) {
-            furi_string_set_str(
-                body,
-                "This card did not report a usable memory layout, so no block could be addressed.");
-        } else {
-            furi_string_printf(
-                body,
-                "The card refused all %u blocks, so its memory is write-protected. Its UID may "
-                "still be writable.",
-                result->blocks_total);
-        }
-        break;
-
-    case NfcMagicIso15693WriteFailReasonCardLost:
-    case NfcMagicIso15693WriteFailReasonNotMagic:
-        break; // compact icon layout, handled below
-    }
-
-    if(title != NULL) {
-        widget_add_string_element(widget, 3, 0, AlignLeft, AlignTop, FontPrimary, title);
-        // Scrolling, not a fixed text box: the block list has no useful upper bound, and a text box
-        // silently drops whatever runs past its height.
-        widget_add_text_scroll_element(widget, 0, 14, 128, 38, furi_string_get_cstr(body));
+        widget_add_string_multiline_element(
+            widget, 4, 20, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(text));
+        furi_string_free(text);
+    } else if(nothing_wiped) {
+        // A wipe that cleared nothing: the card accepted no zero-write (read-only / no usable
+        // geometry). The UID was never touched -- say so, since the generic "not a magic tag / UID
+        // write" message would be wrong for a wipe.
+        widget_add_string_element(
+            widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Wipe failed");
+        widget_add_string_multiline_element(
+            widget,
+            0,
+            13,
+            AlignLeft,
+            AlignTop,
+            FontSecondary,
+            "No blocks could be\ncleared. The card\nrejected all writes.\nIts UID is unchanged.");
+    } else if(nothing_cloned) {
+        // The gen2/gen1 UID write took, but every data block was rejected. Say what the card now holds:
+        // it answers with the source's UID, so a UID-only reader accepts it while anything that reads
+        // memory does not. No block list -- it would name every block.
+        widget_add_string_element(
+            widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Clone failed");
+        widget_add_string_multiline_element(
+            widget,
+            0,
+            13,
+            AlignLeft,
+            AlignTop,
+            FontSecondary,
+            "The UID was written\nbut no data block\nwould take. The card\nhas the UID only.");
+    } else if(empty_source) {
+        // A clone whose source image has no data blocks: nothing was written (not even the UID), so
+        // the card is untouched. Distinct from a non-magic card.
+        widget_add_string_element(
+            widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Nothing to clone");
+        widget_add_string_multiline_element(
+            widget,
+            0,
+            13,
+            AlignLeft,
+            AlignTop,
+            FontSecondary,
+            "The saved file has\nno data blocks to\nclone. Nothing was\nwritten to the card.");
     } else {
-        // A card can go missing after some blocks are already down, so say that rather than just
-        // "removed before it could finish", which reads as "nothing happened".
-        const char* message;
-        if(card_lost) {
-            message = (result->blocks_written > 0) ?
-                          "Card removed\nmid-write. Some\nblocks were\nalready changed." :
-                          "Card removed\nbefore the write\ncould finish.";
-        } else {
-            message = "Not a magic tag.\nThis card doesn't\nsupport UID write.";
-        }
+        const char* message = card_lost ?
+                                  "Card removed\nbefore the write\ncould finish." :
+                                  "Not a magic tag.\nThis card doesn't\nsupport UID write.";
         widget_add_icon_element(widget, 83, 22, &I_WarningDolphinFlip_45x42);
         widget_add_string_element(
             widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Write failed");
         widget_add_string_multiline_element(
             widget, 0, 13, AlignLeft, AlignTop, FontSecondary, message);
     }
-    furi_string_free(body);
 
-    // Only a lost card is worth retrying; a rejected/partial write would just repeat.
     if(card_lost) {
+        // Card removed mid-write -> retryable. Retry re-runs the write; Exit leaves. Matches the
+        // generic write-fail screen (Retry left, Exit right).
         widget_add_button_element(
             widget,
             GuiButtonTypeLeft,
             "Retry",
             nfc_magic_scene_iso15693_write_fail_widget_callback,
             instance);
+        widget_add_button_element(
+            widget,
+            GuiButtonTypeRight,
+            "Exit",
+            nfc_magic_scene_iso15693_write_fail_widget_callback,
+            instance);
+    } else {
+        // over-capacity / partial are (qualified) successes -> "Finish"; not-magic is a failure ->
+        // "Back". The primary exit sits on the left, like the Gen2/USCUID/gen4 result screens.
+        widget_add_button_element(
+            widget,
+            GuiButtonTypeLeft,
+            (over_capacity || partial) ? "Finish" : "Back",
+            nfc_magic_scene_iso15693_write_fail_widget_callback,
+            instance);
+        // "Details" (forward) carries everything that didn't fit the summary, like Gen2 / USCUID: a
+        // partial's failed blocks, an over-capacity's empty top blocks, and the gen1 / AFI-DSFID
+        // caveats. Offer it whenever there is ANY of those -- not just failed blocks. Without the two
+        // caveat terms, a partial whose only problem is the gen1 UID clobber or a rejected AFI/DSFID
+        // (both possible with zero failed blocks) had no Details button, and since the summary shows
+        // only its single highest-priority qualifier, the lower one was then reachable nowhere at all.
+        if(over_capacity || (partial && (instance->iso15693_result.failed_count > 0 ||
+                                         instance->iso15693_result.used_gen1 ||
+                                         instance->iso15693_result.identity_failed))) {
+            widget_add_button_element(
+                widget,
+                GuiButtonTypeRight,
+                "Details",
+                nfc_magic_scene_iso15693_write_fail_widget_callback,
+                instance);
+        }
     }
-    widget_add_button_element(
-        widget,
-        GuiButtonTypeRight,
-        "OK",
-        nfc_magic_scene_iso15693_write_fail_widget_callback,
-        instance);
 
     view_dispatcher_switch_to_view(instance->view_dispatcher, NfcMagicAppViewWidget);
 }
@@ -187,13 +198,33 @@ bool nfc_magic_scene_iso15693_write_fail_on_event(void* context, SceneManagerEve
     NfcMagicApp* instance = context;
     bool consumed = false;
 
+    const uint32_t reason =
+        scene_manager_get_scene_state(instance->scene_manager, NfcMagicSceneIso15693WriteFail);
+    const bool card_lost = (reason == NfcMagicIso15693WriteFailReasonCardLost);
+    const bool partial = (reason == NfcMagicIso15693WriteFailReasonPartial);
+    const bool over_capacity = (reason == NfcMagicIso15693WriteFailReasonOverCapacity);
+
     if(event.type == SceneManagerEventTypeCustom) {
         if(event.event == GuiButtonTypeLeft) {
-            // Retry: back to the write scene, which re-runs the write on enter.
-            consumed = scene_manager_previous_scene(instance->scene_manager);
+            if(card_lost) {
+                // Retry: back to the write scene, which re-runs the write on enter.
+                consumed = scene_manager_previous_scene(instance->scene_manager);
+            } else {
+                // Finish / Back -> the ISO15693 menu.
+                consumed = scene_manager_search_and_switch_to_previous_scene(
+                    instance->scene_manager, NfcMagicSceneIso15693);
+            }
         } else if(event.event == GuiButtonTypeRight) {
-            consumed = scene_manager_search_and_switch_to_previous_scene(
-                instance->scene_manager, NfcMagicSceneIso15693);
+            if(partial || over_capacity) {
+                // Details -> the affected-block list (failed blocks, or the empty top blocks).
+                scene_manager_next_scene(
+                    instance->scene_manager, NfcMagicSceneIso15693PartialDetails);
+                consumed = true;
+            } else {
+                // Card-lost "Exit" -> the ISO15693 menu.
+                consumed = scene_manager_search_and_switch_to_previous_scene(
+                    instance->scene_manager, NfcMagicSceneIso15693);
+            }
         }
     } else if(event.type == SceneManagerEventTypeBack) {
         consumed = scene_manager_search_and_switch_to_previous_scene(
@@ -205,10 +236,8 @@ bool nfc_magic_scene_iso15693_write_fail_on_event(void* context, SceneManagerEve
 void nfc_magic_scene_iso15693_write_fail_on_exit(void* context) {
     NfcMagicApp* instance = context;
 
-    // Reset to the default reason so a later failure isn't mislabelled.
-    scene_manager_set_scene_state(
-        instance->scene_manager,
-        NfcMagicSceneIso15693WriteFail,
-        NfcMagicIso15693WriteFailReasonNotMagic);
+    // NOTE: do not reset the scene state here. The write scene always sets the reason before entering
+    // this scene, and the "Details" round-trip re-enters this scene, which must re-read the same
+    // reason -- clearing it here would rebuild the wrong screen on return from Details.
     widget_reset(instance->widget);
 }

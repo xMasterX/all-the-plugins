@@ -1,31 +1,30 @@
 #include "../nfc_magic_app_i.h"
 #include "../magic/protocols/iso15693/iso15693_poller.h"
 
-static void nfc_magic_iso15693_get_info_popup_callback(void* context) {
-    NfcMagicApp* instance = context;
-    view_dispatcher_send_custom_event(instance->view_dispatcher, NfcMagicAppCustomEventViewExit);
-}
-
-// Info mode emits only Success or CardLost. The remaining values are matched explicitly rather than
-// swept into a trailing else, so adding an event can't silently arrive here as a failure.
 static void nfc_magic_iso15693_get_info_poller_callback(Iso15693PollerEvent event, void* context) {
     NfcMagicApp* instance = context;
 
-    switch(event) {
-    case Iso15693PollerEventSuccess:
+    if(event == Iso15693PollerEventSuccess) {
+        // On success, send a custom event to the scene manager to transition
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventIso15693CardDetected);
-        break;
-    case Iso15693PollerEventCardLost:
-        // Bounded activation retries ran out: no card in the field, or it never answered.
+    } else if(event == Iso15693PollerEventCardLost) {
+        // Info mode only ever emits Success or CardLost (never a write outcome). CardLost here means
+        // no card activated within the poller's retry budget.
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventIso15693CardDetectFailed);
-        break;
-    case Iso15693PollerEventPartial:
-    case Iso15693PollerEventFail:
-    case Iso15693PollerEventCardDetected:
-    case Iso15693PollerEventWriteProgress:
-        break; // not emitted in Info mode
+    }
+    // Any other event is not expected in Info mode and is intentionally ignored.
+}
+
+// Back button on the "no card" fail screen; forwards to the scene event handler.
+static void nfc_magic_iso15693_get_info_fail_button_callback(
+    GuiButtonType result,
+    InputType type,
+    void* context) {
+    NfcMagicApp* app = context;
+    if(type == InputTypeShort) {
+        view_dispatcher_send_custom_event(app->view_dispatcher, result);
     }
 }
 
@@ -33,10 +32,10 @@ void nfc_magic_scene_iso15693_get_info_on_enter(void* context) {
     NfcMagicApp* app = context;
     Popup* popup = app->popup;
 
-    // Setup the popup view to instruct the user
-    popup_set_header(popup, "Detecting ISO15693", 68, 19, AlignCenter, AlignBottom);
-    popup_set_text(popup, "Approach card to the back of Flipper", 68, 21, AlignCenter, AlignTop);
+    // Icon on the left, text right-aligned to the right edge (like the scan / write popups) so it
+    // clears the 60px-wide icon instead of overlapping it.
     popup_set_icon(popup, 0, 8, &I_NFC_manual_60x50);
+    popup_set_text(popup, "Approach an\nISO15693 tag", 128, 32, AlignRight, AlignCenter);
 
     view_dispatcher_switch_to_view(app->view_dispatcher, NfcMagicAppViewPopup);
 
@@ -59,30 +58,27 @@ bool nfc_magic_scene_iso15693_get_info_on_event(void* context, SceneManagerEvent
             scene_manager_next_scene(app->scene_manager, NfcMagicSceneIso15693Info);
             consumed = true;
         } else if(event.event == NfcMagicCustomEventIso15693CardDetectFailed) {
-            // Say why the popup is going away. Dropping straight back to the menu left the user with
-            // no way to tell "nothing was on the antenna" from "the card was rejected", so they just
-            // re-tapped with nothing to change.
-            Popup* popup = app->popup;
+            // No card activated within the poller's retry budget. Show a dolphin fail screen (same
+            // layout as the gen4 "no response" screen) rather than silently dropping to the menu.
             nfc_magic_app_blink_stop(app);
-            notification_message(app->notifications, &sequence_error);
-            popup_reset(popup);
-            popup_set_header(popup, "No card detected", 64, 8, AlignCenter, AlignTop);
-            popup_set_text(
-                popup,
-                "Hold the card flat\nagainst the back\nof the Flipper",
-                64,
-                24,
-                AlignCenter,
-                AlignTop);
-            popup_set_timeout(popup, 2000);
-            popup_set_context(popup, app);
-            popup_set_callback(popup, nfc_magic_iso15693_get_info_popup_callback);
-            popup_enable_timeout(popup);
+            Widget* widget = app->widget;
+            widget_add_icon_element(widget, 72, 17, &I_DolphinCommon_56x48);
+            widget_add_string_element(
+                widget, 7, 4, AlignLeft, AlignTop, FontPrimary, "No card found");
+            widget_add_string_multiline_element(
+                widget, 7, 17, AlignLeft, AlignTop, FontSecondary, "No ISO15693 tag\ndetected.");
+            widget_add_button_element(
+                widget,
+                GuiButtonTypeLeft,
+                "Back",
+                nfc_magic_iso15693_get_info_fail_button_callback,
+                app);
+            view_dispatcher_switch_to_view(app->view_dispatcher, NfcMagicAppViewWidget);
             consumed = true;
-        } else if(event.event == NfcMagicAppCustomEventViewExit) {
-            scene_manager_search_and_switch_to_previous_scene(
+        } else if(event.event == GuiButtonTypeLeft) {
+            // "Back" on the fail screen -> return to the ISO15693 menu.
+            consumed = scene_manager_search_and_switch_to_previous_scene(
                 app->scene_manager, NfcMagicSceneIso15693);
-            consumed = true;
         }
     }
 
@@ -97,6 +93,7 @@ void nfc_magic_scene_iso15693_get_info_on_exit(void* context) {
     app->iso15693_poller = NULL;
     nfc_magic_app_blink_stop(app);
 
-    // Reset the popup to a clean state for the next view
+    // Reset both views (detect uses the popup; the "no card" fail screen uses the widget).
     popup_reset(app->popup);
+    widget_reset(app->widget);
 }

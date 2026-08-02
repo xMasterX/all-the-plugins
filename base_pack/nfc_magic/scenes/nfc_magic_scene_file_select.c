@@ -103,6 +103,13 @@ void nfc_magic_scene_file_select_on_enter(void* context) {
             instance->protocol == NfcMagicProtocolClassic ||
             instance->protocol == NfcMagicProtocolGen2) {
             scene_manager_next_scene(instance->scene_manager, NfcMagicSceneMfClassicDictAttack);
+        } else if(instance->protocol == NfcMagicProtocolIso15693) {
+            // ISO15693 clone skips the up-front confirm: the gen2 write is a harmless custom command
+            // on a non-magic tag, and data blocks are written only after the UID reads back as the
+            // target (see the poller), so nothing is clobbered before the card takes that UID. The
+            // destructive gen1 fallback has its own opt-in mid-write. (Matches the MIFARE-magic flow --
+            // no up-front confirm.)
+            scene_manager_next_scene(instance->scene_manager, NfcMagicSceneWrite);
         } else {
             scene_manager_next_scene(instance->scene_manager, NfcMagicSceneWriteConfirm);
         }

@@ -1,7 +1,7 @@
 #include "iso15693_info.h"
 
+#include <furi.h>
 #include <stdint.h>
-#include <stddef.h>
 
 // ISO/IEC 7816-6 manufacturer byte decoding
 
@@ -126,14 +126,15 @@ static const ManufacturerName manufacturer_mapping[] = {
 };
 
 const char* iso15693_info_get_manufacturer_name(uint8_t vendor_id) {
-    const size_t len = sizeof(manufacturer_mapping) / sizeof(manufacturer_mapping[0]);
+    int i;
+    int len = COUNT_OF(manufacturer_mapping);
 
-    for(size_t i = 0; i < len; ++i) {
-        if(vendor_id == manufacturer_mapping[i].manufacturer_byte) {
+    for(i = 0; i < len; ++i)
+        if(vendor_id == manufacturer_mapping[i].manufacturer_byte)
             return manufacturer_mapping[i].desc;
-        }
-    }
-    return manufacturer_mapping[len - 1].desc; // sentinel "Unknown", always last
+
+    //No match, return default
+    return manufacturer_mapping[len - 1].desc;
 }
 
 // Chip ID encoding
@@ -225,13 +226,13 @@ static const ChipInfo chip_id_mapping[] = {
     {0x00, 0x00, 0x00, "no tag-info available"} // must be the last entry
 };
 
-// Most specific match wins: a longer mask means more of the chip id had to match.
 static const char* iso15693_info_get_chip_info(uint8_t vendor_id, uint8_t chip_id) {
     int i = 0;
     int best = -1;
     while(chip_id_mapping[i].mask > 0) {
         if(vendor_id == chip_id_mapping[i].manufacturer &&
            (chip_id & chip_id_mapping[i].mask) == chip_id_mapping[i].chip_id) {
+            // Keep the most specific match: a wider mask pins more chip-id bits.
             if(best == -1 || chip_id_mapping[i].mask > chip_id_mapping[best].mask) best = i;
         }
         i++;
@@ -247,10 +248,10 @@ static const char* iso15693_info_get_chip_info(uint8_t vendor_id, uint8_t chip_i
 // NXP manufacturer byte (ISO15693 UID uid[1]).
 #define ISO15693_INFO_NXP_MANUFACTURER (0x04U)
 
-// NXP I-Code SLI/SLIX/SLIX2 refinement. uid[2] is the IC family and uid[3] carries a 2-bit type
-// indicator at bits 3-4 (mask 0x18): 0x00 => plain SLI, 0x08 => SLIX2, 0x10 => SLIX, 0x18 => DNA /
-// NTAG 5. Mirrors proxmark3's masked UID table in cmdhf15.c (getTagInfo_15); the SDK's own decode
-// covers SLIX only, in slix_get_type().
+// NXP I-Code refinement. uid[2] is the IC family; uid[3] carries a 2-bit type indicator at bits 3-4
+// (mask 0x18): 0x10 => SLIX, 0x08 => SLIX2, 0x18 => ICODE DNA / NTAG 5, 0x00 => plain SLI.
+// Provenance: proxmark3 cmdhf15.c getTagInfo_15 (masked UID table). The SDK decodes the same bits in
+// slix.c (file-local SlixUidLayout.type_indicator; see the exported slix_get_type()).
 const char* iso15693_info_get_chip_info_ex(const uint8_t* uid) {
     const uint8_t vendor_id = uid[1];
     const uint8_t chip_id = uid[2];
