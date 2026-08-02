@@ -153,10 +153,10 @@ void iso15693_poller_get_result(Iso15693Poller* instance, Iso15693PollerResult* 
 // would overwrite -- so the write flow can warn before a possible gen1 clone. Source inspection only.
 bool iso15693_poller_source_uses_gen1_blocks(const Iso15693_3Data* source);
 
-// Wipe: write zeros to every data block on the card, like proxmark's 'hf 15 wipe'. The UID is left
-// unchanged. Blocks 56/57/62/63 are cleared too -- on gen2 they are ordinary user data, and on gen1
-// the commit register is cleared FIRST so the card cannot be armed while its UID registers are
-// zeroed.
+// Wipe: write zeros to every data block on the card, like proxmark's 'hf 15 wipe'. Blocks
+// 56/57/62/63 are cleared too -- on gen2 they are ordinary user data. On gen1 those same blocks are
+// the UID/unlock/commit registers and nothing re-reads the UID afterwards, so the wipe does not
+// guarantee the UID survives on a gen1 card; see the open question in iso15693_poller_wipe_blocks.
 // Reports CardDetected (first activation), then Success / Partial (some blocks failed) / Fail
 // (nothing could be wiped) / CardLost -- the last of which also covers a card lifted DURING the
 // loop, so blocks that never got the chance aren't reported as blocks the card refused to clear.

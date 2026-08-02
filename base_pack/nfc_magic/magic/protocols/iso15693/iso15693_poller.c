@@ -505,24 +505,21 @@ static uint16_t iso15693_poller_wipe_blocks(
     const uint8_t size = block_size > sizeof(zeros) ? (uint8_t)sizeof(zeros) : block_size;
     uint16_t wiped = 0;
 
-    // De-arm before touching anything else.
+    // OPEN QUESTION, gen1 only: this loop writes the gen1 UID registers (56/57) before it reaches
+    // unlock/commit (62/63). The gen1 arm sequence is unlock=0 then commit=0x6996 then the UID
+    // blocks, and nothing ever clears commit again -- not this app, and not proxmark's
+    // SetTag15693Uid -- so a card that has had a gen1 UID written may still be armed, and zeroing
+    // 56/57 while it is would be the arm sequence with a zero payload.
     //
-    // Clearing the gen1 registers is safe only because a wipe cannot ARM a UID change -- that needs
-    // 0x6996 in the commit block. It says nothing about a card that is arm(ed) ALREADY: the gen1
-    // sequence writes commit = 0x6996 and never clears it (proxmark's SetTag15693Uid doesn't
-    // either), so a card that has had a gen1 UID written plausibly still holds it. The main loop
-    // below runs ascending, which would then write zeros into the UID registers (56/57) while the
-    // commit register is still armed -- exactly the gen1 UID-write sequence with a zero payload,
-    // leaving a UID of all zeroes that no longer starts with 0xE0 and may not inventory at all.
+    // An earlier revision tried to de-arm by pre-writing the commit block. That was withdrawn: it
+    // wrote commit before unlock, the reverse of the only ordering the hardware is documented to
+    // accept, so it would either be rejected outright or -- worse -- leave unlock freshly zeroed,
+    // i.e. one step INTO the arm sequence, right before this loop touches the UID registers.
     //
-    // Writing the commit block first removes that ordering hazard entirely. The main loop writes
-    // these two again; a second zero-write costs nothing.
-    if(ISO15693_MAGIC_BLK_COMMIT < block_count) {
-        iso15693_3_poller_write_block(iso_poller, zeros, ISO15693_MAGIC_BLK_COMMIT, size);
-    }
-    if(ISO15693_MAGIC_BLK_UNLOCK < block_count) {
-        iso15693_3_poller_write_block(iso_poller, zeros, ISO15693_MAGIC_BLK_UNLOCK, size);
-    }
+    // Left as-is deliberately, matching proxmark's `hf 15 wipe`, which walks 0..0xFF with no de-arm
+    // at all. The grounded fix is not reordering blind writes but verifying: re-read the UID after
+    // the wipe and report a mismatch instead of claiming the UID is unchanged. That needs a gen1
+    // card to validate against, which nobody on this PR has.
     for(uint16_t block = 0; block < block_count && block < ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8;
         block++) {
         iso15693_poller_report_progress(instance, block + 1, block_count);

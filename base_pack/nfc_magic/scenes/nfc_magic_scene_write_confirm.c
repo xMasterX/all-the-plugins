@@ -21,11 +21,11 @@ void nfc_magic_scene_write_confirm_on_enter(void* context) {
 
     const char* text;
     if(iso15693_wipe) {
-        // "Every" is literal: blocks 56/57/62/63 are cleared too. On a gen2 card they are ordinary
-        // user data, so sparing them would leave data behind on the common card. On a gen1 card they
-        // are the UID/unlock/commit registers, and the wipe clears the commit register first so the
-        // card cannot be armed while its UID registers are zeroed (see iso15693_poller_wipe_blocks).
-        text = "Zeroes every data block. The UID is left unchanged.";
+        // "Every" is literal: 56/57/62/63 are cleared too, because on a gen2 card they are ordinary
+        // user data and sparing them would leave data behind on the common card. Nothing re-reads
+        // the UID afterwards, and on gen1 those blocks ARE the UID registers, so the string does not
+        // promise the UID survives -- see the open question in iso15693_poller_wipe_blocks.
+        text = "Zeroes every data block, including 56/57/62/63.";
     } else if(instance->uscuid_ul_is_wipe_mode) {
         text = "Blank factory dump: config &\npassword cleared, UID zeroed.";
     } else {
