@@ -33,6 +33,9 @@ typedef enum {
         // gen1 UID didn't take, the clone source had no data blocks, or a wipe cleared nothing.
     Iso15693PollerEventCardLost, // no card in the field / card removed before the operation finished
     Iso15693PollerEventCardDetected, // a magic candidate activated (drives the write popup UI)
+    Iso15693PollerEventWriteProgress, // some blocks done; read the result for the running counts.
+        // Emitted a bounded number of times per pass, NOT per block -- see
+        // ISO15693_POLLER_PROGRESS_STEPS in the .c for why that bound is a correctness constraint
     Iso15693PollerEventNotGen2, // gen2 left the UID unchanged (not a gen2 magic card, or not magic
         // at all). Nothing was written; the scene offers the opt-in gen1 retry. Emitted for a clone AND
         // for a bare Write-UID -- both gate the destructive gen1 attempt behind that consent.
@@ -137,6 +140,9 @@ typedef struct {
     // back with the source's value, so the copy does not carry it. Verified by read-back, not inferred
     // from the write's return. -> Partial.
     bool identity_failed;
+    // Running position of the block pass, for the live progress popup. Meaningful from the first
+    // WriteProgress event; equals blocks_total once the pass has finished.
+    uint16_t blocks_done;
 } Iso15693PollerResult;
 
 // Fill `result` with the outcome of the last clone or wipe. Valid once a terminal event has been
