@@ -16,14 +16,14 @@ typedef enum {
     Iso15693PollerModeInfo, // detect + read UID / system info
     Iso15693PollerModeWriteUid, // magic backdoor UID write (gen2 only; gen1 is a separate opt-in run)
     Iso15693PollerModeClone, // write UID + all data blocks from a source image
-    Iso15693PollerModeWipe, // zero the data blocks except 56/57/62/63 (UID left unchanged)
+    Iso15693PollerModeWipe, // zero every data block (UID left unchanged)
 } Iso15693PollerMode;
 
 typedef enum {
     Iso15693PollerEventSuccess, // Info: card read. Write/clone: the target UID read back and matched
         // (the UID, plus the AFI/DSFID on a clone, are re-read; block CONTENTS are never compared --
         // a data block counts as written when the card ACKs it). Wipe: every block it attempted
-        // accepted the zero write (backdoor registers 56/57/62/63 are skipped; the UID is untouched
+        // accepted the zero write (the UID is untouched
         // and never re-read).
     Iso15693PollerEventPartial, // the operation mostly worked but isn't a clean result: a clone lost
         // some data blocks, fell back to gen1 (overwriting 56/57/62/63), or had its AFI/DSFID write
@@ -154,8 +154,8 @@ void iso15693_poller_get_result(Iso15693Poller* instance, Iso15693PollerResult* 
 bool iso15693_poller_source_uses_gen1_blocks(const Iso15693_3Data* source);
 
 // Wipe: write zeros to every data block on the card (UID left unchanged, like proxmark's
-// 'hf 15 wipe'; the gen1 backdoor registers 56/57/62/63 are skipped so the UID / magic state is
-// preserved). Reports CardDetected (first activation), then Success / Partial (some blocks failed) /
+// 'hf 15 wipe'. Blocks 56/57/62/63 are cleared too: zeroing them cannot arm a gen1 UID change,
+// which needs 0x6996 in the commit block, so the UID survives either way). Reports CardDetected (first activation), then Success / Partial (some blocks failed) /
 // Fail (nothing could be wiped) / CardLost -- the last of which also covers a card lifted DURING the
 // loop, so blocks that never got the chance aren't reported as blocks the card refused to clear.
 // Per-block detail is available via iso15693_poller_get_result().

@@ -108,7 +108,6 @@ struct Iso15693Poller {
     Iso15693_3Data* clone_source;
     uint16_t clone_blocks_total; // clone: blocks on the source image, less 56/57/62/63 on a gen1 run
         // (they carry the UID, not source data). wipe: wipeable (non-backdoor) block count on the card
-        // (the 4 gen1 registers 56/57/62/63 are excluded, see wipe_blocks)
     // Clone mode: blocks that failed to write and count as a real problem: either they held source
     // data (lost), or they were empty failures that did NOT form a clean capacity tail (so we can't
     // call them over-capacity). Drives Partial. Wipe mode: reused as the count of blocks that still
@@ -135,7 +134,7 @@ struct Iso15693Poller {
     bool clone_afi_failed;
     bool clone_dsfid_failed;
     uint16_t clone_blocks_done; // blocks attempted so far, for the progress popup
-    uint8_t progress_steps_sent; // progress events emitted this pass (see PROGRESS_STEPS)
+    uint8_t progress_step; // last progress band emitted this pass (see PROGRESS_STEPS)
     Iso15693PollerCallback callback;
     void* context;
     bool running;
@@ -319,12 +318,13 @@ static void
     instance->clone_blocks_done = done;
     if(total == 0) return;
 
-    // Emit only when we cross the next 1/STEPS boundary, and always on the final block.
-    const uint32_t step = (done * ISO15693_POLLER_PROGRESS_STEPS) / total;
-    if(step <= instance->progress_steps_sent && done < total) return;
-    if(instance->progress_steps_sent >= ISO15693_POLLER_PROGRESS_STEPS) return;
+    // Emit only when we cross into a new 1/STEPS band. `step` is monotone in `done` and capped at
+    // STEPS, so this can fire at most STEPS+1 times per pass -- the safety bound is structural
+    // rather than something a second guard has to enforce.
+    const uint8_t step = (uint8_t)(((uint32_t)done * ISO15693_POLLER_PROGRESS_STEPS) / total);
+    if(step == instance->progress_step) return;
+    instance->progress_step = step;
 
-    instance->progress_steps_sent++;
     iso15693_poller_report(instance, Iso15693PollerEventWriteProgress);
 }
 
@@ -390,8 +390,9 @@ static bool iso15693_poller_write_source_blocks(
     // Do NOT skip blocks locked in the SOURCE image: the source's lock bits describe the ORIGINAL
     // card, not the magic target (which is writable regardless), and locked blocks are exactly where
     // real tags keep provisioned data. Attempt every block.
-    int32_t highest_success = -1; // highest block index that accepted a write
-    uint16_t first_fail = source_count; // lowest block index that failed every attempt
+    bool wrote_any = false; // at least one block accepted a write
+    bool wrote_above_failure = false; // a block wrote ABOVE one that failed -> not a capacity tail
+    uint16_t done = 0; // blocks attempted, the denominator the progress popup shows
     for(uint16_t block = 0; block < source_count && block < ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8;
         block++) {
         if(skip_backdoor &&
@@ -399,6 +400,9 @@ static bool iso15693_poller_write_source_blocks(
             block == ISO15693_MAGIC_BLK_UNLOCK || block == ISO15693_MAGIC_BLK_COMMIT)) {
             continue; // gen1 owns these; the gen1 UID sequence already wrote them
         }
+        // Before the write, so a clean run reports progress too -- the success path below continues
+        // straight to the next block.
+        iso15693_poller_report_progress(instance, done++, total);
         const uint8_t* block_data = iso15693_3_get_block_data(source, block);
         Iso15693_3Error error = Iso15693_3ErrorNone;
         for(uint32_t attempt = 0; attempt < ISO15693_POLLER_WRITE_ATTEMPTS; attempt++) {
@@ -408,11 +412,15 @@ static bool iso15693_poller_write_source_blocks(
             furi_delay_ms(ISO15693_POLLER_VERIFY_RETRY_MS);
         }
         if(error == Iso15693_3ErrorNone) {
-            highest_success = block; // written (perhaps after riding out a transient error)
+            // A success ABOVE an earlier failure means the failures are not a run at the top, so
+            // they cannot be the card's capacity edge.
+            if(instance->clone_failed_count + instance->clone_over_capacity > 0) {
+                wrote_above_failure = true;
+            }
+            wrote_any = true;
             continue;
         }
         FURI_LOG_W(TAG, "clone: block %u refused (err %d)", block, error);
-        if(block < first_fail) first_fail = block;
         // Record every failed block in the bitmap so a result screen can name it, whichever bucket
         // it ends up in.
         instance->clone_failed_bitmap[block / 8] |= (uint8_t)(1u << (block % 8));
@@ -429,12 +437,17 @@ static bool iso15693_poller_write_source_blocks(
         } else {
             instance->clone_over_capacity++;
         }
-        iso15693_poller_report_progress(instance, block + 1, source_count);
     }
+    iso15693_poller_report_progress(instance, done, total); // land on 100%
 
     // The failures are a real capacity edge only if they form a contiguous run at the very top of the
-    // card, above the last block that wrote (first_fail == highest_success + 1, with >=1 success) --
-    // the shape of "source bigger than the card". Confirm that before making any capacity claim.
+    // card, with at least one block below them having written -- the shape of "source bigger than the
+    // card". Confirm that before making any capacity claim.
+    //
+    // Tracked as "did anything write above a failure" rather than by comparing block indices: on the
+    // gen1 path blocks 56/57/62/63 are skipped, so a capacity edge landing near them leaves a gap
+    // between the last success and the first failure, and an index comparison reads that gap as a
+    // scattered failure and downgrades a lossless clone to Partial.
     const bool any_failure = (instance->clone_failed_count + instance->clone_over_capacity) > 0;
 
     // A card lifted mid-loop makes every remaining block fail, which is EXACTLY the shape of the card's
@@ -444,8 +457,7 @@ static bool iso15693_poller_write_source_blocks(
     // nothing. (Bail before classifying: the caller reports CardLost and ignores these counters.)
     if(any_failure && !iso15693_poller_card_still_present(iso_poller)) return false;
 
-    const bool failures_are_top_tail = any_failure && (highest_success >= 0) &&
-                                       (first_fail == (uint16_t)(highest_success + 1));
+    const bool failures_are_top_tail = any_failure && wrote_any && !wrote_above_failure;
     if(failures_are_top_tail) {
         instance->clone_capacity_confirmed = true;
     } else if(instance->clone_over_capacity > 0) {
@@ -856,7 +868,7 @@ static void iso15693_poller_start_internal(
     instance->clone_used_gen1 = false;
     instance->clone_capacity_confirmed = false;
     instance->clone_blocks_done = 0;
-    instance->progress_steps_sent = 0;
+    instance->progress_step = UINT8_MAX; // no band emitted yet, so the first call fires
     instance->clone_afi_failed = false;
     instance->clone_dsfid_failed = false;
     memset(instance->clone_failed_bitmap, 0, sizeof(instance->clone_failed_bitmap));

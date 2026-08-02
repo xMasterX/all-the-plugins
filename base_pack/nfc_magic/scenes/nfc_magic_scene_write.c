@@ -301,7 +301,7 @@ void nfc_magic_scene_write_on_enter(void* context) {
                     instance);
             }
         } else if(instance->iso15693_mode == NfcMagicIso15693ModeWipe) {
-            // Zero the card's data blocks, skipping 56/57/62/63 (no source file).
+            // Zero every data block on the card (no source file).
             iso15693_poller_start_wipe(
                 instance->iso15693_poller,
                 nfc_magic_scene_write_iso15693_poller_callback,

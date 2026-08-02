@@ -119,7 +119,7 @@ typedef enum {
 // Write-UID runs there too rather than in a scene of its own.
 typedef enum {
     NfcMagicIso15693ModeClone, // write a saved .nfc image onto the card
-    NfcMagicIso15693ModeWipe, // zero the card's data blocks (56/57/62/63 skipped)
+    NfcMagicIso15693ModeWipe, // zero every data block on the card, UID untouched
     NfcMagicIso15693ModeWriteUid, // write a hand-entered UID and nothing else
 } NfcMagicIso15693Mode;
 
