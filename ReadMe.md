@@ -374,6 +374,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | HID File Transfer | ![USB Badge] | [by Kavakuo](https://github.com/Kavakuo/HID-File-Transfer) | Get client app in [original repo](https://github.com/Kavakuo/HID-File-Transfer) | ![None Badge] |
 | USB Game Controller (Xbox360) | ![USB Badge] | [by expected-ingot](https://github.com/expected-ingot/flipper-xinput) |  | ![None Badge] |
 | Lego Dimensions ToyPad Emu | ![USB Badge] | [by SegerEnd](https://github.com/SegerEnd/Flipper-Zero-LD-Toypad-Emulator) |  | [![Author Badge]](https://lab.flipper.net/apps/ldtoypad) |
+| CCID | ![USB Badge] | [by kidbomb](https://github.com/kidbomb/flipper-ccid-app) |  | [![Author Badge]](https://lab.flipper.net/apps/ccid_test) |
 
 
 #### Catalog links checked at `17 Feb 2026 00:01 GMT +3`
