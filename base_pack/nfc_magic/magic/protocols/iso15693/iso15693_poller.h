@@ -16,15 +16,15 @@ typedef enum {
     Iso15693PollerModeInfo, // detect + read UID / system info
     Iso15693PollerModeWriteUid, // magic backdoor UID write (gen2 only; gen1 is a separate opt-in run)
     Iso15693PollerModeClone, // write UID + all data blocks from a source image
-    Iso15693PollerModeWipe, // zero every data block (UID left unchanged)
+    Iso15693PollerModeWipe, // zero every data block, 56/57/62/63 included (no UID command is sent,
+        // but on gen1 those four blocks ARE the UID registers -- see iso15693_poller_wipe_blocks)
 } Iso15693PollerMode;
 
 typedef enum {
     Iso15693PollerEventSuccess, // Info: card read. Write/clone: the target UID read back and matched
         // (the UID, plus the AFI/DSFID on a clone, are re-read; block CONTENTS are never compared --
         // a data block counts as written when the card ACKs it). Wipe: every block it attempted
-        // accepted the zero write (the UID is untouched
-        // and never re-read).
+        // accepted the zero write (no UID command is sent, and the UID is never re-read).
     Iso15693PollerEventPartial, // the operation mostly worked but isn't a clean result: a clone lost
         // some data blocks, fell back to gen1 (overwriting 56/57/62/63), or had its AFI/DSFID write
         // rejected; or a wipe couldn't clear every block.

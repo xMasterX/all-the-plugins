@@ -469,8 +469,8 @@ static bool iso15693_poller_write_source_blocks(
     return true;
 }
 
-// Wipe mode: write zeros to every data block on the card itself (UID untouched), using the target's
-// own reported geometry. We attempt every block rather than pre-skipping the target's locked ones: a
+// Wipe mode: write zeros to every data block on the card itself -- no UID command is sent -- using
+// the target's own reported geometry. We attempt every block rather than pre-skipping the target's locked ones: a
 // magic card often ignores its own lock bits and accepts the write. A block whose zero-write fails is
 // only a real failure if it STILL HOLDS DATA -- a phantom block past the card's real capacity (the
 // card over-reports its geometry) or an already-clear block left nothing behind, so counting it would
@@ -479,10 +479,12 @@ static bool iso15693_poller_write_source_blocks(
 // locked block that genuinely retains data is counted (the wipe's privacy promise wasn't kept there),
 // which also lets the "nothing could be wiped" guard fire.
 // The gen1 backdoor registers (blocks 56/57/62/63) live in this same block-number space and ARE
-// cleared, deliberately. Skipping them would keep the "UID unchanged" promise on a gen1 card at the
-// cost of leaving four blocks of real user data behind on every gen2 card, where they are ordinary
-// memory -- a certain loss to avoid something the sequence cannot do. Zeroing them cannot move a
-// gen1 UID either: arming that needs 0x6996 in the commit block, and a wipe writes zero.
+// cleared, deliberately. Skipping them would spare a gen1 card's UID registers at the cost of leaving
+// four blocks of real user data behind on every gen2 card, where they are ordinary memory -- a certain
+// loss on the card we actually have, to hedge a hazard only gen1 has. Note the narrow form of the
+// argument: a wipe cannot ARM a gen1 UID change by itself, since arming needs 0x6996 in the commit
+// block and a wipe writes zero -- but that says nothing about a card that is armed ALREADY. See the
+// OPEN QUESTION in the loop below.
 // Returns the number of blocks that actually accepted the zero-write, so the caller can tell a
 // genuine wipe from one where nothing could be cleared.
 static uint16_t iso15693_poller_wipe_blocks(
@@ -638,7 +640,7 @@ static NfcCommand
 
     switch(instance->write_state) {
     case Iso15693WriteStateStart: {
-        // Wipe zeros the card's own blocks and never touches the UID, so it's a single pass with no
+        // Wipe zeros the card's own blocks and sends no UID command, so it's a single pass with no
         // backdoor write or field reset.
         if(instance->mode == Iso15693PollerModeWipe) {
             bool card_lost = false;
