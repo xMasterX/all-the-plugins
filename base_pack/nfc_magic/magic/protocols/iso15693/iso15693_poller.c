@@ -199,6 +199,9 @@ struct Iso15693Poller {
     // proves nothing about the card -- a plain tag passes the check having ignored every frame. The run
     // stops before writing and reports this instead of a Success it cannot justify.
     bool uid_unverifiable;
+    // Wipe only: the UID read back after the wipe is not the one the card presented before it. Only ever
+    // set from a POSITIVE observation -- see the read-back at the end of the wipe branch of write_step.
+    bool uid_changed;
     Iso15693PollerCallback callback;
     void* context;
     bool running;
@@ -769,7 +772,10 @@ static Iso15693PollerEvent iso15693_poller_success_or_partial(Iso15693Poller* in
        instance->clone_failed_count >= instance->clone_blocks_total) {
         return Iso15693PollerEventFail;
     }
-    if(instance->clone_failed_count > 0 || gen1_clone || identity_failed) {
+    // A wipe that cleared its blocks but moved the card's UID is not a clean success, whatever the
+    // block counts say -- the card's identity changed under an operation that doesn't claim to touch it.
+    if(instance->clone_failed_count > 0 || gen1_clone || identity_failed ||
+       instance->uid_changed) {
         return Iso15693PollerEventPartial;
     }
     return Iso15693PollerEventSuccess;
@@ -810,6 +816,12 @@ static NfcCommand
         // Wipe zeros the card's own blocks and sends no UID command, so it's a single pass with no
         // backdoor write or field reset.
         if(instance->mode == Iso15693PollerModeWipe) {
+            // Note the UID the card presented, to compare against after the wipe. See the read-back
+            // below for why a wipe needs that at all. (nfc_poller_get_data returns void*, so it has to
+            // land in a typed pointer before being dereferenced.)
+            const Iso15693_3Data* wipe_target = nfc_poller_get_data(instance->poller);
+            memcpy(instance->original_uid, wipe_target->uid, ISO15693_3_UID_SIZE);
+
             bool card_lost = false;
             const uint16_t wiped = iso15693_poller_wipe_blocks(instance, iso_poller, &card_lost);
             if(card_lost) {
@@ -817,6 +829,31 @@ static NfcCommand
                 iso15693_poller_report(instance, Iso15693PollerEventCardLost);
                 return NfcCommandStop;
             }
+
+            // Check the UID survived. On gen2 it must -- the wipe sends no UID command and the gen2 UID
+            // lives in a separate register space -- so on the only hardware this PR has, this read is a
+            // regression test that should never fire. On gen1 it is the point: blocks 56/57 ARE the UID
+            // registers, the gen1 arm sequence leaves commit = 0x6996 and nothing ever clears it, so an
+            // already-armed card can have its UID rewritten by a wipe zeroing those blocks. See the OPEN
+            // QUESTION in iso15693_poller_wipe_blocks: reordering blind writes cannot fix that, but
+            // reporting it can, and the screens no longer promise the UID is left alone.
+            //
+            // Reported ONLY from a positive observation of a different UID. If the inventory itself
+            // fails we have learned nothing -- and treating that as a failure would turn "user lifted the
+            // card the instant the wipe finished" into an error on every gen2 wipe, for the sake of a
+            // gen1 case nobody can test. So that is logged and left alone, which does mean a card
+            // bricked so thoroughly that it no longer inventories at all goes unreported.
+            if(wiped > 0) {
+                uint8_t uid_now[ISO15693_3_UID_SIZE] = {0};
+                if(iso15693_poller_verify_inventory(iso_poller, uid_now) != Iso15693_3ErrorNone) {
+                    FURI_LOG_W(TAG, "wipe: card did not answer the UID read-back");
+                } else if(memcmp(uid_now, instance->original_uid, ISO15693_3_UID_SIZE) != 0) {
+                    FURI_LOG_E(TAG, "wipe: the UID CHANGED");
+                    instance->uid_changed = true;
+                    memcpy(instance->uid_readback, uid_now, ISO15693_3_UID_SIZE);
+                }
+            }
+
             // If not a single block accepted the zero-write, nothing was wiped: the card reported no
             // usable geometry, or every block is read-only / write-protected. Report Fail (the UID was
             // never touched) rather than a hollow Success.
@@ -1082,6 +1119,7 @@ static void iso15693_poller_start_internal(
     instance->uid_unexpected = false;
     instance->gen1_attempted = gen1;
     instance->uid_unverifiable = false;
+    instance->uid_changed = false;
     memset(instance->uid_readback, 0, sizeof(instance->uid_readback));
     memset(instance->clone_failed_bitmap, 0, sizeof(instance->clone_failed_bitmap));
     iso15693_3_reset(instance->data);
@@ -1174,6 +1212,7 @@ void iso15693_poller_get_result(Iso15693Poller* instance, Iso15693PollerResult* 
     memcpy(result->uid_readback, instance->uid_readback, sizeof(result->uid_readback));
     result->gen1_attempted = instance->gen1_attempted;
     result->uid_unverifiable = instance->uid_unverifiable;
+    result->uid_changed = instance->uid_changed;
 }
 
 // True if the source image has non-empty data in any of the gen1 backdoor blocks (56/57/62/63) that

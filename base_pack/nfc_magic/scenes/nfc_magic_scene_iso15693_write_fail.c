@@ -26,6 +26,7 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
     const bool uid_unexpected = (reason == NfcMagicIso15693WriteFailReasonUidUnexpected);
     const bool gen1_failed = (reason == NfcMagicIso15693WriteFailReasonGen1Failed);
     const bool uid_unverifiable = (reason == NfcMagicIso15693WriteFailReasonUidUnverifiable);
+    const bool wipe_uid_changed = (reason == NfcMagicIso15693WriteFailReasonWipeUidChanged);
     const bool wipe_mode = (instance->iso15693_mode == NfcMagicIso15693ModeWipe);
 
     // Over-capacity is a clean success (nothing was lost) -> success tone. Everything else did not
@@ -128,6 +129,25 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             AlignTop,
             FontSecondary,
             "The UID was written\nbut no data block\nwould take. The card\nhas the UID only.");
+    } else if(wipe_uid_changed) {
+        // The wipe cleared its blocks and the card came back answering a different UID. On gen2 that
+        // cannot happen -- the wipe sends no UID command and the gen2 UID lives in a separate register
+        // space -- so in practice this is a gen1 card that an earlier gen1 UID write left armed, with
+        // the wipe's zeros landing in blocks 56/57, which on gen1 ARE the UID registers. Print what it
+        // answers to now: without that the card is simply lost, since it no longer responds to the UID
+        // the user knows it by.
+        widget_add_string_element(
+            widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "UID changed");
+        FuriString* text = furi_string_alloc();
+        furi_string_set_str(
+            text, "Data cleared, but the\ncard's UID moved. It\nnow answers to:\n");
+        for(size_t i = 0; i < ISO15693_3_UID_SIZE; i++) {
+            if(i == 4) furi_string_push_back(text, ' ');
+            furi_string_cat_printf(text, "%02X", instance->iso15693_result.uid_readback[i]);
+        }
+        widget_add_string_multiline_element(
+            widget, 0, 13, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(text));
+        furi_string_free(text);
     } else if(uid_unexpected) {
         // The gen2 backdoor moved the UID to neither the original nor the target. Everything else that
         // lands on "Not a magic tag" is a card that did nothing; this one demonstrably responded to a

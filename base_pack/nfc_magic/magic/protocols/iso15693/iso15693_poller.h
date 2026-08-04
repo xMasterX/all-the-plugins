@@ -168,6 +168,11 @@ typedef struct {
     // A read-back against a UID the card already carries is passed by any tag, magic or not, so a
     // Success there would be unearned -- the run stops instead of claiming one.
     bool uid_unverifiable;
+    // Partial, wipe only: the UID read back after the wipe is not the one the card presented before it,
+    // so the wipe moved the card's identity. uid_readback holds the UID it now answers to. Only ever set
+    // from a positive observation of a different UID -- an inventory that fails outright is logged and
+    // ignored, since it cannot be told from the card being lifted the moment the wipe finished.
+    bool uid_changed;
 } Iso15693PollerResult;
 
 // Fill `result` with the outcome of the last clone or wipe. Valid once a terminal event has been

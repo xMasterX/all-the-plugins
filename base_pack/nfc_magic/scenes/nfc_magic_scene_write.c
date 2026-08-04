@@ -404,10 +404,15 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
                instance->protocol == NfcMagicProtocolClassic) {
                 scene_manager_next_scene(instance->scene_manager, NfcMagicSceneGen2WipePartial);
             } else if(instance->protocol == NfcMagicProtocolIso15693) {
+                // A wipe whose blocks cleared but whose UID moved gets its own screen, ahead of the
+                // ordinary partial: the block counts are beside the point next to the card's identity
+                // changing under an operation that never sends a UID command.
                 scene_manager_set_scene_state(
                     instance->scene_manager,
                     NfcMagicSceneIso15693WriteFail,
-                    NfcMagicIso15693WriteFailReasonPartial);
+                    instance->iso15693_result.uid_changed ?
+                        NfcMagicIso15693WriteFailReasonWipeUidChanged :
+                        NfcMagicIso15693WriteFailReasonPartial);
                 scene_manager_next_scene(instance->scene_manager, NfcMagicSceneIso15693WriteFail);
             } else {
                 scene_manager_next_scene(instance->scene_manager, NfcMagicSceneUscuidUlPartial);
