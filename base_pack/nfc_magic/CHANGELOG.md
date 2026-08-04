@@ -78,6 +78,10 @@ the copy advertises the same chip identity.
   writes before anything can be verified, so if the UID doesn't take, blocks 56/57/62/63 have already
   been overwritten on what is most likely an ordinary tag. The failure screen says which blocks, so
   they can be restored from a backup.
+- **Write UID refuses to "verify" a UID the card already has.** The editor pre-fills with the UID from
+  the last Info read, so writing it straight back is two taps away — and a read-back against a UID the
+  card already carries is passed by any tag at all, magic or not. That would have reported Success
+  having proved nothing, so the write is refused up front with an explanation instead.
 
 ### Validation (at 2.1)
 - The **gen2** path was validated end-to-end on hardware for this release: byte-identical clones

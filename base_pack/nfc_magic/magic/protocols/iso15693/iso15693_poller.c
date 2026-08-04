@@ -145,6 +145,10 @@ struct Iso15693Poller {
     // magic tag". Equal to attempt_gen1 -- kept as its own result field so the scene doesn't have to
     // know that the gen1 frames go out unconditionally at Start.
     bool gen1_attempted;
+    // Write-UID only: the requested UID is the one the card already has, so reading it back afterwards
+    // proves nothing about the card -- a plain tag passes the check having ignored every frame. The run
+    // stops before writing and reports this instead of a Success it cannot justify.
+    bool uid_unverifiable;
     Iso15693PollerCallback callback;
     void* context;
     bool running;
@@ -674,6 +678,21 @@ static NfcCommand
         const Iso15693_3Data* poller_data = nfc_poller_get_data(instance->poller);
         memcpy(instance->original_uid, poller_data->uid, ISO15693_3_UID_SIZE);
 
+        // A UID read-back only proves the card is magic when the UID it is compared against is one the
+        // card did not already have. Write UID pre-seeds its editor with the UID a previous Info read
+        // returned, so "Info -> Write UID -> Save" asks to write the card's own UID back onto it -- and
+        // then ANY tag passes the verify, having ignored every backdoor frame, and the app would report
+        // a Success that says nothing about the card. Stop before writing and say so. (Not applied to a
+        // clone: its target is the source's UID, so cloning an image back onto the card it came from
+        // hits the same ambiguity, but there the data blocks are the payload and the user gets exactly
+        // what they asked for either way.)
+        if(instance->mode == Iso15693PollerModeWriteUid &&
+           memcmp(instance->target_uid, instance->original_uid, ISO15693_3_UID_SIZE) == 0) {
+            instance->uid_unverifiable = true;
+            iso15693_poller_report(instance, Iso15693PollerEventFail);
+            return NfcCommandStop;
+        }
+
         // A clone with no writable geometry has nothing to clone -- refuse before touching the card so
         // we don't stamp a UID and report a misleading "clone complete". (Use Write UID for a UID-only
         // change.) clone_blocks_total stays 0 so the scene picks the "empty source" reason.
@@ -909,6 +928,7 @@ static void iso15693_poller_start_internal(
     instance->clone_dsfid_failed = false;
     instance->uid_unexpected = false;
     instance->gen1_attempted = gen1;
+    instance->uid_unverifiable = false;
     memset(instance->uid_readback, 0, sizeof(instance->uid_readback));
     memset(instance->clone_failed_bitmap, 0, sizeof(instance->clone_failed_bitmap));
     iso15693_3_reset(instance->data);
@@ -1000,6 +1020,7 @@ void iso15693_poller_get_result(Iso15693Poller* instance, Iso15693PollerResult* 
     result->uid_unexpected = instance->uid_unexpected;
     memcpy(result->uid_readback, instance->uid_readback, sizeof(result->uid_readback));
     result->gen1_attempted = instance->gen1_attempted;
+    result->uid_unverifiable = instance->uid_unverifiable;
 }
 
 // True if the source image has non-empty data in any of the gen1 backdoor blocks (56/57/62/63) that

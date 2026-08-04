@@ -418,19 +418,24 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
             consumed = true;
         } else if(event.event == NfcMagicCustomEventWorkerFail) {
             if(instance->protocol == NfcMagicProtocolIso15693) {
-                // Pick the reason: a UID that moved somewhere unasked-for, a wipe that cleared nothing,
-                // an empty-source clone (blocks_total == 0), or a clone whose UID took but whose every
-                // data block was rejected. Order matters -- an empty source would satisfy the
-                // all-rejected test trivially.
+                // Pick the reason: a Write UID with nothing to prove, a UID that moved somewhere
+                // unasked-for, a spent gen1 attempt, a wipe that cleared nothing, an empty-source
+                // clone (blocks_total == 0), or a clone whose UID took but whose every data block was
+                // rejected. Order matters throughout -- an empty source would satisfy the all-rejected
+                // test trivially, and the three UID/gen1 outcomes cut across every mode.
                 //
                 // NotMagic is now only the defensive fallback. A card that simply isn't magic leaves
                 // the UID unchanged, which is NotGen2, not Fail -- it reaches the gen1 opt-in screen,
                 // and declining there returns to the menu. So nothing routed here is known to be an
-                // ordinary tag, which is the whole of finding 3: before the branch below existed,
+                // ordinary tag, which is the whole of finding 3: before the branches above existed,
                 // "Not a magic tag" was reachable ONLY via the unexpected-UID case, the one outcome
                 // that proves the opposite.
                 NfcMagicIso15693WriteFailReason reason;
-                if(instance->iso15693_result.uid_unexpected) {
+                if(instance->iso15693_result.uid_unverifiable) {
+                    // Write UID asked for the UID the card already has, so nothing was sent. Checked
+                    // first: it is the one Fail where the card was never written to at all.
+                    reason = NfcMagicIso15693WriteFailReasonUidUnverifiable;
+                } else if(instance->iso15693_result.uid_unexpected) {
                     // The UID moved, just not to what was asked for. Ahead of every mode-specific
                     // reason below, because it is the one Fail that proves the card IS magic and
                     // "Not a magic tag" would be exactly backwards.

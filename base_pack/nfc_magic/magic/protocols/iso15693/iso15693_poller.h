@@ -30,7 +30,10 @@ typedef enum {
         // rejected; or a wipe couldn't clear every block.
     Iso15693PollerEventFail, // the operation didn't take: the backdoor write was rejected (not a
         // magic tag), the gen2 write changed the UID to neither the original nor the target, an opt-in
-        // gen1 UID didn't take, the clone source had no data blocks, or a wipe cleared nothing.
+        // gen1 UID didn't take, the clone source had no data blocks, a wipe cleared nothing, or a
+        // Write UID asked for the UID the card already has. Those are NOT the same thing to a user --
+        // read Iso15693PollerResult (uid_unexpected / gen1_attempted / uid_unverifiable) to tell them
+        // apart before picking a message.
     Iso15693PollerEventCardLost, // no card in the field / card removed before the operation finished
     Iso15693PollerEventCardDetected, // first activation of any write mode -- clone, wipe AND Write
         // UID. Flips the shared write popup off "apply the card" onto "Writing". Not sent in Info mode.
@@ -60,9 +63,13 @@ void iso15693_poller_start(
 // read-back it power-cycles the field (like proxmark's switch_off + getUID) so a card that only
 // latches the new UID after a reset is not misreported as a failure.
 // Reports CardDetected (first activation), then Success (the read-back inventory returns the
-// requested UID), Fail (the UID changed to neither the original nor the target) or CardLost. If gen2
-// leaves the UID unchanged it reports NotGen2 WITHOUT having written anything, so the caller can offer
-// the destructive gen1 retry via iso15693_poller_start_write_uid_gen1().
+// requested UID), Fail or CardLost. If gen2 leaves the UID unchanged it reports NotGen2 WITHOUT having
+// written anything, so the caller can offer the destructive gen1 retry via
+// iso15693_poller_start_write_uid_gen1().
+// Two distinct Fails, both flagged in the result: the UID changed to neither the original nor the
+// target (uid_unexpected -- proof the card IS magic), and `uid` is the UID the card already has
+// (uid_unverifiable), which is refused BEFORE anything is sent, because a read-back against a UID the
+// card already carries is passed by any tag and would earn a Success that means nothing.
 // The byte-level frames are defined in iso15693_poller.c (ported from proxmark3 armsrc/iso15693.c,
 // SetTag15693Uid / SetTag15693Uid_v2).
 void iso15693_poller_start_write_uid(
@@ -156,6 +163,10 @@ typedef struct {
     // UID/unlock/commit bytes whatever the outcome. On a Fail that is real data lost on what is most
     // likely an ordinary tag, and the result screen has to say so.
     bool gen1_attempted;
+    // Fail, Write UID only: the requested UID is the one the card already has, so nothing was written.
+    // A read-back against a UID the card already carries is passed by any tag, magic or not, so a
+    // Success there would be unearned -- the run stops instead of claiming one.
+    bool uid_unverifiable;
 } Iso15693PollerResult;
 
 // Fill `result` with the outcome of the last clone or wipe. Valid once a terminal event has been

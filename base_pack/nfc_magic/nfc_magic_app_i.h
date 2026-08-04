@@ -121,6 +121,8 @@ typedef enum {
     NfcMagicIso15693WriteFailReasonGen1Failed, // the opt-in gen1 UID didn't verify. The sequence is
         // sent before anything is checked, so blocks 56/57/62/63 were overwritten regardless -- on what
         // is most likely an ordinary tag. Naming them is the point of the screen.
+    NfcMagicIso15693WriteFailReasonUidUnverifiable, // Write UID: the requested UID is the card's own,
+        // so nothing was written -- a read-back against a UID the card already has proves nothing
 } NfcMagicIso15693WriteFailReason;
 
 // Which ISO15693 operation the shared write scene is running. Replaces the old is-wipe bool, now that
