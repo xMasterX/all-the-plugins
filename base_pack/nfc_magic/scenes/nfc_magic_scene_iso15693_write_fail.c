@@ -114,7 +114,7 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             AlignLeft,
             AlignTop,
             FontSecondary,
-            "No blocks could be\ncleared. The card\nrejected all writes.\nIts UID is unchanged.");
+            "No blocks could be\ncleared -- the card\naccepted no zero-write.");
     } else if(nothing_cloned) {
         // The gen2/gen1 UID write took, but every data block was rejected. Say what the card now holds:
         // it answers with the source's UID, so a UID-only reader accepts it while anything that reads
@@ -128,7 +128,7 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             AlignLeft,
             AlignTop,
             FontSecondary,
-            "The UID was written\nbut no data block\nwould take. The card\nhas the UID only.");
+            "The UID was written,\nbut no data block took.\nThe card has UID only.");
     } else if(wipe_uid_changed) {
         // The wipe cleared its blocks and the card came back answering a different UID. On gen2 that
         // cannot happen -- the wipe sends no UID command and the gen2 UID lives in a separate register
@@ -138,9 +138,20 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         // the user knows it by.
         widget_add_string_element(
             widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "UID changed");
+        // success_or_partial ORs uid_changed with failed_count, so BOTH can hold: a wipe can move the UID
+        // AND leave blocks uncleared. Lead with the counts rather than asserting "Data cleared", which
+        // would be false in exactly that case -- and it costs nothing, since the counts replace a prose
+        // line. The UID then lands on line 3, which matters: the 4th line of a body at y=13 is overpainted
+        // by the button box (rows 52-63), and this UID is the only way back to a card that has stopped
+        // answering to the one the user knows.
+        const uint16_t wiped_total = instance->iso15693_result.blocks_total;
+        const uint16_t wiped_bad = instance->iso15693_result.failed_count;
         FuriString* text = furi_string_alloc();
-        furi_string_set_str(
-            text, "Data cleared, but the\ncard's UID moved. It\nnow answers to:\n");
+        furi_string_printf(
+            text,
+            "Wiped %u/%u. The card's\nUID moved. Now reads:\n",
+            (wiped_total >= wiped_bad) ? (uint16_t)(wiped_total - wiped_bad) : 0,
+            wiped_total);
         for(size_t i = 0; i < ISO15693_3_UID_SIZE; i++) {
             if(i == 4) furi_string_push_back(text, ' ');
             furi_string_cat_printf(text, "%02X", instance->iso15693_result.uid_readback[i]);
@@ -155,9 +166,10 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         // to a UID nobody asked for, and printing it is the only way the user can find the card again.
         widget_add_string_element(
             widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Unexpected UID");
+        // Prose kept to two lines so the UID lands on line 3: the 4th line of a body at y=13 is
+        // overpainted by the button box (rows 52-63), and a clipped hex digit is a mis-readable UID.
         FuriString* text = furi_string_alloc();
-        furi_string_set_str(
-            text, "The card is magic --\nthe UID did change,\nbut not to yours:\n");
+        furi_string_set_str(text, "Card is magic, but the\nUID it took isn't yours:\n");
         for(size_t i = 0; i < ISO15693_3_UID_SIZE; i++) {
             // Two 4-byte groups, unspaced: the spaced form the Info screen uses is 23 characters and
             // overruns the 128px line here.
@@ -181,7 +193,7 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             AlignLeft,
             AlignTop,
             FontSecondary,
-            "UID didn't take: not\na gen1 card either.\nBlocks 56/57/62/63\nwere overwritten.");
+            "UID didn't take, so not\na gen1 card. 56/57/62/63\nmay be overwritten.");
     } else if(uid_unverifiable) {
         // Write UID was asked for the UID the card already has -- the editor pre-seeds itself from the
         // last Info read, so this is two menu taps away. Nothing was sent: a read-back against a UID
@@ -196,7 +208,7 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             AlignLeft,
             AlignTop,
             FontSecondary,
-            "That is already this\ncard's UID, so\nnothing was written.\nTry a different UID.");
+            "Already this card's UID,\nso nothing was written.\nTry a different one.");
     } else if(empty_source) {
         // A clone whose source image has no data blocks: nothing was written (not even the UID), so
         // the card is untouched. Distinct from a non-magic card.
@@ -209,11 +221,17 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             AlignLeft,
             AlignTop,
             FontSecondary,
-            "The saved file has\nno data blocks to\nclone. Nothing was\nwritten to the card.");
+            "The saved file has no\ndata blocks to clone.\nNothing was written.");
     } else {
-        const char* message = card_lost ?
-                                  "Card removed\nbefore the write\ncould finish." :
-                                  "Not a magic tag.\nThis card doesn't\nsupport UID write.";
+        // A card lost during an opt-in gen1 run has already had the four backdoor registers written at,
+        // so say so -- this screen is the only report that run produces, and "Card removed" alone would
+        // hide damage the user consented to but was never told had been spent.
+        const bool gen1_spent = card_lost && instance->iso15693_result.gen1_attempted &&
+                                !instance->iso15693_result.used_gen1;
+        const char* message =
+            gen1_spent ? "Card removed mid-write.\ngen1 was attempted:\n56/57/62/63 may differ." :
+            card_lost  ? "Card removed\nbefore the write\ncould finish." :
+                         "Not a magic tag.\nThis card doesn't\nsupport UID write.";
         widget_add_icon_element(widget, 83, 22, &I_WarningDolphinFlip_45x42);
         widget_add_string_element(
             widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Write failed");
@@ -251,9 +269,13 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         // caveat terms, a partial whose only problem is the gen1 UID clobber or a rejected AFI/DSFID
         // (both possible with zero failed blocks) had no Details button, and since the summary shows
         // only its single highest-priority qualifier, the lower one was then reachable nowhere at all.
-        if(over_capacity || (partial && (instance->iso15693_result.failed_count > 0 ||
-                                         instance->iso15693_result.used_gen1 ||
-                                         instance->iso15693_result.identity_failed))) {
+        // wipe_uid_changed is in the list for the same reason: it PRE-EMPTS the partial reason code, so
+        // without it a wipe that both moved the UID and left blocks uncleared would name those blocks
+        // nowhere at all -- the exact failure the caveat terms above were added to prevent.
+        if(over_capacity || (instance->iso15693_result.failed_count > 0 && wipe_uid_changed) ||
+           (partial &&
+            (instance->iso15693_result.failed_count > 0 || instance->iso15693_result.used_gen1 ||
+             instance->iso15693_result.identity_failed))) {
             widget_add_button_element(
                 widget,
                 GuiButtonTypeRight,
@@ -275,6 +297,9 @@ bool nfc_magic_scene_iso15693_write_fail_on_event(void* context, SceneManagerEve
     const bool card_lost = (reason == NfcMagicIso15693WriteFailReasonCardLost);
     const bool partial = (reason == NfcMagicIso15693WriteFailReasonPartial);
     const bool over_capacity = (reason == NfcMagicIso15693WriteFailReasonOverCapacity);
+    // Also needs a Details route: it pre-empts the partial reason code, so its failed blocks would
+    // otherwise be listed nowhere. Kept in step with the button gate in on_enter.
+    const bool wipe_uid_changed = (reason == NfcMagicIso15693WriteFailReasonWipeUidChanged);
 
     if(event.type == SceneManagerEventTypeCustom) {
         if(event.event == GuiButtonTypeLeft) {
@@ -287,7 +312,7 @@ bool nfc_magic_scene_iso15693_write_fail_on_event(void* context, SceneManagerEve
                     instance->scene_manager, NfcMagicSceneIso15693);
             }
         } else if(event.event == GuiButtonTypeRight) {
-            if(partial || over_capacity) {
+            if(partial || over_capacity || wipe_uid_changed) {
                 // Details -> the affected-block list (failed blocks, or the empty top blocks).
                 scene_manager_next_scene(
                     instance->scene_manager, NfcMagicSceneIso15693PartialDetails);

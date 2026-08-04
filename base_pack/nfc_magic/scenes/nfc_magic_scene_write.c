@@ -185,6 +185,11 @@ static void
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventWorkerPartial);
     } else if(event == Iso15693PollerEventCardLost) {
+        // Read the result here too: a card lost DURING an opt-in gen1 run has still had the destructive
+        // sequence written at blocks 56/57/62/63, and the card-lost screen is the only report the user
+        // gets. Without this, gen1_attempted is stale and that damage goes unmentioned -- the same gap
+        // the gen1-failure screen exists to close, on the path where the card left instead of refusing.
+        iso15693_poller_get_result(instance->iso15693_poller, &instance->iso15693_result);
         view_dispatcher_send_custom_event(instance->view_dispatcher, NfcMagicCustomEventCardLost);
     } else if(event == Iso15693PollerEventNotGen2) {
         // gen2 left the UID unchanged (not a gen2 magic card). Offer the opt-in gen1 retry; nothing
@@ -432,9 +437,9 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
                 // NotMagic is now only the defensive fallback. A card that simply isn't magic leaves
                 // the UID unchanged, which is NotGen2, not Fail -- it reaches the gen1 opt-in screen,
                 // and declining there returns to the menu. So nothing routed here is known to be an
-                // ordinary tag, which is the whole of finding 3: before the branches above existed,
-                // "Not a magic tag" was reachable ONLY via the unexpected-UID case, the one outcome
-                // that proves the opposite.
+                // ordinary tag. Before the branches above existed, the two routes that DID reach
+                // "Not a magic tag" were the unexpected-UID case -- the one outcome that proves the
+                // opposite -- and a failed opt-in gen1 verify, which had already spent four blocks.
                 NfcMagicIso15693WriteFailReason reason;
                 if(instance->iso15693_result.uid_unverifiable) {
                     // Write UID asked for the UID the card already has, so nothing was sent. Checked
