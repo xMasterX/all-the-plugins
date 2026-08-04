@@ -76,6 +76,8 @@ void iso15693_poller_start_write_uid(
 // writable tag accepts, so on a non-magic tag this destroys four blocks of user data -- then verifies.
 // A Write-UID has no payload to follow, so a verified UID is a clean Success.
 // Reports CardDetected (first activation), then Success, Fail (the gen1 UID didn't take) or CardLost.
+// On that Fail the four blocks are already gone -- the sequence goes out before anything is verified --
+// so the result carries gen1_attempted and the caller must name them rather than say "not a magic tag".
 // NOTE: gen1 is NOT hardware-validated.
 void iso15693_poller_start_write_uid_gen1(
     Iso15693Poller* instance,
@@ -106,7 +108,8 @@ void iso15693_poller_start_clone(
 // so they can't match the source -> Partial. A card that can't do gen1 therefore loses at most those
 // four blocks. Reports CardDetected (first activation), then Partial (a gen1 clone that took is ALWAYS
 // Partial -- 56/57/62/63 now hold the UID, so they can't match the source; this path never reports a
-// clean Success), Fail (the gen1 UID didn't take) or CardLost. NOTE: gen1 is NOT hardware-validated.
+// clean Success), Fail (the gen1 UID didn't take -- with gen1_attempted set, since those four blocks
+// are gone either way) or CardLost. NOTE: gen1 is NOT hardware-validated.
 void iso15693_poller_start_clone_gen1(
     Iso15693Poller* instance,
     const Iso15693_3Data* source,
@@ -149,6 +152,10 @@ typedef struct {
     // uid_readback holds what the card answered with, which is the only way back to it.
     bool uid_unexpected;
     uint8_t uid_readback[ISO15693_3_UID_SIZE];
+    // This run sent the destructive gen1 UID sequence, so blocks 56/57/62/63 were overwritten with
+    // UID/unlock/commit bytes whatever the outcome. On a Fail that is real data lost on what is most
+    // likely an ordinary tag, and the result screen has to say so.
+    bool gen1_attempted;
 } Iso15693PollerResult;
 
 // Fill `result` with the outcome of the last clone or wipe. Valid once a terminal event has been

@@ -435,6 +435,15 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
                     // reason below, because it is the one Fail that proves the card IS magic and
                     // "Not a magic tag" would be exactly backwards.
                     reason = NfcMagicIso15693WriteFailReasonUidUnexpected;
+                } else if(
+                    instance->iso15693_result.gen1_attempted &&
+                    !instance->iso15693_result.used_gen1) {
+                    // The opt-in gen1 sequence went out and the UID did NOT verify. Blocks 56/57/62/63
+                    // are overwritten either way, so this outranks the mode-specific reasons too --
+                    // the user needs to know what was spent, not just that it didn't work. The
+                    // used_gen1 term matters: a gen1 clone whose UID DID take and then lost every data
+                    // block is the "UID only" failure below, not a gen1 UID failure.
+                    reason = NfcMagicIso15693WriteFailReasonGen1Failed;
                 } else if(instance->iso15693_mode == NfcMagicIso15693ModeWriteUid) {
                     // A Write-UID has no source blocks, so blocks_total is 0 for an unrelated reason
                     // and must not fall through to the empty-source test below.

@@ -140,6 +140,11 @@ struct Iso15693Poller {
     // as "not a magic tag". uid_readback holds what the card actually answered with.
     bool uid_unexpected;
     uint8_t uid_readback[ISO15693_3_UID_SIZE];
+    // The destructive gen1 UID sequence was sent this run, so blocks 56/57/62/63 have been overwritten
+    // whatever the outcome. Reported so a gen1 failure can name them instead of saying only "not a
+    // magic tag". Equal to attempt_gen1 -- kept as its own result field so the scene doesn't have to
+    // know that the gen1 frames go out unconditionally at Start.
+    bool gen1_attempted;
     Iso15693PollerCallback callback;
     void* context;
     bool running;
@@ -689,11 +694,11 @@ static NfcCommand
         }
 
         if(instance->attempt_gen1) {
-            // Opt-in gen1 clone (the user accepted it on the "not gen2 magic" screen). Mirror the gen2
-            // flow: write ONLY the gen1 UID sequence now, verify it in VerifyGen1, and write the data
-            // blocks there only if the UID took -- so a non-magic tag that can't do gen1 loses at most
-            // the four backdoor registers, not all its data. Only a clone takes this path (a bare
-            // Write-UID does its gen1 fallback inline from VerifyGen2).
+            // Opt-in gen1 run (the user accepted it on the "not gen2 magic" screen) -- a clone or a
+            // bare Write-UID; both re-enter here with attempt_gen1 set. Mirror the gen2 flow: write
+            // ONLY the gen1 UID sequence now, verify it in VerifyGen1, and write the data blocks there
+            // only if the UID took -- so a non-magic tag that can't do gen1 loses at most the four
+            // backdoor registers, not all its data.
             iso15693_poller_send_backdoor_uid_gen1(iso_poller, instance->target_uid);
             instance->write_state = Iso15693WriteStateVerifyGen1;
             return NfcCommandReset;
@@ -772,8 +777,11 @@ static NfcCommand
             return NfcCommandStop;
         }
         if(memcmp(readback, instance->target_uid, ISO15693_3_UID_SIZE) != 0) {
-            // gen1 UID didn't take -- not a gen1 card either. Only the four backdoor registers were
-            // touched (the UID attempt); the bulk of the data was never written.
+            // gen1 UID didn't take -- not a gen1 card either. No data blocks were written, but the
+            // gen1 UID sequence itself already went out as four ordinary WRITE BLOCKs into 56/57/62/63,
+            // which any writable tag accepts. So on the tag this most likely is -- an ordinary one --
+            // four blocks of user data are now gone. gen1_attempted carries that to the result screen;
+            // reporting only "not a magic tag" here would hide the damage the user consented to.
             iso15693_poller_report(instance, Iso15693PollerEventFail);
             return NfcCommandStop;
         }
@@ -900,6 +908,7 @@ static void iso15693_poller_start_internal(
     instance->clone_afi_failed = false;
     instance->clone_dsfid_failed = false;
     instance->uid_unexpected = false;
+    instance->gen1_attempted = gen1;
     memset(instance->uid_readback, 0, sizeof(instance->uid_readback));
     memset(instance->clone_failed_bitmap, 0, sizeof(instance->clone_failed_bitmap));
     iso15693_3_reset(instance->data);
@@ -990,6 +999,7 @@ void iso15693_poller_get_result(Iso15693Poller* instance, Iso15693PollerResult* 
     result->blocks_done = instance->clone_blocks_done;
     result->uid_unexpected = instance->uid_unexpected;
     memcpy(result->uid_readback, instance->uid_readback, sizeof(result->uid_readback));
+    result->gen1_attempted = instance->gen1_attempted;
 }
 
 // True if the source image has non-empty data in any of the gen1 backdoor blocks (56/57/62/63) that

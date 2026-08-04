@@ -24,11 +24,12 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
     const bool empty_source = (reason == NfcMagicIso15693WriteFailReasonEmptySource);
     const bool nothing_cloned = (reason == NfcMagicIso15693WriteFailReasonNothingCloned);
     const bool uid_unexpected = (reason == NfcMagicIso15693WriteFailReasonUidUnexpected);
+    const bool gen1_failed = (reason == NfcMagicIso15693WriteFailReasonGen1Failed);
     const bool wipe_mode = (instance->iso15693_mode == NfcMagicIso15693ModeWipe);
 
     // Over-capacity is a clean success (nothing was lost) -> success tone. Everything else did not
-    // deliver what was asked for -- partial, card-lost, not-magic, nothing-wiped, empty-source and the
-    // unexpected UID -> error tone.
+    // deliver what was asked for -- partial, card-lost, not-magic, nothing-wiped, empty-source, the
+    // unexpected UID and a failed gen1 attempt -> error tone.
     notification_message(
         instance->notifications, over_capacity ? &sequence_success : &sequence_error);
 
@@ -126,6 +127,21 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             AlignTop,
             FontSecondary,
             "The UID was written\nbut no data block\nwould take. The card\nhas the UID only.");
+    } else if(gen1_failed) {
+        // The opt-in gen1 UID sequence didn't verify. It is sent before anything is checked, as four
+        // ordinary WRITE BLOCKs that any writable tag accepts, so on the tag this most likely is --
+        // an ordinary one -- those four blocks are gone. The user consented to that risk; they still
+        // need to be told it was spent, and on which blocks, to restore them from a backup.
+        widget_add_string_element(
+            widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "gen1 failed");
+        widget_add_string_multiline_element(
+            widget,
+            0,
+            13,
+            AlignLeft,
+            AlignTop,
+            FontSecondary,
+            "UID didn't take: not\na gen1 card either.\nBlocks 56/57/62/63\nwere overwritten.");
     } else if(uid_unexpected) {
         // The gen2 backdoor moved the UID to neither the original nor the target. Everything else that
         // lands on "Not a magic tag" is a card that did nothing; this one demonstrably responded to a

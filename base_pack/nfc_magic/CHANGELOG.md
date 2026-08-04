@@ -74,6 +74,10 @@ the copy advertises the same chip identity.
   changes the UID to neither the original nor the one requested, that is the one result that *proves*
   the card is magic — an inert tag can't change its UID — so the screen says so and prints the UID the
   card now answers to, rather than reporting "not a magic tag".
+- **A failed gen1 attempt names the blocks it spent.** The gen1 UID sequence goes out as four ordinary
+  writes before anything can be verified, so if the UID doesn't take, blocks 56/57/62/63 have already
+  been overwritten on what is most likely an ordinary tag. The failure screen says which blocks, so
+  they can be restored from a backup.
 
 ### Validation (at 2.1)
 - The **gen2** path was validated end-to-end on hardware for this release: byte-identical clones
