@@ -127,8 +127,9 @@ void iso15693_poller_start_clone_gen1(
 // retry (a transient glitch that later succeeded is not a failure).
 typedef struct {
     // The blocks this run attempted and reports against, which is mode-dependent: the source block
-    // count for a gen2 clone, that count MINUS the 4 skipped backdoor registers for a gen1 clone, or
-    // the card's full advertised block count for a wipe (which skips nothing).
+    // count for a gen2 clone, that count MINUS the 4 skipped backdoor registers for a gen1 clone, or,
+    // for a wipe, the number of blocks the card PROVED it holds -- which is NOT its advertised count,
+    // since the gen2 CFG frame programs that (see ISO15693_POLLER_WIPE_MAX_BLOCKS in the .c).
     // NOTE failed_bitmap is indexed by TRUE block number, so a set bit can sit above blocks_total --
     // scan the whole bitmap, not [0, blocks_total).
     uint16_t blocks_total;
@@ -177,14 +178,20 @@ void iso15693_poller_get_result(Iso15693Poller* instance, Iso15693PollerResult* 
 // would overwrite -- so the write flow can warn before a possible gen1 clone. Source inspection only.
 bool iso15693_poller_source_uses_gen1_blocks(const Iso15693_3Data* source);
 
-// Wipe: write zeros to every data block on the card, like proxmark's 'hf 15 wipe'. Blocks
-// 56/57/62/63 are cleared too -- on gen2 they are ordinary user data. On gen1 those same blocks are
-// the UID/unlock/commit registers and nothing re-reads the UID afterwards, so the wipe does not
+// Wipe: write zeros to every data block the card PHYSICALLY holds, like proxmark's 'hf 15 wipe'.
+// It does NOT stop at the card's advertised block count -- the gen2 CFG frame programs that number, so
+// a card that has been cloned from a smaller source advertises the smaller count while still holding
+// (and still serving reads for) everything above it. The sweep therefore runs upward past the
+// advertised count until a run of blocks answers neither a write nor a read; see
+// ISO15693_POLLER_WIPE_MAX_BLOCKS in the .c for the hardware measurement behind that.
+// Blocks 56/57/62/63 are cleared too -- on gen2 they are ordinary user data. On gen1 those same blocks
+// are the UID/unlock/commit registers and nothing re-reads the UID afterwards, so the wipe does not
 // guarantee the UID survives on a gen1 card; see the open question in iso15693_poller_wipe_blocks.
 // Reports CardDetected (first activation), then Success / Partial (some blocks failed) / Fail
 // (nothing could be wiped) / CardLost -- the last of which also covers a card lifted DURING the
 // loop, so blocks that never got the chance aren't reported as blocks the card refused to clear.
-// Per-block detail is available via iso15693_poller_get_result().
+// Per-block detail is available via iso15693_poller_get_result(); its blocks_total is what the card
+// proved it holds, so blocks that do not exist are never reported as blocks that wouldn't clear.
 void iso15693_poller_start_wipe(
     Iso15693Poller* instance,
     Iso15693PollerCallback callback,

@@ -82,6 +82,56 @@
 // cursor) the way uscuid_ul_poller.c does, and only then is per-block safe.
 #define ISO15693_POLLER_PROGRESS_STEPS (8U)
 
+// The wipe sweeps ABOVE the card's advertised block count, because that count is not the card's
+// capacity -- the gen2 CFG frame PROGRAMS what the card advertises. Cloning a 28-block source onto a
+// 64-block card leaves it advertising 28, and a wipe bounded by that clears 28 of 64 and calls it
+// Success. Measured on hardware 2026-08-04: seed all 64 blocks with a marker, clone a 28-block source
+// over it, wipe (screen said Success), then read with a proxmark -- block 20 was zeroed, blocks 28, 40
+// and 63 still returned the marker. 36 of 64 blocks survived a "successful" wipe.
+//
+// Only a WRITE settles whether a block exists. A high block that has never been written may not read
+// either (see the read-back note in the loop), so a read-based capacity probe under-detects. Hence:
+// write upward, and stop once a run of blocks looks absent.
+//
+// 256 is the ISO15693 block-number space, the failure bitmap's capacity, and what proxmark's own
+// `hf 15 wipe` sweeps. It is a ceiling, not a cost: the sweep stops at the card's real top plus
+// ISO15693_POLLER_WIPE_ABSENT_RUN probes.
+//
+// Writing above physical capacity is inert on this silicon rather than destructive: the probe suite's
+// `edgepages` test found phantom writes rejected, phantom reads failing, and block 0 unchanged
+// (`aliased: false`) across four runs. A card that DID alias would only receive the zeros a wipe is
+// writing anyway.
+#define ISO15693_POLLER_WIPE_MAX_BLOCKS (ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8U)
+
+// How many CONSECUTIVE absent-looking blocks end the sweep. One is not evidence -- the same reasoning
+// as the per-block write retries -- and this is the sole guard against the sweep mistaking a momentary
+// RF dropout for the top of the card, so it is set for that, not for speed.
+//
+// The hazard is a coupling wobble that recovers: a card shifting on the case back for tens of
+// milliseconds is too brief for the card-present inventory below to notice anything wrong, but long
+// enough to kill a handful of consecutive blocks. Read as the top of the card, that ends the sweep
+// early and reports a clean Success over blocks that were never cleared -- the same silent residue this
+// sweep exists to remove. (An actual removal is a different case and is already handled: a hand takes
+// 200ms+, so the inventory finds the card gone and the wipe reports CardLost.)
+//
+// Measured cost of writing one block off: about 43ms -- three refused writes at ~8ms each (a phantom
+// block answers with a malformed frame, Iso15693_3ErrorInternal, rather than going silent and burning
+// the full FDT timeout), the two 5ms waits between them, and one refused read. The 8ms figure is from
+// the clone loop's own log timestamps, where consecutive refused blocks land 35ms apart with three
+// attempts and two waits and no read.
+//
+// So 8 blocks is roughly 340ms of dropout immunity, and costs about 340ms past the card's real top --
+// against a ~1s wipe that is a real cost, not a rounding error, and it is the reason to stop at 8
+// rather than keep climbing. A wobble shorter than that resolves on its own: the next block that
+// answers zeroes the run, the sweep carries on, and those blocks are reported as unwiped.
+//
+// Residual, accepted and NOT engineered around: a dropout long enough to fill the run which then ends
+// just before the inventory runs still truncates the sweep. Reporting the doubt is not available --
+// treating an ambiguous run as failures would reinstate a false "partial wipe" on the fake-flash cards
+// that advertise more blocks than they hold, which is a bug this sweep already fixed. Probing above the
+// run would cover it, but only with a path no hardware here can exercise, in a destructive operation.
+#define ISO15693_POLLER_WIPE_ABSENT_RUN (8U)
+
 // Write-mode state machine. Each verify runs after a NfcCommandReset field power-cycle.
 typedef enum {
     Iso15693WriteStateStart, // note the current UID, send the backdoor UID (gen2, or gen1 on an
@@ -483,15 +533,23 @@ static bool iso15693_poller_write_source_blocks(
     return true;
 }
 
-// Wipe mode: write zeros to every data block on the card itself -- no UID command is sent -- using
-// the target's own reported geometry. We attempt every block rather than pre-skipping the target's locked ones: a
-// magic card often ignores its own lock bits and accepts the write. A block whose zero-write fails is
-// only a real failure if it STILL HOLDS DATA -- a phantom block past the card's real capacity (the
-// card over-reports its geometry) or an already-clear block left nothing behind, so counting it would
-// be a false "partial wipe". That is decided by a FRESH read-back of the block, not by the copy taken
-// at activation (see below); a block we cannot read back is counted, so the wipe fails closed. A
-// locked block that genuinely retains data is counted (the wipe's privacy promise wasn't kept there),
-// which also lets the "nothing could be wiped" guard fire.
+// Wipe mode: write zeros to every data block the card PHYSICALLY holds -- no UID command is sent.
+// The card's advertised block count is only the starting point, not the bound: see
+// ISO15693_POLLER_WIPE_MAX_BLOCKS for why, and for the hardware measurement that settled it. The sweep
+// runs upward until a run of ISO15693_POLLER_WIPE_ABSENT_RUN blocks answers neither a write nor a read.
+// We attempt every block rather than pre-skipping the target's locked ones: a magic card often ignores
+// its own lock bits and accepts the write. Each refused write is then classified by a FRESH read-back
+// (not the copy taken at activation -- see below), which answers a question the write cannot:
+//   read OK, block non-zero -> write-protected and still holding data. A real failure; the wipe's
+//                              promise wasn't kept there. Counted, and named in the bitmap.
+//   read OK, block zero     -> already clear. Nothing was lost, so not a failure.
+//   read FAILS              -> the block answers nothing at all, so it probably isn't there. Provisional:
+//                              position decides. A later block that DOES answer proves this one interior
+//                              and unreadable, which is not something to write off -- counted, fail
+//                              closed. A run that the sweep ends on is the space above the card's real
+//                              top, which was never the card's to clear -- dropped entirely.
+// That last distinction is what stops a card advertising more blocks than it holds from reporting a
+// partial wipe for blocks that do not exist.
 // The gen1 backdoor registers (blocks 56/57/62/63) live in this same block-number space and ARE
 // cleared, deliberately. Skipping them would spare a gen1 card's UID registers at the cost of leaving
 // four blocks of real user data behind on every gen2 card, where they are ordinary memory -- a certain
@@ -506,15 +564,17 @@ static uint16_t iso15693_poller_wipe_blocks(
     Iso15693_3Poller* iso_poller,
     bool* card_lost) {
     const Iso15693_3Data* target = nfc_poller_get_data(instance->poller);
-    const uint16_t block_count = iso15693_3_get_block_count(target);
+    const uint16_t advertised = iso15693_3_get_block_count(target);
     const uint8_t block_size = iso15693_3_get_block_size(target);
 
-    instance->clone_blocks_total = block_count;
+    instance->clone_blocks_total = 0; // set at the end, from what the card proved it holds
     instance->clone_failed_count = 0;
-    instance->clone_over_capacity = 0;
+    instance->clone_over_capacity = 0; // clone-only: a wipe never reports an over-capacity success
     memset(instance->clone_failed_bitmap, 0, sizeof(instance->clone_failed_bitmap));
 
-    if(block_count == 0 || block_size == 0) return 0;
+    // No usable geometry to start from: report nothing wiped rather than sweeping a card that has told
+    // us it has no blocks (and block_size is what the zero-write needs).
+    if(advertised == 0 || block_size == 0) return 0;
 
     // 32-byte zero buffer covers every valid geometry; the clamp is belt-and-braces.
     uint8_t zeros[ISO15693_MAX_BLOCK_SIZE] = {0};
@@ -536,51 +596,110 @@ static uint16_t iso15693_poller_wipe_blocks(
     // at all. The grounded fix is not reordering blind writes but verifying: re-read the UID after
     // the wipe and report a mismatch instead of claiming the UID is unchanged. That needs a gen1
     // card to validate against, which nobody on this PR has.
-    for(uint16_t block = 0; block < block_count && block < ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8;
-        block++) {
-        iso15693_poller_report_progress(instance, block + 1, block_count);
-        Iso15693_3Error error =
-            iso15693_3_poller_write_block(iso_poller, zeros, (uint8_t)block, size);
+    bool any_present = false; // has any block answered at all?
+    uint16_t highest_present = 0; // top block proven to exist -> the reported total
+    // Consecutive absent-looking blocks. Doubles as the count of absences not yet resolved as
+    // interior-or-tail, because the two are the same number by construction: a block that answers
+    // resolves every absence below it and zeroes the counter, so unresolved absences are always
+    // exactly the current run.
+    uint16_t absent_run = 0;
+    uint16_t block = 0;
+    for(; block < ISO15693_POLLER_WIPE_MAX_BLOCKS; block++) {
+        // Progress only while inside the advertised count. The sweep's real length isn't known until
+        // it ends, so there is no honest denominator past that point, and the tail is a handful of
+        // blocks. Bounding the emitting range this way also keeps the PROGRESS_STEPS safety bound
+        // structural rather than something this loop has to re-argue.
+        if(block < advertised) iso15693_poller_report_progress(instance, block + 1, advertised);
+
+        // Past the advertised count a single refusal would end the sweep, so retry there the way the
+        // clone's loop does -- one failure is not evidence the card has run out. Inside the advertised
+        // count a refusal only costs the read-back below, so don't pay for retries.
+        const uint32_t attempts = (block < advertised) ? 1U : ISO15693_POLLER_WRITE_ATTEMPTS;
+        Iso15693_3Error error = Iso15693_3ErrorNone;
+        for(uint32_t attempt = 0; attempt < attempts; attempt++) {
+            error = iso15693_3_poller_write_block(iso_poller, zeros, (uint8_t)block, size);
+            if(error == Iso15693_3ErrorNone) break;
+            furi_delay_ms(ISO15693_POLLER_VERIFY_RETRY_MS);
+        }
+
         if(error == Iso15693_3ErrorNone) {
+            // Took the zero-write, so it exists and is now clear. Anything absent below it therefore
+            // wasn't the top of the card: those blocks are interior and unreadable, which we do NOT
+            // write off -- fail closed and count them (their bits are already set).
             wiped++;
+            instance->clone_failed_count += absent_run;
+            absent_run = 0;
+            any_present = true;
+            highest_present = block;
             continue;
         }
 
-        // The zero-write failed, so whatever the block held is still there. Only decline to count it
-        // when the block is POSITIVELY known to be clear: a phantom block past the card's real
-        // capacity, or an already-empty block, has nothing left to lose. A locked block that still
-        // holds data IS a real failure.
-        // Re-read the block rather than trusting the copy taken at activation. That copy is not
-        // trustworthy: iso15693_3_poller_activate passes its read_blocks result through
+        // Re-read rather than trusting the copy taken at activation. That copy is not trustworthy:
+        // iso15693_3_poller_activate passes its read_blocks result through
         // iso15693_3_poller_filter_error, which maps Timeout and NotSupported to None, so activation
         // can report success having stopped reading at the FIRST failed block, leaving every later
         // block at its zeroed allocation value. Believing that cache would score a block that still
         // holds data as empty and report a hollow "wipe complete" -- and the blocks most likely to
         // fail a read are exactly the high ones that don't read until first written.
-        //
-        // If the re-read itself fails we do NOT know the block is clear, so count it. Over-reporting a
-        // wipe failure is recoverable; claiming a wipe that did not happen is not.
         uint8_t remaining[ISO15693_MAX_BLOCK_SIZE] = {0};
-        bool has_data = true; // fail closed until a successful read proves the block is clear
         if(iso15693_3_poller_read_block(iso_poller, remaining, (uint8_t)block, size) ==
            Iso15693_3ErrorNone) {
-            has_data = false;
+            // It answered a read, so it is there: the write was refused, not addressed to nothing.
+            instance->clone_failed_count += absent_run;
+            absent_run = 0;
+            any_present = true;
+            highest_present = block;
+
+            bool has_data = false;
             for(uint8_t i = 0; i < size; i++) {
                 if(remaining[i] != 0) {
                     has_data = true;
                     break;
                 }
             }
+            if(has_data) {
+                FURI_LOG_W(TAG, "wipe: block %u refused and still holds data", block);
+                instance->clone_failed_count++;
+                instance->clone_failed_bitmap[block / 8] |= (uint8_t)(1u << (block % 8));
+            }
+            continue;
         }
-        if(has_data) {
-            instance->clone_failed_count++;
-            instance->clone_failed_bitmap[block / 8] |= (uint8_t)(1u << (block % 8));
+
+        // Answered neither a write nor a read, so it probably isn't there. Provisional: set the bit and
+        // let position decide (a later success folds it into the failures above; a run the sweep ends
+        // on is dropped below).
+        instance->clone_failed_bitmap[block / 8] |= (uint8_t)(1u << (block % 8));
+        if(++absent_run >= ISO15693_POLLER_WIPE_ABSENT_RUN) {
+            // The clone loop's ambiguity, in the same place: a card lifted mid-sweep makes every
+            // remaining write AND read fail, which is exactly what running out of card looks like. Ask
+            // before concluding anything about capacity.
+            if(!iso15693_poller_card_still_present(iso_poller)) {
+                *card_lost = true;
+                return wiped;
+            }
+            FURI_LOG_I(
+                TAG, "wipe: card ends at block %u (advertised %u)", highest_present, advertised);
+            block++; // count this block into the tail arithmetic below
+            break;
         }
     }
 
-    // Same removal ambiguity as the clone loop: a card lifted mid-wipe makes every remaining
-    // zero-write (and its read-back) fail, which would otherwise be reported as "N blocks wouldn't
-    // clear" -- blaming the card for what was really a removal. Only checked when something failed.
+    // Whatever absence is still unresolved is the run the sweep ended on -- contiguous by construction,
+    // since any block that answered cleared the counter -- so it is the space above the card's real top.
+    // Those blocks were never the card's to clear, so drop them from the bitmap and the count rather
+    // than reporting a partial wipe for memory that does not exist. This is what made a factory-fresh
+    // card advertising 66 blocks against 64 physical report "Wiped 64/66, not cleared: 2" after a wipe
+    // that had in fact cleared every block there was.
+    for(uint16_t i = block - absent_run; i < block; i++) {
+        instance->clone_failed_bitmap[i / 8] &= (uint8_t) ~(1u << (i % 8));
+    }
+
+    // Report against what the card proved it holds, not what it advertises.
+    instance->clone_blocks_total = any_present ? (uint16_t)(highest_present + 1) : 0;
+
+    // A card lifted mid-wipe can also surface as a pile of blocks that "wouldn't clear" -- its blocks
+    // still read their old data right up until it leaves the field -- without ever tripping the
+    // absent-run check above. Only asked when something failed, so a clean wipe pays nothing.
     if(instance->clone_failed_count > 0 && !iso15693_poller_card_still_present(iso_poller)) {
         *card_lost = true;
     }
