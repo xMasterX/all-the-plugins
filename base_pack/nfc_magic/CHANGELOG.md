@@ -22,10 +22,11 @@ the copy advertises the same chip identity.
   as an explicit opt-in (see below).
 - **Wipe** — zero every data block the card physically holds, including 56/57/62/63. On a gen2 card
   those are ordinary user data, so sparing them would leave real data behind on the card people
-  actually have. On a **gen1** card they are the UID / unlock / commit registers, and the wipe does not
-  re-read the UID afterwards — so it is not guaranteed to leave a gen1 card's UID intact. This matches
-  proxmark's `hf 15 wipe`, which sweeps the same range with no special handling, and is flagged in the
-  code as an open question pending a gen1 card to test against.
+  actually have. On a **gen1** card they are the UID / unlock / commit registers, so a wipe cannot
+  promise to leave the UID intact — instead it **re-reads the UID afterwards and reports a change**
+  rather than claiming one (see below). Like proxmark's `hf 15 wipe`, no attempt is made to disarm the
+  card first; whether that is needed is flagged in the code as an open question pending a gen1 card to
+  test against.
 - **The wipe is bounded by the card, not by what the card claims.** A magic card's advertised block
   count is programmable — cloning a 28-block source onto a 64-block card makes it advertise 28 — while
   the blocks above that count stay readable and writable. A wipe that trusted the advertised count
@@ -62,8 +63,16 @@ the copy advertises the same chip identity.
   AFI / DSFID are re-read with GET SYSTEM INFO and compared; a field the copy doesn't carry is reported
   as Partial with a note. Block contents are not compared — a data block counts as written when the
   card acknowledges it.
-- **A wipe counts a block as unwiped unless it can show the block is clear**, by reading it back after
-  a failed write. A block it cannot read back is counted as unwiped rather than assumed clear.
+- **A wipe counts a block as unwiped unless it can show the block is clear**, by reading it back after a
+  failed write. A block that answers a read but still holds data is a real failure and is named. A block
+  that answers nothing is provisional: if anything above it answers, it is an interior fault and counted;
+  if the run continues to the end of the sweep, it is the space above the card's real top and belongs to
+  no one. Before concluding that, the run is re-probed, so a momentary dropout is not mistaken for the
+  end of the card.
+- **A wipe re-reads the UID when it finishes.** The wipe sends no UID command, but on a gen1 card blocks
+  56/57 *are* the UID registers. If the UID read back differs from the one the card presented, the result
+  is reported as partial on a **"UID changed"** screen that prints the UID the card now answers to —
+  without which the card would be unreachable. A card that stops answering entirely cannot be reported.
 - **A card lifted mid-write reports "Card removed".** Losing the card partway through makes every
   remaining block fail, which looks the same as reaching the card's physical capacity, so when a block
   fails the write re-checks that the card is still present before reporting a capacity verdict.
