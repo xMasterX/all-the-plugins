@@ -496,7 +496,37 @@ static bool iso15693_poller_write_source_blocks(
                 break;
             }
         }
-        if(non_empty) {
+
+        // An empty source block that wouldn't write is the ONLY failure this clone is willing to excuse
+        // as "past the card's physical capacity, so nothing was lost" -- so that is the only one whose
+        // classification needs proving. Ask the card whether the block is even there, the same way
+        // iso15693_poller_wipe_blocks does, instead of inferring it from the source being empty plus the
+        // failures' position. The two questions differ: the wipe asks "does this block still hold
+        // data", the clone asks "does this block exist at all".
+        //
+        // It discriminates because a block past physical capacity refuses reads as well as writes
+        // (measured: writes come back Iso15693_3ErrorInternal, reads fail outright). So a block that
+        // ANSWERS a read exists, which means its write failure was something else -- a transient that
+        // outlasted every retry, or a block the card genuinely refuses -- and calling that the card's
+        // capacity edge would be a fabricated claim about the user's hardware. Without this, a transient
+        // near the end of the pass produces a perfect contiguous empty tail and the app reports
+        // "All data written. Holds 60/64 blocks." about a card that holds 64.
+        //
+        // Only paid for empty failures, which is exactly the case in question; a non-empty failure is
+        // lost data whether the block exists or not.
+        bool block_absent = false;
+        if(!non_empty) {
+            uint8_t probe[ISO15693_MAX_BLOCK_SIZE] = {0};
+            block_absent =
+                iso15693_3_poller_read_block(iso_poller, probe, (uint8_t)block, block_size) !=
+                Iso15693_3ErrorNone;
+            if(!block_absent) {
+                FURI_LOG_W(
+                    TAG, "clone: block %u refused the write but answers reads", (unsigned)block);
+            }
+        }
+
+        if(non_empty || !block_absent) {
             instance->clone_failed_count++;
         } else {
             instance->clone_over_capacity++;
@@ -504,9 +534,11 @@ static bool iso15693_poller_write_source_blocks(
     }
     iso15693_poller_report_progress(instance, done, total); // land on 100%
 
-    // The failures are a real capacity edge only if they form a contiguous run at the very top of the
-    // card, with at least one block below them having written -- the shape of "source bigger than the
-    // card". Confirm that before making any capacity claim.
+    // Second half of the capacity test, and both halves are needed because they answer different
+    // questions. The per-block read-back above establishes that each excused block is ABSENT; this
+    // establishes that the absent blocks form a contiguous run at the very top of the card, with at
+    // least one block below them having written -- the shape of "source bigger than the card". A hole
+    // in the middle of otherwise-writable memory would pass the first test and must not pass this one.
     //
     // Tracked as "did anything write above a failure" rather than by comparing block indices: on the
     // gen1 path blocks 56/57/62/63 are skipped, so a capacity edge landing near them leaves a gap
