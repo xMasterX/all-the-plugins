@@ -93,9 +93,11 @@
 // either (see the read-back note in the loop), so a read-based capacity probe under-detects. Hence:
 // write upward, and stop once a run of blocks looks absent.
 //
-// 256 is the ISO15693 block-number space, the failure bitmap's capacity, and what proxmark's own
-// `hf 15 wipe` sweeps. It is a ceiling, not a cost: the sweep stops at the card's real top plus
-// ISO15693_POLLER_WIPE_ABSENT_RUN probes.
+// 256 is the ISO15693 block-number space, the failure bitmap's capacity, and the same bound proxmark's
+// own `hf 15 wipe` loop carries (`for(i = 0; i < 0x100; i++)`, cmdhf15.c) -- though note proxmark breaks
+// at the FIRST refused write, so it never reaches that bound; the tolerance below is ours, not its
+// precedent. It is a ceiling, not a cost: the sweep stops at the card's real top plus
+// ISO15693_POLLER_WIPE_ABSENT_RUN probes and one re-probe of the run.
 //
 // Writing above physical capacity is inert on this silicon rather than destructive: the probe suite's
 // `edgepages` test found phantom writes rejected, phantom reads failing, and block 0 unchanged
@@ -114,22 +116,27 @@
 // sweep exists to remove. (An actual removal is a different case and is already handled: a hand takes
 // 200ms+, so the inventory finds the card gone and the wipe reports CardLost.)
 //
-// Measured cost of writing one block off: about 43ms -- three refused writes at ~8ms each (a phantom
-// block answers with a malformed frame, Iso15693_3ErrorInternal, rather than going silent and burning
-// the full FDT timeout), the two 5ms waits between them, and one refused read. The 8ms figure is from
-// the clone loop's own log timestamps, where consecutive refused blocks land 35ms apart with three
-// attempts and two waits and no read.
+// Writing one block off costs three refused writes, three 5ms waits and one refused read. A refused
+// write returns quickly rather than burning the full FDT timeout -- the card answers, with an in-band
+// error (Iso15693_3ErrorInternal, which the SDK produces from a well-formed error response, not from a
+// malformed frame or silence) -- so the waits are a large share of it. Bench runs put the whole per-block
+// cost somewhere in the 40-70ms range; the two runs disagree by about 2x and neither was instrumented for
+// this, so treat the figure as an estimate, not a measurement.
 //
-// So 8 blocks is roughly 340ms of dropout immunity, and costs about 340ms past the card's real top --
-// against a ~1s wipe that is a real cost, not a rounding error, and it is the reason to stop at 8
-// rather than keep climbing. A wobble shorter than that resolves on its own: the next block that
-// answers zeroes the run, the sweep carries on, and those blocks are reported as unwiped.
+// At 8 blocks that is a few hundred milliseconds of tolerance, and about the same again spent past the
+// card's real top on every wipe. Against a ~1s wipe that is a real cost, and it is the reason not to keep
+// raising it. A dropout shorter than the run resolves itself -- the next block that answers zeroes the
+// counter and those blocks are reported as unwiped rather than dropped -- and a dropout that DOES fill
+// the run is caught by the re-probe at the trip, which is what makes the run length a tolerance rather
+// than a blind spot.
 //
-// Residual, accepted and NOT engineered around: a dropout long enough to fill the run which then ends
-// just before the inventory runs still truncates the sweep. Reporting the doubt is not available --
-// treating an ambiguous run as failures would reinstate a false "partial wipe" on the fake-flash cards
-// that advertise more blocks than they hold, which is a bug this sweep already fixed. Probing above the
-// run would cover it, but only with a path no hardware here can exercise, in a destructive operation.
+// The run length is deliberately NOT the only guard: the re-probe at the trip is what makes a filled run
+// recoverable, so this number sets how much dropout is absorbed silently rather than how much is caught.
+// What remains: a card whose memory is present but answers neither a write nor a read across a whole run,
+// even on re-probe, is indistinguishable from one that ends there by any means available here. Note the
+// counting rule that keeps the fake-flash case honest -- a trailing run is judged by whether it answers,
+// never by the advertised count, so a card claiming 66 blocks against 64 physical still drops 64/65
+// rather than reporting them as "not cleared".
 #define ISO15693_POLLER_WIPE_ABSENT_RUN (8U)
 
 // Write-mode state machine. Each verify runs after a NfcCommandReset field power-cycle.
@@ -157,7 +164,8 @@ struct Iso15693Poller {
     // it) and per-block write results.
     Iso15693_3Data* clone_source;
     uint16_t clone_blocks_total; // clone: blocks on the source image, less 56/57/62/63 on a gen1 run
-        // (they carry the UID, not source data). wipe: the card's full advertised block count
+        // (they carry the UID, not source data). wipe: the advertised count while the sweep runs, so the
+        // progress popup has a denominator, then the count the card PROVED it holds once it ends
     // Clone mode: blocks that failed to write and count as a real problem: either they held source
     // data (lost), or they were empty failures that did NOT form a clean capacity tail (so we can't
     // call them over-capacity). Drives Partial. Wipe mode: reused as the count of blocks that still
@@ -602,7 +610,11 @@ static uint16_t iso15693_poller_wipe_blocks(
     const uint16_t advertised = iso15693_3_get_block_count(target);
     const uint8_t block_size = iso15693_3_get_block_size(target);
 
-    instance->clone_blocks_total = 0; // set at the end, from what the card proved it holds
+    // The advertised count, as a LIVE denominator for the progress popup: the scene reads blocks_total
+    // on every WriteProgress event, so leaving it 0 until the sweep ends renders "Wiping 33 / 0" for the
+    // whole pass. Overwritten at the end with what the card actually proved it holds, before any terminal
+    // event -- so the popup counts against the claim and the result reports against the measurement.
+    instance->clone_blocks_total = advertised;
     instance->clone_failed_count = 0;
     instance->clone_over_capacity = 0; // clone-only: a wipe never reports an over-capacity success
     memset(instance->clone_failed_bitmap, 0, sizeof(instance->clone_failed_bitmap));
@@ -627,10 +639,13 @@ static uint16_t iso15693_poller_wipe_blocks(
     // accept, so it would either be rejected outright or -- worse -- leave unlock freshly zeroed,
     // i.e. one step INTO the arm sequence, right before this loop touches the UID registers.
     //
-    // Left as-is deliberately, matching proxmark's `hf 15 wipe`, which walks 0..0xFF with no de-arm
-    // at all. The grounded fix is not reordering blind writes but verifying: re-read the UID after
-    // the wipe and report a mismatch instead of claiming the UID is unchanged. That needs a gen1
-    // card to validate against, which nobody on this PR has.
+    // The write ORDER is therefore left alone, matching proxmark's `hf 15 wipe`, which also makes no
+    // attempt to de-arm. What IS done is the grounded half: rather than reordering blind writes, the
+    // caller re-reads the UID once the sweep finishes and reports a mismatch instead of promising the
+    // UID is unchanged (see the read-back at the end of the Wipe branch of write_step). That converts a
+    // silent identity change into a reported one. It does not prevent the change, and it cannot report a
+    // card that stops answering inventory altogether -- both of which need a gen1 card to take further,
+    // and nobody on this PR has one.
     bool any_present = false; // has any block answered at all?
     uint16_t highest_present = 0; // top block proven to exist -> the reported total
     // Consecutive absent-looking blocks. Doubles as the count of absences not yet resolved as
@@ -714,6 +729,40 @@ static uint16_t iso15693_poller_wipe_blocks(
                 *card_lost = true;
                 return wiped;
             }
+
+            // The card answered, but that does NOT make this run the top of it, and the tail-drop below
+            // is about to delete the whole run from the report. Two ways that would be wrong:
+            //   - the run is a dropout, not an edge. A wobble long enough to fill the run leaves the
+            //     sweep concluding the card ended where the wobble started, silently abandoning
+            //     everything above it -- the old bounded loop always attempted the advertised range, so
+            //     that would be a regression, and the silent kind this sweep exists to remove.
+            //   - the run's lowest members are real and only its top is absent. A single transient on the
+            //     block just below the physical top gets padded out to a full run by the nonexistent
+            //     blocks above it, and the drop then discards a block that still holds data.
+            // So re-probe the run now that the card is known to be answering. Any member that reads is
+            // there after all: it did not clear, and nothing below it in the run can be the top either,
+            // so both fail closed. Then re-derive the trailing absence; if the run no longer reaches the
+            // threshold, this was not the edge and the sweep carries on.
+            // Bounded by the run length, and only ever spent when a run trips -- once, on a healthy card.
+            const uint16_t run_start = (uint16_t)(block + 1 - absent_run);
+            uint16_t still_absent = 0;
+            for(uint16_t probe = run_start; probe <= block; probe++) {
+                uint8_t recheck[ISO15693_MAX_BLOCK_SIZE] = {0};
+                if(iso15693_3_poller_read_block(iso_poller, recheck, (uint8_t)probe, size) !=
+                   Iso15693_3ErrorNone) {
+                    still_absent++;
+                    continue;
+                }
+                FURI_LOG_W(
+                    TAG, "wipe: block %u answered on re-probe -- not the card's top", probe);
+                instance->clone_failed_count += still_absent + 1;
+                still_absent = 0;
+                any_present = true;
+                if(probe > highest_present) highest_present = probe;
+            }
+            absent_run = still_absent;
+            if(absent_run < ISO15693_POLLER_WIPE_ABSENT_RUN) continue;
+
             FURI_LOG_I(
                 TAG, "wipe: card ends at block %u (advertised %u)", highest_present, advertised);
             block++; // count this block into the tail arithmetic below
