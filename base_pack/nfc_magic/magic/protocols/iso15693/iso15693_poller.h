@@ -32,7 +32,8 @@ typedef enum {
         // magic tag), the gen2 write changed the UID to neither the original nor the target, an opt-in
         // gen1 UID didn't take, the clone source had no data blocks, or a wipe cleared nothing.
     Iso15693PollerEventCardLost, // no card in the field / card removed before the operation finished
-    Iso15693PollerEventCardDetected, // a magic candidate activated (drives the write popup UI)
+    Iso15693PollerEventCardDetected, // first activation of any write mode -- clone, wipe AND Write
+        // UID. Flips the shared write popup off "apply the card" onto "Writing". Not sent in Info mode.
     Iso15693PollerEventWriteProgress, // some blocks done; read the result for the running counts.
         // Emitted a bounded number of times per pass, NOT per block -- see
         // ISO15693_POLLER_PROGRESS_STEPS in the .c for why that bound is a correctness constraint
@@ -58,11 +59,10 @@ void iso15693_poller_start(
 // Writes ONLY the gen2 backdoor sequence -- a harmless custom command on a non-magic tag. Before the
 // read-back it power-cycles the field (like proxmark's switch_off + getUID) so a card that only
 // latches the new UID after a reset is not misreported as a failure.
-// Reports Success (the read-back inventory returns the requested UID), Fail (the UID changed to
-// neither the original nor the target) or CardLost. If gen2 leaves the UID unchanged it reports NotGen2
-// WITHOUT having written anything, so the caller can offer the destructive gen1 retry via
-// iso15693_poller_start_write_uid_gen1(). It does NOT emit CardDetected: that event exists to switch
-// the shared clone/wipe popup off "apply the same card", and is only emitted in those two modes.
+// Reports CardDetected (first activation), then Success (the read-back inventory returns the
+// requested UID), Fail (the UID changed to neither the original nor the target) or CardLost. If gen2
+// leaves the UID unchanged it reports NotGen2 WITHOUT having written anything, so the caller can offer
+// the destructive gen1 retry via iso15693_poller_start_write_uid_gen1().
 // The byte-level frames are defined in iso15693_poller.c (ported from proxmark3 armsrc/iso15693.c,
 // SetTag15693Uid / SetTag15693Uid_v2).
 void iso15693_poller_start_write_uid(
@@ -75,7 +75,7 @@ void iso15693_poller_start_write_uid(
 // Writes the destructive gen1 sequence -- ordinary WRITE BLOCK into blocks 56/57/62/63, which ANY
 // writable tag accepts, so on a non-magic tag this destroys four blocks of user data -- then verifies.
 // A Write-UID has no payload to follow, so a verified UID is a clean Success.
-// Reports Success, Fail (the gen1 UID didn't take) or CardLost -- and no CardDetected, as above.
+// Reports CardDetected (first activation), then Success, Fail (the gen1 UID didn't take) or CardLost.
 // NOTE: gen1 is NOT hardware-validated.
 void iso15693_poller_start_write_uid_gen1(
     Iso15693Poller* instance,
