@@ -104,7 +104,9 @@ typedef enum {
 
 // Reason passed to the Iso15693WriteFail scene via its scene state so it can explain the outcome.
 typedef enum {
-    NfcMagicIso15693WriteFailReasonNotMagic, // card present, but the backdoor write was not accepted
+    NfcMagicIso15693WriteFailReasonNotMagic, // card present, but the backdoor write was not accepted.
+        // Defensive fallback only: a card that really isn't magic leaves the UID unchanged, which is
+        // NotGen2 rather than Fail, and lands on the gen1 opt-in screen instead of here.
     NfcMagicIso15693WriteFailReasonCardLost, // no card in the field / card removed mid-write
     NfcMagicIso15693WriteFailReasonPartial, // clone: UID written but some data blocks failed
     NfcMagicIso15693WriteFailReasonOverCapacity, // clone OK, but the card now advertises more blocks
@@ -113,6 +115,9 @@ typedef enum {
     NfcMagicIso15693WriteFailReasonEmptySource, // clone: the source image has no data blocks to write
     NfcMagicIso15693WriteFailReasonNothingCloned, // clone: the UID took but not one data block did, so
         // the card carries the source's UID and none of its data
+    NfcMagicIso15693WriteFailReasonUidUnexpected, // the gen2 backdoor moved the UID, but to neither the
+        // original nor the target. The card IS magic -- this is the only outcome that proves it -- so
+        // it must not share the "not a magic tag" screen. The UID it answers with is in the result.
 } NfcMagicIso15693WriteFailReason;
 
 // Which ISO15693 operation the shared write scene is running. Replaces the old is-wipe bool, now that

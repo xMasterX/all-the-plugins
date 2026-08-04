@@ -65,11 +65,15 @@ the copy advertises the same chip identity.
   **Details** lists the blocks involved plus any further caveats — the gen1 56/57/62/63 overwrite, or
   an AFI/DSFID the card wouldn't take. A clean success is a plain success screen, and the outright
   failures are a single message.
-- Each outcome has its own screen: **"Not a magic tag"**, **"Card removed"**, **"Nothing to clone"**
-  for a source with no data blocks, a wipe failure saying no blocks could be cleared and the UID is
-  unchanged, and a clone failure for the case where the UID was written but not one data block would
-  take — the card would otherwise look right to a UID-only reader while holding none of the data.
-  Detect and write popups time out after a few seconds with no card.
+- Each outcome has its own screen: **"Card removed"**, **"Nothing to clone"** for a source with no data
+  blocks, a wipe failure saying no blocks could be cleared and the UID is unchanged, and a clone failure
+  for the case where the UID was written but not one data block would take — the card would otherwise
+  look right to a UID-only reader while holding none of the data. Detect and write popups time out
+  after a few seconds with no card.
+- **A UID that moves somewhere unasked-for is reported as magic, not as a dud.** If the gen2 backdoor
+  changes the UID to neither the original nor the one requested, that is the one result that *proves*
+  the card is magic — an inert tag can't change its UID — so the screen says so and prints the UID the
+  card now answers to, rather than reporting "not a magic tag".
 
 ### Validation (at 2.1)
 - The **gen2** path was validated end-to-end on hardware for this release: byte-identical clones

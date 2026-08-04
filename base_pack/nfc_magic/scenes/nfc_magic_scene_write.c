@@ -418,14 +418,26 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
             consumed = true;
         } else if(event.event == NfcMagicCustomEventWorkerFail) {
             if(instance->protocol == NfcMagicProtocolIso15693) {
-                // Pick the reason: a wipe that cleared nothing, an empty-source clone (no data
-                // blocks, flagged by blocks_total == 0), a clone whose UID took but whose every data
-                // block was rejected, or an ordinary non-magic card. Order matters -- an empty source
-                // would satisfy the all-rejected test trivially.
+                // Pick the reason: a UID that moved somewhere unasked-for, a wipe that cleared nothing,
+                // an empty-source clone (blocks_total == 0), or a clone whose UID took but whose every
+                // data block was rejected. Order matters -- an empty source would satisfy the
+                // all-rejected test trivially.
+                //
+                // NotMagic is now only the defensive fallback. A card that simply isn't magic leaves
+                // the UID unchanged, which is NotGen2, not Fail -- it reaches the gen1 opt-in screen,
+                // and declining there returns to the menu. So nothing routed here is known to be an
+                // ordinary tag, which is the whole of finding 3: before the branch below existed,
+                // "Not a magic tag" was reachable ONLY via the unexpected-UID case, the one outcome
+                // that proves the opposite.
                 NfcMagicIso15693WriteFailReason reason;
-                if(instance->iso15693_mode == NfcMagicIso15693ModeWriteUid) {
-                    // No source blocks at all, so blocks_total is 0 for an unrelated reason: a rejected
-                    // backdoor here just means the card isn't magic.
+                if(instance->iso15693_result.uid_unexpected) {
+                    // The UID moved, just not to what was asked for. Ahead of every mode-specific
+                    // reason below, because it is the one Fail that proves the card IS magic and
+                    // "Not a magic tag" would be exactly backwards.
+                    reason = NfcMagicIso15693WriteFailReasonUidUnexpected;
+                } else if(instance->iso15693_mode == NfcMagicIso15693ModeWriteUid) {
+                    // A Write-UID has no source blocks, so blocks_total is 0 for an unrelated reason
+                    // and must not fall through to the empty-source test below.
                     reason = NfcMagicIso15693WriteFailReasonNotMagic;
                 } else if(instance->iso15693_mode == NfcMagicIso15693ModeWipe) {
                     reason = NfcMagicIso15693WriteFailReasonNothingWiped;

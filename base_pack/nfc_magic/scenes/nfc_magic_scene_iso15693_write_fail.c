@@ -23,11 +23,12 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
     const bool nothing_wiped = (reason == NfcMagicIso15693WriteFailReasonNothingWiped);
     const bool empty_source = (reason == NfcMagicIso15693WriteFailReasonEmptySource);
     const bool nothing_cloned = (reason == NfcMagicIso15693WriteFailReasonNothingCloned);
+    const bool uid_unexpected = (reason == NfcMagicIso15693WriteFailReasonUidUnexpected);
     const bool wipe_mode = (instance->iso15693_mode == NfcMagicIso15693ModeWipe);
 
-    // Over-capacity is a clean success (nothing was lost) -> success tone. Partial means something
-    // didn't write, and card-lost / not-magic / nothing-wiped / empty-source are outright failures ->
-    // error tone.
+    // Over-capacity is a clean success (nothing was lost) -> success tone. Everything else did not
+    // deliver what was asked for -- partial, card-lost, not-magic, nothing-wiped, empty-source and the
+    // unexpected UID -> error tone.
     notification_message(
         instance->notifications, over_capacity ? &sequence_success : &sequence_error);
 
@@ -125,6 +126,25 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             AlignTop,
             FontSecondary,
             "The UID was written\nbut no data block\nwould take. The card\nhas the UID only.");
+    } else if(uid_unexpected) {
+        // The gen2 backdoor moved the UID to neither the original nor the target. Everything else that
+        // lands on "Not a magic tag" is a card that did nothing; this one demonstrably responded to a
+        // magic command, so saying it isn't magic would be exactly backwards. The card is now answering
+        // to a UID nobody asked for, and printing it is the only way the user can find the card again.
+        widget_add_string_element(
+            widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Unexpected UID");
+        FuriString* text = furi_string_alloc();
+        furi_string_set_str(
+            text, "The card is magic --\nthe UID did change,\nbut not to yours:\n");
+        for(size_t i = 0; i < ISO15693_3_UID_SIZE; i++) {
+            // Two 4-byte groups, unspaced: the spaced form the Info screen uses is 23 characters and
+            // overruns the 128px line here.
+            if(i == 4) furi_string_push_back(text, ' ');
+            furi_string_cat_printf(text, "%02X", instance->iso15693_result.uid_readback[i]);
+        }
+        widget_add_string_multiline_element(
+            widget, 0, 13, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(text));
+        furi_string_free(text);
     } else if(empty_source) {
         // A clone whose source image has no data blocks: nothing was written (not even the UID), so
         // the card is untouched. Distinct from a non-magic card.

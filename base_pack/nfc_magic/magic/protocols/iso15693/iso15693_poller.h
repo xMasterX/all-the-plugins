@@ -87,9 +87,10 @@ void iso15693_poller_start_write_uid_gen1(
 // reads back does it write every data block (standard WRITE BLOCK) -- so a tag that does not take the
 // gen2 UID is never clobbered by a doomed clone. `source` is an ISO15693-3 image loaded from a saved
 // .nfc. Reports CardDetected (first activation), then Success (UID + all blocks), Partial (some / the
-// AFI/DSFID write failed), Fail (source has no data blocks) or CardLost. If gen2 leaves the UID
-// unchanged (not a gen2 magic card) it reports NotGen2 without writing anything, so the caller can
-// offer the destructive gen1 retry via iso15693_poller_start_clone_gen1().
+// AFI/DSFID write failed), Fail (source has no data blocks, no data block would take, or the UID
+// changed to neither the original nor the target -- uid_unexpected in the result) or CardLost. If gen2
+// leaves the UID unchanged (not a gen2 magic card) it reports NotGen2 without writing anything, so the
+// caller can offer the destructive gen1 retry via iso15693_poller_start_clone_gen1().
 // CardLost also covers a card lifted DURING the block loop: that makes every remaining block fail,
 // which is indistinguishable from the card's capacity ending there, so the loop re-checks the card is
 // present before making any capacity claim and reports CardLost instead of a write result.
@@ -143,6 +144,11 @@ typedef struct {
     // Running position of the block pass, for the live progress popup. Meaningful from the first
     // WriteProgress event; equals blocks_total once the pass has finished.
     uint16_t blocks_done;
+    // Fail: the gen2 backdoor moved the UID to neither the original nor the target. That PROVES the
+    // card is magic -- an inert tag cannot change its UID -- so it is not "not a magic tag".
+    // uid_readback holds what the card answered with, which is the only way back to it.
+    bool uid_unexpected;
+    uint8_t uid_readback[ISO15693_3_UID_SIZE];
 } Iso15693PollerResult;
 
 // Fill `result` with the outcome of the last clone or wipe. Valid once a terminal event has been

@@ -135,6 +135,11 @@ struct Iso15693Poller {
     bool clone_dsfid_failed;
     uint16_t clone_blocks_done; // blocks attempted so far, for the progress popup
     uint8_t progress_step; // last progress band emitted this pass (see PROGRESS_STEPS)
+    // The gen2 backdoor moved the UID to neither the original nor the target. That is the one outcome
+    // that PROVES the card is magic -- an inert tag cannot change its UID -- so it must not be reported
+    // as "not a magic tag". uid_readback holds what the card actually answered with.
+    bool uid_unexpected;
+    uint8_t uid_readback[ISO15693_3_UID_SIZE];
     Iso15693PollerCallback callback;
     void* context;
     bool running;
@@ -750,7 +755,12 @@ static NfcCommand
             iso15693_poller_report(instance, Iso15693PollerEventNotGen2);
             return NfcCommandStop;
         }
-        // gen2 changed the UID but not to the target: stop rather than compound it with gen1.
+        // gen2 changed the UID but not to the target: stop rather than compound it with gen1. Record
+        // what came back. This is the ONE branch that proves the card is magic -- an inert tag cannot
+        // change its UID at all -- so it must not fall through to "not a magic tag", and the UID the
+        // card is now answering with is the only way the user can find it again.
+        instance->uid_unexpected = true;
+        memcpy(instance->uid_readback, readback, ISO15693_3_UID_SIZE);
         iso15693_poller_report(instance, Iso15693PollerEventFail);
         return NfcCommandStop;
     }
@@ -889,6 +899,8 @@ static void iso15693_poller_start_internal(
     instance->progress_step = UINT8_MAX; // no band emitted yet, so the first call fires
     instance->clone_afi_failed = false;
     instance->clone_dsfid_failed = false;
+    instance->uid_unexpected = false;
+    memset(instance->uid_readback, 0, sizeof(instance->uid_readback));
     memset(instance->clone_failed_bitmap, 0, sizeof(instance->clone_failed_bitmap));
     iso15693_3_reset(instance->data);
     instance->running = true;
@@ -976,6 +988,8 @@ void iso15693_poller_get_result(Iso15693Poller* instance, Iso15693PollerResult* 
     result->identity_failed = (instance->mode == Iso15693PollerModeClone) &&
                               (instance->clone_afi_failed || instance->clone_dsfid_failed);
     result->blocks_done = instance->clone_blocks_done;
+    result->uid_unexpected = instance->uid_unexpected;
+    memcpy(result->uid_readback, instance->uid_readback, sizeof(result->uid_readback));
 }
 
 // True if the source image has non-empty data in any of the gen1 backdoor blocks (56/57/62/63) that
