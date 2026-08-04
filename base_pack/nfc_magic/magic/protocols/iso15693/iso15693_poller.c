@@ -643,12 +643,14 @@ static uint16_t iso15693_poller_wipe_blocks(
         // structural rather than something this loop has to re-argue.
         if(block < advertised) iso15693_poller_report_progress(instance, block + 1, advertised);
 
-        // Past the advertised count a single refusal would end the sweep, so retry there the way the
-        // clone's loop does -- one failure is not evidence the card has run out. Inside the advertised
-        // count a refusal only costs the read-back below, so don't pay for retries.
-        const uint32_t attempts = (block < advertised) ? 1U : ISO15693_POLLER_WRITE_ATTEMPTS;
+        // Retried like the clone's loop, and everywhere rather than only above the advertised count:
+        // one refusal is not evidence. An earlier revision paid for retries only past the advertised
+        // count, on the grounds that a refusal below it merely costs the read-back -- which missed that
+        // a transient there reports a false "wouldn't clear" AND leaves a block genuinely unwiped that a
+        // second attempt would have cleared. Retries only ever run on a failure, so a clean card pays
+        // nothing for this.
         Iso15693_3Error error = Iso15693_3ErrorNone;
-        for(uint32_t attempt = 0; attempt < attempts; attempt++) {
+        for(uint32_t attempt = 0; attempt < ISO15693_POLLER_WRITE_ATTEMPTS; attempt++) {
             error = iso15693_3_poller_write_block(iso_poller, zeros, (uint8_t)block, size);
             if(error == Iso15693_3ErrorNone) break;
             furi_delay_ms(ISO15693_POLLER_VERIFY_RETRY_MS);
