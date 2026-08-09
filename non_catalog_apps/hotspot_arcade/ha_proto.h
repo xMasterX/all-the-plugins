@@ -16,7 +16,7 @@
 #define HA_FW_MAGIC_1 0x41
 #define HA_FW_MAGIC_2 0x52
 #define HA_FW_MAGIC_3 0x43
-#define HA_FW_VERSION 16 // v16: phone-UI language relayed to the client
+#define HA_FW_VERSION 19 // v19: web bundle in LittleFS flash + bundle CRC in PING (skip re-stream)
 
 // Flipper -> ESP
 #define HA_MSG_CLEAR_FILES   0x10
@@ -60,6 +60,8 @@
 #define HA_GAME_BATTLESHIP 12 // battleship (1v1, hidden fleets)
 #define HA_GAME_SPECTRUM   13 // wavelength-style spectrum guessing (party)
 #define HA_GAME_KMK        14 // kiss marry kill (party)
+#define HA_GAME_CHESS      15 // chess (1v1, full FIDE rules)
+#define HA_GAME_SECRETS    16 // secrets (party, hidden yes/no vote + prediction)
 
 static inline uint8_t ha_crc8_upd(uint8_t crc, uint8_t b) {
     crc ^= b;

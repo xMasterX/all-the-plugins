@@ -19,6 +19,8 @@ typedef enum {
     GameBattleship,
     GameSpectrum,
     GameKmk,
+    GameChess,
+    GameSecrets,
     GameNone,
 } GameIndex;
 
@@ -36,6 +38,7 @@ void hotspot_arcade_scene_game_select_on_enter(void* context) {
     submenu_add_item(app->submenu, "Word Scramble", GameScramble, ha_game_cb, app);
     submenu_add_item(app->submenu, "Spectrum", GameSpectrum, ha_game_cb, app);
     submenu_add_item(app->submenu, "Kiss Marry Kill", GameKmk, ha_game_cb, app);
+    submenu_add_item(app->submenu, "Secrets", GameSecrets, ha_game_cb, app);
     submenu_add_item(app->submenu, "Reaction Duel", GameReact, ha_game_cb, app);
     submenu_add_item(app->submenu, "Connect Four", GameConnect4, ha_game_cb, app);
     submenu_add_item(app->submenu, "Tic-Tac-Toe", GameTicTacToe, ha_game_cb, app);
@@ -45,6 +48,7 @@ void hotspot_arcade_scene_game_select_on_enter(void* context) {
     submenu_add_item(app->submenu, "Pong", GamePong, ha_game_cb, app);
     submenu_add_item(app->submenu, "Guess the Color", GameGuessColor, ha_game_cb, app);
     submenu_add_item(app->submenu, "Battleship", GameBattleship, ha_game_cb, app);
+    submenu_add_item(app->submenu, "Chess", GameChess, ha_game_cb, app);
     submenu_add_item(app->submenu, "None (lobby)", GameNone, ha_game_cb, app);
     uint32_t sel = app->active_game == HA_GAME_TRIVIA     ? GameTrivia :
                    app->active_game == HA_GAME_WYR        ? GameWyr :
@@ -60,6 +64,8 @@ void hotspot_arcade_scene_game_select_on_enter(void* context) {
                    app->active_game == HA_GAME_PONG       ? GamePong :
                    app->active_game == HA_GAME_GUESSCOLOR ? GameGuessColor :
                    app->active_game == HA_GAME_BATTLESHIP ? GameBattleship :
+                   app->active_game == HA_GAME_CHESS      ? GameChess :
+                   app->active_game == HA_GAME_SECRETS    ? GameSecrets :
                                                             GameNone;
     submenu_set_selected_item(app->submenu, sel);
     view_dispatcher_switch_to_view(app->view_dispatcher, HaViewSubmenu);
@@ -123,6 +129,14 @@ bool hotspot_arcade_scene_game_select_on_event(void* context, SceneManagerEvent 
         return true;
     case GameBattleship:
         ha_select_game(app, HA_GAME_BATTLESHIP);
+        scene_manager_previous_scene(app->scene_manager);
+        return true;
+    case GameChess:
+        ha_select_game(app, HA_GAME_CHESS);
+        scene_manager_previous_scene(app->scene_manager);
+        return true;
+    case GameSecrets:
+        ha_select_game(app, HA_GAME_SECRETS);
         scene_manager_previous_scene(app->scene_manager);
         return true;
     case GameNone:
