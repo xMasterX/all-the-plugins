@@ -331,6 +331,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Allstar Firefly 318ALD31K | ![SubGhz Badge] | [by jlaughter](https://github.com/jlaughter/flipper-allstar-firefly) |  | ![None Badge] |
 | wM-Buster| ![SubGhz Badge] | [by i12bp8](https://github.com/i12bp8/wmbuster) | EU wM-Bus listener | ![None Badge] |
 | Sub-GHz RAW Edit | ![SubGhz Badge] | [by Lechnio](https://github.com/Lechnio/SubGHz-RAW-Edit) |  | [![Author Badge]](https://lab.flipper.net/apps/subghz_raw_edit) |
+| FM TX | ![SubGhz Badge] | [by yo3gnd](https://github.com/yo3gnd/fmtx) | Experimental MP3 audio over CC1101 FM | [![Author Badge]](https://lab.flipper.net/apps/fmtx) |
 | Analog Clock | ![Tools Badge] | [by scrolltex](https://github.com/scrolltex/flipper_analog_clock) |  | [![UFW Badge]](https://lab.flipper.net/apps/analog_clock) |
 | Brainfuck interpreter | ![Tools Badge] | [by nymda](https://github.com/nymda/FlipperZeroBrainfuck) |  | [![UFW Badge]](https://lab.flipper.net/apps/brainfuck) |
 | Ceasar Cipher | ![Tools Badge] | [by panki27](https://github.com/panki27/caesar-cipher) |  | [![UFW Badge]](https://lab.flipper.net/apps/caesar_cipher) |
