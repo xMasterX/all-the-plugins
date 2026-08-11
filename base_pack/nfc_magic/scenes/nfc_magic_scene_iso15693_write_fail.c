@@ -18,6 +18,17 @@ void nfc_magic_scene_iso15693_write_fail_widget_callback(
 // AFI/DSFID has zero failed blocks, and the summary shows only its highest-priority qualifier, so the
 // lower one would be reachable nowhere. UID-changed is here because it PRE-EMPTS the partial reason
 // code -- without it a wipe that both moved the UID and left blocks uncleared names them nowhere.
+// Is re-running the write the right next action? A sweep the clock cut may have left real data above
+// the cut, which is the privacy failure the sweep exists to remove -- as good a claim on Retry as a
+// card that left mid-write. Both the buttons in on_enter and the left-button handler in on_event need
+// this answer.
+static bool
+    nfc_magic_scene_iso15693_write_fail_is_retryable(NfcMagicApp* instance, uint32_t reason) {
+    UNUSED(instance);
+    return reason == NfcMagicIso15693WriteFailReasonCardLost ||
+           reason == NfcMagicIso15693WriteFailReasonWipeStopped;
+}
+
 static bool
     nfc_magic_scene_iso15693_write_fail_has_details(NfcMagicApp* instance, uint32_t reason) {
     const Iso15693PollerResult* result = &instance->iso15693_result;
@@ -26,8 +37,12 @@ static bool
         return true;
     case NfcMagicIso15693WriteFailReasonPartial:
         return result->failed_count > 0 || result->used_gen1 || result->identity_failed;
+    case NfcMagicIso15693WriteFailReasonWipeStopped:
+        // Always: the blocks above the cut were never attempted, so they carry no bitmap bits and the
+        // scroll view is the only place that fact can be stated.
+        return true;
     case NfcMagicIso15693WriteFailReasonWipeUidChanged:
-        return result->failed_count > 0;
+        return result->failed_count > 0 || result->sweep_truncated;
     default:
         return false;
     }
@@ -52,46 +67,58 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
     const bool wipe_complete = (reason == NfcMagicIso15693WriteFailReasonWipeComplete);
     const bool wipe_mode = (instance->iso15693_mode == NfcMagicIso15693ModeWipe);
 
-    // A sweep cut short by its time bound did not finish the job, so it reads as a failure to the user
-    // even though no block refused the zero-write.
-    const bool wipe_cut_short = wipe_complete && instance->iso15693_result.sweep_truncated;
+    const bool wipe_stopped = (reason == NfcMagicIso15693WriteFailReasonWipeStopped);
 
     // Over-capacity and a wipe that ran to the card's top are clean successes -> success tone.
-    // Everything else did not deliver what was asked for -- partial, card-lost, not-magic,
-    // nothing-wiped, empty-source, the unexpected UID, a failed gen1 attempt, a Write UID that had
-    // nothing to prove, and a sweep that stopped on the clock -> error tone.
+    // Everything else did not deliver what was asked for -> error tone, the cut sweep included: the
+    // poller reports that as Partial, and the tone has to agree with the event rather than contradict
+    // it.
     notification_message(
         instance->notifications,
-        (over_capacity || (wipe_complete && !wipe_cut_short)) ? &sequence_success :
-                                                                &sequence_error);
+        (over_capacity || wipe_complete) ? &sequence_success : &sequence_error);
 
     if(wipe_complete) {
         // A clean wipe, reporting what it actually covered. This screen exists because the sweep's
         // length is measured, not assumed: it stops at the highest block the card answered for, which
-        // can be short of the card's claim (a dead stretch below the advertised count that never
-        // recovers) or past it (a card cloned from a smaller source advertises the smaller count while
-        // still holding everything above). On the bare Success popup those render identically.
+        // can be short of the card's claim or past it (a card cloned from a smaller source advertises
+        // the smaller count while still holding everything above). On the bare Success popup those
+        // render identically.
         //
         // Both figures, no verdict. blocks_total < advertised is NOT flagged as an error: a card
         // advertising 66 blocks against 64 physical is a normal, undamaged card, and calling its two
         // dropped phantom blocks a failure is the false report the tail-drop rule exists to prevent.
         widget_add_string_element(
-            widget,
-            64,
-            0,
-            AlignCenter,
-            AlignTop,
-            FontPrimary,
-            wipe_cut_short ? "Wipe stopped" : "Wipe complete");
+            widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Wipe complete");
         FuriString* text = furi_string_alloc();
         furi_string_printf(
             text,
             "Cleared %u blocks.\nCard claims %u.",
             instance->iso15693_result.blocks_total,
             instance->iso15693_result.blocks_advertised);
-        // Third and last line the body has room for (the 4th at y=13 is overpainted by the button box
-        // at rows 52-63): the range above is where the clock ran out, not where the card ends.
-        if(wipe_cut_short) furi_string_cat_str(text, "\nTime limit reached.");
+        // Third and last line the body has room for. The wipe itself finished; only the identity check
+        // did not, and saying so is what stops this screen asserting a check that never ran.
+        if(!instance->iso15693_result.uid_verified) {
+            furi_string_cat_str(text, "\nUID not re-checked.");
+        }
+        widget_add_string_multiline_element(
+            widget, 0, 13, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(text));
+        furi_string_free(text);
+    } else if(wipe_stopped) {
+        // The clock stopped the sweep with blocks the card still claims unattempted. Those blocks have
+        // no bitmap bits -- nothing tried them -- so these counts are the whole on-screen story and
+        // Details carries the rest.
+        widget_add_string_element(
+            widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Wipe stopped");
+        const uint16_t reached = instance->iso15693_result.blocks_total;
+        const uint16_t failed = instance->iso15693_result.failed_count;
+        FuriString* text = furi_string_alloc();
+        furi_string_printf(
+            text,
+            "Cleared %u blocks.\nStopped at %u of %u.",
+            (reached >= failed) ? (uint16_t)(reached - failed) : 0,
+            reached,
+            instance->iso15693_result.blocks_advertised);
+        if(failed > 0) furi_string_cat_printf(text, "\nNot cleared: %u", failed);
         widget_add_string_multiline_element(
             widget, 0, 13, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(text));
         furi_string_free(text);
@@ -142,17 +169,12 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             total,
             not_written);
         // The body sits at y=20 with the button row below it, so only three FontSecondary lines fit:
-        // the two count lines plus ONE qualifier. Show the most significant (truncated sweep > real data
-        // loss > gen1 UID clobber > AFI/DSFID). A lower one is dropped from THIS screen only -- "Details"
-        // below is offered whenever any caveat applies and lists all of them, so nothing is unreachable.
-        if(instance->iso15693_result.sweep_truncated) {
-            // Wipe only, and the only qualifier a wipe can ever show -- the three below are all set on
-            // clone paths. It outranks them because it changes what the counts MEAN: the total is where
-            // the sweep was cut, not the card's extent.
-            furi_string_cat_str(text, "\nStopped: time limit");
-        } else if(
-            instance->iso15693_result.capacity_confirmed &&
-            instance->iso15693_result.failed_count > 0) {
+        // the two count lines plus ONE qualifier. Show the most significant (real data loss > gen1 UID
+        // clobber > AFI/DSFID). A lower one is dropped from THIS screen only -- "Details" below is
+        // offered whenever any caveat applies and lists all of them, so nothing is unreachable.
+        // A cut sweep is not among them: it has its own reason code and screen.
+        if(instance->iso15693_result.capacity_confirmed &&
+           instance->iso15693_result.failed_count > 0) {
             // Real data was lost because those blocks are a persistent, contiguous run at the top of
             // the card -> the card is physically smaller than the source. (An empty top tail loses
             // nothing and is reported as an over-capacity success, not here.)
@@ -173,14 +195,24 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         // write" message would be wrong for a wipe.
         widget_add_string_element(
             widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Wipe failed");
+        // A card that refuses every write while still answering reads is exactly the card the sweep's
+        // time limit exists for, and it is also the one that ends here: nothing accepted, so the wipe
+        // short-circuits to this screen before any of the truncation reporting. Three lines is all the
+        // body has, so the cut replaces the prose rather than adding to it.
+        FuriString* text = furi_string_alloc();
+        if(instance->iso15693_result.sweep_truncated) {
+            furi_string_printf(
+                text,
+                "No block accepted the\nzero-write.\nStopped at %u of %u.",
+                instance->iso15693_result.blocks_total,
+                instance->iso15693_result.blocks_advertised);
+        } else {
+            furi_string_set_str(
+                text, "No blocks could be\ncleared -- the card\naccepted no zero-write.");
+        }
         widget_add_string_multiline_element(
-            widget,
-            0,
-            13,
-            AlignLeft,
-            AlignTop,
-            FontSecondary,
-            "No blocks could be\ncleared -- the card\naccepted no zero-write.");
+            widget, 0, 13, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(text));
+        furi_string_free(text);
     } else if(nothing_cloned) {
         // The gen2/gen1 UID write took, but every data block was rejected. Say what the card now holds:
         // it answers with the source's UID, so a UID-only reader accepts it while anything that reads
@@ -207,9 +239,10 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         // success_or_partial ORs uid_changed with failed_count, so BOTH can hold: a wipe can move the UID
         // AND leave blocks uncleared. Lead with the counts rather than asserting "Data cleared", which
         // would be false in exactly that case -- and it costs nothing, since the counts replace a prose
-        // line. The UID then lands on line 3, which matters: the 4th line of a body at y=13 is overpainted
-        // by the button box (rows 52-63), and this UID is the only way back to a card that has stopped
-        // answering to the one the user knows.
+        // line. The UID then lands on line 3, which matters: FontSecondary advances 11px per line, so a
+        // body at y=13 puts line tops at 13/24/35/46 and a 4th line's lower rows fall inside the button
+        // box at rows 52-63. This UID is the only way back to a card that has stopped answering to the
+        // one the user knows, and a clipped hex digit is a mis-readable UID.
         const uint16_t wiped_total = instance->iso15693_result.blocks_total;
         const uint16_t wiped_bad = instance->iso15693_result.failed_count;
         FuriString* text = furi_string_alloc();
@@ -232,8 +265,8 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         // to a UID nobody asked for, and printing it is the only way the user can find the card again.
         widget_add_string_element(
             widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Unexpected UID");
-        // Prose kept to two lines so the UID lands on line 3: the 4th line of a body at y=13 is
-        // overpainted by the button box (rows 52-63), and a clipped hex digit is a mis-readable UID.
+        // Prose kept to two lines so the UID lands on line 3: a 4th line at y=13 starts at row 46 and
+        // runs into the button box at rows 52-63, and a clipped hex digit is a mis-readable UID.
         FuriString* text = furi_string_alloc();
         furi_string_set_str(text, "Card is magic, but the\nUID it took isn't yours:\n");
         for(size_t i = 0; i < ISO15693_3_UID_SIZE; i++) {
@@ -305,9 +338,9 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             widget, 0, 13, AlignLeft, AlignTop, FontSecondary, message);
     }
 
-    if(card_lost) {
-        // Card removed mid-write -> retryable. Retry re-runs the write; Exit leaves. Matches the
-        // generic write-fail screen (Retry left, Exit right).
+    if(nfc_magic_scene_iso15693_write_fail_is_retryable(instance, reason)) {
+        // Retry re-runs the write; Exit leaves. Matches the generic write-fail screen (Retry left,
+        // Exit right).
         widget_add_button_element(
             widget,
             GuiButtonTypeLeft,
@@ -348,11 +381,10 @@ bool nfc_magic_scene_iso15693_write_fail_on_event(void* context, SceneManagerEve
 
     const uint32_t reason =
         scene_manager_get_scene_state(instance->scene_manager, NfcMagicSceneIso15693WriteFail);
-    const bool card_lost = (reason == NfcMagicIso15693WriteFailReasonCardLost);
 
     if(event.type == SceneManagerEventTypeCustom) {
         if(event.event == GuiButtonTypeLeft) {
-            if(card_lost) {
+            if(nfc_magic_scene_iso15693_write_fail_is_retryable(instance, reason)) {
                 // Retry: back to the write scene, which re-runs the write on enter.
                 consumed = scene_manager_previous_scene(instance->scene_manager);
             } else {
@@ -367,7 +399,7 @@ bool nfc_magic_scene_iso15693_write_fail_on_event(void* context, SceneManagerEve
                     instance->scene_manager, NfcMagicSceneIso15693PartialDetails);
                 consumed = true;
             } else {
-                // Card-lost "Exit" -> the ISO15693 menu.
+                // The retryable outcomes' "Exit" -> the ISO15693 menu.
                 consumed = scene_manager_search_and_switch_to_previous_scene(
                     instance->scene_manager, NfcMagicSceneIso15693);
             }

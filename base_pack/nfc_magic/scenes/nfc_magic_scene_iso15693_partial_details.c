@@ -33,7 +33,8 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
         title = (instance->iso15693_mode == NfcMagicIso15693ModeWipe) ? "Blocks not cleared" :
                                                                         "Blocks not written";
     } else {
-        title = "Clone notes";
+        title = (instance->iso15693_mode == NfcMagicIso15693ModeWipe) ? "Wipe notes" :
+                                                                        "Clone notes";
     }
     widget_add_string_element(widget, 0, 0, AlignLeft, AlignTop, FontPrimary, title);
 
@@ -53,6 +54,19 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
         message, instance->iso15693_result.failed_bitmap, ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8, 0);
     // Separate the caveats from whatever precedes them, but don't open with a blank line when there is
     // no block list above (the notes-only case).
+    if(instance->iso15693_result.sweep_truncated) {
+        // The blocks above the cut are not in the bitmap -- they were never attempted, so there is
+        // nothing to list -- which is exactly why they need saying here. This is the only route to that
+        // fact on the UID-changed screen, whose reason code pre-empts the partial one, and the only
+        // place the partial screen's own count can be qualified.
+        if(furi_string_size(message) > 0) furi_string_push_back(message, '\n');
+        furi_string_cat_printf(
+            message,
+            "Sweep hit its time limit at block %u of the %u this card claims. Blocks above that were "
+            "never attempted and may still hold data.",
+            instance->iso15693_result.blocks_total,
+            instance->iso15693_result.blocks_advertised);
+    }
     if(instance->iso15693_result.used_gen1) {
         // The gen1 fallback stamped the UID/commit into blocks 56/57/62/63, so they differ from the
         // source regardless of the write results above.

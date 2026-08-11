@@ -417,12 +417,19 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
                 // A wipe whose blocks cleared but whose UID moved gets its own screen, ahead of the
                 // ordinary partial: the block counts are beside the point next to the card's identity
                 // changing under an operation that never sends a UID command.
+                // Order is a priority: a moved UID outranks a cut sweep, which outranks ordinary
+                // block failures. All three are Partial to the poller; they differ in what the user
+                // most needs told.
+                NfcMagicIso15693WriteFailReason partial_reason;
+                if(instance->iso15693_result.uid_changed) {
+                    partial_reason = NfcMagicIso15693WriteFailReasonWipeUidChanged;
+                } else if(instance->iso15693_result.sweep_truncated) {
+                    partial_reason = NfcMagicIso15693WriteFailReasonWipeStopped;
+                } else {
+                    partial_reason = NfcMagicIso15693WriteFailReasonPartial;
+                }
                 scene_manager_set_scene_state(
-                    instance->scene_manager,
-                    NfcMagicSceneIso15693WriteFail,
-                    instance->iso15693_result.uid_changed ?
-                        NfcMagicIso15693WriteFailReasonWipeUidChanged :
-                        NfcMagicIso15693WriteFailReasonPartial);
+                    instance->scene_manager, NfcMagicSceneIso15693WriteFail, partial_reason);
                 scene_manager_next_scene(instance->scene_manager, NfcMagicSceneIso15693WriteFail);
             } else {
                 scene_manager_next_scene(instance->scene_manager, NfcMagicSceneUscuidUlPartial);

@@ -126,11 +126,15 @@ typedef enum {
     NfcMagicIso15693WriteFailReasonWipeUidChanged, // wipe: the blocks cleared, but the UID read back
         // afterwards is not the one the card presented before. On gen1 that is the wipe zeroing blocks
         // 56/57, which ARE the UID registers, on a card left armed by an earlier gen1 UID write.
-    NfcMagicIso15693WriteFailReasonWipeComplete, // wipe: a clean success. Here rather than on the bare
-        // Success popup so it can report the range it measured beside the count the card advertises --
-        // otherwise a sweep that stopped short and one that covered the card render identically. The two
-        // figures differing is INFORMATION, not an error: the gen2 CFG frame programs what a card
-        // advertises, so neither direction is a fault.
+    NfcMagicIso15693WriteFailReasonWipeComplete, // wipe: a clean success -- the sweep ran to the card's
+        // top and no block refused. Here rather than on the bare Success popup so it can report the
+        // range it measured beside the count the card advertises, since the two can differ without
+        // either being a fault. A wipe whose UID check never reached an answer still lands here and
+        // says so on the third line: the wipe finished, only the identity check did not run.
+    NfcMagicIso15693WriteFailReasonWipeStopped, // wipe: the sweep hit its time limit with blocks the
+        // card claims still unattempted. A partial outcome, not a qualified success -- the poller
+        // reports Partial for it -- so it carries the error tone and offers Retry, since re-running is
+        // the correct action when data may sit above the cut.
 } NfcMagicIso15693WriteFailReason;
 
 // Which ISO15693 operation the shared write scene is running. Replaces the old is-wipe bool, now that

@@ -23,8 +23,11 @@
 // gen1: WRITE BLOCK (0x21) to backdoor blocks; 4 data bytes each. The UID blocks are named by the
 // UID bytes they carry (uid[0] is the MSB, so uid[7..4] is the numerically low half of the UID).
 #define ISO15693_MAGIC_CMD_WRITE    (0x21U) // ISO15693 WRITE BLOCK
-#define ISO15693_MAGIC_BLK_UNLOCK   (0x3EU) // written as 0
-#define ISO15693_MAGIC_BLK_COMMIT   (0x3FU) // written as 0x6996 (arms the UID change)
+// The unlock/commit reading is OUR INFERENCE from proxmark's send order, not a documented contract:
+// SetTag15693Uid sends 0x3E, 0x3F then the UID blocks with no explanatory comment, and doc/
+// magic_cards_notes.md's ISO15693-magic section is a TODO. Nothing states what the registers do.
+#define ISO15693_MAGIC_BLK_UNLOCK   (0x3EU) // written as 0; inferred: unlock
+#define ISO15693_MAGIC_BLK_COMMIT   (0x3FU) // written as 0x6996; inferred: arms the UID change
 #define ISO15693_MAGIC_BLK_UID_7654 (0x38U) // uid[7..4]
 #define ISO15693_MAGIC_BLK_UID_3210 (0x39U) // uid[3..0]
 
@@ -224,6 +227,9 @@ struct Iso15693Poller {
     // Wipe mode: the sweep hit ISO15693_POLLER_WIPE_MAX_MS and stopped short, so its range is a cut
     // rather than the card's extent and the report has to say so. Clone mode: unused (stays false).
     bool wipe_truncated;
+    // Wipe mode: the post-power-cycle UID check reached an answer. False means it never ran to one, so
+    // uid_changed being false is an absent observation rather than a clean result.
+    bool uid_verified;
     uint8_t clone_failed_bitmap[ISO15693_POLLER_BLOCK_BITMAP_SIZE];
     // Set when the gen1 fallback (not gen2) actually set the UID. gen1 stamps the UID/commit into
     // data blocks 56/57/62/63, so a clone that fell back to gen1 can't be byte-identical there.
@@ -257,7 +263,7 @@ struct Iso15693Poller {
     // stops before writing and reports this instead of a Success it cannot justify.
     bool uid_unverifiable;
     // Wipe only: the UID read back after the wipe is not the one the card presented before it. Only ever
-    // set from a POSITIVE observation -- see the read-back at the end of the wipe branch of write_step.
+    // set from a POSITIVE observation -- see Iso15693WriteStateVerifyWipe.
     bool uid_changed;
     Iso15693PollerCallback callback;
     void* context;
@@ -698,18 +704,25 @@ static uint16_t iso15693_poller_wipe_blocks(
     // SetTag15693Uid -- so a card that has had a gen1 UID written may still be armed, and zeroing
     // 56/57 while it is would be the arm sequence with a zero payload.
     //
-    // An earlier revision tried to de-arm by pre-writing the commit block. That was withdrawn: it
-    // wrote commit before unlock, the reverse of the only ordering the hardware is documented to
-    // accept, so it would either be rejected outright or -- worse -- leave unlock freshly zeroed,
-    // i.e. one step INTO the arm sequence, right before this loop touches the UID registers.
+    // Do NOT try to de-arm by pre-writing the commit block. Writing commit before unlock is the
+    // reverse of the only order anyone has observed the hardware accept, so it is either rejected
+    // outright or -- worse -- leaves unlock freshly zeroed, one step INTO the arm sequence, immediately
+    // before this loop touches the UID registers. No blind ordering is safe, because the only route to
+    // the latch is through the sequence that sets it.
     //
     // The write ORDER is therefore left alone, matching proxmark's `hf 15 wipe`, which also makes no
-    // attempt to de-arm. What IS done is the grounded half: rather than reordering blind writes, the
-    // caller re-reads the UID once the sweep finishes and reports a mismatch instead of promising the
-    // UID is unchanged (see the read-back at the end of the Wipe branch of write_step). That converts a
-    // silent identity change into a reported one. It does not prevent the change, and it cannot report a
-    // card that stops answering inventory altogether -- both of which need a gen1 card to take further,
-    // and nobody on this PR has one.
+    // attempt to de-arm. What IS done is the grounded half: the caller re-reads the UID once the sweep
+    // finishes and reports a mismatch instead of promising the UID is unchanged. That check runs in
+    // Iso15693WriteStateVerifyWipe, behind a field power-cycle -- which is what lets it see a gen1 latch
+    // at all, since a card latches a UID written into 56/57 only on the next power-up and answers the
+    // old one until then. It converts a silent identity change into a reported one; it does not prevent
+    // the change.
+    //
+    // Note what this argument does NOT rest on. The unlock/commit reading above is our inference from
+    // one implementation's send order, and if it is wrong the arming model is wrong with it -- but the
+    // conclusion survives either way, because "no blind ordering is safe" follows from not knowing what
+    // those registers do rather than from the interpretation being right. Settling the question needs a
+    // gen1 card to test against, and nobody on this PR has one.
     bool any_present = false; // has any block answered at all?
     uint16_t highest_present = 0; // top block proven to exist -> the reported total
     // Consecutive absent-looking blocks. Doubles as the count of absences not yet resolved as
@@ -945,8 +958,12 @@ static Iso15693PollerEvent iso15693_poller_success_or_partial(Iso15693Poller* in
     }
     // A wipe that cleared its blocks but moved the card's UID is not a clean success, whatever the
     // block counts say -- the card's identity changed under an operation that doesn't claim to touch it.
+    // Nor is one the clock cut short: blocks the card claims were never attempted, so the operation's
+    // own job is left undone, which is what Partial means. The UID check failing to reach an answer is
+    // deliberately NOT in this list -- that check is best-effort, the wipe itself finished, and making
+    // it Partial would downgrade every wipe where the user lifts the card as it completes.
     if(instance->clone_failed_count > 0 || gen1_clone || identity_failed ||
-       instance->uid_changed) {
+       instance->uid_changed || instance->wipe_truncated) {
         return Iso15693PollerEventPartial;
     }
     return Iso15693PollerEventSuccess;
@@ -1154,10 +1171,13 @@ static NfcCommand
         // case; see the activation-error path in iso15693_poller_nfc_callback.
         if(iso15693_poller_verify_inventory(iso_poller, readback) != Iso15693_3ErrorNone) {
             FURI_LOG_W(TAG, "wipe: card did not answer the UID read-back");
-        } else if(memcmp(readback, instance->original_uid, ISO15693_3_UID_SIZE) != 0) {
-            FURI_LOG_E(TAG, "wipe: the UID CHANGED");
-            instance->uid_changed = true;
-            memcpy(instance->uid_readback, readback, ISO15693_3_UID_SIZE);
+        } else {
+            instance->uid_verified = true;
+            if(memcmp(readback, instance->original_uid, ISO15693_3_UID_SIZE) != 0) {
+                FURI_LOG_E(TAG, "wipe: the UID CHANGED");
+                instance->uid_changed = true;
+                memcpy(instance->uid_readback, readback, ISO15693_3_UID_SIZE);
+            }
         }
         iso15693_poller_report(instance, iso15693_poller_success_or_partial(instance));
         return NfcCommandStop;
@@ -1309,6 +1329,7 @@ static void iso15693_poller_start_internal(
     instance->clone_over_capacity = 0;
     instance->wipe_advertised = 0;
     instance->wipe_truncated = false;
+    instance->uid_verified = false;
     instance->clone_used_gen1 = false;
     instance->clone_capacity_confirmed = false;
     instance->clone_blocks_done = 0;
@@ -1401,6 +1422,7 @@ void iso15693_poller_get_result(Iso15693Poller* instance, Iso15693PollerResult* 
     result->over_capacity = instance->clone_over_capacity;
     result->blocks_advertised = instance->wipe_advertised;
     result->sweep_truncated = instance->wipe_truncated;
+    result->uid_verified = instance->uid_verified;
     memcpy(result->failed_bitmap, instance->clone_failed_bitmap, sizeof(result->failed_bitmap));
     result->used_gen1 = instance->clone_used_gen1;
     result->capacity_confirmed = instance->clone_capacity_confirmed;

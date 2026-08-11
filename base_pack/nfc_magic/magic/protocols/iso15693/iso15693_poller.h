@@ -23,10 +23,10 @@ typedef enum {
 typedef enum {
     Iso15693PollerEventSuccess, // Info: card read. Write/clone: the target UID read back and matched
         // (the UID, plus the AFI/DSFID on a clone, are re-read; block CONTENTS are never compared --
-        // a data block counts as written when the card ACKs it). Wipe: every block the card answered for
-        // is clear, and the UID read back as the one it presented before the wipe. (Blocks the sweep
-        // probed past the card's top are not "attempted and accepted" -- they answered nothing and are
-        // excluded from the report entirely.)
+        // a data block counts as written when the card ACKs it). Wipe: the sweep ran to the card's top
+        // and every block it reached is clear. (Blocks probed past that top answered nothing and are
+        // excluded from the report entirely.) It does NOT promise the card's identity was re-checked --
+        // that check is best-effort, and uid_verified says whether it reached an answer.
     Iso15693PollerEventPartial, // the operation mostly worked but isn't a clean result: a clone lost
         // some data blocks, fell back to gen1 (overwriting 56/57/62/63), or had its AFI/DSFID write
         // rejected; or a wipe couldn't clear every block, or moved the card's UID (uid_changed).
@@ -148,6 +148,10 @@ typedef struct {
     // blocks_total is where it was cut, not what the card holds. Reported so the screen doesn't pass a
     // partial range off as the card's extent. False for a clone.
     bool sweep_truncated;
+    // Wipe only: the post-power-cycle UID check reached an answer. When false it did not run -- the card
+    // did not come back, or did not answer the inventory -- so uid_changed being false is the absence of
+    // an observation rather than a clean result, and a caller reporting success should say so.
+    bool uid_verified;
     // Blocks that failed and count as a real problem: they held source data (lost), or were empty
     // failures that weren't a clean top-of-card tail. -> Partial. In wipe mode, blocks that still held
     // data after a failed zero-write.
@@ -206,17 +210,23 @@ bool iso15693_poller_source_uses_gen1_blocks(const Iso15693_3Data* source);
 // a card that has been cloned from a smaller source advertises the smaller count while still holding
 // (and still serving reads for) everything above it. The sweep therefore runs upward past the
 // advertised count until a run of blocks answers neither a write nor a read; see
-// ISO15693_POLLER_WIPE_MAX_BLOCKS in the .c for the hardware measurement behind that.
+// ISO15693_POLLER_WIPE_MAX_BLOCKS in the .c for the hardware measurement behind that. That run is not
+// the only stop condition: the sweep also stops at the 256-block ceiling, and on a wall-clock bound
+// (ISO15693_POLLER_WIPE_MAX_MS) for a card that answers reads everywhere and so never accumulates a
+// run. A sweep the clock stopped sets sweep_truncated, and its blocks_total is where it was cut rather
+// than what the card holds. Below the advertised count the sweep never stops early on absence alone --
+// the card's own claim is evidence those blocks exist.
 // Blocks 56/57/62/63 are cleared too -- on gen2 they are ordinary user data. On gen1 those same blocks
 // are the UID/unlock/commit registers, so the wipe cannot guarantee the UID survives there; it re-reads
 // the UID afterwards -- behind the same field power-cycle the UID writes above use, since a gen1 card
 // latches a written UID on the next power-up -- and reports a change as Partial (uid_changed) rather
-// than promising one. A card
-// that stops answering inventory altogether is logged and not reported -- see the open question in
-// iso15693_poller_wipe_blocks.
-// Reports CardDetected (first activation), then Success / Partial (some blocks failed) / Fail
-// (nothing could be wiped) / CardLost -- the last of which also covers a card lifted DURING the
-// loop, so blocks that never got the chance aren't reported as blocks the card refused to clear.
+// than promising one. A card that never comes back from that power-cycle, or that no longer answers an
+// inventory, leaves uid_verified false: the check did not run to an answer, so uid_changed being false
+// says nothing either way. See the open question in iso15693_poller_wipe_blocks.
+// Reports CardDetected (first activation), then Success / Partial (some blocks failed, the UID moved,
+// or the clock cut the sweep short of the card's claim) / Fail (nothing could be wiped) / CardLost --
+// the last of which also covers a card lifted DURING the loop, so blocks that never got the chance
+// aren't reported as blocks the card refused to clear.
 // Per-block detail is available via iso15693_poller_get_result(); its blocks_total is what the card
 // proved it holds, so blocks that do not exist are never reported as blocks that wouldn't clear.
 void iso15693_poller_start_wipe(
