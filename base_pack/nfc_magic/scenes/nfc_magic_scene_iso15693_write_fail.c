@@ -30,12 +30,18 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
     const bool wipe_complete = (reason == NfcMagicIso15693WriteFailReasonWipeComplete);
     const bool wipe_mode = (instance->iso15693_mode == NfcMagicIso15693ModeWipe);
 
-    // Over-capacity and a completed wipe are clean successes -> success tone. Everything else did not
-    // deliver what was asked for -- partial, card-lost, not-magic, nothing-wiped, empty-source, the
-    // unexpected UID, a failed gen1 attempt, and a Write UID that had nothing to prove -> error tone.
+    // A sweep cut short by its time bound did not finish the job, so it reads as a failure to the user
+    // even though no block refused the zero-write.
+    const bool wipe_cut_short = wipe_complete && instance->iso15693_result.sweep_truncated;
+
+    // Over-capacity and a wipe that ran to the card's top are clean successes -> success tone.
+    // Everything else did not deliver what was asked for -- partial, card-lost, not-magic,
+    // nothing-wiped, empty-source, the unexpected UID, a failed gen1 attempt, a Write UID that had
+    // nothing to prove, and a sweep that stopped on the clock -> error tone.
     notification_message(
         instance->notifications,
-        (over_capacity || wipe_complete) ? &sequence_success : &sequence_error);
+        (over_capacity || (wipe_complete && !wipe_cut_short)) ? &sequence_success :
+                                                                &sequence_error);
 
     if(wipe_complete) {
         // A clean wipe, reporting what it actually covered. This screen exists because the sweep's
@@ -48,13 +54,22 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         // advertising 66 blocks against 64 physical is a normal, undamaged card, and calling its two
         // dropped phantom blocks a failure is the false report the tail-drop rule exists to prevent.
         widget_add_string_element(
-            widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Wipe complete");
+            widget,
+            64,
+            0,
+            AlignCenter,
+            AlignTop,
+            FontPrimary,
+            wipe_cut_short ? "Wipe stopped" : "Wipe complete");
         FuriString* text = furi_string_alloc();
         furi_string_printf(
             text,
             "Cleared %u blocks.\nCard claims %u.",
             instance->iso15693_result.blocks_total,
             instance->iso15693_result.blocks_advertised);
+        // Third and last line the body has room for (the 4th at y=13 is overpainted by the button box
+        // at rows 52-63): the range above is where the clock ran out, not where the card ends.
+        if(wipe_cut_short) furi_string_cat_str(text, "\nTime limit reached.");
         widget_add_string_multiline_element(
             widget, 0, 13, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(text));
         furi_string_free(text);
@@ -105,11 +120,17 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             total,
             not_written);
         // The body sits at y=20 with the button row below it, so only three FontSecondary lines fit:
-        // the two count lines plus ONE qualifier. Show the most significant (real data loss > gen1 UID
-        // clobber > AFI/DSFID). A lower-priority caveat is dropped from THIS screen only -- "Details"
+        // the two count lines plus ONE qualifier. Show the most significant (truncated sweep > real data
+        // loss > gen1 UID clobber > AFI/DSFID). A lower one is dropped from THIS screen only -- "Details"
         // below is offered whenever any caveat applies and lists all of them, so nothing is unreachable.
-        if(instance->iso15693_result.capacity_confirmed &&
-           instance->iso15693_result.failed_count > 0) {
+        if(instance->iso15693_result.sweep_truncated) {
+            // Wipe only, and the only qualifier a wipe can ever show -- the three below are all set on
+            // clone paths. It outranks them because it changes what the counts MEAN: the total is where
+            // the sweep was cut, not the card's extent.
+            furi_string_cat_str(text, "\nStopped: time limit");
+        } else if(
+            instance->iso15693_result.capacity_confirmed &&
+            instance->iso15693_result.failed_count > 0) {
             // Real data was lost because those blocks are a persistent, contiguous run at the top of
             // the card -> the card is physically smaller than the source. (An empty top tail loses
             // nothing and is reported as an over-capacity success, not here.)

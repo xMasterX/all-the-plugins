@@ -144,6 +144,10 @@ typedef struct {
     // advertises the smaller count while still holding more, and a card with fake flash advertises more
     // than it holds. 0 for a clone.
     uint16_t blocks_advertised;
+    // Wipe only: the sweep stopped on its wall-clock bound rather than at the card's top, so
+    // blocks_total is where it was cut, not what the card holds. Reported so the screen doesn't pass a
+    // partial range off as the card's extent. False for a clone.
+    bool sweep_truncated;
     // Blocks that failed and count as a real problem: they held source data (lost), or were empty
     // failures that weren't a clean top-of-card tail. -> Partial. In wipe mode, blocks that still held
     // data after a failed zero-write.

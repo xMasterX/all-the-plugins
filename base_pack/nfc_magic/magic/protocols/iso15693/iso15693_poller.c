@@ -119,6 +119,32 @@
 // writing anyway.
 #define ISO15693_POLLER_WIPE_MAX_BLOCKS (ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8U)
 
+// Wall-clock bound on the sweep, because the block ceiling above is not a tight one.
+//
+// The absent-run check ends the sweep at the card's top, but only for a card that stops ANSWERING
+// there. A card that refuses the write and still serves a read at every address never accumulates a
+// run, so it walks all 256 blocks at the 40-70ms a refused-write-plus-read costs: 10-18 seconds inside
+// a single poller callback, emitting no progress past the advertised count.
+//
+// This is a BACKSTOP, not a tuning knob, and the two errors it sits between are wildly asymmetric:
+//   - cutting a legitimate sweep early leaves real data unwiped above the cut. That is the privacy
+//     failure this whole sweep exists to remove, arrived at from the other direction.
+//   - letting a pathological card run long makes the user wait, un-abortably, for a wipe they asked for.
+// So it is set generously, well clear of any sweep a real card can ask for, and NOT tuned down for the
+// second case -- the block ceiling already caps that at roughly the 18s above.
+//
+// 10 seconds. Working from the ~1s a 64-block wipe takes (see ISO15693_POLLER_WIPE_ABSENT_RUN): a
+// refused block costs 3 writes plus 2 waits plus a read, so an accepted one is a fraction of the
+// 40-70ms, and the largest sweep any card can ask for -- 256 blocks all accepting -- lands somewhere
+// around 3-4s. Every figure here is an estimate from bench runs that were not instrumented for timing,
+// which is itself an argument for the wide margin. Note the true worst case is this bound PLUS one
+// re-probe of the trailing run, which is not deadline-checked (it would have to abandon the run
+// half-classified); that is bounded by the run length.
+//
+// A sweep cut here reports what it covered and says it was cut (wipe_truncated), rather than passing
+// off a partial range as the card's extent -- the same distinction the advertised-count floor draws.
+#define ISO15693_POLLER_WIPE_MAX_MS (10000U)
+
 // How many CONSECUTIVE absent-looking blocks end the sweep. One is not evidence -- the same reasoning
 // as the per-block write retries -- and this is the sole guard against the sweep mistaking a momentary
 // RF dropout for the top of the card, so it is set for that, not for speed.
@@ -195,6 +221,9 @@ struct Iso15693Poller {
     // Wipe mode: the block count the card advertised, kept alongside the measured figure that replaces
     // it in clone_blocks_total once the sweep ends. Clone mode: unused (stays 0).
     uint16_t wipe_advertised;
+    // Wipe mode: the sweep hit ISO15693_POLLER_WIPE_MAX_MS and stopped short, so its range is a cut
+    // rather than the card's extent and the report has to say so. Clone mode: unused (stays false).
+    bool wipe_truncated;
     uint8_t clone_failed_bitmap[ISO15693_POLLER_BLOCK_BITMAP_SIZE];
     // Set when the gen1 fallback (not gen2) actually set the UID. gen1 stamps the UID/commit into
     // data blocks 56/57/62/63, so a clone that fell back to gen1 can't be byte-identical there.
@@ -675,7 +704,17 @@ static uint16_t iso15693_poller_wipe_blocks(
     // exactly the current run.
     uint16_t absent_run = 0;
     uint16_t block = 0;
+    const uint32_t sweep_start = furi_get_tick();
     for(; block < ISO15693_POLLER_WIPE_MAX_BLOCKS; block++) {
+        // Time bound, checked before the block is attempted so `block` stays the exclusive end of the
+        // attempted range for the tail arithmetic below. See ISO15693_POLLER_WIPE_MAX_MS.
+        if(furi_get_tick() - sweep_start > furi_ms_to_ticks(ISO15693_POLLER_WIPE_MAX_MS)) {
+            FURI_LOG_W(
+                TAG, "wipe: time limit reached at block %u (advertised %u)", block, advertised);
+            instance->wipe_truncated = true;
+            break;
+        }
+
         // Progress only while inside the advertised count. The sweep's real length isn't known until
         // it ends, so there is no honest denominator past that point, and the tail is a handful of
         // blocks. Bounding the emitting range this way also keeps the PROGRESS_STEPS safety bound
@@ -823,6 +862,18 @@ static uint16_t iso15693_poller_wipe_blocks(
 
     // Report against what the card proved it holds, not what it advertises.
     instance->clone_blocks_total = any_present ? (uint16_t)(highest_present + 1) : 0;
+
+    // One line covering every exit (card's top, block ceiling, time limit), so the wall-clock cost of a
+    // sweep is measurable on any card rather than estimated -- ISO15693_POLLER_WIPE_MAX_MS is set from
+    // figures nobody has instrumented, and this is what would settle it.
+    FURI_LOG_I(
+        TAG,
+        "wipe: %u blocks attempted, %u cleared, %lums (advertised %u)",
+        block,
+        wiped,
+        (unsigned long)((furi_get_tick() - sweep_start) * 1000UL /
+                        furi_kernel_get_tick_frequency()),
+        advertised);
 
     // A card lifted mid-wipe can also surface as a pile of blocks that "wouldn't clear" -- its blocks
     // still read their old data right up until it leaves the field -- without ever tripping the
@@ -1227,6 +1278,7 @@ static void iso15693_poller_start_internal(
     instance->clone_failed_count = 0;
     instance->clone_over_capacity = 0;
     instance->wipe_advertised = 0;
+    instance->wipe_truncated = false;
     instance->clone_used_gen1 = false;
     instance->clone_capacity_confirmed = false;
     instance->clone_blocks_done = 0;
@@ -1318,6 +1370,7 @@ void iso15693_poller_get_result(Iso15693Poller* instance, Iso15693PollerResult* 
     result->failed_count = instance->clone_failed_count;
     result->over_capacity = instance->clone_over_capacity;
     result->blocks_advertised = instance->wipe_advertised;
+    result->sweep_truncated = instance->wipe_truncated;
     memcpy(result->failed_bitmap, instance->clone_failed_bitmap, sizeof(result->failed_bitmap));
     result->used_gen1 = instance->clone_used_gen1;
     result->capacity_confirmed = instance->clone_capacity_confirmed;
