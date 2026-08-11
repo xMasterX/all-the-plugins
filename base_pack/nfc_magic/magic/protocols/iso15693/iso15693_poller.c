@@ -523,8 +523,23 @@ static bool iso15693_poller_write_source_blocks(
     bool wrote_any = false; // at least one block accepted a write
     bool wrote_above_failure = false; // a block wrote ABOVE one that failed -> not a capacity tail
     uint16_t done = 0; // blocks attempted, the denominator the progress popup shows
-    for(uint16_t block = 0; block < source_count && block < ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8;
-        block++) {
+    // Same wall-clock bound the wipe sweep carries, for the same reason and now a sharper one: Back is
+    // swallowed for the whole ISO15693 write, so this loop is time the user cannot escape. It is
+    // bounded only by the source's block count, and its card-present check is after the loop rather
+    // than inside it. A card slipping off one block in costs the full write timeout on every remaining
+    // block -- about 19s at the 256-block ceiling.
+    //
+    // In practice this only fires on a card that has gone: with one present, writes are quick and even
+    // a 256-block source finishes well inside the budget. So its real effect is to reach the
+    // card-present check below sooner, and report CardLost rather than holding the popup.
+    const uint32_t pass_start = furi_get_tick();
+    const uint32_t pass_budget = furi_ms_to_ticks(ISO15693_POLLER_WIPE_MAX_MS);
+    uint16_t block = 0;
+    for(; block < source_count && block < ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8; block++) {
+        if(furi_get_tick() - pass_start > pass_budget) {
+            FURI_LOG_W(TAG, "clone: time limit reached at block %u of %u", block, source_count);
+            break;
+        }
         if(skip_backdoor &&
            (block == ISO15693_MAGIC_BLK_UID_7654 || block == ISO15693_MAGIC_BLK_UID_3210 ||
             block == ISO15693_MAGIC_BLK_UNLOCK || block == ISO15693_MAGIC_BLK_COMMIT)) {
@@ -598,6 +613,22 @@ static bool iso15693_poller_write_source_blocks(
             instance->clone_over_capacity++;
         }
     }
+    // Blocks the clock cut off were never attempted, so nothing has recorded them. Left alone they
+    // would be counted as written -- the partial screen derives its "cloned" figure by subtracting the
+    // failures from the total -- so a clone stopped at block 10 of 256 would claim all 256 landed.
+    // Record them as failures, which is what they are, and the bitmap then names them in Details.
+    // Only reachable when the card is still present; a cut caused by the card leaving is reported as
+    // CardLost below and these counters are discarded.
+    for(; block < source_count && block < ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8; block++) {
+        if(skip_backdoor &&
+           (block == ISO15693_MAGIC_BLK_UID_7654 || block == ISO15693_MAGIC_BLK_UID_3210 ||
+            block == ISO15693_MAGIC_BLK_UNLOCK || block == ISO15693_MAGIC_BLK_COMMIT)) {
+            continue;
+        }
+        instance->clone_failed_bitmap[block / 8] |= (uint8_t)(1u << (block % 8));
+        instance->clone_failed_count++;
+    }
+
     iso15693_poller_report_progress(instance, done, total); // land on 100%
 
     // Second half of the capacity test, and both halves are needed because they answer different
