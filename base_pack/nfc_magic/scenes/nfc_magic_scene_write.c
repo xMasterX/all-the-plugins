@@ -524,14 +524,26 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
         //
         // NOT extended to the other four magic protocols, even though the same "Back discards rather
         // than aborts" argument applies to them, because for them it would be a trap. Swallowing Back
-        // is only safe where a terminal event is GUARANTEED, and ISO15693 is the only poller here that
-        // guarantees one: iso15693_poller_nfc_callback counts activation failures against
-        // ISO15693_POLLER_MAX_ACTIVATION_ERRORS and reports CardLost when the budget runs out. The
-        // gen1a / gen2 / gen4 / USCUID-UL pollers act only on their Ready event and have no
-        // activation-error budget at all, and gen2, Classic, gen4 and USCUID-direct advance one
-        // block/page per Ready -- so a card removed mid-write simply stops the Ready events, no
-        // terminal event is ever emitted, and Back is the user's only way off the "Writing" popup.
-        // Swallowing it there would need a reboot. If those pollers ever gain a timeout, this can widen.
+        // is only safe where the write is guaranteed to report an outcome.
+        //
+        // ISO15693 is: iso15693_poller_nfc_callback counts activation failures, against
+        // ISO15693_POLLER_MAX_ACTIVATION_ERRORS in general and the shorter
+        // ISO15693_POLLER_WIPE_VERIFY_ACTIVATIONS while a wipe's UID check is outstanding -- the first
+        // reports CardLost, the second reports the wipe's own result. Either way an outcome arrives.
+        //
+        // Two others are safe for a different reason and are excluded only for want of testing: gen1a
+        // and the USCUID-UL backdoor engine run on raw nfc_start, where PollerReady is a poll-cycle
+        // tick rather than an activation, so their handlers keep running with no card and reach Fail or
+        // Partial on their own.
+        //
+        // The genuinely unsafe pair is gen2/Classic (one poller, not two -- the Classic branch starts
+        // the gen2 one) and USCUID-direct. Both are driven by the iso3 poller's Ready event and both
+        // need a RE-ACTIVATION partway through a write: gen2 halts after every block, USCUID-direct
+        // returns NfcCommandReset on a failed page to revive a tag that NAKed a locked one. Once the
+        // card is gone that re-activation fails, the iso3 poller reports it as an Error event which
+        // those callbacks discard, and the state machine is never called again. Measured: 88 seconds
+        // with no state-machine activity at all. Back is the user's only way off that popup, so
+        // swallowing it there needs a reboot to recover. See the linked issue.
         //
         // The card-search phase is untouched: nothing has been written there, so Back still leaves. Any
         // terminal outcome releases the button.
