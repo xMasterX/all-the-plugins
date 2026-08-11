@@ -27,15 +27,38 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
     const bool gen1_failed = (reason == NfcMagicIso15693WriteFailReasonGen1Failed);
     const bool uid_unverifiable = (reason == NfcMagicIso15693WriteFailReasonUidUnverifiable);
     const bool wipe_uid_changed = (reason == NfcMagicIso15693WriteFailReasonWipeUidChanged);
+    const bool wipe_complete = (reason == NfcMagicIso15693WriteFailReasonWipeComplete);
     const bool wipe_mode = (instance->iso15693_mode == NfcMagicIso15693ModeWipe);
 
-    // Over-capacity is a clean success (nothing was lost) -> success tone. Everything else did not
+    // Over-capacity and a completed wipe are clean successes -> success tone. Everything else did not
     // deliver what was asked for -- partial, card-lost, not-magic, nothing-wiped, empty-source, the
     // unexpected UID, a failed gen1 attempt, and a Write UID that had nothing to prove -> error tone.
     notification_message(
-        instance->notifications, over_capacity ? &sequence_success : &sequence_error);
+        instance->notifications,
+        (over_capacity || wipe_complete) ? &sequence_success : &sequence_error);
 
-    if(over_capacity) {
+    if(wipe_complete) {
+        // A clean wipe, reporting what it actually covered. This screen exists because the sweep's
+        // length is measured, not assumed: it stops at the highest block the card answered for, which
+        // can be short of the card's claim (a dead stretch below the advertised count that never
+        // recovers) or past it (a card cloned from a smaller source advertises the smaller count while
+        // still holding everything above). On the bare Success popup those render identically.
+        //
+        // Both figures, no verdict. blocks_total < advertised is NOT flagged as an error: a card
+        // advertising 66 blocks against 64 physical is a normal, undamaged card, and calling its two
+        // dropped phantom blocks a failure is the false report the tail-drop rule exists to prevent.
+        widget_add_string_element(
+            widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Wipe complete");
+        FuriString* text = furi_string_alloc();
+        furi_string_printf(
+            text,
+            "Cleared %u blocks.\nCard claims %u.",
+            instance->iso15693_result.blocks_total,
+            instance->iso15693_result.blocks_advertised);
+        widget_add_string_multiline_element(
+            widget, 0, 13, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(text));
+        furi_string_free(text);
+    } else if(over_capacity) {
         // Clean success: every source block was written, the card just advertises more blocks than it
         // physically holds (the extra source blocks were empty, so nothing was lost). Concise summary
         // here, gen2-style; the exact empty top blocks are behind "Details". We confirm the writes
@@ -255,12 +278,12 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             nfc_magic_scene_iso15693_write_fail_widget_callback,
             instance);
     } else {
-        // over-capacity / partial are (qualified) successes -> "Finish"; not-magic is a failure ->
-        // "Back". The primary exit sits on the left, like the Gen2/USCUID/gen4 result screens.
+        // over-capacity / partial / a completed wipe are (qualified) successes -> "Finish"; not-magic is
+        // a failure -> "Back". The primary exit sits on the left, like the Gen2/USCUID/gen4 screens.
         widget_add_button_element(
             widget,
             GuiButtonTypeLeft,
-            (over_capacity || partial) ? "Finish" : "Back",
+            (over_capacity || partial || wipe_complete) ? "Finish" : "Back",
             nfc_magic_scene_iso15693_write_fail_widget_callback,
             instance);
         // "Details" (forward) carries everything that didn't fit the summary, like Gen2 / USCUID: a

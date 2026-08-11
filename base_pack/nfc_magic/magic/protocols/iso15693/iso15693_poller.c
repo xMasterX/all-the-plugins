@@ -192,6 +192,9 @@ struct Iso15693Poller {
     // block that did write, so nothing was lost. Drives the "clone complete, with a note" Success.
     // Wipe mode: unused (stays 0).
     uint16_t clone_over_capacity;
+    // Wipe mode: the block count the card advertised, kept alongside the measured figure that replaces
+    // it in clone_blocks_total once the sweep ends. Clone mode: unused (stays 0).
+    uint16_t wipe_advertised;
     uint8_t clone_failed_bitmap[ISO15693_POLLER_BLOCK_BITMAP_SIZE];
     // Set when the gen1 fallback (not gen2) actually set the UID. gen1 stamps the UID/commit into
     // data blocks 56/57/62/63, so a clone that fell back to gen1 can't be byte-identical there.
@@ -632,6 +635,7 @@ static uint16_t iso15693_poller_wipe_blocks(
     // whole pass. Overwritten at the end with what the card actually proved it holds, before any terminal
     // event -- so the popup counts against the claim and the result reports against the measurement.
     instance->clone_blocks_total = advertised;
+    instance->wipe_advertised = advertised;
     instance->clone_failed_count = 0;
     instance->clone_over_capacity = 0; // clone-only: a wipe never reports an over-capacity success
     memset(instance->clone_failed_bitmap, 0, sizeof(instance->clone_failed_bitmap));
@@ -1222,6 +1226,7 @@ static void iso15693_poller_start_internal(
     instance->clone_blocks_total = 0;
     instance->clone_failed_count = 0;
     instance->clone_over_capacity = 0;
+    instance->wipe_advertised = 0;
     instance->clone_used_gen1 = false;
     instance->clone_capacity_confirmed = false;
     instance->clone_blocks_done = 0;
@@ -1312,6 +1317,7 @@ void iso15693_poller_get_result(Iso15693Poller* instance, Iso15693PollerResult* 
     result->blocks_total = instance->clone_blocks_total;
     result->failed_count = instance->clone_failed_count;
     result->over_capacity = instance->clone_over_capacity;
+    result->blocks_advertised = instance->wipe_advertised;
     memcpy(result->failed_bitmap, instance->clone_failed_bitmap, sizeof(result->failed_bitmap));
     result->used_gen1 = instance->clone_used_gen1;
     result->capacity_confirmed = instance->clone_capacity_confirmed;

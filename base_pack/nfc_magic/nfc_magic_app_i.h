@@ -126,6 +126,11 @@ typedef enum {
     NfcMagicIso15693WriteFailReasonWipeUidChanged, // wipe: the blocks cleared, but the UID read back
         // afterwards is not the one the card presented before. On gen1 that is the wipe zeroing blocks
         // 56/57, which ARE the UID registers, on a card left armed by an earlier gen1 UID write.
+    NfcMagicIso15693WriteFailReasonWipeComplete, // wipe: a clean success. Here rather than on the bare
+        // Success popup so it can report the range it measured beside the count the card advertises --
+        // otherwise a sweep that stopped short and one that covered the card render identically. The two
+        // figures differing is INFORMATION, not an error: the gen2 CFG frame programs what a card
+        // advertises, so neither direction is a fault.
 } NfcMagicIso15693WriteFailReason;
 
 // Which ISO15693 operation the shared write scene is running. Replaces the old is-wipe bool, now that

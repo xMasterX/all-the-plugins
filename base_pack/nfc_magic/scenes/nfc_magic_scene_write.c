@@ -388,15 +388,20 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
                     instance->iso15693_target_uid,
                     ISO15693_3_UID_SIZE);
             }
-            // An ISO15693 clone that succeeded but left the card advertising more blocks than it
-            // physically holds (empty over-capacity, no data lost) gets a distinct "clone complete,
-            // with a note" screen instead of the plain Success.
+            // Two ISO15693 successes carry information the bare "Success!" popup has nowhere to put:
+            // a clone that left the card advertising more blocks than it physically holds (empty
+            // over-capacity, no data lost), and any wipe -- whose sweep length is measured, so a run
+            // that stopped short of the card's claim and one that covered it would otherwise look the
+            // same. Both go to the result screen with their counts.
             if(instance->protocol == NfcMagicProtocolIso15693 &&
-               instance->iso15693_result.over_capacity > 0) {
+               (instance->iso15693_mode == NfcMagicIso15693ModeWipe ||
+                instance->iso15693_result.over_capacity > 0)) {
                 scene_manager_set_scene_state(
                     instance->scene_manager,
                     NfcMagicSceneIso15693WriteFail,
-                    NfcMagicIso15693WriteFailReasonOverCapacity);
+                    (instance->iso15693_mode == NfcMagicIso15693ModeWipe) ?
+                        NfcMagicIso15693WriteFailReasonWipeComplete :
+                        NfcMagicIso15693WriteFailReasonOverCapacity);
                 scene_manager_next_scene(instance->scene_manager, NfcMagicSceneIso15693WriteFail);
             } else {
                 scene_manager_next_scene(instance->scene_manager, NfcMagicSceneSuccess);

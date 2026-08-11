@@ -139,6 +139,11 @@ typedef struct {
     // NOTE failed_bitmap is indexed by TRUE block number, so a set bit can sit above blocks_total --
     // scan the whole bitmap, not [0, blocks_total).
     uint16_t blocks_total;
+    // Wipe only: the block count the card ADVERTISED, so a report can put the measured figure beside
+    // the claim. The two differing is information, not an error -- a card cloned from a smaller source
+    // advertises the smaller count while still holding more, and a card with fake flash advertises more
+    // than it holds. 0 for a clone.
+    uint16_t blocks_advertised;
     // Blocks that failed and count as a real problem: they held source data (lost), or were empty
     // failures that weren't a clean top-of-card tail. -> Partial. In wipe mode, blocks that still held
     // data after a failed zero-write.
