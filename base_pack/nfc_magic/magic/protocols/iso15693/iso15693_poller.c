@@ -56,6 +56,20 @@
 // so this is roughly a 5-7 second timeout.
 #define ISO15693_POLLER_MAX_ACTIVATION_ERRORS (40U)
 
+// ...except after the wipe's power-cycle, where most of that budget buys nothing. That wait has no
+// "user hasn't presented the card yet" phase to sit through -- the card was in the field a moment ago
+// -- and the sweep already has a result to report, so the only question is whether the card comes back
+// to be checked. Spending the full budget there freezes the popup for four seconds on the common case
+// of the user lifting the card the instant the wipe finishes.
+//
+// Not cut to the minimum, though. Giving up early on a card that IS coming back would skip the UID
+// check on precisely the card that check exists for, which is the failure this state was added to
+// remove; a slow wait costs the user seconds, a short one costs the check. ~1.5s is well past what a
+// present card should need -- the gen2 and gen1 verifies re-activate on the first attempt in practice
+// -- while staying under "the app has hung". If a bench wipe ever logs "card did not return after the
+// field reset" with the card still on the case back, this number is the thing to raise.
+#define ISO15693_POLLER_WIPE_VERIFY_ACTIVATIONS (15U)
+
 // The verify read-back runs right after an RF field power-cycle, so retry the inventory a few times:
 // a card that is momentarily slow to answer must not be misreported as removed (a false CardLost on
 // an otherwise-successful write).
@@ -146,6 +160,7 @@ typedef enum {
     Iso15693WriteStateVerifyGen2, // verify gen2: on a match write the payload; if the UID is untouched
         // report NotGen2 and STOP so the scene can offer the gen1 opt-in (it is not sent from here)
     Iso15693WriteStateVerifyGen1, // verify the opt-in gen1 UID; on a match write the payload
+    Iso15693WriteStateVerifyWipe, // the sweep is done: check the wipe didn't move the card's UID
 } Iso15693WriteState;
 
 struct Iso15693Poller {
@@ -865,9 +880,9 @@ static NfcCommand
         // Wipe zeros the card's own blocks and sends no UID command, so it's a single pass with no
         // backdoor write or field reset.
         if(instance->mode == Iso15693PollerModeWipe) {
-            // Note the UID the card presented, to compare against after the wipe. See the read-back
-            // below for why a wipe needs that at all. (nfc_poller_get_data returns void*, so it has to
-            // land in a typed pointer before being dereferenced.)
+            // Note the UID the card presented, to compare against in VerifyWipe. See that state for why
+            // a wipe needs the comparison at all. (nfc_poller_get_data returns void*, so it has to land
+            // in a typed pointer before being dereferenced.)
             const Iso15693_3Data* wipe_target = nfc_poller_get_data(instance->poller);
             memcpy(instance->original_uid, wipe_target->uid, ISO15693_3_UID_SIZE);
 
@@ -879,38 +894,19 @@ static NfcCommand
                 return NfcCommandStop;
             }
 
-            // Check the UID survived. On gen2 it must -- the wipe sends no UID command and the gen2 UID
-            // lives in a separate register space -- so on the only hardware this PR has, this read is a
-            // regression test that should never fire. On gen1 it is the point: blocks 56/57 ARE the UID
-            // registers, the gen1 arm sequence leaves commit = 0x6996 and nothing ever clears it, so an
-            // already-armed card can have its UID rewritten by a wipe zeroing those blocks. See the OPEN
-            // QUESTION in iso15693_poller_wipe_blocks: reordering blind writes cannot fix that, but
-            // reporting it can, and the screens no longer promise the UID is left alone.
-            //
-            // Reported ONLY from a positive observation of a different UID. If the inventory itself
-            // fails we have learned nothing -- and treating that as a failure would turn "user lifted the
-            // card the instant the wipe finished" into an error on every gen2 wipe, for the sake of a
-            // gen1 case nobody can test. So that is logged and left alone, which does mean a card
-            // bricked so thoroughly that it no longer inventories at all goes unreported.
-            if(wiped > 0) {
-                uint8_t uid_now[ISO15693_3_UID_SIZE] = {0};
-                if(iso15693_poller_verify_inventory(iso_poller, uid_now) != Iso15693_3ErrorNone) {
-                    FURI_LOG_W(TAG, "wipe: card did not answer the UID read-back");
-                } else if(memcmp(uid_now, instance->original_uid, ISO15693_3_UID_SIZE) != 0) {
-                    FURI_LOG_E(TAG, "wipe: the UID CHANGED");
-                    instance->uid_changed = true;
-                    memcpy(instance->uid_readback, uid_now, ISO15693_3_UID_SIZE);
-                }
-            }
-
             // If not a single block accepted the zero-write, nothing was wiped: the card reported no
             // usable geometry, or every block is read-only / write-protected. Report Fail (the UID was
-            // never touched) rather than a hollow Success.
-            Iso15693PollerEvent outcome = (wiped == 0) ?
-                                              Iso15693PollerEventFail :
-                                              iso15693_poller_success_or_partial(instance);
-            iso15693_poller_report(instance, outcome);
-            return NfcCommandStop;
+            // never touched) rather than a hollow Success -- and skip the power-cycle, since no write
+            // landed that could have moved the UID.
+            if(wiped == 0) {
+                iso15693_poller_report(instance, Iso15693PollerEventFail);
+                return NfcCommandStop;
+            }
+
+            // Blocks were cleared, so the UID check below is worth making. Power-cycle the field first,
+            // like every other UID verify in this file.
+            instance->write_state = Iso15693WriteStateVerifyWipe;
+            return NfcCommandReset;
         }
         // Remember the current UID so we can tell whether the gen2 write changed anything. The poller
         // read the UID into its data during activation.
@@ -1028,6 +1024,38 @@ static NfcCommand
         return NfcCommandStop;
     }
 
+    case Iso15693WriteStateVerifyWipe: {
+        // Did the wipe move the card's UID? On gen2 it cannot -- the wipe sends no UID command and the
+        // gen2 UID lives in a separate register space -- so on the only hardware this PR has, this is a
+        // regression test that should never fire. On gen1 it is the point: blocks 56/57 ARE the UID
+        // registers, the gen1 arm sequence leaves commit = 0x6996 and nothing ever clears it, so an
+        // already-armed card can have its UID rewritten by a wipe zeroing those blocks. See the OPEN
+        // QUESTION in iso15693_poller_wipe_blocks: reordering blind writes cannot fix that, but
+        // reporting it can, and the screens no longer promise the UID is left alone.
+        //
+        // This is a state of its own, entered after NfcCommandReset, for the reason iso15693_poller.h
+        // gives for the gen2 and gen1 UID verifies: a card that only latches a written UID on the next
+        // power-up answers the OLD one until then. Read inline at the end of the sweep, the check would
+        // pass having observed nothing -- on precisely the card it exists for, since zeroing 56/57 on an
+        // armed gen1 card IS a gen1 UID write.
+        //
+        // Reported ONLY from a positive observation of a different UID. An inventory that fails tells us
+        // nothing, and treating it as a failure would turn "user lifted the card the instant the wipe
+        // finished" into an error on every gen2 wipe, for the sake of a gen1 case nobody can test. So it
+        // is logged and left alone -- which does mean a card bricked so thoroughly that it no longer
+        // inventories at all goes unreported. The card not coming back from the reset at all is the same
+        // case; see the activation-error path in iso15693_poller_nfc_callback.
+        if(iso15693_poller_verify_inventory(iso_poller, readback) != Iso15693_3ErrorNone) {
+            FURI_LOG_W(TAG, "wipe: card did not answer the UID read-back");
+        } else if(memcmp(readback, instance->original_uid, ISO15693_3_UID_SIZE) != 0) {
+            FURI_LOG_E(TAG, "wipe: the UID CHANGED");
+            instance->uid_changed = true;
+            memcpy(instance->uid_readback, readback, ISO15693_3_UID_SIZE);
+        }
+        iso15693_poller_report(instance, iso15693_poller_success_or_partial(instance));
+        return NfcCommandStop;
+    }
+
     case Iso15693WriteStateVerifyGen1:
     default: {
         if(iso15693_poller_verify_inventory(iso_poller, readback) != Iso15693_3ErrorNone) {
@@ -1076,7 +1104,20 @@ static NfcCommand iso15693_poller_nfc_callback(NfcGenericEvent event, void* cont
     // Activation error => no card in the field (or removed). Retry a bounded number of times so the
     // popup can't hang forever, then report CardLost.
     if(iso_event->type == Iso15693_3PollerEventTypeError) {
-        if(++instance->activation_errors >= ISO15693_POLLER_MAX_ACTIVATION_ERRORS) {
+        const bool verifying_wipe = (instance->write_state == Iso15693WriteStateVerifyWipe);
+        const uint32_t budget = verifying_wipe ? ISO15693_POLLER_WIPE_VERIFY_ACTIVATIONS :
+                                                 ISO15693_POLLER_MAX_ACTIVATION_ERRORS;
+        if(++instance->activation_errors >= budget) {
+            if(verifying_wipe) {
+                // The wipe already ran; only its UID check is outstanding, and that check reports
+                // nothing unless it POSITIVELY observes a different UID (see VerifyWipe). A card that
+                // doesn't come back from the power-cycle is the same non-observation as an inventory
+                // that fails, so report the wipe rather than throwing its result away for a card the
+                // user has most likely just picked up.
+                FURI_LOG_W(TAG, "wipe: card did not return after the field reset");
+                iso15693_poller_report(instance, iso15693_poller_success_or_partial(instance));
+                return NfcCommandStop;
+            }
             iso15693_poller_report(instance, Iso15693PollerEventCardLost);
             return NfcCommandStop;
         }

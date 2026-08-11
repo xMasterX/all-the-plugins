@@ -200,7 +200,9 @@ bool iso15693_poller_source_uses_gen1_blocks(const Iso15693_3Data* source);
 // ISO15693_POLLER_WIPE_MAX_BLOCKS in the .c for the hardware measurement behind that.
 // Blocks 56/57/62/63 are cleared too -- on gen2 they are ordinary user data. On gen1 those same blocks
 // are the UID/unlock/commit registers, so the wipe cannot guarantee the UID survives there; it re-reads
-// the UID afterwards and reports a change as Partial (uid_changed) rather than promising one. A card
+// the UID afterwards -- behind the same field power-cycle the UID writes above use, since a gen1 card
+// latches a written UID on the next power-up -- and reports a change as Partial (uid_changed) rather
+// than promising one. A card
 // that stops answering inventory altogether is logged and not reported -- see the open question in
 // iso15693_poller_wipe_blocks.
 // Reports CardDetected (first activation), then Success / Partial (some blocks failed) / Fail
