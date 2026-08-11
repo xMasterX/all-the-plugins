@@ -530,6 +530,8 @@ static bool iso15693_poller_write_source_blocks(
     // real tags keep provisioned data. Attempt every block.
     bool wrote_any = false; // at least one block accepted a write
     bool wrote_above_failure = false; // a block wrote ABOVE one that failed -> not a capacity tail
+    bool any_failure_answered =
+        false; // a failed block answered a read -> it exists, so no capacity edge
     uint16_t done = 0; // blocks attempted, the denominator the progress popup shows
     // Same wall-clock bound the wipe sweep carries, for the same reason and now a sharper one: Back is
     // swallowed for the whole ISO15693 write, so this loop is time the user cannot escape. It is
@@ -603,16 +605,21 @@ static bool iso15693_poller_write_source_blocks(
         //
         // Only paid for empty failures, which is exactly the case in question; a non-empty failure is
         // lost data whether the block exists or not.
-        bool block_absent = false;
-        if(!non_empty) {
-            uint8_t probe[ISO15693_MAX_BLOCK_SIZE] = {0};
-            block_absent =
-                iso15693_3_poller_read_block(iso_poller, probe, (uint8_t)block, block_size) !=
-                Iso15693_3ErrorNone;
-            if(!block_absent) {
-                FURI_LOG_W(
-                    TAG, "clone: block %u refused the write but answers reads", (unsigned)block);
-            }
+        // Run the probe on EVERY persistent failure, not just the empty ones. It used to be paid only
+        // where the classification hinged on it -- an empty failure can be excused as past capacity, a
+        // non-empty one is lost data either way -- but capacity_confirmed is the strongest factual claim
+        // this feature makes about the user's hardware ("Card too small"), and without this it rests on
+        // position alone: failures form a contiguous run at the top, therefore that is the card's edge.
+        // A block that ANSWERS A READ exists, so a run containing one is not a capacity edge whatever
+        // its shape. Same reasoning already applied to over_capacity; this is the branch it missed.
+        uint8_t probe[ISO15693_MAX_BLOCK_SIZE] = {0};
+        const bool block_absent =
+            iso15693_3_poller_read_block(iso_poller, probe, (uint8_t)block, block_size) !=
+            Iso15693_3ErrorNone;
+        if(!block_absent) {
+            FURI_LOG_W(
+                TAG, "clone: block %u refused the write but answers reads", (unsigned)block);
+            any_failure_answered = true;
         }
 
         if(non_empty || !block_absent) {
@@ -658,7 +665,10 @@ static bool iso15693_poller_write_source_blocks(
     // nothing. (Bail before classifying: the caller reports CardLost and ignores these counters.)
     if(any_failure && !iso15693_poller_card_still_present(iso_poller)) return false;
 
-    const bool failures_are_top_tail = any_failure && wrote_any && !wrote_above_failure;
+    // Position AND evidence: a contiguous run at the top is the shape of a capacity edge, but only a
+    // run whose members all refused reads as well as writes is one.
+    const bool failures_are_top_tail = any_failure && wrote_any && !wrote_above_failure &&
+                                       !any_failure_answered;
     if(failures_are_top_tail) {
         instance->clone_capacity_confirmed = true;
     } else if(instance->clone_over_capacity > 0) {
