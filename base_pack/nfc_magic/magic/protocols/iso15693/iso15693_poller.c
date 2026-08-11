@@ -55,8 +55,8 @@
 #define ISO15693_MAX_BLOCK_SIZE (32U)
 
 // Give up after this many consecutive activation failures so neither the detect popup nor the write
-// popup can hang forever with no card. Each failed activation adds a ~100ms delay in the SDK poller,
-// so this is roughly a 5-7 second timeout.
+// popup can hang forever with no card. iso15693_3_poller_run delays exactly 100ms after each failed
+// activation, so this is roughly a 4 second timeout plus each attempt's own airtime.
 #define ISO15693_POLLER_MAX_ACTIVATION_ERRORS (40U)
 
 // ...except after the wipe's power-cycle, where most of that budget buys nothing. That wait has no
@@ -137,8 +137,8 @@
 // second case -- the block ceiling already caps that at roughly the 18s above.
 //
 // 10 seconds. Working from the ~1s a 64-block wipe takes (see ISO15693_POLLER_WIPE_ABSENT_RUN): a
-// refused block costs 3 writes plus 2 waits plus a read, so an accepted one is a fraction of the
-// 40-70ms, and the largest sweep any card can ask for -- 256 blocks all accepting -- lands somewhere
+// refused block costs 3 writes plus 3 waits plus a read -- the retry loop has no break before its
+// last delay -- so an accepted one is a fraction of the 40-70ms, and the largest sweep any card can ask for -- 256 blocks all accepting -- lands somewhere
 // around 3-4s. Every figure here is an estimate from bench runs that were not instrumented for timing,
 // which is itself an argument for the wide margin. Note the true worst case is this bound PLUS one
 // re-probe of the trailing run, which is not deadline-checked (it would have to abandon the run
