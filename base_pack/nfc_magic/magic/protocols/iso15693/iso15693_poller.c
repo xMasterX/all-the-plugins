@@ -476,7 +476,15 @@ static bool iso15693_poller_write_source_blocks(
     bool skip_backdoor) {
     const Iso15693_3Data* source = instance->clone_source;
     uint16_t source_count = iso15693_3_get_block_count(source);
-    const uint8_t block_size = iso15693_3_get_block_size(source);
+    // Straight out of a loaded .nfc, so hand-editable and unbounded by anything this app controls,
+    // while the read-probe below fills a fixed 32-byte stack buffer. The wipe clamps the same value for
+    // the same reason. Note this is the SOURCE's geometry: on gen2 the CFG frame makes the target match
+    // it, but a gen1 target keeps its own block size, so a mismatch there makes every empty failure read
+    // as absent and fabricates an over-capacity "Holds X/Y".
+    const uint8_t source_block_size = iso15693_3_get_block_size(source);
+    const uint8_t block_size = source_block_size > ISO15693_MAX_BLOCK_SIZE ?
+                                   (uint8_t)ISO15693_MAX_BLOCK_SIZE :
+                                   source_block_size;
 
     // A block number is a uint8_t on the wire and the failure bitmap holds this many bits, so only the
     // first 256 blocks can be attempted or accounted for. Real ISO15693 tags never exceed this; clamp
@@ -896,10 +904,27 @@ static uint16_t iso15693_poller_wipe_blocks(
                 continue;
             }
             FURI_LOG_W(TAG, "wipe: block %u answered on re-probe -- not the card's top", probe);
-            instance->clone_failed_count += still_absent + 1;
+            // Everything below it is now proven interior, so it counts however this block reads.
+            instance->clone_failed_count += still_absent;
             still_absent = 0;
             any_present = true;
             if(probe > highest_present) highest_present = probe;
+            // Classify this one by CONTENT, the way the main loop does. A glitch that swallowed both a
+            // write ACK and its read-back, on a block whose zero-write actually landed, answers here as
+            // present-and-empty: reporting that as "not cleared" manufactures a failure. Only a block
+            // that answers AND still holds data failed to clear.
+            bool holds_data = false;
+            for(uint8_t i = 0; i < size; i++) {
+                if(recheck[i] != 0) {
+                    holds_data = true;
+                    break;
+                }
+            }
+            if(holds_data) {
+                instance->clone_failed_count++;
+            } else {
+                instance->clone_failed_bitmap[probe / 8] &= (uint8_t) ~(1u << (probe % 8));
+            }
         }
         absent_run = still_absent;
         if(absent_run < ISO15693_POLLER_WIPE_ABSENT_RUN) continue;
