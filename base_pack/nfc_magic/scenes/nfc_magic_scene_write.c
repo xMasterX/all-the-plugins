@@ -499,6 +499,39 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
             scene_manager_next_scene(instance->scene_manager, NfcMagicSceneIso15693Gen1Optin);
             consumed = true;
         }
+    } else if(event.type == SceneManagerEventTypeBack) {
+        // ISO15693 only: once a card has been found, Back is swallowed until the poller reports an
+        // outcome.
+        //
+        // It never aborted a write in the first place -- leaving this scene runs on_exit ->
+        // <proto>_poller_stop -> furi_thread_join, which waits for the worker to finish whatever it is
+        // doing. Measured on an ISO15693 wipe: the key-down arrives, the GUI thread sits in the join,
+        // the worker runs the sweep to completion, and only then does the view change. So the write
+        // happens either way; Back only discarded the report.
+        //
+        // Worse for a clone, which has a NfcCommandReset between the UID write and the data pass. Back
+        // landing in that gap leaves the card carrying a new UID and reprogrammed geometry with none of
+        // the source's data -- the "UID only" state the nothing_cloned screen exists to warn about,
+        // reached silently, and at the very start of the write, which is exactly when someone who has
+        // changed their mind presses Back.
+        //
+        // NOT extended to the other four magic protocols, even though the same "Back discards rather
+        // than aborts" argument applies to them, because for them it would be a trap. Swallowing Back
+        // is only safe where a terminal event is GUARANTEED, and ISO15693 is the only poller here that
+        // guarantees one: iso15693_poller_nfc_callback counts activation failures against
+        // ISO15693_POLLER_MAX_ACTIVATION_ERRORS and reports CardLost when the budget runs out. The
+        // gen1a / gen2 / gen4 / USCUID-UL pollers act only on their Ready event and have no
+        // activation-error budget at all, and gen2, Classic, gen4 and USCUID-direct advance one
+        // block/page per Ready -- so a card removed mid-write simply stops the Ready events, no
+        // terminal event is ever emitted, and Back is the user's only way off the "Writing" popup.
+        // Swallowing it there would need a reboot. If those pollers ever gain a timeout, this can widen.
+        //
+        // The card-search phase is untouched: nothing has been written there, so Back still leaves. Any
+        // terminal outcome releases the button.
+        consumed =
+            (instance->protocol == NfcMagicProtocolIso15693 &&
+             scene_manager_get_scene_state(instance->scene_manager, NfcMagicSceneWrite) ==
+                 NfcMagicSceneWriteStateCardFound);
     }
 
     return consumed;
