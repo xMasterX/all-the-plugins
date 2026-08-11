@@ -11,6 +11,28 @@ void nfc_magic_scene_iso15693_write_fail_widget_callback(
     }
 }
 
+// Does this outcome have anything behind "Details"? One answer, for both the button in on_enter and the
+// routing in on_event.
+//
+// Why it is not simply failed_count: a partial whose only problem is the gen1 UID clobber or a rejected
+// AFI/DSFID has zero failed blocks, and the summary shows only its highest-priority qualifier, so the
+// lower one would be reachable nowhere. UID-changed is here because it PRE-EMPTS the partial reason
+// code -- without it a wipe that both moved the UID and left blocks uncleared names them nowhere.
+static bool
+    nfc_magic_scene_iso15693_write_fail_has_details(NfcMagicApp* instance, uint32_t reason) {
+    const Iso15693PollerResult* result = &instance->iso15693_result;
+    switch(reason) {
+    case NfcMagicIso15693WriteFailReasonOverCapacity:
+        return true;
+    case NfcMagicIso15693WriteFailReasonPartial:
+        return result->failed_count > 0 || result->used_gen1 || result->identity_failed;
+    case NfcMagicIso15693WriteFailReasonWipeUidChanged:
+        return result->failed_count > 0;
+    default:
+        return false;
+    }
+}
+
 void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
     NfcMagicApp* instance = context;
     Widget* widget = instance->widget;
@@ -307,19 +329,7 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             (over_capacity || partial || wipe_complete) ? "Finish" : "Back",
             nfc_magic_scene_iso15693_write_fail_widget_callback,
             instance);
-        // "Details" (forward) carries everything that didn't fit the summary, like Gen2 / USCUID: a
-        // partial's failed blocks, an over-capacity's empty top blocks, and the gen1 / AFI-DSFID
-        // caveats. Offer it whenever there is ANY of those -- not just failed blocks. Without the two
-        // caveat terms, a partial whose only problem is the gen1 UID clobber or a rejected AFI/DSFID
-        // (both possible with zero failed blocks) had no Details button, and since the summary shows
-        // only its single highest-priority qualifier, the lower one was then reachable nowhere at all.
-        // wipe_uid_changed is in the list for the same reason: it PRE-EMPTS the partial reason code, so
-        // without it a wipe that both moved the UID and left blocks uncleared would name those blocks
-        // nowhere at all -- the exact failure the caveat terms above were added to prevent.
-        if(over_capacity || (instance->iso15693_result.failed_count > 0 && wipe_uid_changed) ||
-           (partial &&
-            (instance->iso15693_result.failed_count > 0 || instance->iso15693_result.used_gen1 ||
-             instance->iso15693_result.identity_failed))) {
+        if(nfc_magic_scene_iso15693_write_fail_has_details(instance, reason)) {
             widget_add_button_element(
                 widget,
                 GuiButtonTypeRight,
@@ -339,11 +349,6 @@ bool nfc_magic_scene_iso15693_write_fail_on_event(void* context, SceneManagerEve
     const uint32_t reason =
         scene_manager_get_scene_state(instance->scene_manager, NfcMagicSceneIso15693WriteFail);
     const bool card_lost = (reason == NfcMagicIso15693WriteFailReasonCardLost);
-    const bool partial = (reason == NfcMagicIso15693WriteFailReasonPartial);
-    const bool over_capacity = (reason == NfcMagicIso15693WriteFailReasonOverCapacity);
-    // Also needs a Details route: it pre-empts the partial reason code, so its failed blocks would
-    // otherwise be listed nowhere. Kept in step with the button gate in on_enter.
-    const bool wipe_uid_changed = (reason == NfcMagicIso15693WriteFailReasonWipeUidChanged);
 
     if(event.type == SceneManagerEventTypeCustom) {
         if(event.event == GuiButtonTypeLeft) {
@@ -356,7 +361,7 @@ bool nfc_magic_scene_iso15693_write_fail_on_event(void* context, SceneManagerEve
                     instance->scene_manager, NfcMagicSceneIso15693);
             }
         } else if(event.event == GuiButtonTypeRight) {
-            if(partial || over_capacity || wipe_uid_changed) {
+            if(nfc_magic_scene_iso15693_write_fail_has_details(instance, reason)) {
                 // Details -> the affected-block list (failed blocks, or the empty top blocks).
                 scene_manager_next_scene(
                     instance->scene_manager, NfcMagicSceneIso15693PartialDetails);
