@@ -729,6 +729,21 @@ static bool
     return false;
 }
 
+// A block just proved it exists. Every absence still open below it is therefore interior memory that
+// answered nothing -- a fault, not the space above the card -- so those count (their bits are already
+// set) and the run closes. This block becomes the top the report is measured against.
+static void iso15693_poller_wipe_note_present(
+    Iso15693Poller* instance,
+    uint16_t block,
+    uint16_t* absent_run,
+    bool* any_present,
+    uint16_t* highest_present) {
+    instance->clone_failed_count += *absent_run;
+    *absent_run = 0;
+    *any_present = true;
+    if(block > *highest_present) *highest_present = block;
+}
+
 static uint16_t iso15693_poller_wipe_blocks(
     Iso15693Poller* instance,
     Iso15693_3Poller* iso_poller,
@@ -824,10 +839,8 @@ static uint16_t iso15693_poller_wipe_blocks(
             // wasn't the top of the card: those blocks are interior and unreadable, which we do NOT
             // write off -- fail closed and count them (their bits are already set).
             wiped++;
-            instance->clone_failed_count += absent_run;
-            absent_run = 0;
-            any_present = true;
-            highest_present = block;
+            iso15693_poller_wipe_note_present(
+                instance, block, &absent_run, &any_present, &highest_present);
             continue;
         }
 
@@ -842,10 +855,8 @@ static uint16_t iso15693_poller_wipe_blocks(
         if(iso15693_3_poller_read_block(iso_poller, remaining, (uint8_t)block, size) ==
            Iso15693_3ErrorNone) {
             // It answered a read, so it is there: the write was refused, not addressed to nothing.
-            instance->clone_failed_count += absent_run;
-            absent_run = 0;
-            any_present = true;
-            highest_present = block;
+            iso15693_poller_wipe_note_present(
+                instance, block, &absent_run, &any_present, &highest_present);
 
             bool has_data = false;
             for(uint8_t i = 0; i < size; i++) {
@@ -923,11 +934,9 @@ static uint16_t iso15693_poller_wipe_blocks(
                 continue;
             }
             FURI_LOG_W(TAG, "wipe: block %u answered on re-probe -- not the card's top", probe);
-            // Everything below it is now proven interior, so it counts however this block reads.
-            instance->clone_failed_count += still_absent;
-            still_absent = 0;
-            any_present = true;
-            if(probe > highest_present) highest_present = probe;
+            // Same rule, with still_absent standing in for the run while the re-probe re-derives it.
+            iso15693_poller_wipe_note_present(
+                instance, probe, &still_absent, &any_present, &highest_present);
             // Classify this one by CONTENT, the way the main loop does. A glitch that swallowed both a
             // write ACK and its read-back, on a block whose zero-write actually landed, answers here as
             // present-and-empty: reporting that as "not cleared" manufactures a failure. Only a block
