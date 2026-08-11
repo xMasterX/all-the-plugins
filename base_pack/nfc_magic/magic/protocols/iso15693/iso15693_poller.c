@@ -858,7 +858,8 @@ static uint16_t iso15693_poller_wipe_blocks(
             if(absent_run % ISO15693_POLLER_WIPE_ABSENT_RUN == 0 &&
                !iso15693_poller_card_still_present(iso_poller)) {
                 *card_lost = true;
-                return wiped;
+                block++; // this block was attempted; keep `block` the attempted count, as every
+                break; // other exit does
             }
             continue;
         }
@@ -868,7 +869,8 @@ static uint16_t iso15693_poller_wipe_blocks(
         // fail, which is exactly what running out of card looks like. Ask before concluding anything.
         if(!iso15693_poller_card_still_present(iso_poller)) {
             *card_lost = true;
-            return wiped;
+            block++; // attempted, so it counts -- see the note at the other card-lost exit
+            break;
         }
 
         // The card answered, but that does NOT make this run the top of it, and the tail-drop below is
@@ -921,6 +923,11 @@ static uint16_t iso15693_poller_wipe_blocks(
     //
     // Not closed: a block already dead when the card was presented is indistinguishable from a phantom
     // here and drops with them. Different symptom -- degraded before the wipe rather than during it.
+    //
+    // One premise this cannot establish: when the clock ends the sweep, the run it ends on is wherever
+    // the budget ran out rather than the card's top, so dropping the part of it above the advertised
+    // count is unverified. sweep_truncated is what carries that -- the outcome is reported as Partial
+    // and names where the sweep stopped, so the drop is not passing those blocks off as absent memory.
     for(uint16_t i = block - absent_run; i < block; i++) {
         if(i < advertised && iso15693_poller_block_held_data(target, i, size)) {
             // Proven present, so it also has to count toward the measured total -- otherwise
@@ -937,9 +944,12 @@ static uint16_t iso15693_poller_wipe_blocks(
     // Report against what the card proved it holds, not what it advertises.
     instance->clone_blocks_total = any_present ? (uint16_t)(highest_present + 1) : 0;
 
-    // One line covering every exit (card's top, block ceiling, time limit), so the wall-clock cost of a
-    // sweep is measurable on any card rather than estimated -- ISO15693_POLLER_WIPE_MAX_MS is set from
-    // figures nobody has instrumented, and this is what would settle it.
+    // One line covering every exit -- the card's top, the block ceiling, the time limit, and a card
+    // lifted mid-sweep, which is why those two paths break rather than return: the lifted card is the
+    // case where the time spent before noticing matters most. The wall-clock cost of a sweep is then
+    // measurable on any card rather than estimated, which ISO15693_POLLER_WIPE_MAX_MS needs -- it is
+    // set from figures nobody has instrumented. (The caller discards the counters on a card-lost exit,
+    // so the tail arithmetic above running for it is harmless.)
     FURI_LOG_I(
         TAG,
         "wipe: %u blocks attempted, %u cleared, %lums (advertised %u)",
