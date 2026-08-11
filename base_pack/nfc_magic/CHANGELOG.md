@@ -31,14 +31,21 @@ the copy advertises the same chip identity.
   count is programmable — cloning a 28-block source onto a 64-block card makes it advertise 28 — while
   the blocks above that count stay readable and writable. A wipe that trusted the count would therefore
   clear 28 of 64 and report success, leaving the previous card's data reachable. Instead the wipe sweeps
-  upward past the advertised count until a run of blocks answers neither a write nor a read, attempts
-  every block the card claims even where a stretch of them answers nothing, and reports against what the
-  card proved it holds, so blocks that do not exist are never reported as blocks that wouldn't clear. It
-  is bounded by a time limit as well as by the 256-block ceiling, and a wipe cut short by that limit
-  says so rather than presenting the range it reached as the card's size.
+  upward past the advertised count until a run of blocks answers neither a write nor a read, and never
+  stops early on a dead stretch inside the range the card claims. Two limits do end it: the 256-block
+  ceiling, and a time limit for a card that answers reads at every address and so never accumulates a
+  run. A wipe stopped by that limit is reported as **partial** — it names where it stopped and offers a
+  retry, because blocks above the cut may still hold data.
 - **A wipe reports the range it covered** — "Cleared *N* blocks. Card claims *M*." Both figures, no
-  verdict: the advertised count is programmable, so the two differing means the card was cloned from a
-  smaller source or has fake flash, neither of which is a fault.
+  verdict where the difference is benign: the advertised count is programmable, so a card cloned from a
+  smaller source, or one with fake flash, will show a mismatch without anything being wrong. Where the
+  difference *is* a fault — a dead stretch inside the claimed range, or a sweep the clock cut short —
+  it is reported as such rather than hidden in the counts.
+- **Blocks the card claims are not written off without evidence.** A block that answers neither a write
+  nor a read may be memory that does not exist, or memory that has stopped responding while still
+  holding data. Below the card's own claimed count the wipe distinguishes them: a block whose contents
+  were read when the card was first activated provably exists and provably held data, so it is reported
+  as uncleared rather than dropped as absent.
 - **Live "Writing X / N" progress** during a clone or wipe, as the USCUID-UL clone already had.
 - **Write UID** — manual magic backdoor UID write. Tries gen2 first and, only if that leaves the UID
   unchanged, offers the same opt-in gen1 attempt the clone does.
@@ -71,17 +78,22 @@ the copy advertises the same chip identity.
 - **A wipe counts a block as unwiped unless it can show the block is clear**, by reading it back after a
   failed write. A block that answers a read but still holds data is a real failure and is named. A block
   that answers nothing is provisional: if anything above it answers, it is an interior fault and counted;
-  if the run continues to the end of the sweep, it is the space above the card's real top and belongs to
-  no one. Before concluding that, the run is re-probed, so a momentary dropout is not mistaken for the
-  end of the card.
+  if the run continues to the end of the sweep it is treated as the space above the card's real top —
+  but only above the count the card claims, and only where the block was not read at activation. Before
+  concluding any of it, the run is re-probed, so a momentary dropout is not mistaken for the end of the
+  card.
 - **A wipe re-reads the UID when it finishes**, behind an RF field power-cycle, since a gen1 card
   latches a written UID only on the next power-up. The wipe sends no UID command, but on a gen1 card
   blocks 56/57 *are* the UID registers. If the UID read back differs from the one the card presented, the result
   is reported as partial on a **"UID changed"** screen that prints the UID the card now answers to —
-  without which the card would be unreachable. A card that stops answering entirely cannot be reported.
+  without which the card would be unreachable. If the card never comes back from the power-cycle, or no
+  longer answers at all, the check has reached no answer: the wipe says "UID not re-checked" rather than
+  implying the identity was confirmed.
 - **A card lifted mid-write reports "Card removed".** Losing the card partway through makes every
   remaining block fail, which looks the same as reaching the card's physical capacity, so when a block
-  fails the write re-checks that the card is still present before reporting a capacity verdict.
+  fails the write re-checks that the card is still present before reporting a capacity verdict. Both the
+  wipe and the clone's data pass are bounded by a time limit as well, so a card that leaves mid-write is
+  reported rather than leaving the screen held for the length of the whole block range.
 - **Partial and over-capacity results are a summary plus a Details screen**, matching the Gen2 /
   USCUID-UL partial screens. The summary carries the counts and the most significant caveat, and
   **Details** lists the blocks involved plus any further caveats — the gen1 56/57/62/63 overwrite, or
