@@ -94,6 +94,12 @@
 // Emit more events than the queue can hold and the worker blocks forever, the join never returns,
 // and the device hangs with the write popup on screen.
 //
+// Four of those names are not greppable from the shipped SDK headers -- VIEW_DISPATCHER_QUEUE_LEN, the
+// FuriWaitForever in the send, iso15693_3_poller_filter_error and write_block_response_parse. They were
+// read in the firmware source (applications/services/gui/view_dispatcher.c and
+// lib/nfc/protocols/iso15693_3/), which the app builds against but does not ship. Stated so that
+// finding nothing is not mistaken for the argument being stale: the bound is load-bearing.
+//
 // Staying well under 16 keeps that impossible. Emitting per block does NOT -- if you want that, the
 // loop has to yield to the Nfc worker between blocks (return NfcCommandContinue and resume from a
 // cursor) the way uscuid_ul_poller.c does, and only then is per-block safe.
@@ -256,7 +262,10 @@ struct Iso15693Poller {
     // The destructive gen1 UID sequence was sent this run, so blocks 56/57/62/63 have been overwritten
     // whatever the outcome. Reported so a gen1 failure can name them instead of saying only "not a
     // magic tag". Equal to attempt_gen1 -- kept as its own result field so the scene doesn't have to
-    // know that the gen1 frames go out unconditionally at Start.
+    // know when the gen1 frames are sent. Note "unconditionally" would be too strong: two paths return
+    // from Start before the send (a Write-UID asking for the card's own UID, and an empty clone source),
+    // leaving this true with nothing transmitted. Neither is reachable from the opt-in screen today,
+    // but start_clone_gen1 / start_write_uid_gen1 are public entry points.
     bool gen1_attempted;
     // Write-UID only: the requested UID is the one the card already has, so reading it back afterwards
     // proves nothing about the card -- a plain tag passes the check having ignored every frame. The run

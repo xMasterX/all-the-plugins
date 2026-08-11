@@ -153,8 +153,11 @@ typedef struct {
     // an observation rather than a clean result, and a caller reporting success should say so.
     bool uid_verified;
     // Blocks that failed and count as a real problem: they held source data (lost), or were empty
-    // failures that weren't a clean top-of-card tail. -> Partial. In wipe mode, blocks that still held
-    // data after a failed zero-write.
+    // failures that weren't a clean top-of-card tail. -> Partial. In wipe mode this is every block the
+    // report holds against the card, which is more than the ones that still held data: interior blocks
+    // that answered nothing are folded in too (they cannot be shown clear, so they fail closed), as are
+    // blocks proven present by the activation cache. It prints to the user as "Not cleared: %u" and
+    // names indices in Details, so it has to be the whole set.
     uint16_t failed_count;
     // Empty blocks that failed and form a contiguous run at the top of the card (past physical
     // capacity; nothing lost) -> Success with a note. Unused by a wipe.
@@ -205,7 +208,9 @@ void iso15693_poller_get_result(Iso15693Poller* instance, Iso15693PollerResult* 
 // would overwrite -- so the write flow can warn before a possible gen1 clone. Source inspection only.
 bool iso15693_poller_source_uses_gen1_blocks(const Iso15693_3Data* source);
 
-// Wipe: write zeros to every data block the card PHYSICALLY holds, like proxmark's 'hf 15 wipe'.
+// Wipe: write zeros to every data block the card PHYSICALLY holds -- which is exactly what proxmark's
+// 'hf 15 wipe' does NOT do: its loop carries a 0..0xFF bound but breaks at the first refused write, so
+// on a 64-block card it examines 65.
 // It does NOT stop at the card's advertised block count -- the gen2 CFG frame programs that number, so
 // a card that has been cloned from a smaller source advertises the smaller count while still holding
 // (and still serving reads for) everything above it. The sweep therefore runs upward past the
