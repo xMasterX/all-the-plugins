@@ -29,11 +29,16 @@ the copy advertises the same chip identity.
   test against.
 - **The wipe is bounded by the card, not by what the card claims.** A magic card's advertised block
   count is programmable — cloning a 28-block source onto a 64-block card makes it advertise 28 — while
-  the blocks above that count stay readable and writable. A wipe that trusted the advertised count
-  therefore cleared 28 of 64 blocks and reported success, leaving the previous card's data in place and
-  reachable. The wipe now sweeps upward past the advertised count until a run of blocks answers neither
-  a write nor a read, and reports against what the card proved it holds. That also means a card
-  advertising more blocks than it holds no longer reports a partial wipe for blocks that don't exist.
+  the blocks above that count stay readable and writable. A wipe that trusted the count would therefore
+  clear 28 of 64 and report success, leaving the previous card's data reachable. Instead the wipe sweeps
+  upward past the advertised count until a run of blocks answers neither a write nor a read, attempts
+  every block the card claims even where a stretch of them answers nothing, and reports against what the
+  card proved it holds, so blocks that do not exist are never reported as blocks that wouldn't clear. It
+  is bounded by a time limit as well as by the 256-block ceiling, and a wipe cut short by that limit
+  says so rather than presenting the range it reached as the card's size.
+- **A wipe reports the range it covered** — "Cleared *N* blocks. Card claims *M*." Both figures, no
+  verdict: the advertised count is programmable, so the two differing means the card was cloned from a
+  smaller source or has fake flash, neither of which is a fault.
 - **Live "Writing X / N" progress** during a clone or wipe, as the USCUID-UL clone already had.
 - **Write UID** — manual magic backdoor UID write. Tries gen2 first and, only if that leaves the UID
   unchanged, offers the same opt-in gen1 attempt the clone does.
@@ -69,8 +74,9 @@ the copy advertises the same chip identity.
   if the run continues to the end of the sweep, it is the space above the card's real top and belongs to
   no one. Before concluding that, the run is re-probed, so a momentary dropout is not mistaken for the
   end of the card.
-- **A wipe re-reads the UID when it finishes.** The wipe sends no UID command, but on a gen1 card blocks
-  56/57 *are* the UID registers. If the UID read back differs from the one the card presented, the result
+- **A wipe re-reads the UID when it finishes**, behind an RF field power-cycle, since a gen1 card
+  latches a written UID only on the next power-up. The wipe sends no UID command, but on a gen1 card
+  blocks 56/57 *are* the UID registers. If the UID read back differs from the one the card presented, the result
   is reported as partial on a **"UID changed"** screen that prints the UID the card now answers to —
   without which the card would be unreachable. A card that stops answering entirely cannot be reported.
 - **A card lifted mid-write reports "Card removed".** Losing the card partway through makes every
@@ -79,10 +85,10 @@ the copy advertises the same chip identity.
 - **Partial and over-capacity results are a summary plus a Details screen**, matching the Gen2 /
   USCUID-UL partial screens. The summary carries the counts and the most significant caveat, and
   **Details** lists the blocks involved plus any further caveats — the gen1 56/57/62/63 overwrite, or
-  an AFI/DSFID the card wouldn't take. A clean success is a plain success screen, and the outright
-  failures are a single message.
+  an AFI/DSFID the card wouldn't take. A clean clone is a plain success screen, a clean wipe reports its
+  block range, and the outright failures are a single message.
 - Each outcome has its own screen: **"Card removed"**, **"Nothing to clone"** for a source with no data
-  blocks, a wipe failure saying no blocks could be cleared and the UID is unchanged, and a clone failure
+  blocks, a wipe failure saying no block accepted the zero-write, and a clone failure
   for the case where the UID was written but not one data block would take — the card would otherwise
   look right to a UID-only reader while holding none of the data. Detect and write popups time out
   after a few seconds with no card.
@@ -94,6 +100,10 @@ the copy advertises the same chip identity.
   writes before anything can be verified, so if the UID doesn't take, blocks 56/57/62/63 have already
   been overwritten on what is most likely an ordinary tag. The failure screen says which blocks, so
   they can be restored from a backup.
+- **Back is ignored during an ISO15693 write**, from the moment a card is found until the write reports
+  an outcome. It cannot abort a write in any case — leaving the screen waits for the write to finish and
+  then discards its report — and on a clone, pressing it between the UID write and the data pass could
+  leave the card carrying a new UID with none of the source's data. Other magic protocols are unchanged.
 - **Write UID refuses to "verify" a UID the card already has.** The editor pre-fills with the UID from
   the last Info read, so writing it straight back is two taps away — and a read-back against a UID the
   card already carries is passed by any tag at all, magic or not. That would have reported Success
