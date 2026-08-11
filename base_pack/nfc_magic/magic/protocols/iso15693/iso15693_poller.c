@@ -144,8 +144,10 @@
 // the run is caught by the re-probe at the trip, which is what makes the run length a tolerance rather
 // than a blind spot.
 //
-// The run length is deliberately NOT the only guard: the re-probe at the trip is what makes a filled run
-// recoverable, so this number sets how much dropout is absorbed silently rather than how much is caught.
+// The run length is deliberately NOT the only guard, and it never ends the sweep below the advertised
+// count -- the card claims those blocks, so the sweep attempts all of them however they answer. Above
+// that, the re-probe at the trip is what makes a filled run recoverable, so this number sets how much
+// dropout is absorbed silently rather than how much is caught.
 // What remains: a card whose memory is present but answers neither a write nor a read across a whole run,
 // even on re-probe, is indistinguishable from one that ends there by any means available here. Note the
 // counting rule that keeps the fake-flash case honest -- a trailing run is judged by whether it answers,
@@ -736,53 +738,73 @@ static uint16_t iso15693_poller_wipe_blocks(
         // let position decide (a later success folds it into the failures above; a run the sweep ends
         // on is dropped below).
         instance->clone_failed_bitmap[block / 8] |= (uint8_t)(1u << (block % 8));
-        if(++absent_run >= ISO15693_POLLER_WIPE_ABSENT_RUN) {
-            // The clone loop's ambiguity, in the same place: a card lifted mid-sweep makes every
-            // remaining write AND read fail, which is exactly what running out of card looks like. Ask
-            // before concluding anything about capacity.
-            if(!iso15693_poller_card_still_present(iso_poller)) {
+        if(++absent_run < ISO15693_POLLER_WIPE_ABSENT_RUN) continue;
+
+        // Below the advertised count a long run is not a capacity signal at all: the card itself says
+        // those blocks exist, and the bounded loop this sweep replaced always attempted every one of
+        // them. Stopping here would abandon the rest and report a bare Success over them -- a 64-block
+        // card with a coupling wobble at block 15 would report "wiped 15 of 15" while 15..63 still held
+        // the previous card's data. So keep sweeping. The absences stay provisional and the ordinary
+        // rules resolve them: a later block that answers folds them in as interior faults, and a run
+        // still open when the sweep ends is dropped as the space above the card. This changes only where
+        // the sweep may STOP; the tail-drop rule is untouched, so a card claiming 66 blocks against 64
+        // physical still drops 64/65 rather than reporting them as "not cleared".
+        //
+        // The card-present check is still worth making while this holds -- a lifted card looks exactly
+        // like a dead stretch -- but only once per run length, so a mostly-dead card doesn't pay an
+        // inventory per block.
+        if(block + 1 < advertised) {
+            if(absent_run % ISO15693_POLLER_WIPE_ABSENT_RUN == 0 &&
+               !iso15693_poller_card_still_present(iso_poller)) {
                 *card_lost = true;
                 return wiped;
             }
-
-            // The card answered, but that does NOT make this run the top of it, and the tail-drop below
-            // is about to delete the whole run from the report. Two ways that would be wrong:
-            //   - the run is a dropout, not an edge. A wobble long enough to fill the run leaves the
-            //     sweep concluding the card ended where the wobble started, silently abandoning
-            //     everything above it -- the old bounded loop always attempted the advertised range, so
-            //     that would be a regression, and the silent kind this sweep exists to remove.
-            //   - the run's lowest members are real and only its top is absent. A single transient on the
-            //     block just below the physical top gets padded out to a full run by the nonexistent
-            //     blocks above it, and the drop then discards a block that still holds data.
-            // So re-probe the run now that the card is known to be answering. Any member that reads is
-            // there after all: it did not clear, and nothing below it in the run can be the top either,
-            // so both fail closed. Then re-derive the trailing absence; if the run no longer reaches the
-            // threshold, this was not the edge and the sweep carries on.
-            // Bounded by the run length, and only ever spent when a run trips -- once, on a healthy card.
-            const uint16_t run_start = (uint16_t)(block + 1 - absent_run);
-            uint16_t still_absent = 0;
-            for(uint16_t probe = run_start; probe <= block; probe++) {
-                uint8_t recheck[ISO15693_MAX_BLOCK_SIZE] = {0};
-                if(iso15693_3_poller_read_block(iso_poller, recheck, (uint8_t)probe, size) !=
-                   Iso15693_3ErrorNone) {
-                    still_absent++;
-                    continue;
-                }
-                FURI_LOG_W(
-                    TAG, "wipe: block %u answered on re-probe -- not the card's top", probe);
-                instance->clone_failed_count += still_absent + 1;
-                still_absent = 0;
-                any_present = true;
-                if(probe > highest_present) highest_present = probe;
-            }
-            absent_run = still_absent;
-            if(absent_run < ISO15693_POLLER_WIPE_ABSENT_RUN) continue;
-
-            FURI_LOG_I(
-                TAG, "wipe: card ends at block %u (advertised %u)", highest_present, advertised);
-            block++; // count this block into the tail arithmetic below
-            break;
+            continue;
         }
+
+        // The whole advertised range has been attempted, so the run may now be the card's top. The
+        // clone loop's ambiguity first: a card lifted mid-sweep makes every remaining write AND read
+        // fail, which is exactly what running out of card looks like. Ask before concluding anything.
+        if(!iso15693_poller_card_still_present(iso_poller)) {
+            *card_lost = true;
+            return wiped;
+        }
+
+        // The card answered, but that does NOT make this run the top of it, and the tail-drop below is
+        // about to delete the whole run from the report. Two ways that would be wrong:
+        //   - the run is a dropout, not an edge. A wobble long enough to fill the run leaves the sweep
+        //     concluding the card ended where the wobble started, silently abandoning everything above
+        //     it. Past the advertised count there is no other guard against that.
+        //   - the run's lowest members are real and only its top is absent. A single transient on the
+        //     block just below the physical top gets padded out to a full run by the nonexistent blocks
+        //     above it, and the drop then discards a block that still holds data.
+        // So re-probe the run now that the card is known to be answering. Any member that reads is there
+        // after all: it did not clear, and nothing below it in the run can be the top either, so both
+        // fail closed. Then re-derive the trailing absence; if the run no longer reaches the threshold,
+        // this was not the edge and the sweep carries on.
+        // Bounded by the run length, and only ever spent when a run trips -- once, on a healthy card.
+        const uint16_t run_start = (uint16_t)(block + 1 - absent_run);
+        uint16_t still_absent = 0;
+        for(uint16_t probe = run_start; probe <= block; probe++) {
+            uint8_t recheck[ISO15693_MAX_BLOCK_SIZE] = {0};
+            if(iso15693_3_poller_read_block(iso_poller, recheck, (uint8_t)probe, size) !=
+               Iso15693_3ErrorNone) {
+                still_absent++;
+                continue;
+            }
+            FURI_LOG_W(TAG, "wipe: block %u answered on re-probe -- not the card's top", probe);
+            instance->clone_failed_count += still_absent + 1;
+            still_absent = 0;
+            any_present = true;
+            if(probe > highest_present) highest_present = probe;
+        }
+        absent_run = still_absent;
+        if(absent_run < ISO15693_POLLER_WIPE_ABSENT_RUN) continue;
+
+        FURI_LOG_I(
+            TAG, "wipe: card ends at block %u (advertised %u)", highest_present, advertised);
+        block++; // count this block into the tail arithmetic below
+        break;
     }
 
     // Whatever absence is still unresolved is the run the sweep ended on -- contiguous by construction,
