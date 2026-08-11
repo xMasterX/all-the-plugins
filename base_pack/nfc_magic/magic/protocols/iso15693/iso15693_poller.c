@@ -651,6 +651,20 @@ static bool iso15693_poller_write_source_blocks(
 // OPEN QUESTION in the loop below.
 // Returns the number of blocks that actually accepted the zero-write, so the caller can tell a
 // genuine wipe from one where nothing could be cleared.
+// Did this block hold data at activation? Only TRUE means anything: a non-zero byte can only have come
+// from a real read, so it proves the block existed and held data. FALSE proves nothing -- see the
+// read-back note in the sweep for why a zeroed entry is a failed read and an empty block alike.
+// The range check is not defensive; iso15693_3_get_block_data furi_check()s its index.
+static bool
+    iso15693_poller_block_held_data(const Iso15693_3Data* data, uint16_t block, uint8_t size) {
+    if(block >= iso15693_3_get_block_count(data)) return false;
+    const uint8_t* cached = iso15693_3_get_block_data(data, (uint8_t)block);
+    for(uint8_t i = 0; i < size; i++) {
+        if(cached[i] != 0) return true;
+    }
+    return false;
+}
+
 static uint16_t iso15693_poller_wipe_blocks(
     Iso15693Poller* instance,
     Iso15693_3Poller* iso_poller,
@@ -850,13 +864,29 @@ static uint16_t iso15693_poller_wipe_blocks(
         break;
     }
 
-    // Whatever absence is still unresolved is the run the sweep ended on -- contiguous by construction,
-    // since any block that answered cleared the counter -- so it is the space above the card's real top.
-    // Those blocks were never the card's to clear, so drop them from the bitmap and the count rather
-    // than reporting a partial wipe for memory that does not exist. This is what made a factory-fresh
-    // card advertising 66 blocks against 64 physical report "Wiped 64/66, not cleared: 2" after a wipe
-    // that had in fact cleared every block there was.
+    // Whatever absence is still unresolved is the run the sweep ended on, contiguous by construction.
+    // Above the advertised count it is the space beyond the card's real top -- never the card's to
+    // clear, and dropping it is what stops a card advertising 66 blocks against 64 physical reporting
+    // "Wiped 64/66, not cleared: 2".
+    //
+    // Below that count the premise inverts and collides with the floor, which keeps sweeping there
+    // precisely because the card's claim is evidence the blocks exist. Unqualified, the drop wins and a
+    // card whose blocks stop answering mid-range reports a clean Success over data it never cleared.
+    // block_held_data is the discriminator: proof of existence keeps a block, absence of proof drops
+    // it, so a fake-flash card's phantoms still go.
+    //
+    // Not closed: a block already dead when the card was presented is indistinguishable from a phantom
+    // here and drops with them. Different symptom -- degraded before the wipe rather than during it.
     for(uint16_t i = block - absent_run; i < block; i++) {
+        if(i < advertised && iso15693_poller_block_held_data(target, i, size)) {
+            // Proven present, so it also has to count toward the measured total -- otherwise
+            // failed_count can exceed blocks_total and the partial screen renders "Wiped 0/20,
+            // not cleared: 44".
+            instance->clone_failed_count++;
+            any_present = true;
+            if(i > highest_present) highest_present = i;
+            continue;
+        }
         instance->clone_failed_bitmap[i / 8] &= (uint8_t) ~(1u << (i % 8));
     }
 
