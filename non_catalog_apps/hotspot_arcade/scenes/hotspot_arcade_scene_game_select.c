@@ -19,8 +19,12 @@ typedef enum {
     GameBattleship,
     GameSpectrum,
     GameKmk,
+    GameFillBlank,
     GameChess,
     GameSecrets,
+    GameWerewolf,
+    GameSpyfall,
+    GameFrankendraw,
     GameNone,
 } GameIndex;
 
@@ -39,6 +43,10 @@ void hotspot_arcade_scene_game_select_on_enter(void* context) {
     submenu_add_item(app->submenu, "Spectrum", GameSpectrum, ha_game_cb, app);
     submenu_add_item(app->submenu, "Kiss Marry Kill", GameKmk, ha_game_cb, app);
     submenu_add_item(app->submenu, "Secrets", GameSecrets, ha_game_cb, app);
+    submenu_add_item(app->submenu, "Fill the Blank", GameFillBlank, ha_game_cb, app);
+    submenu_add_item(app->submenu, "Werewolf", GameWerewolf, ha_game_cb, app);
+    submenu_add_item(app->submenu, "Spyfall", GameSpyfall, ha_game_cb, app);
+    submenu_add_item(app->submenu, "Draw a Monster", GameFrankendraw, ha_game_cb, app);
     submenu_add_item(app->submenu, "Reaction Duel", GameReact, ha_game_cb, app);
     submenu_add_item(app->submenu, "Connect Four", GameConnect4, ha_game_cb, app);
     submenu_add_item(app->submenu, "Tic-Tac-Toe", GameTicTacToe, ha_game_cb, app);
@@ -50,23 +58,27 @@ void hotspot_arcade_scene_game_select_on_enter(void* context) {
     submenu_add_item(app->submenu, "Battleship", GameBattleship, ha_game_cb, app);
     submenu_add_item(app->submenu, "Chess", GameChess, ha_game_cb, app);
     submenu_add_item(app->submenu, "None (lobby)", GameNone, ha_game_cb, app);
-    uint32_t sel = app->active_game == HA_GAME_TRIVIA     ? GameTrivia :
-                   app->active_game == HA_GAME_WYR        ? GameWyr :
-                   app->active_game == HA_GAME_SCRAMBLE   ? GameScramble :
-                   app->active_game == HA_GAME_SPECTRUM   ? GameSpectrum :
-                   app->active_game == HA_GAME_KMK        ? GameKmk :
-                   app->active_game == HA_GAME_REACT      ? GameReact :
-                   app->active_game == HA_GAME_CONNECT4   ? GameConnect4 :
-                   app->active_game == HA_GAME_TICTACTOE  ? GameTicTacToe :
-                   app->active_game == HA_GAME_DOTS       ? GameDots :
-                   app->active_game == HA_GAME_REVERSI    ? GameReversi :
-                   app->active_game == HA_GAME_DRAW       ? GameDraw :
-                   app->active_game == HA_GAME_PONG       ? GamePong :
-                   app->active_game == HA_GAME_GUESSCOLOR ? GameGuessColor :
-                   app->active_game == HA_GAME_BATTLESHIP ? GameBattleship :
-                   app->active_game == HA_GAME_CHESS      ? GameChess :
-                   app->active_game == HA_GAME_SECRETS    ? GameSecrets :
-                                                            GameNone;
+    uint32_t sel = app->active_game == HA_GAME_TRIVIA      ? GameTrivia :
+                   app->active_game == HA_GAME_WYR         ? GameWyr :
+                   app->active_game == HA_GAME_SCRAMBLE    ? GameScramble :
+                   app->active_game == HA_GAME_SPECTRUM    ? GameSpectrum :
+                   app->active_game == HA_GAME_KMK         ? GameKmk :
+                   app->active_game == HA_GAME_FILLBLANK   ? GameFillBlank :
+                   app->active_game == HA_GAME_SPYFALL     ? GameSpyfall :
+                   app->active_game == HA_GAME_REACT       ? GameReact :
+                   app->active_game == HA_GAME_CONNECT4    ? GameConnect4 :
+                   app->active_game == HA_GAME_TICTACTOE   ? GameTicTacToe :
+                   app->active_game == HA_GAME_DOTS        ? GameDots :
+                   app->active_game == HA_GAME_REVERSI     ? GameReversi :
+                   app->active_game == HA_GAME_DRAW        ? GameDraw :
+                   app->active_game == HA_GAME_PONG        ? GamePong :
+                   app->active_game == HA_GAME_GUESSCOLOR  ? GameGuessColor :
+                   app->active_game == HA_GAME_BATTLESHIP  ? GameBattleship :
+                   app->active_game == HA_GAME_CHESS       ? GameChess :
+                   app->active_game == HA_GAME_SECRETS     ? GameSecrets :
+                   app->active_game == HA_GAME_WEREWOLF    ? GameWerewolf :
+                   app->active_game == HA_GAME_FRANKENDRAW ? GameFrankendraw :
+                                                             GameNone;
     submenu_set_selected_item(app->submenu, sel);
     view_dispatcher_switch_to_view(app->view_dispatcher, HaViewSubmenu);
 }
@@ -111,6 +123,10 @@ bool hotspot_arcade_scene_game_select_on_event(void* context, SceneManagerEvent 
         ha_select_game(app, HA_GAME_KMK);
         scene_manager_previous_scene(app->scene_manager);
         return true;
+    case GameFillBlank:
+        ha_select_game(app, HA_GAME_FILLBLANK);
+        scene_manager_previous_scene(app->scene_manager);
+        return true;
     case GameReact:
         ha_select_game(app, HA_GAME_REACT);
         scene_manager_previous_scene(app->scene_manager);
@@ -137,6 +153,18 @@ bool hotspot_arcade_scene_game_select_on_event(void* context, SceneManagerEvent 
         return true;
     case GameSecrets:
         ha_select_game(app, HA_GAME_SECRETS);
+        scene_manager_previous_scene(app->scene_manager);
+        return true;
+    case GameWerewolf:
+        ha_select_game(app, HA_GAME_WEREWOLF);
+        scene_manager_previous_scene(app->scene_manager);
+        return true;
+    case GameSpyfall:
+        ha_select_game(app, HA_GAME_SPYFALL);
+        scene_manager_previous_scene(app->scene_manager);
+        return true;
+    case GameFrankendraw:
+        ha_select_game(app, HA_GAME_FRANKENDRAW);
         scene_manager_previous_scene(app->scene_manager);
         return true;
     case GameNone:
