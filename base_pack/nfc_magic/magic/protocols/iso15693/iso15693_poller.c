@@ -548,15 +548,18 @@ static bool iso15693_poller_write_source_blocks(
     // than inside it. A card slipping off one block in costs the full write timeout on every remaining
     // block -- about 19s at the 256-block ceiling.
     //
-    // In practice this only fires on a card that has gone: with one present, writes are quick and even
-    // a 256-block source finishes well inside the budget. So its real effect is to reach the
-    // card-present check below sooner, and report CardLost rather than holding the popup.
+    // Usually this fires on a card that has gone, where its effect is to reach the card-present check
+    // below sooner and report CardLost. But it CAN fire with the card still present -- marginal coupling
+    // makes blocks succeed only after retries, and enough of those on a large source spends the budget
+    // while every write lands -- which is why the cut has to be remembered rather than just logged.
     const uint32_t pass_start = furi_get_tick();
     const uint32_t pass_budget = furi_ms_to_ticks(ISO15693_POLLER_WIPE_MAX_MS);
+    bool pass_truncated = false;
     uint16_t block = 0;
     for(; block < source_count && block < ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8; block++) {
         if(furi_get_tick() - pass_start > pass_budget) {
             FURI_LOG_W(TAG, "clone: time limit reached at block %u of %u", block, source_count);
+            pass_truncated = true;
             break;
         }
         if(skip_backdoor &&
@@ -676,8 +679,13 @@ static bool iso15693_poller_write_source_blocks(
 
     // Position AND evidence: a contiguous run at the top is the shape of a capacity edge, but only a
     // run whose members all refused reads as well as writes is one.
+    //
+    // And only if they were ASKED. A pass the clock cut records its unreached blocks as failures, which
+    // is the same top-tail shape with none of the meaning -- those blocks refused nothing, they were
+    // never attempted. Left in, a slow-but-healthy card gets "Card too small", which is the fabricated
+    // hardware claim the read-probe above exists to prevent, reached from the other direction.
     const bool failures_are_top_tail = any_failure && wrote_any && !wrote_above_failure &&
-                                       !any_failure_answered;
+                                       !any_failure_answered && !pass_truncated;
     if(failures_are_top_tail) {
         instance->clone_capacity_confirmed = true;
     } else if(instance->clone_over_capacity > 0) {
