@@ -1,0 +1,4 @@
+# NFC / Gaming -- NFC gaming figures/toys: Amiibo (NTAG215), Vital Bracelet.
+ami_tool
+weebo
+vb_migrate
