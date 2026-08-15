@@ -1,0 +1,8 @@
+# Tools / Timers -- timers, counters, stopwatches, pomodoro.
+cntdown_tim
+counter
+flipp_pomodoro
+flipper_chronometer
+multi_counter
+pomodoro_timer
+trackerflipx

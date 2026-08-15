@@ -1,0 +1,3 @@
+# GPIO / UART -- serial / UART terminal apps.
+uart_terminal
+lora_terminal

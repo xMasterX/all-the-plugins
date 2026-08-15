@@ -1,0 +1,14 @@
+# GPIO / Sensors -- environmental and measurement sensor apps.
+airmon
+alcohol_sensor
+flipper_geiger
+hc_sr04
+ina_meter
+lightmeter
+memsic_2125
+mh_z19
+rad_sens
+rcwl_0516
+stepcounter
+unitemp
+vario

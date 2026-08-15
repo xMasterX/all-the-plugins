@@ -1,0 +1,10 @@
+# Games / Simulation -- pets, sandbox, life, city, emulators.
+flipcraft
+gameoflife
+mandelbrotset
+matagotchi
+microcity
+oregon_trail
+roots_of_life
+schip
+tama_p1

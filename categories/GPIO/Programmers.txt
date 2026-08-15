@@ -1,0 +1,10 @@
+# GPIO / Programmers -- chip programmers, flashers, SWD/debug bridges, memory tools.
+24cxxprog
+avr_isp
+coffee_eeprom
+dap_link
+fake_chip_detector
+flip_tdi
+spi_mem_manager
+swd_probe
+wch_swio_flasher

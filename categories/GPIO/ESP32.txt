@@ -1,0 +1,11 @@
+# GPIO / ESP32 -- ESP32 WiFi companion boards.
+# One appid (the .fap filename) per line. '#' comments and blank lines ignored.
+esp_flasher
+ghost_esp
+evil_portal
+camera
+camera_suite
+esp32_wifi_marauder
+hotspot_arcade
+wifi_map
+wifi_scanner

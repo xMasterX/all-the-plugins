@@ -58,6 +58,7 @@ steps:
       - mv unleashed-firmware/artifacts-base/ base_pack_build
       - mkdir -p base_pack_build/apps_data/totp
       - mv unleashed-firmware/artifacts-totp/* base_pack_build/apps_data/totp/
+      - sh categorize_apps.sh base_pack_build/artifacts-base
     environment:
       FBT_TOOLS_CUSTOM_LINK:
         from_secret: fbt_link
@@ -100,6 +101,7 @@ steps:
       - cd ..
       - mkdir extra_pack_build
       - mv unleashed-firmware/artifacts-extra/ extra_pack_build
+      - sh categorize_apps.sh extra_pack_build/artifacts-extra
     environment:
       FBT_TOOLS_CUSTOM_LINK:
         from_secret: fbt_link
