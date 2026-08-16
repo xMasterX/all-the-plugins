@@ -2,7 +2,7 @@
 
 App(
     appid="nrf24tool",  # Must be unique
-    name="[NRF24] Tool",  # Displayed in menus
+    name="NRF24 Tool",  # Displayed in menus
     apptype=FlipperAppType.EXTERNAL,
     entry_point="nrf24tool_app",
     stack_size=4 * 1024,

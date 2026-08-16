@@ -1,6 +1,6 @@
 App(
     appid="hotspot_arcade",
-    name="[ESP32] Hotspot Arcade",
+    name="Hotspot Arcade",
     apptype=FlipperAppType.EXTERNAL,
     entry_point="hotspot_arcade_app",
     requires=["gui"],

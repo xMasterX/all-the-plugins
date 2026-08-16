@@ -24,6 +24,7 @@ steps:
       - rm -rf unleashed-firmware/dist/
       - rm -rf unleashed-firmware/.sconsign.dblite
       - mv base_pack/* unleashed-firmware/applications_user/
+      - sh strip_name_tags.sh unleashed-firmware/applications_user
       - ./parse_api_ver.sh
       - cd unleashed-firmware
       - export FBT_GIT_SUBMODULE_SHALLOW=1
@@ -73,6 +74,7 @@ steps:
       - rm -rf unleashed-firmware/applications_user/*
       - mv apps_source_code/* unleashed-firmware/applications_user/
       - mv non_catalog_apps/* unleashed-firmware/applications_user/
+      - sh strip_name_tags.sh unleashed-firmware/applications_user
       - cd unleashed-firmware
       - export FBT_GIT_SUBMODULE_SHALLOW=1
       - ./fbt COMPACT=1 DEBUG=0 updater_package
