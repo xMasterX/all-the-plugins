@@ -651,12 +651,10 @@ static bool iso15693_poller_write_source_blocks(
 
         const bool non_empty = !iso15693_poller_block_is_empty(block_data, block_size);
 
-        // An empty source block that wouldn't write is the ONLY failure this clone is willing to excuse
-        // as "past the card's physical capacity, so nothing was lost" -- so that is the only one whose
-        // classification needs proving. Ask the card whether the block is even there, the same way
-        // iso15693_poller_wipe_blocks does, instead of inferring it from the source being empty plus the
-        // failures' position. The two questions differ: the wipe asks "does this block still hold
-        // data", the clone asks "does this block exist at all".
+        // Ask the card whether the refused block is even there, rather than inferring it from the
+        // source being empty plus the failures' position. The same question iso15693_poller_wipe_blocks
+        // asks, for a different purpose: the wipe asks "does this block still hold data", the clone
+        // asks "does this block exist at all".
         //
         // It discriminates because a block past physical capacity refuses reads as well as writes
         // (measured: writes come back Iso15693_3ErrorInternal, reads fail outright). So a block that
@@ -666,15 +664,12 @@ static bool iso15693_poller_write_source_blocks(
         // near the end of the pass produces a perfect contiguous empty tail and the app reports
         // "All data written. Holds 60/64 blocks." about a card that holds 64.
         //
-        // Only paid for empty failures, which is exactly the case in question; a non-empty failure is
-        // lost data whether the block exists or not.
-        // Run the probe on EVERY persistent failure, not just the empty ones. It used to be paid only
-        // where the classification hinged on it -- an empty failure can be excused as past capacity, a
-        // non-empty one is lost data either way -- but capacity_confirmed is the strongest factual claim
-        // this feature makes about the user's hardware ("Card too small"), and without this it rests on
-        // position alone: failures form a contiguous run at the top, therefore that is the card's edge.
-        // A block that ANSWERS A READ exists, so a run containing one is not a capacity edge whatever
-        // its shape. Same reasoning already applied to over_capacity; this is the branch it missed.
+        // Paid on EVERY persistent failure, not only the empty ones. Emptiness decides which BUCKET a
+        // failure lands in -- an empty one can be excused as past capacity, a non-empty one is lost
+        // data either way -- but it does not decide whether the probe is worth its cost, because
+        // capacity_confirmed is the strongest factual claim this feature makes about the user's
+        // hardware ("Card too small") and a run containing ANY block that answers is not a capacity
+        // edge, whatever its shape or its contents.
         uint8_t probe[ISO15693_MAX_BLOCK_SIZE] = {0};
         const bool block_absent =
             iso15693_3_poller_read_block(iso_poller, probe, (uint8_t)block, block_size) !=
@@ -705,7 +700,11 @@ static bool iso15693_poller_write_source_blocks(
         instance->clone_failed_count++;
     }
 
-    iso15693_poller_report_progress(instance, done, total); // land on 100%
+    // `done` counts blocks ATTEMPTED, so this lands on 100% for a pass that ran to the end and on
+    // wherever the clock stopped it for one that did not. Deliberate: the popup's last frame is the
+    // last honest thing it can say, and a cut pass jumping to 100% would contradict the screen that
+    // follows it.
+    iso15693_poller_report_progress(instance, done, total);
 
     // Second half of the capacity test, and both halves are needed because they answer different
     // questions. The per-block read-back above establishes that each excused block is ABSENT; this
@@ -763,32 +762,6 @@ static bool iso15693_poller_write_source_blocks(
     return true;
 }
 
-// Wipe mode: write zeros to every data block the card PHYSICALLY holds -- no UID command is sent.
-// The card's advertised block count is only the starting point, not the bound: see
-// ISO15693_POLLER_WIPE_MAX_BLOCKS for why, and for the hardware measurement that settled it. The sweep
-// runs upward until a run of ISO15693_POLLER_WIPE_ABSENT_RUN blocks answers neither a write nor a read.
-// We attempt every block rather than pre-skipping the target's locked ones: a magic card often ignores
-// its own lock bits and accepts the write. Each refused write is then classified by a FRESH read-back
-// (not the copy taken at activation -- see below), which answers a question the write cannot:
-//   read OK, block non-zero -> write-protected and still holding data. A real failure; the wipe's
-//                              promise wasn't kept there. Counted, and named in the bitmap.
-//   read OK, block zero     -> already clear. Nothing was lost, so not a failure.
-//   read FAILS              -> the block answers nothing at all, so it probably isn't there. Provisional:
-//                              position decides. A later block that DOES answer proves this one interior
-//                              and unreadable, which is not something to write off -- counted, fail
-//                              closed. A run that the sweep ends on is the space above the card's real
-//                              top, which was never the card's to clear -- dropped entirely.
-// That last distinction is what stops a card advertising more blocks than it holds from reporting a
-// partial wipe for blocks that do not exist.
-// The gen1 backdoor registers (blocks 56/57/62/63) live in this same block-number space and ARE
-// cleared, deliberately. Skipping them would spare a gen1 card's UID registers at the cost of leaving
-// four blocks of real user data behind on every gen2 card, where they are ordinary memory -- a certain
-// loss on the card we actually have, to hedge a hazard only gen1 has. Note the narrow form of the
-// argument: a wipe cannot ARM a gen1 UID change by itself, since arming needs 0x6996 in the commit
-// block and a wipe writes zero -- but that says nothing about a card that is armed ALREADY. See the
-// OPEN QUESTION in the loop below.
-// Returns the number of blocks that actually accepted the zero-write, so the caller can tell a
-// genuine wipe from one where nothing could be cleared.
 // Did this block hold data at activation? Only TRUE means anything: a non-zero byte can only have come
 // from a real read, so it proves the block existed and held data. FALSE proves nothing -- see the
 // read-back note in the sweep for why a zeroed entry is a failed read and an empty block alike.
@@ -819,6 +792,32 @@ static void iso15693_poller_wipe_note_present(
     if(block > *highest_present) *highest_present = block;
 }
 
+// Wipe mode: write zeros to every data block the card PHYSICALLY holds -- no UID command is sent.
+// The card's advertised block count is only the starting point, not the bound: see
+// ISO15693_POLLER_WIPE_MAX_BLOCKS for why, and for the hardware measurement that settled it. The sweep
+// runs upward until a run of ISO15693_POLLER_WIPE_ABSENT_RUN blocks answers neither a write nor a read.
+// We attempt every block rather than pre-skipping the target's locked ones: a magic card often ignores
+// its own lock bits and accepts the write. Each refused write is then classified by a FRESH read-back
+// (not the copy taken at activation -- see below), which answers a question the write cannot:
+//   read OK, block non-zero -> write-protected and still holding data. A real failure; the wipe's
+//                              promise wasn't kept there. Counted, and named in the bitmap.
+//   read OK, block zero     -> already clear. Nothing was lost, so not a failure.
+//   read FAILS              -> the block answers nothing at all, so it probably isn't there. Provisional:
+//                              position decides. A later block that DOES answer proves this one interior
+//                              and unreadable, which is not something to write off -- counted, fail
+//                              closed. A run that the sweep ends on is the space above the card's real
+//                              top, which was never the card's to clear -- dropped entirely.
+// That last distinction is what stops a card advertising more blocks than it holds from reporting a
+// partial wipe for blocks that do not exist.
+// The gen1 backdoor registers (blocks 56/57/62/63) live in this same block-number space and ARE
+// cleared, deliberately. Skipping them would spare a gen1 card's UID registers at the cost of leaving
+// four blocks of real user data behind on every gen2 card, where they are ordinary memory -- a certain
+// loss on the card we actually have, to hedge a hazard only gen1 has. Note the narrow form of the
+// argument: a wipe cannot ARM a gen1 UID change by itself, since arming needs 0x6996 in the commit
+// block and a wipe writes zero -- but that says nothing about a card that is armed ALREADY. See the
+// OPEN QUESTION in the loop below.
+// Returns the number of blocks that actually accepted the zero-write, so the caller can tell a
+// genuine wipe from one where nothing could be cleared.
 static uint16_t iso15693_poller_wipe_blocks(
     Iso15693Poller* instance,
     Iso15693_3Poller* iso_poller,
