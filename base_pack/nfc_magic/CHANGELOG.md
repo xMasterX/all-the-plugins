@@ -128,6 +128,10 @@ the copy advertises the same chip identity.
   across 28 / 56 / 64 / 70-block geometries, plus wipe and the over-capacity reporting.
 - The **gen1** path shipped as a faithful proxmark port, not tested against gen1 hardware (none was
   available).
+- **gen3 is not supported.** A third magic generation exists — proxmark's `hf 15 csetuid --v3` — which
+  keeps its UID in blocks 0x10/0x11 with a configuration signature in 0x14/0x15, and is rewritable until
+  `hf 15 cfinalize` locks it. Such a card reports "not a magic tag" here, and a wipe or clone writes over
+  those blocks like any other data.
 
 ## 2.0
 
