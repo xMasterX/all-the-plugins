@@ -150,9 +150,17 @@
 // re-probe of the trailing run, which is not deadline-checked (it would have to abandon the run
 // half-classified); that is bounded by the run length.
 //
-// A sweep cut here reports what it covered and says it was cut (pass_truncated), rather than passing
+// A run cut here reports what it covered and says it was cut (pass_truncated), rather than passing
 // off a partial range as the card's extent -- the same distinction the advertised-count floor draws.
-#define ISO15693_POLLER_WIPE_MAX_MS (10000U)
+//
+// BOTH passes use this, and the figures above are a WIPE's: a 4-byte zero write, the same payload
+// every time. A clone's data pass costs more per block -- its payload is the source's block size, up
+// to 32 bytes, so up to 8x the frame -- and since the probe went onto every persistent failure rather
+// than only the empty ones, more again. So a clone reaches this bound sooner than the arithmetic here
+// implies, and the shared name is deliberate: whatever this is set to has to be defensible for the
+// more expensive of the two, not the cheaper. See the capacity test in write_source_blocks for the
+// one place that costs something.
+#define ISO15693_POLLER_PASS_MAX_MS (10000U)
 
 // How many CONSECUTIVE absent-looking blocks end the sweep. One is not evidence -- the same reasoning
 // as the per-block write retries -- and this is the sole guard against the sweep mistaking a momentary
@@ -230,7 +238,7 @@ struct Iso15693Poller {
     // Wipe mode: the block count the card advertised, kept alongside the measured figure that replaces
     // it in clone_blocks_total once the sweep ends. Clone mode: unused (stays 0).
     uint16_t wipe_advertised;
-    // Wipe mode: the sweep hit ISO15693_POLLER_WIPE_MAX_MS and stopped short, so its range is a cut
+    // Wipe mode: the sweep hit ISO15693_POLLER_PASS_MAX_MS and stopped short, so its range is a cut
     // rather than the card's extent and the report has to say so. Clone mode: unused (stays false).
     bool pass_truncated;
     // Where the clock cut the pass: the first block index NOT attempted. Only meaningful alongside the
@@ -477,7 +485,7 @@ static void
 // The one write both block passes make. A block that fails EVERY attempt is genuinely unwritable;
 // retrying rides out a transient RF error that would otherwise look like one. Retries only ever run
 // on a failure, so a card that takes its writes pays nothing for them. There is deliberately no break
-// before the last delay, which is where ISO15693_POLLER_WIPE_MAX_MS gets its per-refused-block figure.
+// before the last delay, which is where ISO15693_POLLER_PASS_MAX_MS gets its per-refused-block figure.
 static Iso15693_3Error iso15693_poller_write_block_retried(
     Iso15693_3Poller* iso_poller,
     const uint8_t* data,
@@ -583,7 +591,7 @@ static bool iso15693_poller_write_source_blocks(
     // makes blocks succeed only after retries, and enough of those on a large source spends the budget
     // while every write lands -- which is why the cut has to be remembered rather than just logged.
     const uint32_t pass_start = furi_get_tick();
-    const uint32_t pass_budget = furi_ms_to_ticks(ISO15693_POLLER_WIPE_MAX_MS);
+    const uint32_t pass_budget = furi_ms_to_ticks(ISO15693_POLLER_PASS_MAX_MS);
     uint16_t block = 0;
     for(; block < source_count && block < ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8; block++) {
         if(furi_get_tick() - pass_start > pass_budget) {
@@ -707,6 +715,23 @@ static bool iso15693_poller_write_source_blocks(
     // is the same top-tail shape with none of the meaning -- those blocks refused nothing, they were
     // never attempted. Left in, a slow-but-healthy card gets "Card too small", which is the fabricated
     // hardware claim the read-probe above exists to prevent, reached from the other direction.
+    //
+    // KNOWN OVERLAP, and it lands on the card this apparatus was least meant to miss. The cost of this
+    // pass is dominated by FAILING blocks -- 3 writes, 3 retry waits and a read probe each, 40-70ms --
+    // so ISO15693_POLLER_PASS_MAX_MS buys roughly 150-250 of them. And a card that is genuinely too
+    // small presents precisely one long contiguous run of failing blocks. So a source about 150+ blocks
+    // larger than the target spends the budget inside that run, truncates, and loses the "Card too
+    // small" line to this very guard. Retrying does not help: the second run is cut in the same place,
+    // so nothing ever names the cause.
+    //
+    // Left as it is anyway, and the reason is the direction of the error. Dropping the guard would let
+    // a cut claim capacity from partial evidence -- the run below the cut looks like a top tail whether
+    // or not memory resumes above it, and asserting the user's card is too small on evidence that stops
+    // mid-run is the same fabrication in a new costume. Under-claiming leaves the user a correct report
+    // and a Retry they can act on; over-claiming gives them a verdict about their hardware that the
+    // pass never finished testing. A longer budget for the clone alone would close it, at the cost of
+    // more seconds during which Back is swallowed -- see #252. Neither trade is worth taking silently,
+    // so it is written down instead.
     const bool failures_are_top_tail = any_failure && wrote_any && !wrote_above_failure &&
                                        !any_failure_answered && !instance->pass_truncated;
     if(failures_are_top_tail) {
@@ -833,12 +858,12 @@ static uint16_t iso15693_poller_wipe_blocks(
     uint16_t absent_run = 0;
     uint16_t block = 0;
     const uint32_t sweep_start = furi_get_tick();
-    const uint32_t sweep_budget = furi_ms_to_ticks(ISO15693_POLLER_WIPE_MAX_MS);
+    const uint32_t sweep_budget = furi_ms_to_ticks(ISO15693_POLLER_PASS_MAX_MS);
     for(; block < ISO15693_POLLER_WIPE_MAX_BLOCKS; block++) {
         // Time bound, checked before the block is attempted so `block` stays the exclusive end of the
         // attempted range for the tail arithmetic below. Compared as elapsed-against-budget rather
         // than against an absolute deadline, which would not survive a tick wraparound. See
-        // ISO15693_POLLER_WIPE_MAX_MS.
+        // ISO15693_POLLER_PASS_MAX_MS.
         if(furi_get_tick() - sweep_start > sweep_budget) {
             FURI_LOG_W(
                 TAG, "wipe: time limit reached at block %u (advertised %u)", block, advertised);
@@ -1011,7 +1036,7 @@ static uint16_t iso15693_poller_wipe_blocks(
     // One line covering every exit -- the card's top, the block ceiling, the time limit, and a card
     // lifted mid-sweep, which is why those two paths break rather than return: the lifted card is the
     // case where the time spent before noticing matters most. The wall-clock cost of a sweep is then
-    // measurable on any card rather than estimated, which ISO15693_POLLER_WIPE_MAX_MS needs -- it is
+    // measurable on any card rather than estimated, which ISO15693_POLLER_PASS_MAX_MS needs -- it is
     // set from figures nobody has instrumented. (The caller discards the counters on a card-lost exit,
     // so the tail arithmetic above running for it is harmless.)
     FURI_LOG_I(

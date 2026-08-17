@@ -231,7 +231,7 @@ bool iso15693_poller_source_uses_gen1_blocks(const Iso15693_3Data* source);
 // advertised count until a run of blocks answers neither a write nor a read; see
 // ISO15693_POLLER_WIPE_MAX_BLOCKS in the .c for the hardware measurement behind that. That run is not
 // the only stop condition: the sweep also stops at the 256-block ceiling, and on a wall-clock bound
-// (ISO15693_POLLER_WIPE_MAX_MS) for a card that answers reads everywhere and so never accumulates a
+// (ISO15693_POLLER_PASS_MAX_MS) for a card that answers reads everywhere and so never accumulates a
 // run. A sweep the clock stopped sets pass_truncated and reports where it stopped in cut_block --
 // which is NOT blocks_total, and on that same read-everywhere card sits ABOVE the advertised count
 // while blocks_total sits below it. Below the advertised count the sweep never stops early on absence alone --
