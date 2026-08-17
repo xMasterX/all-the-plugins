@@ -39,7 +39,7 @@ bool nfc_magic_scene_iso15693_write_input_on_event(void* context, SceneManagerEv
             // Every ISO15693 UID must begin with 0xE0; enforce it before writing (proxmark rejects
             // a non-E0 UID outright, and the byte editor lets the user change byte 0 freely).
             instance->iso15693_target_uid[0] = 0xE0;
-            scene_manager_next_scene(instance->scene_manager, NfcMagicSceneIso15693WriteConfirm);
+            scene_manager_next_scene(instance->scene_manager, NfcMagicSceneWriteConfirm);
             consumed = true;
         }
     }
