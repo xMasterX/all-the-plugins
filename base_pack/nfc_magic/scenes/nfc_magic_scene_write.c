@@ -378,8 +378,11 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
                 instance->popup, instance->text_store, 52, 32, AlignLeft, AlignCenter);
             consumed = true;
         } else if(event.event == NfcMagicCustomEventWorkerSuccess) {
-            if(instance->protocol == NfcMagicProtocolIso15693 &&
-               instance->iso15693_mode == NfcMagicIso15693ModeWriteUid) {
+            // Deliberately not nfc_magic_scene_write_is_wiping(): that is true for a USCUID-UL wipe too.
+            const bool iso15693 = (instance->protocol == NfcMagicProtocolIso15693);
+            const bool iso15693_wipe = iso15693 &&
+                                       (instance->iso15693_mode == NfcMagicIso15693ModeWipe);
+            if(iso15693 && instance->iso15693_mode == NfcMagicIso15693ModeWriteUid) {
                 // The poller verified the new UID reads back, so refresh the stored read result too --
                 // otherwise re-entering Write UID without a fresh Info read would seed the byte editor
                 // from the pre-write UID and look as though the write hadn't taken.
@@ -393,15 +396,12 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
             // over-capacity, no data lost), and any wipe -- whose sweep length is measured, so a run
             // that stopped short of the card's claim and one that covered it would otherwise look the
             // same. Both go to the result screen with their counts.
-            if(instance->protocol == NfcMagicProtocolIso15693 &&
-               (instance->iso15693_mode == NfcMagicIso15693ModeWipe ||
-                instance->iso15693_result.over_capacity > 0)) {
+            if(iso15693_wipe || (iso15693 && instance->iso15693_result.over_capacity > 0)) {
                 scene_manager_set_scene_state(
                     instance->scene_manager,
                     NfcMagicSceneIso15693WriteFail,
-                    (instance->iso15693_mode == NfcMagicIso15693ModeWipe) ?
-                        NfcMagicIso15693WriteFailReasonWipeComplete :
-                        NfcMagicIso15693WriteFailReasonOverCapacity);
+                    iso15693_wipe ? NfcMagicIso15693WriteFailReasonWipeComplete :
+                                    NfcMagicIso15693WriteFailReasonOverCapacity);
                 scene_manager_next_scene(instance->scene_manager, NfcMagicSceneIso15693WriteFail);
             } else {
                 scene_manager_next_scene(instance->scene_manager, NfcMagicSceneSuccess);
