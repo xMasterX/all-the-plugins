@@ -782,6 +782,10 @@ static bool
     return !iso15693_poller_block_is_empty(cached, size);
 }
 
+// Resolves a whole run at once, which the tail-drop at the end of the sweep does NOT -- it decides
+// block by block and can drop a block below one this kept. See the reconciliation there; the two rules
+// only agree because the activation cache is a prefix.
+//
 // A block just proved it exists. Every absence still open below it is therefore interior memory that
 // answered nothing -- a fault, not the space above the card -- so those count (their bits are already
 // set) and the run closes. This block becomes the top the report is measured against.
@@ -900,6 +904,12 @@ static uint16_t iso15693_poller_wipe_blocks(
         // block at its zeroed allocation value. Believing that cache would score a block that still
         // holds data as empty and report a hollow "wipe complete" -- and the blocks most likely to
         // fail a read are exactly the high ones that don't read until first written.
+        //
+        // "Zeroed" is a fact, not an assumption: simple_array_init does a bare malloc with no
+        // per-element init for a byte array, but Flipper's pvPortMalloc tail-calls memset(p, 0, size).
+        // So an unread entry is genuinely zeros rather than heap residue -- which is what makes
+        // block_held_data deterministic instead of dependent on what the heap last held, and is
+        // therefore load-bearing for the tail-drop's keep branch below.
         uint8_t remaining[ISO15693_MAX_BLOCK_SIZE] = {0};
         if(iso15693_3_poller_read_block(iso_poller, remaining, (uint8_t)block, size) ==
            Iso15693_3ErrorNone) {
@@ -1017,8 +1027,27 @@ static uint16_t iso15693_poller_wipe_blocks(
     // the budget ran out rather than the card's top, so dropping the part of it above the advertised
     // count is unverified. pass_truncated is what carries that -- the outcome is reported as Partial
     // and names where the sweep stopped, so the drop is not passing those blocks off as absent memory.
+    //
+    // WHY THIS LOOP MAY DISAGREE WITH wipe_note_present, AND WHY THAT IS SAFE. note_present resolves a
+    // whole run at once: a block proved present, therefore every absence still open BELOW it is
+    // interior memory, so all of them count. This loop decides block by block and drops each unproven
+    // one -- including ones below a proven-present member of the same run. On a run 56..63 where only
+    // block 60 reads non-zero, 56-59 are dropped and 60 is kept. Stated as two rules those contradict.
+    //
+    // What reconciles them is a property of the CACHE, not of either rule:
+    // iso15693_3_poller_read_blocks returns at the first block that fails, so the activation copy is a
+    // PREFIX. A block proven present therefore implies every block below it was also read. So a block
+    // dropped below a proven one is not an unexamined absence -- it was read, and it read back as
+    // zeros. It held nothing, and dropping it conceals nothing.
+    //
+    // That single property is load-bearing three times over: it bounds this divergence, it is why the
+    // "Not closed" note above is a correct disposition rather than a placeholder, and it is what makes
+    // the zeroed-entry argument at the read-back note deterministic. It is worth not re-deriving.
+    //
+    // No i < advertised guard: block_held_data range-checks against the same object, so the two say the
+    // same thing and one of them would drift.
     for(uint16_t i = block - absent_run; i < block; i++) {
-        if(i < advertised && iso15693_poller_block_held_data(target, i, size)) {
+        if(iso15693_poller_block_held_data(target, i, size)) {
             // Proven present, so it also has to count toward the measured total -- otherwise
             // failed_count can exceed blocks_total and the partial screen renders "Wiped 0/20,
             // not cleared: 44".
