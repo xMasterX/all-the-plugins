@@ -112,12 +112,21 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         const uint16_t reached = instance->iso15693_result.blocks_total;
         const uint16_t failed = instance->iso15693_result.failed_count;
         FuriString* text = furi_string_alloc();
+        // Two separate corrections, both in one line of text. The figure is the CUT, not blocks_total:
+        // the latter is the highest block that ANSWERED, which sits at or below the cut, so a sweep
+        // that attempted 55 blocks and proved 50 present reported "Stopped at 50".
+        //
+        // And the "of %u" had to go with it. The sweep deliberately runs past the advertised count, so
+        // on the card this bound exists for -- refuses every write, answers every read -- the cut lands
+        // above the claim and the line read "Stopped at 200 of 64", which parses as a fraction and so
+        // as falling short of 64 when it had exceeded it. Naming one block index makes no such claim.
+        // The comparison against what the card claims still gets made, in Details, where there is room
+        // to say which side of the claim the cut fell on.
         furi_string_printf(
             text,
-            "Cleared %u blocks.\nStopped at %u of %u.",
+            "Cleared %u blocks.\nStopped at block %u.",
             (reached >= failed) ? (uint16_t)(reached - failed) : 0,
-            reached,
-            instance->iso15693_result.blocks_advertised);
+            instance->iso15693_result.cut_block);
         if(failed > 0) furi_string_cat_printf(text, "\nNot cleared: %u", failed);
         widget_add_string_multiline_element(
             widget, 0, 13, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(text));
@@ -203,9 +212,8 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         if(instance->iso15693_result.sweep_truncated) {
             furi_string_printf(
                 text,
-                "No block accepted the\nzero-write.\nStopped at %u of %u.",
-                instance->iso15693_result.blocks_total,
-                instance->iso15693_result.blocks_advertised);
+                "No block accepted the\nzero-write.\nStopped at block %u.",
+                instance->iso15693_result.cut_block);
         } else {
             furi_string_set_str(
                 text, "No blocks could be\ncleared -- the card\naccepted no zero-write.");

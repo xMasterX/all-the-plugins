@@ -233,6 +233,13 @@ struct Iso15693Poller {
     // Wipe mode: the sweep hit ISO15693_POLLER_WIPE_MAX_MS and stopped short, so its range is a cut
     // rather than the card's extent and the report has to say so. Clone mode: unused (stays false).
     bool wipe_truncated;
+    // Where the clock cut the pass: the first block index NOT attempted. Only meaningful alongside the
+    // truncation flag above. Kept as its own figure because nothing else in the result carries it --
+    // clone_blocks_total is the source's count, and after a wipe it is the highest block that ANSWERED,
+    // which sits at or below the cut and can sit far below it. A sweep that walks past the advertised
+    // count before the clock fires has a cut index above that count and a total below it, so the two
+    // are not interchangeable in either direction.
+    uint16_t pass_cut_block;
     // Wipe mode: the post-power-cycle UID check reached an answer. False means it never ran to one, so
     // uid_changed being false is an absent observation rather than a clean result.
     bool uid_verified;
@@ -583,6 +590,7 @@ static bool iso15693_poller_write_source_blocks(
         if(furi_get_tick() - pass_start > pass_budget) {
             FURI_LOG_W(TAG, "clone: time limit reached at block %u of %u", block, source_count);
             pass_truncated = true;
+            instance->pass_cut_block = block;
             break;
         }
         if(skip_backdoor &&
@@ -832,6 +840,7 @@ static uint16_t iso15693_poller_wipe_blocks(
             FURI_LOG_W(
                 TAG, "wipe: time limit reached at block %u (advertised %u)", block, advertised);
             instance->wipe_truncated = true;
+            instance->pass_cut_block = block;
             break;
         }
 
@@ -1422,6 +1431,7 @@ static void iso15693_poller_start_internal(
     instance->clone_over_capacity = 0;
     instance->wipe_advertised = 0;
     instance->wipe_truncated = false;
+    instance->pass_cut_block = 0;
     instance->uid_verified = false;
     instance->clone_used_gen1 = false;
     instance->clone_capacity_confirmed = false;
@@ -1515,6 +1525,7 @@ void iso15693_poller_get_result(Iso15693Poller* instance, Iso15693PollerResult* 
     result->over_capacity = instance->clone_over_capacity;
     result->blocks_advertised = instance->wipe_advertised;
     result->sweep_truncated = instance->wipe_truncated;
+    result->cut_block = instance->pass_cut_block;
     result->uid_verified = instance->uid_verified;
     memcpy(result->failed_bitmap, instance->clone_failed_bitmap, sizeof(result->failed_bitmap));
     result->used_gen1 = instance->clone_used_gen1;

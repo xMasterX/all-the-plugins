@@ -60,12 +60,30 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
         // fact on the UID-changed screen, whose reason code pre-empts the partial one, and the only
         // place the partial screen's own count can be qualified.
         if(furi_string_size(message) > 0) furi_string_push_back(message, '\n');
-        furi_string_cat_printf(
-            message,
-            "Sweep hit its time limit at block %u of the %u this card claims. Blocks above that were "
-            "never attempted and may still hold data.",
-            instance->iso15693_result.blocks_total,
-            instance->iso15693_result.blocks_advertised);
+        // The cut index, never blocks_total: this is a claim about which blocks were TRIED, and
+        // blocks_total is the highest that answered. Below the cut it under-reports (the trailing run
+        // the tail-drop discards was attempted -- three writes and a read each -- yet would be excluded
+        // by the sentence); above it, a card claiming 200 while holding 10 read "time limit at block
+        // 10" about 170 blocks that were attempted and answered nothing.
+        //
+        // Which side of the claim the cut lands on changes what is true, so it changes the sentence.
+        // The sweep runs past the advertised count deliberately, so "of the N this card claims" is only
+        // a frame when the cut is actually inside it.
+        if(instance->iso15693_result.cut_block < instance->iso15693_result.blocks_advertised) {
+            furi_string_cat_printf(
+                message,
+                "Sweep hit its time limit at block %u of the %u this card claims. Blocks above that "
+                "were never attempted and may still hold data.",
+                instance->iso15693_result.cut_block,
+                instance->iso15693_result.blocks_advertised);
+        } else {
+            furi_string_cat_printf(
+                message,
+                "Sweep hit its time limit at block %u, past the %u this card claims. Every claimed "
+                "block was attempted; anything above the cut was not.",
+                instance->iso15693_result.cut_block,
+                instance->iso15693_result.blocks_advertised);
+        }
     }
     if(instance->iso15693_result.used_gen1) {
         // The gen1 fallback stamped the UID/commit into blocks 56/57/62/63, so they differ from the

@@ -144,10 +144,18 @@ typedef struct {
     // advertises the smaller count while still holding more, and a card with fake flash advertises more
     // than it holds. 0 for a clone.
     uint16_t blocks_advertised;
-    // Wipe only: the sweep stopped on its wall-clock bound rather than at the card's top, so
-    // blocks_total is where it was cut, not what the card holds. Reported so the screen doesn't pass a
-    // partial range off as the card's extent. False for a clone.
+    // Wipe only: the sweep stopped on its wall-clock bound rather than at the card's top, so its range
+    // is a cut rather than the card's extent. Reported so the screen doesn't pass a partial range off
+    // as the card's extent. False for a clone.
     bool sweep_truncated;
+    // Where the clock cut the run: the first block index NOT attempted. Only meaningful when the flag
+    // above is set. It is NOT blocks_total and cannot be derived from it -- after a wipe blocks_total is
+    // the highest block that ANSWERED, which sits at or below the cut. The gap is not a rounding
+    // difference: on the card this bound was designed for -- one that refuses every write and still
+    // serves a read at every address -- the sweep walks well PAST the advertised count before the clock
+    // fires while proving nothing present, so the cut can exceed the advertised count while the total
+    // sits far below it. Any string naming where the run stopped has to read this, not blocks_total.
+    uint16_t cut_block;
     // Wipe only: the post-power-cycle UID check reached an answer. When false it did not run -- the card
     // did not come back, or did not answer the inventory -- so uid_changed being false is the absence of
     // an observation rather than a clean result, and a caller reporting success should say so.
@@ -218,8 +226,9 @@ bool iso15693_poller_source_uses_gen1_blocks(const Iso15693_3Data* source);
 // ISO15693_POLLER_WIPE_MAX_BLOCKS in the .c for the hardware measurement behind that. That run is not
 // the only stop condition: the sweep also stops at the 256-block ceiling, and on a wall-clock bound
 // (ISO15693_POLLER_WIPE_MAX_MS) for a card that answers reads everywhere and so never accumulates a
-// run. A sweep the clock stopped sets sweep_truncated, and its blocks_total is where it was cut rather
-// than what the card holds. Below the advertised count the sweep never stops early on absence alone --
+// run. A sweep the clock stopped sets sweep_truncated and reports where it stopped in cut_block --
+// which is NOT blocks_total, and on that same read-everywhere card sits ABOVE the advertised count
+// while blocks_total sits below it. Below the advertised count the sweep never stops early on absence alone --
 // the card's own claim is evidence those blocks exist.
 // Blocks 56/57/62/63 are cleared too -- on gen2 they are ordinary user data. On gen1 those same blocks
 // are the UID/unlock/commit registers, so the wipe cannot guarantee the UID survives there; it re-reads
@@ -229,7 +238,7 @@ bool iso15693_poller_source_uses_gen1_blocks(const Iso15693_3Data* source);
 // inventory, leaves uid_verified false: the check did not run to an answer, so uid_changed being false
 // says nothing either way. See the open question in iso15693_poller_wipe_blocks.
 // Reports CardDetected (first activation), then Success / Partial (some blocks failed, the UID moved,
-// or the clock cut the sweep short of the card's claim) / Fail (nothing could be wiped) / CardLost --
+// or the clock cut the sweep) / Fail (nothing could be wiped) / CardLost --
 // the last of which also covers a card lifted DURING the loop, so blocks that never got the chance
 // aren't reported as blocks the card refused to clear.
 // Per-block detail is available via iso15693_poller_get_result(); its blocks_total is what the card

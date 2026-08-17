@@ -131,10 +131,13 @@ typedef enum {
         // range it measured beside the count the card advertises, since the two can differ without
         // either being a fault. A wipe whose UID check never reached an answer still lands here and
         // says so on the third line: the wipe finished, only the identity check did not run.
-    NfcMagicIso15693WriteFailReasonWipeStopped, // wipe: the sweep hit its time limit with blocks the
-        // card claims still unattempted. A partial outcome, not a qualified success -- the poller
-        // reports Partial for it -- so it carries the error tone and offers Retry, since re-running is
-        // the correct action when data may sit above the cut.
+    NfcMagicIso15693WriteFailReasonWipeStopped, // wipe: the sweep hit its time limit. Nothing ties the
+        // cut to the advertised count -- the check is a wall-clock test at the top of every iteration,
+        // so the card this bound was designed for (refuses every write, still serves every read) is cut
+        // with every claimed block already attempted, and the cut index above that count. A partial
+        // outcome, not a qualified success -- the poller reports Partial for it -- so it carries the
+        // error tone and offers Retry, since re-running is the correct action when data may sit above
+        // the cut.
 } NfcMagicIso15693WriteFailReason;
 
 // Which ISO15693 operation the shared write scene is running. Replaces the old is-wipe bool, now that
