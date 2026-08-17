@@ -60,8 +60,10 @@ the copy advertises the same chip identity.
   geometry exceeds its physical memory (fake-flash) clones faithfully for the blocks that fit.
 - **No data is written until the card takes the magic UID.** The write sends the gen2 backdoor UID
   first; data blocks and identity fields follow once that UID reads back as the target. A card that
-  doesn't take it is left untouched, so cloning has no up-front confirmation prompt — the destructive
-  gen1 attempt carries its own consent screen instead.
+  doesn't take it is left untouched, so cloning has no up-front confirmation prompt — matching Gen2 and
+  Classic, which also write without one when their pre-write checks find nothing to report. The
+  destructive gen1 attempt carries its own consent screen instead. A wipe does prompt, since destruction
+  is a wipe's only product, whereas a clone leaves the card holding the image the user picked.
 - **The gen1 fallback is opt-in.** It is offered only when the gen2 write leaves the UID unchanged, and
   only after the user accepts a screen stating what gen1 writes and that the gen1 path is not
   hardware-tested. gen1 writes the UID registers first and the data blocks only if that UID took, so a

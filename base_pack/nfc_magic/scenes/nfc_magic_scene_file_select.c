@@ -104,11 +104,14 @@ void nfc_magic_scene_file_select_on_enter(void* context) {
             instance->protocol == NfcMagicProtocolGen2) {
             scene_manager_next_scene(instance->scene_manager, NfcMagicSceneMfClassicDictAttack);
         } else if(instance->protocol == NfcMagicProtocolIso15693) {
-            // ISO15693 clone skips the up-front confirm: the gen2 write is a harmless custom command
-            // on a non-magic tag, and data blocks are written only after the UID reads back as the
-            // target (see the poller), so nothing is clobbered before the card takes that UID. The
-            // destructive gen1 fallback has its own opt-in mid-write. (Matches the MIFARE-magic flow --
-            // no up-front confirm.)
+            // ISO15693 clone goes straight to the write. The gen2 backdoor write is a harmless custom
+            // command on a non-magic tag, and data blocks follow only once the UID reads back as the
+            // target (see the poller), so nothing is clobbered before the card proves it takes that
+            // UID; consent for the one destructive path, the gen1 fallback, is asked mid-write where it
+            // becomes real. Gen2 and Classic reach the write unprompted too when their card-derived
+            // checks find nothing (gen2_write_check.c); Gen1/Gen4/USCUID-UL show the static confirm
+            // below regardless of the card. The wipe prompts because destruction is its only product,
+            // whereas a clone leaves the card holding the image the user picked.
             scene_manager_next_scene(instance->scene_manager, NfcMagicSceneWrite);
         } else {
             scene_manager_next_scene(instance->scene_manager, NfcMagicSceneWriteConfirm);
