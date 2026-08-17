@@ -541,14 +541,16 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
         // tick rather than an activation, so their handlers keep running with no card and reach Fail or
         // Partial on their own.
         //
-        // The genuinely unsafe pair is gen2/Classic (one poller, not two -- the Classic branch starts
-        // the gen2 one) and USCUID-direct. Both are driven by the iso3 poller's Ready event and both
-        // need a RE-ACTIVATION partway through a write: gen2 halts after every block, USCUID-direct
-        // returns NfcCommandReset on a failed page to revive a tag that NAKed a locked one. Once the
-        // card is gone that re-activation fails, the iso3 poller reports it as an Error event which
-        // those callbacks discard, and the state machine is never called again. Measured: 88 seconds
-        // with no state-machine activity at all. Back is the user's only way off that popup, so
-        // swallowing it there needs a reboot to recover. See the linked issue.
+        // The genuinely unsafe ones are gen2/Classic (one poller, not two -- the Classic branch starts
+        // the gen2 one), USCUID-direct, and gen4. All are driven by an activation-Ready event and all
+        // stop advancing once the card is gone: gen2 halts after every block and USCUID-direct returns
+        // NfcCommandReset on a failed page to revive a tag that NAKed a locked one, so both need a
+        // RE-ACTIVATION partway through a write; gen4 has no activation-error budget at all and
+        // advances one block per Iso14443_3aPollerEventTypeReady (gen4_poller.c:281/:358/:460),
+        // returning NfcCommandContinue for every other event. In each case the poller reports the lost
+        // card as an Error event which those callbacks discard, and the state machine is never called
+        // again. Measured: 88 seconds with no state-machine activity at all (#252). Back is the user's
+        // only way off that popup, so swallowing it there needs a reboot to recover (#253).
         //
         // The card-search phase is untouched: nothing has been written there, so Back still leaves. Any
         // terminal outcome releases the button.
