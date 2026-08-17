@@ -467,6 +467,31 @@ static void
     iso15693_poller_report(instance, Iso15693PollerEventWriteProgress);
 }
 
+// The one write both block passes make. A block that fails EVERY attempt is genuinely unwritable;
+// retrying rides out a transient RF error that would otherwise look like one. Retries only ever run
+// on a failure, so a card that takes its writes pays nothing for them. There is deliberately no break
+// before the last delay, which is where ISO15693_POLLER_WIPE_MAX_MS gets its per-refused-block figure.
+static Iso15693_3Error iso15693_poller_write_block_retried(
+    Iso15693_3Poller* iso_poller,
+    const uint8_t* data,
+    uint8_t block,
+    uint8_t size) {
+    Iso15693_3Error error = Iso15693_3ErrorNone;
+    for(uint32_t attempt = 0; attempt < ISO15693_POLLER_WRITE_ATTEMPTS; attempt++) {
+        error = iso15693_3_poller_write_block(iso_poller, data, block, size);
+        if(error == Iso15693_3ErrorNone) break;
+        furi_delay_ms(ISO15693_POLLER_VERIFY_RETRY_MS);
+    }
+    return error;
+}
+
+static bool iso15693_poller_block_is_empty(const uint8_t* block, uint8_t size) {
+    for(uint8_t i = 0; i < size; i++) {
+        if(block[i] != 0) return false;
+    }
+    return true;
+}
+
 // Clone mode: write every data block from the source image with the standard ISO15693 WRITE BLOCK.
 // Real write errors are counted into the failure bitmap for Partial reporting. Runs synchronously on
 // the Nfc worker thread. When `skip_backdoor` is set (the gen1 path), blocks 56/57/62/63 are left
@@ -526,13 +551,11 @@ static bool iso15693_poller_write_source_blocks(
     // advertised count). Capping would also leave stale data in the reachable gap when re-cloning onto
     // a card that currently advertises fewer blocks. The only reliable capacity test is to write.
     //
-    // Retry a failed write a few times so a transient RF glitch doesn't masquerade as a real limit: a
-    // block that fails EVERY attempt is genuinely unwritable. Since magic cards ignore their own lock
-    // bits, that means the block is past the card's physical capacity. Classify each persistent
-    // failure by whether the source had data there (non-empty -> data lost; empty -> nothing lost),
-    // and track position so we can confirm below that the failures are a contiguous run at the TOP of
-    // the card -- the capacity signature. A scattered/interior failure is anomalous and won't be
-    // called capacity.
+    // Since magic cards ignore their own lock bits, a block that survives the retries is past the
+    // card's physical capacity. Classify each persistent failure by whether the source had data there
+    // (non-empty -> data lost; empty -> nothing lost), and track position so we can confirm below that
+    // the failures are a contiguous run at the TOP of the card -- the capacity signature. A
+    // scattered/interior failure is anomalous and won't be called capacity.
     //
     // Do NOT skip blocks locked in the SOURCE image: the source's lock bits describe the ORIGINAL
     // card, not the magic target (which is writable regardless), and locked blocks are exactly where
@@ -571,13 +594,8 @@ static bool iso15693_poller_write_source_blocks(
         // straight to the next block.
         iso15693_poller_report_progress(instance, done++, total);
         const uint8_t* block_data = iso15693_3_get_block_data(source, block);
-        Iso15693_3Error error = Iso15693_3ErrorNone;
-        for(uint32_t attempt = 0; attempt < ISO15693_POLLER_WRITE_ATTEMPTS; attempt++) {
-            error =
-                iso15693_3_poller_write_block(iso_poller, block_data, (uint8_t)block, block_size);
-            if(error == Iso15693_3ErrorNone) break;
-            furi_delay_ms(ISO15693_POLLER_VERIFY_RETRY_MS);
-        }
+        const Iso15693_3Error error = iso15693_poller_write_block_retried(
+            iso_poller, block_data, (uint8_t)block, block_size);
         if(error == Iso15693_3ErrorNone) {
             // A success ABOVE an earlier failure means the failures are not a run at the top, so
             // they cannot be the card's capacity edge.
@@ -592,13 +610,7 @@ static bool iso15693_poller_write_source_blocks(
         // it ends up in.
         instance->clone_failed_bitmap[block / 8] |= (uint8_t)(1u << (block % 8));
 
-        bool non_empty = false;
-        for(uint8_t i = 0; i < block_size; i++) {
-            if(block_data[i] != 0) {
-                non_empty = true;
-                break;
-            }
-        }
+        const bool non_empty = !iso15693_poller_block_is_empty(block_data, block_size);
 
         // An empty source block that wouldn't write is the ONLY failure this clone is willing to excuse
         // as "past the card's physical capacity, so nothing was lost" -- so that is the only one whose
@@ -731,10 +743,7 @@ static bool
     iso15693_poller_block_held_data(const Iso15693_3Data* data, uint16_t block, uint8_t size) {
     if(block >= iso15693_3_get_block_count(data)) return false;
     const uint8_t* cached = iso15693_3_get_block_data(data, (uint8_t)block);
-    for(uint8_t i = 0; i < size; i++) {
-        if(cached[i] != 0) return true;
-    }
-    return false;
+    return !iso15693_poller_block_is_empty(cached, size);
 }
 
 // A block just proved it exists. Every absence still open below it is therefore interior memory that
@@ -829,18 +838,10 @@ static uint16_t iso15693_poller_wipe_blocks(
         // structural rather than something this loop has to re-argue.
         if(block < advertised) iso15693_poller_report_progress(instance, block + 1, advertised);
 
-        // Retried like the clone's loop, and everywhere rather than only above the advertised count:
-        // one refusal is not evidence. An earlier revision paid for retries only past the advertised
-        // count, on the grounds that a refusal below it merely costs the read-back -- which missed that
-        // a transient there reports a false "wouldn't clear" AND leaves a block genuinely unwiped that a
-        // second attempt would have cleared. Retries only ever run on a failure, so a clean card pays
-        // nothing for this.
-        Iso15693_3Error error = Iso15693_3ErrorNone;
-        for(uint32_t attempt = 0; attempt < ISO15693_POLLER_WRITE_ATTEMPTS; attempt++) {
-            error = iso15693_3_poller_write_block(iso_poller, zeros, (uint8_t)block, size);
-            if(error == Iso15693_3ErrorNone) break;
-            furi_delay_ms(ISO15693_POLLER_VERIFY_RETRY_MS);
-        }
+        // Retried at every block, not only above the advertised count: a transient below it reports a
+        // false "wouldn't clear" AND leaves a block unwiped that a second attempt would have cleared.
+        const Iso15693_3Error error =
+            iso15693_poller_write_block_retried(iso_poller, zeros, (uint8_t)block, size);
 
         if(error == Iso15693_3ErrorNone) {
             // Took the zero-write, so it exists and is now clear. Anything absent below it therefore
@@ -866,14 +867,7 @@ static uint16_t iso15693_poller_wipe_blocks(
             iso15693_poller_wipe_note_present(
                 instance, block, &absent_run, &any_present, &highest_present);
 
-            bool has_data = false;
-            for(uint8_t i = 0; i < size; i++) {
-                if(remaining[i] != 0) {
-                    has_data = true;
-                    break;
-                }
-            }
-            if(has_data) {
+            if(!iso15693_poller_block_is_empty(remaining, size)) {
                 FURI_LOG_W(TAG, "wipe: block %u refused and still holds data", block);
                 instance->clone_failed_count++;
                 instance->clone_failed_bitmap[block / 8] |= (uint8_t)(1u << (block % 8));
@@ -949,14 +943,7 @@ static uint16_t iso15693_poller_wipe_blocks(
             // write ACK and its read-back, on a block whose zero-write actually landed, answers here as
             // present-and-empty: reporting that as "not cleared" manufactures a failure. Only a block
             // that answers AND still holds data failed to clear.
-            bool holds_data = false;
-            for(uint8_t i = 0; i < size; i++) {
-                if(recheck[i] != 0) {
-                    holds_data = true;
-                    break;
-                }
-            }
-            if(holds_data) {
+            if(!iso15693_poller_block_is_empty(recheck, size)) {
                 instance->clone_failed_count++;
             } else {
                 instance->clone_failed_bitmap[probe / 8] &= (uint8_t) ~(1u << (probe % 8));
