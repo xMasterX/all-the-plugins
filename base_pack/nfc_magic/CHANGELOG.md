@@ -38,14 +38,19 @@ the copy advertises the same chip identity.
   retry, because blocks above the cut may still hold data.
 - **A wipe reports the range it covered** — "Cleared *N* blocks. Card claims *M*." Both figures, no
   verdict where the difference is benign: the advertised count is programmable, so a card cloned from a
-  smaller source, or one with fake flash, will show a mismatch without anything being wrong. Where the
-  difference *is* a fault — a dead stretch inside the claimed range, or a sweep the clock cut short —
-  it is reported as such rather than hidden in the counts.
+  smaller source, or one with fake flash, will show a mismatch without anything being wrong. A sweep the
+  clock cut short is always reported as such. A dead stretch inside the claimed range is reported when
+  the app can tell it apart from memory that never existed, which is not always — see the limit below.
 - **Blocks the card claims are not written off without evidence.** A block that answers neither a write
   nor a read may be memory that does not exist, or memory that has stopped responding while still
-  holding data. Below the card's own claimed count the wipe distinguishes them: a block whose contents
-  were read when the card was first activated provably exists and provably held data, so it is reported
-  as uncleared rather than dropped as absent.
+  holding data. The wipe distinguishes them where it can: a block that read back **non-zero content**
+  when the card was first activated provably exists and provably held data, so it is reported as
+  uncleared rather than dropped as absent. Only that direction proves anything — a block reading all
+  zeros is indistinguishable from one that was never read.
+  **Limit:** the read taken at activation stops at the first block that does not answer, so nothing
+  above that point can be proven either way. A stretch that was already dead when the card was
+  presented therefore reads exactly like memory the card does not have, and is dropped rather than
+  reported. Only an interior dead stretch — one with a block above it that still answers — is caught.
 - **Live "Writing X / N" progress** during a clone or wipe, as the USCUID-UL clone already had.
 - **Write UID** — manual magic backdoor UID write. Tries gen2 first and, only if that leaves the UID
   unchanged, offers the same opt-in gen1 attempt the clone does.
