@@ -108,6 +108,13 @@ steps:
       FBT_TOOLS_CUSTOM_LINK:
         from_secret: fbt_link
 
+  - name: "Build apps index"
+    image: python:3-alpine
+    commands:
+      - python3 make_apps_index.py --tag ${DRONE_TAG} --url "https://github.com/xMasterX/all-the-plugins/releases/download/{tag}/all-the-apps-{pack}.zip" base=base_pack_build/artifacts-base extra=extra_pack_build/artifacts-extra > apps_index.txt
+      - echo "--- apps_index.txt (head) ---"
+      - head -6 apps_index.txt
+
   - name: "Bundle packages"
     image: joshkeegan/zip
     commands:
@@ -120,6 +127,7 @@ steps:
       - mv all-the-apps-base.zip ${DRONE_TAG}/
       - mv all-the-apps-extra.tgz ${DRONE_TAG}/
       - mv all-the-apps-base.tgz ${DRONE_TAG}/
+      - mv apps_index.txt ${DRONE_TAG}/
       - rm -rf extra_pack_build
       - rm -rf base_pack_build
       - rm -rf unleashed-firmware
@@ -138,6 +146,7 @@ steps:
       files:
         - ${DRONE_TAG}/*.tgz
         - ${DRONE_TAG}/*.zip
+        - ${DRONE_TAG}/apps_index.txt
       title: ${DRONE_TAG}
       note: CHANGELOG.md
       checksum:
