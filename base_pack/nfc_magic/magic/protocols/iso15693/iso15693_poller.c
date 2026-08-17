@@ -31,6 +31,25 @@
 #define ISO15693_MAGIC_BLK_UID_7654 (0x38U) // uid[7..4]
 #define ISO15693_MAGIC_BLK_UID_3210 (0x39U) // uid[3..0]
 
+// The same four as one list, because four places ask "is this a backdoor block?": the clone loop skips
+// them, its back-fill skips them again, the reported total deducts them, and the source inspection
+// reads them. Each used to spell the set out, so the set existed four times and could disagree with
+// itself in four ways. Membership only -- the gen1 write SEQUENCE is ordered and stays written out at
+// its call site, where the order is the point.
+static const uint8_t iso15693_poller_backdoor_blocks[] = {
+    ISO15693_MAGIC_BLK_UID_7654,
+    ISO15693_MAGIC_BLK_UID_3210,
+    ISO15693_MAGIC_BLK_UNLOCK,
+    ISO15693_MAGIC_BLK_COMMIT,
+};
+
+static bool iso15693_poller_is_backdoor_block(uint16_t block) {
+    for(size_t i = 0; i < sizeof(iso15693_poller_backdoor_blocks); i++) {
+        if(block == iso15693_poller_backdoor_blocks[i]) return true;
+    }
+    return false;
+}
+
 // Standard ISO15693 identity writes, used to make a clone match the source's AFI / DSFID.
 #define ISO15693_MAGIC_CMD_WRITE_AFI   (0x27U) // ISO15693 WRITE AFI
 #define ISO15693_MAGIC_CMD_WRITE_DSFID (0x29U) // ISO15693 WRITE DSFID
@@ -539,6 +558,10 @@ static bool iso15693_poller_write_source_blocks(
     // first 256 blocks can be attempted or accounted for. Real ISO15693 tags never exceed this; clamp
     // defensively so a corrupt/hand-edited source can't make clone_blocks_total overstate what was
     // actually written (which would skew the over-capacity "holds X of Y" report).
+    //
+    // Clamped ONCE, here, and never reassigned -- which is what lets both loops below bound themselves
+    // on source_count alone. Re-testing the bitmap size in their headers restated this in two more
+    // places without adding a guarantee.
     if(source_count > ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8) {
         source_count = ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8;
     }
@@ -547,10 +570,9 @@ static bool iso15693_poller_write_source_blocks(
     // skip below so the "Cloned X/Y" total isn't inflated by blocks that only ever hold the UID.
     uint16_t total = source_count;
     if(skip_backdoor) {
-        if(ISO15693_MAGIC_BLK_UID_7654 < source_count) total--;
-        if(ISO15693_MAGIC_BLK_UID_3210 < source_count) total--;
-        if(ISO15693_MAGIC_BLK_UNLOCK < source_count) total--;
-        if(ISO15693_MAGIC_BLK_COMMIT < source_count) total--;
+        for(size_t i = 0; i < sizeof(iso15693_poller_backdoor_blocks); i++) {
+            if(iso15693_poller_backdoor_blocks[i] < source_count) total--;
+        }
     }
     instance->clone_blocks_total = total;
     instance->clone_failed_count = 0;
@@ -593,7 +615,7 @@ static bool iso15693_poller_write_source_blocks(
     const uint32_t pass_start = furi_get_tick();
     const uint32_t pass_budget = furi_ms_to_ticks(ISO15693_POLLER_PASS_MAX_MS);
     uint16_t block = 0;
-    for(; block < source_count && block < ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8; block++) {
+    for(; block < source_count; block++) {
         if(furi_get_tick() - pass_start > pass_budget) {
             FURI_LOG_W(TAG, "clone: time limit reached at block %u of %u", block, source_count);
             // On the instance, not a local: the report needs this as much as the capacity test below
@@ -604,9 +626,7 @@ static bool iso15693_poller_write_source_blocks(
             instance->pass_cut_block = block;
             break;
         }
-        if(skip_backdoor &&
-           (block == ISO15693_MAGIC_BLK_UID_7654 || block == ISO15693_MAGIC_BLK_UID_3210 ||
-            block == ISO15693_MAGIC_BLK_UNLOCK || block == ISO15693_MAGIC_BLK_COMMIT)) {
+        if(skip_backdoor && iso15693_poller_is_backdoor_block(block)) {
             continue; // gen1 owns these; the gen1 UID sequence already wrote them
         }
         // Before the write, so a clean run reports progress too -- the success path below continues
@@ -677,10 +697,8 @@ static bool iso15693_poller_write_source_blocks(
     // Record them as failures, which is what they are, and the bitmap then names them in Details.
     // Only reachable when the card is still present; a cut caused by the card leaving is reported as
     // CardLost below and these counters are discarded.
-    for(; block < source_count && block < ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8; block++) {
-        if(skip_backdoor &&
-           (block == ISO15693_MAGIC_BLK_UID_7654 || block == ISO15693_MAGIC_BLK_UID_3210 ||
-            block == ISO15693_MAGIC_BLK_UNLOCK || block == ISO15693_MAGIC_BLK_COMMIT)) {
+    for(; block < source_count; block++) {
+        if(skip_backdoor && iso15693_poller_is_backdoor_block(block)) {
             continue;
         }
         instance->clone_failed_bitmap[block / 8] |= (uint8_t)(1u << (block % 8));
@@ -1608,13 +1626,8 @@ bool iso15693_poller_source_uses_gen1_blocks(const Iso15693_3Data* source) {
     const uint16_t block_count = iso15693_3_get_block_count(source);
     const uint8_t block_size = iso15693_3_get_block_size(source);
     if(block_size == 0) return false;
-    const uint8_t gen1_blocks[] = {
-        ISO15693_MAGIC_BLK_UID_7654,
-        ISO15693_MAGIC_BLK_UID_3210,
-        ISO15693_MAGIC_BLK_UNLOCK,
-        ISO15693_MAGIC_BLK_COMMIT};
-    for(size_t i = 0; i < sizeof(gen1_blocks); i++) {
-        const uint16_t block = gen1_blocks[i];
+    for(size_t i = 0; i < sizeof(iso15693_poller_backdoor_blocks); i++) {
+        const uint16_t block = iso15693_poller_backdoor_blocks[i];
         if(block >= block_count) continue;
         const uint8_t* data = iso15693_3_get_block_data(source, block);
         for(uint8_t j = 0; j < block_size; j++) {
