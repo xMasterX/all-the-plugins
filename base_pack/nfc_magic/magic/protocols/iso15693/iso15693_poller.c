@@ -150,7 +150,7 @@
 // re-probe of the trailing run, which is not deadline-checked (it would have to abandon the run
 // half-classified); that is bounded by the run length.
 //
-// A sweep cut here reports what it covered and says it was cut (wipe_truncated), rather than passing
+// A sweep cut here reports what it covered and says it was cut (pass_truncated), rather than passing
 // off a partial range as the card's extent -- the same distinction the advertised-count floor draws.
 #define ISO15693_POLLER_WIPE_MAX_MS (10000U)
 
@@ -232,7 +232,7 @@ struct Iso15693Poller {
     uint16_t wipe_advertised;
     // Wipe mode: the sweep hit ISO15693_POLLER_WIPE_MAX_MS and stopped short, so its range is a cut
     // rather than the card's extent and the report has to say so. Clone mode: unused (stays false).
-    bool wipe_truncated;
+    bool pass_truncated;
     // Where the clock cut the pass: the first block index NOT attempted. Only meaningful alongside the
     // truncation flag above. Kept as its own figure because nothing else in the result carries it --
     // clone_blocks_total is the source's count, and after a wipe it is the highest block that ANSWERED,
@@ -584,12 +584,15 @@ static bool iso15693_poller_write_source_blocks(
     // while every write lands -- which is why the cut has to be remembered rather than just logged.
     const uint32_t pass_start = furi_get_tick();
     const uint32_t pass_budget = furi_ms_to_ticks(ISO15693_POLLER_WIPE_MAX_MS);
-    bool pass_truncated = false;
     uint16_t block = 0;
     for(; block < source_count && block < ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8; block++) {
         if(furi_get_tick() - pass_start > pass_budget) {
             FURI_LOG_W(TAG, "clone: time limit reached at block %u of %u", block, source_count);
-            pass_truncated = true;
+            // On the instance, not a local: the report needs this as much as the capacity test below
+            // does. Kept local, it made the clone claim the card had REFUSED every block above the cut
+            // -- named, counted and offered no Retry -- which is the same fabrication the capacity
+            // guard exists to stop, one layer further out.
+            instance->pass_truncated = true;
             instance->pass_cut_block = block;
             break;
         }
@@ -705,7 +708,7 @@ static bool iso15693_poller_write_source_blocks(
     // never attempted. Left in, a slow-but-healthy card gets "Card too small", which is the fabricated
     // hardware claim the read-probe above exists to prevent, reached from the other direction.
     const bool failures_are_top_tail = any_failure && wrote_any && !wrote_above_failure &&
-                                       !any_failure_answered && !pass_truncated;
+                                       !any_failure_answered && !instance->pass_truncated;
     if(failures_are_top_tail) {
         instance->clone_capacity_confirmed = true;
     } else if(instance->clone_over_capacity > 0) {
@@ -839,7 +842,7 @@ static uint16_t iso15693_poller_wipe_blocks(
         if(furi_get_tick() - sweep_start > sweep_budget) {
             FURI_LOG_W(
                 TAG, "wipe: time limit reached at block %u (advertised %u)", block, advertised);
-            instance->wipe_truncated = true;
+            instance->pass_truncated = true;
             instance->pass_cut_block = block;
             break;
         }
@@ -987,7 +990,7 @@ static uint16_t iso15693_poller_wipe_blocks(
     //
     // One premise this cannot establish: when the clock ends the sweep, the run it ends on is wherever
     // the budget ran out rather than the card's top, so dropping the part of it above the advertised
-    // count is unverified. sweep_truncated is what carries that -- the outcome is reported as Partial
+    // count is unverified. pass_truncated is what carries that -- the outcome is reported as Partial
     // and names where the sweep stopped, so the drop is not passing those blocks off as absent memory.
     for(uint16_t i = block - absent_run; i < block; i++) {
         if(i < advertised && iso15693_poller_block_held_data(target, i, size)) {
@@ -1065,7 +1068,7 @@ static Iso15693PollerEvent iso15693_poller_success_or_partial(Iso15693Poller* in
     // deliberately NOT in this list -- that check is best-effort, the wipe itself finished, and making
     // it Partial would downgrade every wipe where the user lifts the card as it completes.
     if(instance->clone_failed_count > 0 || gen1_clone || identity_failed ||
-       instance->uid_changed || instance->wipe_truncated) {
+       instance->uid_changed || instance->pass_truncated) {
         return Iso15693PollerEventPartial;
     }
     return Iso15693PollerEventSuccess;
@@ -1430,7 +1433,7 @@ static void iso15693_poller_start_internal(
     instance->clone_failed_count = 0;
     instance->clone_over_capacity = 0;
     instance->wipe_advertised = 0;
-    instance->wipe_truncated = false;
+    instance->pass_truncated = false;
     instance->pass_cut_block = 0;
     instance->uid_verified = false;
     instance->clone_used_gen1 = false;
@@ -1524,7 +1527,7 @@ void iso15693_poller_get_result(Iso15693Poller* instance, Iso15693PollerResult* 
     result->failed_count = instance->clone_failed_count;
     result->over_capacity = instance->clone_over_capacity;
     result->blocks_advertised = instance->wipe_advertised;
-    result->sweep_truncated = instance->wipe_truncated;
+    result->pass_truncated = instance->pass_truncated;
     result->cut_block = instance->pass_cut_block;
     result->uid_verified = instance->uid_verified;
     memcpy(result->failed_bitmap, instance->clone_failed_bitmap, sizeof(result->failed_bitmap));

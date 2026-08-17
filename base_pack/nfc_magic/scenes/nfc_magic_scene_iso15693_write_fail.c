@@ -24,9 +24,14 @@ void nfc_magic_scene_iso15693_write_fail_widget_callback(
 // this answer.
 static bool
     nfc_magic_scene_iso15693_write_fail_is_retryable(NfcMagicApp* instance, uint32_t reason) {
-    UNUSED(instance);
     return reason == NfcMagicIso15693WriteFailReasonCardLost ||
-           reason == NfcMagicIso15693WriteFailReasonWipeStopped;
+           reason == NfcMagicIso15693WriteFailReasonWipeStopped ||
+           // A cut clone, which has no reason code of its own -- it stays on the ordinary partial
+           // screen, so the flag is the only thing that distinguishes it there. Re-running is exactly
+           // what writes the blocks above the cut, which is a stronger claim on Retry than the blocks
+           // BELOW it have: those were tried and refused.
+           (reason == NfcMagicIso15693WriteFailReasonPartial &&
+            instance->iso15693_result.pass_truncated);
 }
 
 static bool
@@ -36,13 +41,17 @@ static bool
     case NfcMagicIso15693WriteFailReasonOverCapacity:
         return true;
     case NfcMagicIso15693WriteFailReasonPartial:
-        return result->failed_count > 0 || result->used_gen1 || result->identity_failed;
+        // pass_truncated on its own qualifies: on a cut clone the summary's "Not written" count mixes
+        // refused blocks with never-attempted ones, and the scroll view is the only place that can
+        // separate them.
+        return result->failed_count > 0 || result->used_gen1 || result->identity_failed ||
+               result->pass_truncated;
     case NfcMagicIso15693WriteFailReasonWipeStopped:
         // Always: the blocks above the cut were never attempted, so they carry no bitmap bits and the
         // scroll view is the only place that fact can be stated.
         return true;
     case NfcMagicIso15693WriteFailReasonWipeUidChanged:
-        return result->failed_count > 0 || result->sweep_truncated;
+        return result->failed_count > 0 || result->pass_truncated;
     default:
         return false;
     }
@@ -182,8 +191,15 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         // clobber > AFI/DSFID). A lower one is dropped from THIS screen only -- "Details" below is
         // offered whenever any caveat applies and lists all of them, so nothing is unreachable.
         // A cut sweep is not among them: it has its own reason code and screen.
-        if(instance->iso15693_result.capacity_confirmed &&
-           instance->iso15693_result.failed_count > 0) {
+        if(instance->iso15693_result.pass_truncated) {
+            // Outranks the rest on a cut run, because it is the only one that explains the count above
+            // it: most of "Not written" is blocks nothing was sent to, not blocks the card refused.
+            // Naming the cut here is what stops the number reading as a verdict on the card.
+            furi_string_cat_printf(
+                text, "\nStopped at block %u", instance->iso15693_result.cut_block);
+        } else if(
+            instance->iso15693_result.capacity_confirmed &&
+            instance->iso15693_result.failed_count > 0) {
             // Real data was lost because those blocks are a persistent, contiguous run at the top of
             // the card -> the card is physically smaller than the source. (An empty top tail loses
             // nothing and is reported as an over-capacity success, not here.)
@@ -209,7 +225,7 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         // short-circuits to this screen before any of the truncation reporting. Three lines is all the
         // body has, so the cut replaces the prose rather than adding to it.
         FuriString* text = furi_string_alloc();
-        if(instance->iso15693_result.sweep_truncated) {
+        if(instance->iso15693_result.pass_truncated) {
             furi_string_printf(
                 text,
                 "No block accepted the\nzero-write.\nStopped at block %u.",

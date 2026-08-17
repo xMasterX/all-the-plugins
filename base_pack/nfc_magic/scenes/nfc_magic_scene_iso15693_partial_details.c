@@ -13,11 +13,26 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
     const uint32_t reason =
         scene_manager_get_scene_state(instance->scene_manager, NfcMagicSceneIso15693WriteFail);
     const bool over_capacity = (reason == NfcMagicIso15693WriteFailReasonOverCapacity);
+    const bool wipe_mode = (instance->iso15693_mode == NfcMagicIso15693ModeWipe);
+    // On a cut run the bitmap holds two different things at two different addresses. Below the cut are
+    // blocks the card was asked for and refused. At and above it are blocks the back-fill recorded so
+    // the "written" figure -- derived by subtracting failures from the total -- would not claim they
+    // landed. Only the first group is a fact about the card; listing them together names the second
+    // group as refusals, which is the whole complaint. So the list stops at the cut and the note below
+    // carries the rest.
+    const uint16_t list_upto = instance->iso15693_result.pass_truncated ?
+                                   instance->iso15693_result.cut_block :
+                                   (uint16_t)(ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8);
     // A partial can reach this screen with NO failed blocks -- when its only problem is the gen1 UID
-    // clobber or a rejected AFI/DSFID. Titling an empty list "Blocks not written" would be wrong, so
-    // name the screen for what it actually shows.
-    const bool has_block_list =
-        (instance->iso15693_result.failed_count + instance->iso15693_result.over_capacity) > 0;
+    // clobber, a rejected AFI/DSFID, or a cut that happened before anything was refused. Titling an
+    // empty list "Blocks not written" would be wrong, so name the screen for what it actually shows.
+    // Counted over the same range that will be printed, not from failed_count, which on a cut run
+    // includes every unattempted block above it.
+    uint16_t listed = 0;
+    for(uint16_t b = 0; b < list_upto; b++) {
+        if(instance->iso15693_result.failed_bitmap[b / 8] & (1u << (b % 8))) listed++;
+    }
+    const bool has_block_list = (listed + instance->iso15693_result.over_capacity) > 0;
     // Whether the listed blocks are merely EMPTY ones past the card's physical capacity (nothing lost)
     // has to be decided from the capacity facts, not from the reason code: a Partial can consist purely
     // of an empty capacity tail plus a gen1 / AFI-DSFID caveat, and in that state over_capacity
@@ -30,11 +45,9 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
     if(empty_blocks) {
         title = "Empty top blocks";
     } else if(has_block_list) {
-        title = (instance->iso15693_mode == NfcMagicIso15693ModeWipe) ? "Blocks not cleared" :
-                                                                        "Blocks not written";
+        title = wipe_mode ? "Blocks not cleared" : "Blocks not written";
     } else {
-        title = (instance->iso15693_mode == NfcMagicIso15693ModeWipe) ? "Wipe notes" :
-                                                                        "Clone notes";
+        title = wipe_mode ? "Wipe notes" : "Clone notes";
     }
     widget_add_string_element(widget, 0, 0, AlignLeft, AlignTop, FontPrimary, title);
 
@@ -45,44 +58,54 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
         // IS lost; this clone's data all fit.)
         furi_string_cat_str(message, "Didn't fit on the card:\n");
     }
-    // Scan the whole bitmap, not blocks_total: the wipe and gen1 paths reduce blocks_total
-    // to a logical count that excludes the skipped backdoor blocks (56/57/62/63), yet failures are
-    // recorded at their TRUE block index, which can exceed that reduced total. Unused bits are 0, so
-    // only real failures print, each at its true index -- keeping this list consistent with the
-    // "Not written/cleared: N" summary count.
+    // The bound is list_upto, never blocks_total: the wipe and gen1 paths reduce blocks_total to a
+    // logical count that excludes the skipped backdoor blocks (56/57/62/63), yet failures are recorded
+    // at their TRUE block index, which can exceed that reduced total. Unused bits are 0, so on an
+    // uncut run scanning the whole bitmap prints only real failures, each at its true index.
     nfc_magic_partial_details_append_indices(
-        message, instance->iso15693_result.failed_bitmap, ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8, 0);
+        message, instance->iso15693_result.failed_bitmap, list_upto, 0);
     // Separate the caveats from whatever precedes them, but don't open with a blank line when there is
     // no block list above (the notes-only case).
-    if(instance->iso15693_result.sweep_truncated) {
-        // The blocks above the cut are not in the bitmap -- they were never attempted, so there is
-        // nothing to list -- which is exactly why they need saying here. This is the only route to that
-        // fact on the UID-changed screen, whose reason code pre-empts the partial one, and the only
-        // place the partial screen's own count can be qualified.
+    if(instance->iso15693_result.pass_truncated) {
+        // The blocks above the cut are the ones the list above deliberately excludes, which is exactly
+        // why they need saying here. This is also the only route to that fact on the UID-changed
+        // screen, whose reason code pre-empts the partial one, and the only place either summary's
+        // count can be qualified.
         if(furi_string_size(message) > 0) furi_string_push_back(message, '\n');
         // The cut index, never blocks_total: this is a claim about which blocks were TRIED, and
         // blocks_total is the highest that answered. Below the cut it under-reports (the trailing run
         // the tail-drop discards was attempted -- three writes and a read each -- yet would be excluded
         // by the sentence); above it, a card claiming 200 while holding 10 read "time limit at block
         // 10" about 170 blocks that were attempted and answered nothing.
-        //
-        // Which side of the claim the cut lands on changes what is true, so it changes the sentence.
-        // The sweep runs past the advertised count deliberately, so "of the N this card claims" is only
-        // a frame when the cut is actually inside it.
-        if(instance->iso15693_result.cut_block < instance->iso15693_result.blocks_advertised) {
-            furi_string_cat_printf(
-                message,
-                "Sweep hit its time limit at block %u of the %u this card claims. Blocks above that "
-                "were never attempted and may still hold data.",
-                instance->iso15693_result.cut_block,
-                instance->iso15693_result.blocks_advertised);
+        if(wipe_mode) {
+            // Which side of the claim the cut lands on changes what is true, so it changes the
+            // sentence. The sweep runs past the advertised count deliberately, so "of the N this card
+            // claims" is only a frame when the cut is actually inside it.
+            if(instance->iso15693_result.cut_block < instance->iso15693_result.blocks_advertised) {
+                furi_string_cat_printf(
+                    message,
+                    "Sweep hit its time limit at block %u of the %u this card claims. Blocks above "
+                    "that were never attempted and may still hold data.",
+                    instance->iso15693_result.cut_block,
+                    instance->iso15693_result.blocks_advertised);
+            } else {
+                furi_string_cat_printf(
+                    message,
+                    "Sweep hit its time limit at block %u, past the %u this card claims. Every "
+                    "claimed block was attempted; anything above the cut was not.",
+                    instance->iso15693_result.cut_block,
+                    instance->iso15693_result.blocks_advertised);
+            }
         } else {
+            // A clone has no advertised count to measure against -- its denominator is the source --
+            // and its remedy differs from a wipe's: running it again writes the blocks it never
+            // reached. Say so, because the summary offers Retry on the strength of it.
             furi_string_cat_printf(
                 message,
-                "Sweep hit its time limit at block %u, past the %u this card claims. Every claimed "
-                "block was attempted; anything above the cut was not.",
-                instance->iso15693_result.cut_block,
-                instance->iso15693_result.blocks_advertised);
+                "Clone hit its time limit at block %u. Blocks from there up were never sent to the "
+                "card -- they are counted as not written, but the card did not refuse them. Running "
+                "the clone again writes them.",
+                instance->iso15693_result.cut_block);
         }
     }
     if(instance->iso15693_result.used_gen1) {

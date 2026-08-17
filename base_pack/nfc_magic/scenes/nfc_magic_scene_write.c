@@ -423,7 +423,12 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
                 NfcMagicIso15693WriteFailReason partial_reason;
                 if(instance->iso15693_result.uid_changed) {
                     partial_reason = NfcMagicIso15693WriteFailReasonWipeUidChanged;
-                } else if(instance->iso15693_result.sweep_truncated) {
+                } else if(
+                    instance->iso15693_result.pass_truncated &&
+                    instance->iso15693_mode == NfcMagicIso15693ModeWipe) {
+                    // Mode-gated because pass_truncated now covers a clone's data pass too, and
+                    // WipeStopped's screen is wipe-specific down to its wording. A cut clone stays on
+                    // the ordinary partial screen and is qualified there.
                     partial_reason = NfcMagicIso15693WriteFailReasonWipeStopped;
                 } else {
                     partial_reason = NfcMagicIso15693WriteFailReasonPartial;

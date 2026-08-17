@@ -30,6 +30,9 @@ typedef enum {
     Iso15693PollerEventPartial, // the operation mostly worked but isn't a clean result: a clone lost
         // some data blocks, fell back to gen1 (overwriting 56/57/62/63), or had its AFI/DSFID write
         // rejected; or a wipe couldn't clear every block, or moved the card's UID (uid_changed).
+        // ALSO either mode cut short by the wall-clock bound (pass_truncated) -- the run's own job is
+        // left undone, whatever the counts say, and cut_block says where. That is the one qualifier a
+        // caller cannot see in the block figures, since the unreached blocks are recorded as failures.
     Iso15693PollerEventFail, // the operation didn't take: the backdoor write was rejected (not a
         // magic tag), the gen2 write changed the UID to neither the original nor the target, an opt-in
         // gen1 UID didn't take, the clone source had no data blocks, a wipe cleared nothing, or a
@@ -144,10 +147,13 @@ typedef struct {
     // advertises the smaller count while still holding more, and a card with fake flash advertises more
     // than it holds. 0 for a clone.
     uint16_t blocks_advertised;
-    // Wipe only: the sweep stopped on its wall-clock bound rather than at the card's top, so its range
-    // is a cut rather than the card's extent. Reported so the screen doesn't pass a partial range off
-    // as the card's extent. False for a clone.
-    bool sweep_truncated;
+    // The run stopped on its wall-clock bound rather than at its natural end, so its range is a cut and
+    // no report may pass that range off as a finding about the card. BOTH modes: a wipe's sweep and a
+    // clone's data pass carry the same bound, and the clone needs it more, not less. The blocks above
+    // the cut are recorded as failures -- otherwise the "written" figure, derived by subtraction, would
+    // claim they all landed -- so without this flag a reader cannot tell a block the card REFUSED from
+    // one nothing was ever sent to, and every screen downstream states the stronger claim.
+    bool pass_truncated;
     // Where the clock cut the run: the first block index NOT attempted. Only meaningful when the flag
     // above is set. It is NOT blocks_total and cannot be derived from it -- after a wipe blocks_total is
     // the highest block that ANSWERED, which sits at or below the cut. The gap is not a rounding
@@ -226,7 +232,7 @@ bool iso15693_poller_source_uses_gen1_blocks(const Iso15693_3Data* source);
 // ISO15693_POLLER_WIPE_MAX_BLOCKS in the .c for the hardware measurement behind that. That run is not
 // the only stop condition: the sweep also stops at the 256-block ceiling, and on a wall-clock bound
 // (ISO15693_POLLER_WIPE_MAX_MS) for a card that answers reads everywhere and so never accumulates a
-// run. A sweep the clock stopped sets sweep_truncated and reports where it stopped in cut_block --
+// run. A sweep the clock stopped sets pass_truncated and reports where it stopped in cut_block --
 // which is NOT blocks_total, and on that same read-everywhere card sits ABOVE the advertised count
 // while blocks_total sits below it. Below the advertised count the sweep never stops early on absence alone --
 // the card's own claim is evidence those blocks exist.
