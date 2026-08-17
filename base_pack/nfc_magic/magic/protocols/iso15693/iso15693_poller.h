@@ -23,10 +23,15 @@ typedef enum {
 typedef enum {
     Iso15693PollerEventSuccess, // Info: card read. Write/clone: the target UID read back and matched
         // (the UID, plus the AFI/DSFID on a clone, are re-read; block CONTENTS are never compared --
-        // a data block counts as written when the card ACKs it). Wipe: the sweep ran to the card's top
-        // and every block it reached is clear. (Blocks probed past that top answered nothing and are
-        // excluded from the report entirely.) It does NOT promise the card's identity was re-checked --
-        // that check is best-effort, and uid_verified says whether it reached an answer.
+        // a data block counts as written when the card ACKs it). Wipe: the sweep ended without the
+        // clock cutting it, and nothing it reached is known to still hold data. Deliberately weaker
+        // than "ran to the card's top and every block it reached is clear", which overreached twice:
+        // the sweep can also end at the 256-block ceiling, which sets no flag and reports Success if
+        // nothing failed, so "the card's top" is not the only ending; and blocks dropped BELOW the
+        // advertised count were reached and are not known to be clear -- nothing proved they held
+        // data, which is not the same as proving they did not. What the drop does guarantee is that a
+        // block proven to hold data is never dropped. It does NOT promise the card's identity was
+        // re-checked -- that check is best-effort, and uid_verified says whether it reached an answer.
     Iso15693PollerEventPartial, // the operation mostly worked but isn't a clean result: a clone lost
         // some data blocks, fell back to gen1 (overwriting 56/57/62/63), or had its AFI/DSFID write
         // rejected; or a wipe couldn't clear every block, or moved the card's UID (uid_changed).
