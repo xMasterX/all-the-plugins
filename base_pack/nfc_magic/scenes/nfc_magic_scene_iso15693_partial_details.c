@@ -108,6 +108,21 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
                 instance->iso15693_result.cut_block);
         }
     }
+    if(wipe_mode && !instance->iso15693_result.uid_verified) {
+        // The wipe has three outcome screens and only "Wipe complete" has a spare body line for this,
+        // so on the other two the check that never ran was asserted by omission. The field's own doc
+        // says a caller reporting success should say so, and two of the three callers could not.
+        //
+        // It bites hardest on the card the check exists for. The sweep zeroes 56/57 at INDEX 56/57 --
+        // long before any plausible cut -- so on a gen1 card left armed by an earlier UID write the UID
+        // registers are already overwritten by the time a truncation is decided. "Wipe stopped" then
+        // offers Retry without saying the identity check never reached an answer.
+        if(furi_string_size(message) > 0) furi_string_push_back(message, '\n');
+        furi_string_cat_str(
+            message,
+            "UID not re-checked: the card did not answer after the field reset, so whether the wipe "
+            "moved its UID is unknown.");
+    }
     if(instance->iso15693_result.used_gen1) {
         // The gen1 fallback stamped the UID/commit into blocks 56/57/62/63, so they differ from the
         // source regardless of the write results above.
