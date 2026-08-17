@@ -261,6 +261,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | BME280 Vario | ![GPIO Badge] | [by xumbax](https://github.com/xumbax/flipper-vario) |  | ![None Badge] |
 | ESP32 Hotspot Arcade | ![GPIO Badge] | [by tarikbc](https://github.com/tarikbc/hotspot-arcade) |  | [![Author Badge]](https://lab.flipper.net/apps/hotspot_arcade) |
 | Fake Chip Detector | ![GPIO Badge] | [by hleserg](https://github.com/hleserg/flipper-fake-chip-detector) | Reads an I2C sensor's factory ID register to tell whether it really is the chip it was sold as | ![None Badge] |
+| I2C BMS Reader | ![GPIO Badge] | [by gazirov](https://github.com/gazirov/battery_reader) | SBS battery reader/service tool for TI BQ30/BQ40 controllers (via I2C) | ![None Badge] |
 | IR Remote | ![IR Badge] | [by Hong5489](https://github.com/Hong5489/ir_remote) | improvements [by friebel](https://github.com/RogueMaster/flipperzero-firmware-wPlugins/pull/535) - Hold Option, RAW support [by d4ve10](https://github.com/d4ve10/ir_remote/tree/infrared_hold_option) | ![None Badge] |
 | IR Intervalometer | ![IR Badge] | [by Nitepone](https://github.com/Nitepone/flipper-intervalometer) |  | [![UFW Badge]](https://lab.flipper.net/apps/sony_intervalometer) |
 | IR Xbox Controller | ![IR Badge] | [by gebeto](https://github.com/gebeto/flipper-xbox-controller) |  | [![Author Badge]](https://lab.flipper.net/apps/xbox_controller) |
@@ -310,6 +311,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Philips Sonicare brush head NFC reader | ![NFC Badge] | [by Markus Birth](https://git.mbirth.uk/flipper_zero/sonicare) |  | [![Author Badge]](https://lab.flipper.net/apps/uk_mbirth_sonicare) |
 | NFC Stock Manager | ![NFC Badge] | [by Endika](https://github.com/Endika/flipper-nfc-stock) |  | [![Author Badge]](https://lab.flipper.net/apps/nfc_stock_manager) |
 | Xiaomi Filter Reset | ![NFC Badge] | [by khmm12](https://github.com/khmm12/flipper-xiaomi-filter-reset) |  | [![Author Badge]](https://lab.flipper.net/apps/xiaomi_filter_reset) |
+| NFC Canary | ![NFC Badge] | [by antitree](https://github.com/antitree/nfc_canary) | Passive NFC skim detector - alarms when a reader interrogates the device | ![None Badge] |
 | EM4100 universal keys generator (for RFID Fuzzer) | ![RFID Badge] | [by Milk-Cool](https://github.com/Milk-Cool/fz-em4100-generator) |  | [![Author Badge]](https://lab.flipper.net/apps/key_generator) |
 | (Q)M100 UHF RFID | ![RFID Badge] | [by frux-c](https://github.com/frux-c/uhf_rfid) | WIP -> (+Added icon by @xMasterX) | [![UFW Badge]](https://lab.flipper.net/apps/uhf_rfid) |
 | T5577 Multiwriter | ![RFID Badge] | [by Leptopt1los](https://github.com/Leptopt1los/t5577_multiwriter) | | [![UFW Badge]](https://lab.flipper.net/apps/t5577_multiwriter) |
