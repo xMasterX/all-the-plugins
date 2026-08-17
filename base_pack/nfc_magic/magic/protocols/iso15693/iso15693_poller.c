@@ -822,10 +822,13 @@ static uint16_t iso15693_poller_wipe_blocks(
     uint16_t absent_run = 0;
     uint16_t block = 0;
     const uint32_t sweep_start = furi_get_tick();
+    const uint32_t sweep_budget = furi_ms_to_ticks(ISO15693_POLLER_WIPE_MAX_MS);
     for(; block < ISO15693_POLLER_WIPE_MAX_BLOCKS; block++) {
         // Time bound, checked before the block is attempted so `block` stays the exclusive end of the
-        // attempted range for the tail arithmetic below. See ISO15693_POLLER_WIPE_MAX_MS.
-        if(furi_get_tick() - sweep_start > furi_ms_to_ticks(ISO15693_POLLER_WIPE_MAX_MS)) {
+        // attempted range for the tail arithmetic below. Compared as elapsed-against-budget rather
+        // than against an absolute deadline, which would not survive a tick wraparound. See
+        // ISO15693_POLLER_WIPE_MAX_MS.
+        if(furi_get_tick() - sweep_start > sweep_budget) {
             FURI_LOG_W(
                 TAG, "wipe: time limit reached at block %u (advertised %u)", block, advertised);
             instance->wipe_truncated = true;
@@ -894,7 +897,8 @@ static uint16_t iso15693_poller_wipe_blocks(
         // The card-present check is still worth making while this holds -- a lifted card looks exactly
         // like a dead stretch -- but only once per run length, so a mostly-dead card doesn't pay an
         // inventory per block.
-        if(block + 1 < advertised) {
+        const bool claimed_range_attempted = (block + 1 >= advertised);
+        if(!claimed_range_attempted) {
             if(absent_run % ISO15693_POLLER_WIPE_ABSENT_RUN == 0 &&
                !iso15693_poller_card_still_present(iso_poller)) {
                 *card_lost = true;
@@ -904,9 +908,9 @@ static uint16_t iso15693_poller_wipe_blocks(
             continue;
         }
 
-        // The whole advertised range has been attempted, so the run may now be the card's top. The
-        // clone loop's ambiguity first: a card lifted mid-sweep makes every remaining write AND read
-        // fail, which is exactly what running out of card looks like. Ask before concluding anything.
+        // The run may now be the card's top. The clone loop's ambiguity first: a card lifted mid-sweep
+        // makes every remaining write AND read fail, which is exactly what running out of card looks
+        // like. Ask before concluding anything.
         if(!iso15693_poller_card_still_present(iso_poller)) {
             *card_lost = true;
             block++; // attempted, so it counts -- see the note at the other card-lost exit
