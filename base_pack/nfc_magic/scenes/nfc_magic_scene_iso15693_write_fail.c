@@ -11,17 +11,10 @@ void nfc_magic_scene_iso15693_write_fail_widget_callback(
     }
 }
 
-// Does this outcome have anything behind "Details"? One answer, for both the button in on_enter and the
-// routing in on_event.
-//
-// Why it is not simply failed_count: a partial whose only problem is the gen1 UID clobber or a rejected
-// AFI/DSFID has zero failed blocks, and the summary shows only its highest-priority qualifier, so the
-// lower one would be reachable nowhere. UID-changed is here because it PRE-EMPTS the partial reason
-// code -- without it a wipe that both moved the UID and left blocks uncleared names them nowhere.
-// Is re-running the write the right next action? A sweep the clock cut may have left real data above
-// the cut, which is the privacy failure the sweep exists to remove -- as good a claim on Retry as a
-// card that left mid-write. Both the buttons in on_enter and the left-button handler in on_event need
-// this answer.
+// Is re-running the write the right next action? A run the clock cut may have left real data above the
+// cut -- on a wipe that is the privacy failure the sweep exists to remove, and on a clone it is simply
+// the rest of the image -- as good a claim on Retry as a card that left mid-write. Both the buttons in
+// on_enter and the left-button handler in on_event need this answer.
 static bool
     nfc_magic_scene_iso15693_write_fail_is_retryable(NfcMagicApp* instance, uint32_t reason) {
     return reason == NfcMagicIso15693WriteFailReasonCardLost ||
@@ -34,6 +27,13 @@ static bool
             instance->iso15693_result.pass_truncated);
 }
 
+// Does this outcome have anything behind "Details"? One answer, for both the button in on_enter and the
+// routing in on_event.
+//
+// Why it is not simply failed_count: a partial whose only problem is the gen1 UID clobber or a rejected
+// AFI/DSFID has zero failed blocks, and the summary shows only its highest-priority qualifier, so the
+// lower one would be reachable nowhere. UID-changed is here because it PRE-EMPTS the partial reason
+// code -- without it a wipe that both moved the UID and left blocks uncleared names them nowhere.
 static bool
     nfc_magic_scene_iso15693_write_fail_has_details(NfcMagicApp* instance, uint32_t reason) {
     const Iso15693PollerResult* result = &instance->iso15693_result;
@@ -362,19 +362,34 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             widget, 0, 13, AlignLeft, AlignTop, FontSecondary, message);
     }
 
+    // THE RULE THE TWO FUNCTIONS SHARE, and the reason it has to be written down: the RIGHT slot means
+    // Details whenever has_details is true, and Exit only when it is false. on_event decides the same
+    // way. Nothing enforces it but this comment, and the last time it went unstated it broke -- while
+    // is_retryable was {CardLost} and has_details(CardLost) was false, the two sets were disjoint, so
+    // on_enter could branch on retryable and on_event on details and never disagree. Putting one reason
+    // in both sets made a control labelled Exit open the Details scroll view. Add a reason to either
+    // predicate and re-read this.
+    //
+    // Back escapes from anywhere (on_event's SceneManagerEventTypeBack), so a screen that spends both
+    // slots on Retry and Details is not a trap -- and Back is precisely what the "Exit" button below
+    // duplicates.
+    const bool has_details = nfc_magic_scene_iso15693_write_fail_has_details(instance, reason);
     if(nfc_magic_scene_iso15693_write_fail_is_retryable(instance, reason)) {
-        // Retry re-runs the write; Exit leaves. Matches the generic write-fail screen (Retry left,
-        // Exit right).
+        // Retry re-runs the write. Matches the generic write-fail screen (Retry left).
         widget_add_button_element(
             widget,
             GuiButtonTypeLeft,
             "Retry",
             nfc_magic_scene_iso15693_write_fail_widget_callback,
             instance);
+        // Details outranks Exit here: an outcome with something behind Details is one where the counts
+        // on this screen are not the whole story, and Back already leaves. A cut run is the case in
+        // point -- its truncation note has no other route, and this screen's own numbers are the ones
+        // it qualifies.
         widget_add_button_element(
             widget,
             GuiButtonTypeRight,
-            "Exit",
+            has_details ? "Details" : "Exit",
             nfc_magic_scene_iso15693_write_fail_widget_callback,
             instance);
     } else {
@@ -386,7 +401,7 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             (over_capacity || partial || wipe_complete) ? "Finish" : "Back",
             nfc_magic_scene_iso15693_write_fail_widget_callback,
             instance);
-        if(nfc_magic_scene_iso15693_write_fail_has_details(instance, reason)) {
+        if(has_details) {
             widget_add_button_element(
                 widget,
                 GuiButtonTypeRight,
@@ -417,13 +432,16 @@ bool nfc_magic_scene_iso15693_write_fail_on_event(void* context, SceneManagerEve
                     instance->scene_manager, NfcMagicSceneIso15693);
             }
         } else if(event.event == GuiButtonTypeRight) {
+            // Same test, same order as the right slot in on_enter -- see the rule stated there. This
+            // branch is what the label says only because the two agree; it does NOT get to assume the
+            // reason is non-retryable, which is the assumption that put Details under an "Exit" label.
             if(nfc_magic_scene_iso15693_write_fail_has_details(instance, reason)) {
                 // Details -> the affected-block list (failed blocks, or the empty top blocks).
                 scene_manager_next_scene(
                     instance->scene_manager, NfcMagicSceneIso15693PartialDetails);
                 consumed = true;
             } else {
-                // The retryable outcomes' "Exit" -> the ISO15693 menu.
+                // "Exit" -> the ISO15693 menu. Only rendered when there is nothing behind Details.
                 consumed = scene_manager_search_and_switch_to_previous_scene(
                     instance->scene_manager, NfcMagicSceneIso15693);
             }
