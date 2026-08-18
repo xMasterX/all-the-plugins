@@ -97,16 +97,25 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
                     instance->iso15693_result.blocks_advertised);
             }
         } else {
-            // A clone has no advertised count to measure against -- its denominator is the source --
-            // and its remedy differs from a wipe's: running it again writes the blocks it never
-            // reached. Say so, because the summary offers Retry on the strength of it.
+            // A clone has no advertised count to measure against -- its denominator is the source -- so
+            // it states the cut alone. What re-running can do is the shared clause below; it is the same
+            // answer in both modes and was wrong to phrase as a clone-specific promise.
             furi_string_cat_printf(
                 message,
                 "Clone hit its time limit at block %u. Blocks from there up were never sent to the "
-                "card -- they are counted as not written, but the card did not refuse them. Running "
-                "the clone again writes them.",
+                "card -- they are counted as not written, but the card did not refuse them.",
                 instance->iso15693_result.cut_block);
         }
+        // What Retry can and cannot do, said once for both modes. The bound is a WALL CLOCK, not a
+        // position, so re-running repeats the same work against the same budget: a card that is
+        // consistently this slow is cut in the same place every time, and only a transient -- marginal
+        // coupling forcing per-block retries -- clears on a second pass. So the wording may not promise
+        // that a retry succeeds: the Retry button already implies it, and this is the only place that
+        // can qualify it.
+        furi_string_cat_str(
+            message,
+            "\nRetrying may get further, but the limit is a time budget rather than a position: if it "
+            "stops at the same block, the card is too slow to finish in one pass rather than refusing.");
     }
     if(wipe_mode && !instance->iso15693_result.uid_verified) {
         // The wipe has three outcome screens and only "Wipe complete" has a spare body line for this,

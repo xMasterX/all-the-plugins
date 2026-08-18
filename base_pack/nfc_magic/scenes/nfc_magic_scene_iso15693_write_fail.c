@@ -20,9 +20,12 @@ static bool
     return reason == NfcMagicIso15693WriteFailReasonCardLost ||
            reason == NfcMagicIso15693WriteFailReasonWipeStopped ||
            // A cut clone, which has no reason code of its own -- it stays on the ordinary partial
-           // screen, so the flag is the only thing that distinguishes it there. Re-running is exactly
-           // what writes the blocks above the cut, which is a stronger claim on Retry than the blocks
-           // BELOW it have: those were tried and refused.
+           // screen, so the flag is the only thing that distinguishes it there. Re-running is the only
+           // thing that CAN write the blocks above the cut, which is a better claim on Retry than the
+           // blocks below it have: those were tried and refused. Note it is not a promise -- the bound
+           // is a wall clock, so a card that is consistently too slow is cut in the same place every
+           // time and only a transient (marginal coupling forcing retries) clears on a second run. The
+           // Details note has to say that; the button cannot.
            (reason == NfcMagicIso15693WriteFailReasonPartial &&
             instance->iso15693_result.pass_truncated);
 }
@@ -131,9 +134,15 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         // as falling short of 64 when it had exceeded it. Naming one block index makes no such claim.
         // The comparison against what the card claims still gets made, in Details, where there is room
         // to say which side of the claim the cut fell on.
+        //
+        // "Timed out" rather than "Stopped": the clock is the only thing that sets this reason code, and
+        // with a Retry button on screen the user needs to know what they are retrying against. It goes
+        // in THIS line rather than a fourth one because a fourth line at y=13 lands its bottom rows
+        // inside the button box (tops at 13/24/35/46/57 against a box at rows 52-63), and this body
+        // already reaches three when blocks failed.
         furi_string_printf(
             text,
-            "Cleared %u blocks.\nStopped at block %u.",
+            "Cleared %u blocks.\nTimed out at block %u.",
             (reached >= failed) ? (uint16_t)(reached - failed) : 0,
             instance->iso15693_result.cut_block);
         if(failed > 0) furi_string_cat_printf(text, "\nNot cleared: %u", failed);
@@ -196,7 +205,7 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             // it: most of "Not written" is blocks nothing was sent to, not blocks the card refused.
             // Naming the cut here is what stops the number reading as a verdict on the card.
             furi_string_cat_printf(
-                text, "\nStopped at block %u", instance->iso15693_result.cut_block);
+                text, "\nTimed out at block %u", instance->iso15693_result.cut_block);
         } else if(
             instance->iso15693_result.capacity_confirmed &&
             instance->iso15693_result.failed_count > 0) {
@@ -228,7 +237,7 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         if(instance->iso15693_result.pass_truncated) {
             furi_string_printf(
                 text,
-                "No block accepted the\nzero-write.\nStopped at block %u.",
+                "No block accepted the\nzero-write.\nTimed out at block %u.",
                 instance->iso15693_result.cut_block);
         } else {
             furi_string_set_str(
