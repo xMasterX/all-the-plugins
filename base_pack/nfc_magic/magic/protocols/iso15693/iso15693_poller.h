@@ -36,8 +36,10 @@ typedef enum {
         // some data blocks, fell back to gen1 (overwriting 56/57/62/63), or had its AFI/DSFID write
         // rejected; or a wipe couldn't clear every block, or moved the card's UID (uid_changed).
         // ALSO either mode cut short by the wall-clock bound (pass_truncated) -- the run's own job is
-        // left undone, whatever the counts say, and cut_block says where. That is the one qualifier a
-        // caller cannot see in the block figures, since the unreached blocks are recorded as failures.
+        // left undone, whatever the counts say, and cut_block says where. On a CLONE that is a qualifier
+        // the block figures cannot show, because its back-fill records the unreached blocks as failures
+        // and they are indistinguishable there from blocks the card refused. A cut wipe records nothing
+        // above its cut, so there the flag is the only thing that mentions those blocks at all.
     Iso15693PollerEventFail, // the operation didn't take: the backdoor write was rejected (not a
         // magic tag), the gen2 write changed the UID to neither the original nor the target, an opt-in
         // gen1 UID didn't take, the clone source had no data blocks, a wipe cleared nothing, or a
@@ -154,18 +156,32 @@ typedef struct {
     uint16_t blocks_advertised;
     // The run stopped on its wall-clock bound rather than at its natural end, so its range is a cut and
     // no report may pass that range off as a finding about the card. BOTH modes: a wipe's sweep and a
-    // clone's data pass carry the same bound, and the clone needs it more, not less. The blocks above
-    // the cut are recorded as failures -- otherwise the "written" figure, derived by subtraction, would
-    // claim they all landed -- so without this flag a reader cannot tell a block the card REFUSED from
-    // one nothing was ever sent to, and every screen downstream states the stronger claim.
+    // clone's data pass carry the same bound. What the flag SAVES differs by mode, and only the clone
+    // has the problem it was added for: its back-fill records every block above the cut as a failure --
+    // otherwise the "written" figure, derived by subtraction, would claim they all landed -- so without
+    // the flag a reader cannot tell a block the card REFUSED from one nothing was ever sent to, and
+    // every screen downstream states the stronger claim. A cut WIPE has no back-fill: the sweep breaks
+    // out of the loop and both of its bit-setting sites are inside the body the deadline gates, so every
+    // set bit is below the cut and blocks_total is at or below it too. The unreached blocks are outside
+    // the denominator rather than inside the numerator, which is why has_details(WipeStopped) is
+    // unconditional -- there are no bits to find, so the note is the only route to the fact.
     bool pass_truncated;
     // Where the clock cut the run: the first block index NOT attempted. Only meaningful when the flag
     // above is set. It is NOT blocks_total and cannot be derived from it -- after a wipe blocks_total is
-    // the highest block that ANSWERED, which sits at or below the cut. The gap is not a rounding
-    // difference: on the card this bound was designed for -- one that refuses every write and still
-    // serves a read at every address -- the sweep walks well PAST the advertised count before the clock
-    // fires while proving nothing present, so the cut can exceed the advertised count while the total
-    // sits far below it. Any string naming where the run stopped has to read this, not blocks_total.
+    // highest_present + 1, a COUNT, and it sits at or below the cut.
+    //
+    // Two different cards separate them, in opposite directions, and neither is the other:
+    //   past the claim -- a card that refuses every write but answers a read everywhere never
+    //     accumulates an absent run, so the sweep walks beyond the advertised count and the cut lands
+    //     above it. But every one of those reads calls wipe_note_present, so blocks_total == cut_block
+    //     exactly. More generally the gap here is bounded by ISO15693_POLLER_WIPE_ABSENT_RUN: getting
+    //     past the claim at all requires never hitting that many consecutive absences, since past the
+    //     claim such a run ends the sweep.
+    //   below the claim -- a card claiming 200 while holding 10. Under the claim the sweep never stops
+    //     on absence alone, so it grinds on to the clock with the cut somewhere in the middle and
+    //     blocks_total stuck at 10. THIS is where the gap gets large.
+    //
+    // Either way, any string naming where the run stopped has to read this, not blocks_total.
     uint16_t cut_block;
     // Wipe only: the post-power-cycle UID check reached an answer. When false it did not run -- the card
     // did not come back, or did not answer the inventory -- so uid_changed being false is the absence of
@@ -237,9 +253,9 @@ bool iso15693_poller_source_uses_gen1_blocks(const Iso15693_3Data* source);
 // ISO15693_POLLER_WIPE_MAX_BLOCKS in the .c for the hardware measurement behind that. That run is not
 // the only stop condition: the sweep also stops at the 256-block ceiling, and on a wall-clock bound
 // (ISO15693_POLLER_PASS_MAX_MS) for a card that answers reads everywhere and so never accumulates a
-// run. A sweep the clock stopped sets pass_truncated and reports where it stopped in cut_block --
-// which is NOT blocks_total, and on that same read-everywhere card sits ABOVE the advertised count
-// while blocks_total sits below it. Below the advertised count the sweep never stops early on absence alone --
+// run. A sweep the clock stopped sets pass_truncated and reports where it stopped in cut_block, which is
+// NOT blocks_total -- see the field's own doc for the two cards that separate them, and which one makes
+// the gap large. Below the advertised count the sweep never stops early on absence alone --
 // the card's own claim is evidence those blocks exist.
 // Blocks 56/57/62/63 are cleared too -- on gen2 they are ordinary user data. On gen1 those same blocks
 // are the UID/unlock/commit registers, so the wipe cannot guarantee the UID survives there; it re-reads

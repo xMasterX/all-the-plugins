@@ -257,8 +257,11 @@ struct Iso15693Poller {
     // Wipe mode: the block count the card advertised, kept alongside the measured figure that replaces
     // it in clone_blocks_total once the sweep ends. Clone mode: unused (stays 0).
     uint16_t wipe_advertised;
-    // Wipe mode: the sweep hit ISO15693_POLLER_PASS_MAX_MS and stopped short, so its range is a cut
-    // rather than the card's extent and the report has to say so. Clone mode: unused (stays false).
+    // BOTH modes: the run hit ISO15693_POLLER_PASS_MAX_MS and stopped short, so its range is a cut
+    // rather than the card's extent and the report has to say so. The clone sets it too -- see the
+    // truncation break in write_source_blocks -- and nfc_magic_scene_write.c mode-gates on it precisely
+    // because it is not wipe-only. A reader who believes otherwise deletes that gate and puts a cut
+    // clone on the wipe-specific screen.
     bool pass_truncated;
     // Where the clock cut the pass: the first block index NOT attempted. Only meaningful alongside the
     // truncation flag above. Kept as its own figure because nothing else in the result carries it --

@@ -174,10 +174,12 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         // the latter is the highest block that ANSWERED, which sits at or below the cut, so a sweep
         // that attempted 55 blocks and proved 50 present reported "Stopped at 50".
         //
-        // And the "of %u" had to go with it. The sweep deliberately runs past the advertised count, so
-        // on the card this bound exists for -- refuses every write, answers every read -- the cut lands
-        // above the claim and the line read "Stopped at 200 of 64", which parses as a fraction and so
-        // as falling short of 64 when it had exceeded it. Naming one block index makes no such claim.
+        // And the "of %u" had to go with it. The sweep deliberately runs past the advertised count, so on
+        // a card that accepts some writes and then answers reads everywhere the cut lands above the
+        // claim and the line read "Stopped at 200 of 64", which parses as a fraction and so as falling
+        // short of 64 when it had exceeded it. Naming one block index makes no such claim. (A card that
+        // refuses EVERY write never reaches this screen: it clears nothing, so the wipe short-circuits
+        // to the nothing-wiped branch below.)
         // The comparison against what the card claims still gets made, in Details, where there is room
         // to say which side of the claim the cut fell on.
         //
