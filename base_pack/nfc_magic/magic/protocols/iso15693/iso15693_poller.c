@@ -519,6 +519,22 @@ static Iso15693_3Error iso15693_poller_write_block_retried(
     return error;
 }
 
+// Mark a block as failed, or take the mark back. A pair rather than a set/clear/test trio because the
+// poller never asks whether a bit is set -- only the report does, in another translation unit, through
+// nfc_magic_partial_details_any_index.
+//
+// The point is not the six lines. Two of the clears live inside the densest reasoning in this file,
+// three and five lines from a set, where `|=` and `&= ~` differ by two characters and a slip would read
+// as correct. A named call makes the direction visible at a glance, which is the whole reason this was
+// on the list.
+static void iso15693_poller_mark_failed(Iso15693Poller* instance, uint16_t block) {
+    instance->clone_failed_bitmap[block / 8] |= (uint8_t)(1u << (block % 8));
+}
+
+static void iso15693_poller_unmark_failed(Iso15693Poller* instance, uint16_t block) {
+    instance->clone_failed_bitmap[block / 8] &= (uint8_t) ~(1u << (block % 8));
+}
+
 static bool iso15693_poller_block_is_empty(const uint8_t* block, uint8_t size) {
     for(uint8_t i = 0; i < size; i++) {
         if(block[i] != 0) return false;
@@ -647,7 +663,7 @@ static bool iso15693_poller_write_source_blocks(
         FURI_LOG_W(TAG, "clone: block %u refused (err %d)", block, error);
         // Record every failed block in the bitmap so a result screen can name it, whichever bucket
         // it ends up in.
-        instance->clone_failed_bitmap[block / 8] |= (uint8_t)(1u << (block % 8));
+        iso15693_poller_mark_failed(instance, block);
 
         const bool non_empty = !iso15693_poller_block_is_empty(block_data, block_size);
 
@@ -696,7 +712,7 @@ static bool iso15693_poller_write_source_blocks(
         if(skip_backdoor && iso15693_poller_is_backdoor_block(block)) {
             continue;
         }
-        instance->clone_failed_bitmap[block / 8] |= (uint8_t)(1u << (block % 8));
+        iso15693_poller_mark_failed(instance, block);
         instance->clone_failed_count++;
     }
 
@@ -937,7 +953,7 @@ static uint16_t iso15693_poller_wipe_blocks(
             if(!iso15693_poller_block_is_empty(remaining, size)) {
                 FURI_LOG_W(TAG, "wipe: block %u refused and still holds data", block);
                 instance->clone_failed_count++;
-                instance->clone_failed_bitmap[block / 8] |= (uint8_t)(1u << (block % 8));
+                iso15693_poller_mark_failed(instance, block);
             }
             continue;
         }
@@ -945,7 +961,7 @@ static uint16_t iso15693_poller_wipe_blocks(
         // Answered neither a write nor a read, so it probably isn't there. Provisional: set the bit and
         // let position decide (a later success folds it into the failures above; a run the sweep ends
         // on is dropped below).
-        instance->clone_failed_bitmap[block / 8] |= (uint8_t)(1u << (block % 8));
+        iso15693_poller_mark_failed(instance, block);
         if(++absent_run < ISO15693_POLLER_WIPE_ABSENT_RUN) continue;
 
         // Below the advertised count a long run is not a capacity signal at all: the card itself says
@@ -1014,7 +1030,7 @@ static uint16_t iso15693_poller_wipe_blocks(
             if(!iso15693_poller_block_is_empty(recheck, size)) {
                 instance->clone_failed_count++;
             } else {
-                instance->clone_failed_bitmap[probe / 8] &= (uint8_t) ~(1u << (probe % 8));
+                iso15693_poller_unmark_failed(instance, probe);
             }
         }
         absent_run = still_absent;
@@ -1073,7 +1089,7 @@ static uint16_t iso15693_poller_wipe_blocks(
             if(i > highest_present) highest_present = i;
             continue;
         }
-        instance->clone_failed_bitmap[i / 8] &= (uint8_t) ~(1u << (i % 8));
+        iso15693_poller_unmark_failed(instance, i);
     }
 
     // Report against what the card proved it holds, not what it advertises.
