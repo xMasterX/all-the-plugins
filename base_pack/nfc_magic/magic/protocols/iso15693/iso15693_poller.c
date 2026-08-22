@@ -1638,9 +1638,7 @@ bool iso15693_poller_source_uses_gen1_blocks(const Iso15693_3Data* source) {
         const uint16_t block = iso15693_poller_backdoor_blocks[i];
         if(block >= block_count) continue;
         const uint8_t* data = iso15693_3_get_block_data(source, block);
-        for(uint8_t j = 0; j < block_size; j++) {
-            if(data[j] != 0) return true;
-        }
+        if(!iso15693_poller_block_is_empty(data, block_size)) return true;
     }
     return false;
 }

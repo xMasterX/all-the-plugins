@@ -13,3 +13,9 @@ void nfc_magic_partial_details_append_indices(
     const uint8_t* bitmap,
     uint16_t count,
     uint16_t max_shown);
+
+// Is any bit set in `bitmap` over [0, count)? The same range convention as append_indices, so a caller
+// can ask "will that print anything" over exactly the range it is about to print, rather than tallying
+// bits itself and comparing to zero -- which is an existence test written as a count, and the only raw
+// bit arithmetic that had leaked into the scene layer.
+bool nfc_magic_partial_details_any_index(const uint8_t* bitmap, uint16_t count);

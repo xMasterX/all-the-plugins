@@ -14,25 +14,37 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
         scene_manager_get_scene_state(instance->scene_manager, NfcMagicSceneIso15693WriteFail);
     const bool over_capacity = (reason == NfcMagicIso15693WriteFailReasonOverCapacity);
     const bool wipe_mode = (instance->iso15693_mode == NfcMagicIso15693ModeWipe);
-    // On a cut run the bitmap holds two different things at two different addresses. Below the cut are
-    // blocks the card was asked for and refused. At and above it are blocks the back-fill recorded so
-    // the "written" figure -- derived by subtracting failures from the total -- would not claim they
-    // landed. Only the first group is a fact about the card; listing them together names the second
-    // group as refusals, which is the whole complaint. So the list stops at the cut and the note below
-    // carries the rest.
+    // Bound the list at the cut. What that saves differs by mode, and only the CLONE has the problem it
+    // was written for:
+    //
+    //   clone -- the bitmap holds two different things at two different addresses. Below the cut are
+    //     blocks the card was asked for and refused; at and above it are blocks the back-fill recorded so
+    //     the "written" figure, derived by subtracting failures from the total, could not claim they
+    //     landed. Only the lower group is a fact about the card, and listing them together names the
+    //     upper group as refusals -- which is the whole complaint.
+    //   wipe -- there is no back-fill. Nothing above the cut is recorded at all, so the bound is a no-op
+    //     and the note below is the only thing that mentions those blocks.
+    //
+    // The bound is applied in both modes anyway, because a rule that holds in one and is inert in the
+    // other is simpler than a mode test, and the note below carries the rest either way.
     const uint16_t list_upto = instance->iso15693_result.pass_truncated ?
                                    instance->iso15693_result.cut_block :
                                    (uint16_t)(ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8);
     // A partial can reach this screen with NO failed blocks -- when its only problem is the gen1 UID
     // clobber, a rejected AFI/DSFID, or a cut that happened before anything was refused. Titling an
     // empty list "Blocks not written" would be wrong, so name the screen for what it actually shows.
-    // Counted over the same range that will be printed, not from failed_count, which on a cut run
-    // includes every unattempted block above it.
-    uint16_t listed = 0;
-    for(uint16_t b = 0; b < list_upto; b++) {
-        if(instance->iso15693_result.failed_bitmap[b / 8] & (1u << (b % 8))) listed++;
-    }
-    const bool has_block_list = (listed + instance->iso15693_result.over_capacity) > 0;
+    //
+    // Asked over the SAME range that will be printed, which is now structural rather than a promise in a
+    // comment: both go through list_upto. Not from failed_count, which on a cut run includes every
+    // unattempted block above the cut.
+    //
+    // No `+ over_capacity` term: it was dead. over_capacity survives non-zero only down the
+    // failures_are_top_tail branch, which requires an uncut pass, which forces list_upto to the full
+    // range -- and every one of those blocks already has its bit set. So over_capacity > 0 implies the
+    // bitmap is non-empty, and the sum read as though the two were complementary when one contains the
+    // other.
+    const bool has_block_list =
+        nfc_magic_partial_details_any_index(instance->iso15693_result.failed_bitmap, list_upto);
     // Whether the listed blocks are merely EMPTY ones past the card's physical capacity (nothing lost)
     // has to be decided from the capacity facts, not from the reason code: a Partial can consist purely
     // of an empty capacity tail plus a gen1 / AFI-DSFID caveat, and in that state over_capacity
@@ -81,7 +93,11 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
             // Which side of the claim the cut lands on changes what is true, so it changes the
             // sentence. The sweep runs past the advertised count deliberately, so "of the N this card
             // claims" is only a frame when the cut is actually inside it.
-            if(instance->iso15693_result.cut_block < instance->iso15693_result.blocks_advertised) {
+            // <= not <: at equality the sweep stopped exactly AT the claim, having attempted the claimed
+            // range and nothing beyond it, so block N itself was not attempted and the first sentence is
+            // the accurate one. Strict < sent that case to the "past the N this card claims" wording.
+            if(instance->iso15693_result.cut_block <=
+               instance->iso15693_result.blocks_advertised) {
                 furi_string_cat_printf(
                     message,
                     "Sweep hit its time limit at block %u of the %u this card claims. Blocks above "

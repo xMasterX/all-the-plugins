@@ -17,3 +17,10 @@ void nfc_magic_partial_details_append_indices(
         }
     }
 }
+
+bool nfc_magic_partial_details_any_index(const uint8_t* bitmap, uint16_t count) {
+    for(uint16_t i = 0; i < count; i++) {
+        if(bitmap[i >> 3] & (1u << (i & 7u))) return true;
+    }
+    return false;
+}
