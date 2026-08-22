@@ -273,6 +273,11 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Pause Timer | ![IR Badge] | [by Matt-London](https://github.com/Matt-London/pause_timer) |  | [![Author Badge]](https://lab.flipper.net/apps/pause_timer) |
 | FlipIRFreq | ![IR Badge] | [by jsammarco](https://github.com/jsammarco/FlipIRFreq) | Send IR in carrier or low-frequency pulse modes with adjustable frequency, duty cycle, and output | ![None Badge] |
 | TagTinker | ![IR Badge] | [by i12bp8](https://github.com/i12bp8/TagTinker) |  | ![None Badge] |
+| Samsung AC Remote | ![IR Badge] | [by dappermint](https://github.com/dappermint/samsung-ac-remote-flipper-app) |  | [![Author Badge]](https://lab.flipper.net/apps/samsung_ac_remote) |
+| Mitsubishi AC Remote | ![IR Badge] | [by achistyakov](https://github.com/achistyakov/flipperzero-mitsubishi-ac-remote) |  | [![Author Badge]](https://lab.flipper.net/apps/mitsubishi_ac_remote) |
+| Mitsubishi AC Remote (New) | ![IR Badge] | [by Str4ch](https://github.com/Str4ch/flipperzero-mitsubishi-ac-remote-new-protocol) |  | [![Author Badge]](https://lab.flipper.net/apps/mitsubishi_ac_remote_new_protocol) |
+| HTW AC Remote | ![IR Badge] | [by sokogen](https://github.com/sokogen/flipperzero-htw-ac-remote) |  | [![Author Badge]](https://lab.flipper.net/apps/htw_ac_remote) |
+| Hitachi AC Remote | ![IR Badge] | [by dogtopus](https://github.com/dogtopus/flipperzero-hitachi-ac-remote) |  | [![Author Badge]](https://lab.flipper.net/apps/hitachi_ac_remote) |
 | BPM Tapper | ![Media Badge] | [by panki27](https://github.com/panki27/bpm-tapper) |  | [![UFW Badge]](https://lab.flipper.net/apps/bpm_tapper) |
 | Flizzer Tracker | ![Media Badge] | [by LTVA1](https://github.com/LTVA1/flizzer_tracker) |  | [![Author Badge]](https://lab.flipper.net/apps/flizzer_tracker) |
 | Music Beeper | ![Media Badge] | [by qqMajiKpp / Haseo](https://github.com/qqmajikpp/) |  | ![None Badge] |
@@ -312,6 +317,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | NFC Stock Manager | ![NFC Badge] | [by Endika](https://github.com/Endika/flipper-nfc-stock) |  | [![Author Badge]](https://lab.flipper.net/apps/nfc_stock_manager) |
 | Xiaomi Filter Reset | ![NFC Badge] | [by khmm12](https://github.com/khmm12/flipper-xiaomi-filter-reset) |  | [![Author Badge]](https://lab.flipper.net/apps/xiaomi_filter_reset) |
 | NFC Canary | ![NFC Badge] | [by antitree](https://github.com/antitree/nfc_canary) | Passive NFC skim detector - alarms when a reader interrogates the device | ![None Badge] |
+| Specter | ![NFC Badge] | [by at0m-b0mb](https://github.com/at0m-b0mb/Specter-FlipperZero) |  | [![Author Badge]](https://lab.flipper.net/apps/specter) |
 | EM4100 universal keys generator (for RFID Fuzzer) | ![RFID Badge] | [by Milk-Cool](https://github.com/Milk-Cool/fz-em4100-generator) |  | [![Author Badge]](https://lab.flipper.net/apps/key_generator) |
 | (Q)M100 UHF RFID | ![RFID Badge] | [by frux-c](https://github.com/frux-c/uhf_rfid) | WIP -> (+Added icon by @xMasterX) | [![UFW Badge]](https://lab.flipper.net/apps/uhf_rfid) |
 | T5577 Multiwriter | ![RFID Badge] | [by Leptopt1los](https://github.com/Leptopt1los/t5577_multiwriter) | | [![UFW Badge]](https://lab.flipper.net/apps/t5577_multiwriter) |
@@ -335,6 +341,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | wM-Buster| ![SubGhz Badge] | [by i12bp8](https://github.com/i12bp8/wmbuster) | EU wM-Bus listener | ![None Badge] |
 | Sub-GHz RAW Edit | ![SubGhz Badge] | [by Lechnio](https://github.com/Lechnio/SubGHz-RAW-Edit) |  | [![Author Badge]](https://lab.flipper.net/apps/subghz_raw_edit) |
 | FM TX | ![SubGhz Badge] | [by yo3gnd](https://github.com/yo3gnd/fmtx) | Experimental MP3 audio over CC1101 FM | [![Author Badge]](https://lab.flipper.net/apps/fmtx) |
+| TPMS Bridge | ![SubGhz Badge] | [by VishovVladimir](https://github.com/VishovVladimir/flipper-zero-tpms) | Reads TPMS tyre-pressure sensors | [![Author Badge]](https://lab.flipper.net/apps/tpms_bridge) |
 | Analog Clock | ![Tools Badge] | [by scrolltex](https://github.com/scrolltex/flipper_analog_clock) |  | [![UFW Badge]](https://lab.flipper.net/apps/analog_clock) |
 | Brainfuck interpreter | ![Tools Badge] | [by nymda](https://github.com/nymda/FlipperZeroBrainfuck) |  | [![UFW Badge]](https://lab.flipper.net/apps/brainfuck) |
 | Ceasar Cipher | ![Tools Badge] | [by panki27](https://github.com/panki27/caesar-cipher) |  | [![UFW Badge]](https://lab.flipper.net/apps/caesar_cipher) |
@@ -373,6 +380,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | ZeroFIDO | ![Tools Badge] | [by MinorGlitch](https://github.com/MinorGlitch/zerofido) |  | [![Author Badge]](https://lab.flipper.net/apps/zerofido) |
 | Morse Flipper | ![Tools Badge] | [by yo3gnd](https://github.com/yo3gnd/morse-flipper/tree/market-flavour) |  | [![Author Badge]](https://lab.flipper.net/apps/morse_flipper) |
 | LetterBeacon | ![Tools Badge] | [by nmrr](https://github.com/nmrr/flipperzero-rfidbeacon)  | `A letter/number Morse beacon on 125 kHz / 13.56 MHz` | ![None Badge] |
+| Net Calculator | ![Tools Badge] | [by WolfRorDev](https://github.com/WolfRorDev/Net-Calculator-for-Flipper-Zero) | IP subnet / network calculator | [![Author Badge]](https://lab.flipper.net/apps/net_calculator) |
 | USB HID Autofire | ![USB Badge] | [by pbek](https://github.com/pbek/usb_hid_autofire) |  | [![UFW Badge]](https://lab.flipper.net/apps/usb_hid_autofire) |
 | USB Consumer Control | ![USB Badge] | [by WithSecureLabs](https://github.com/WithSecureLabs/usb-consumer-control/tree/main) |  | ![None Badge] |
 | HID File Transfer | ![USB Badge] | [by Kavakuo](https://github.com/Kavakuo/HID-File-Transfer) | Get client app in [original repo](https://github.com/Kavakuo/HID-File-Transfer) | ![None Badge] |

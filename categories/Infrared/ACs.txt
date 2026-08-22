@@ -1,0 +1,7 @@
+# Infrared / ACs -- air-conditioner IR remote apps.
+# One appid (the .fap filename) per line. '#' comments and blank lines ignored.
+samsung_ac_remote
+mitsubishi_ac_remote
+mitsubishi_ac_remote_new_protocol
+htw_ac_remote
+hitachi_ac_remote
