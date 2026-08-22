@@ -278,6 +278,21 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Mitsubishi AC Remote (New) | ![IR Badge] | [by Str4ch](https://github.com/Str4ch/flipperzero-mitsubishi-ac-remote-new-protocol) |  | [![Author Badge]](https://lab.flipper.net/apps/mitsubishi_ac_remote_new_protocol) |
 | HTW AC Remote | ![IR Badge] | [by sokogen](https://github.com/sokogen/flipperzero-htw-ac-remote) |  | [![Author Badge]](https://lab.flipper.net/apps/htw_ac_remote) |
 | Hitachi AC Remote | ![IR Badge] | [by dogtopus](https://github.com/dogtopus/flipperzero-hitachi-ac-remote) |  | [![Author Badge]](https://lab.flipper.net/apps/hitachi_ac_remote) |
+| Ballu AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
+| Carrier AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
+| Coolix AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
+| Daikin AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
+| Delonghi AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
+| Fujitsu AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
+| Gree AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
+| Haier AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
+| LG AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
+| Midea AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
+| Mitsubishi Heavy AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
+| Neoclima AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
+| Panasonic AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
+| TCL AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
+| Toshiba AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
 | BPM Tapper | ![Media Badge] | [by panki27](https://github.com/panki27/bpm-tapper) |  | [![UFW Badge]](https://lab.flipper.net/apps/bpm_tapper) |
 | Flizzer Tracker | ![Media Badge] | [by LTVA1](https://github.com/LTVA1/flizzer_tracker) |  | [![Author Badge]](https://lab.flipper.net/apps/flizzer_tracker) |
 | Music Beeper | ![Media Badge] | [by qqMajiKpp / Haseo](https://github.com/qqmajikpp/) |  | ![None Badge] |

@@ -1,6 +1,6 @@
 App(
     appid="samsung_ac_remote",
-    name="Samsung AC Remote",
+    name="Samsung",
     apptype=FlipperAppType.EXTERNAL,
     targets=["f7"],
     entry_point="ac_remote_app",

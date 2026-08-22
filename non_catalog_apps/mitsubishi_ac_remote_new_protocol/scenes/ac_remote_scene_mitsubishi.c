@@ -179,7 +179,7 @@ void ac_remote_scene_mitsubishi_on_enter(void* context) {
         context);
     ac_remote_panel_add_icon(ac_remote_panel, 38, 113, &I_vane_text_20x5);
 
-    ac_remote_panel_add_label(ac_remote_panel, 0, 6, 11, FontPrimary, "AC remote");
+    ac_remote_panel_add_label(ac_remote_panel, 0, 6, 11, FontPrimary, "Mitsubishi");
 
     snprintf(buffer, sizeof(buffer), "%ld", ac_remote->app_state.temperature);
     ac_remote_panel_add_label(ac_remote_panel, label_temperature, 4, 86, FontKeyboard, buffer);

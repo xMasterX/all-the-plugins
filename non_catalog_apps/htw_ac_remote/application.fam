@@ -2,7 +2,7 @@
 
 App(
     appid="htw_ac_remote",
-    name="HTW AC Remote",
+    name="HTW",
     apptype=FlipperAppType.EXTERNAL,
     entry_point="htw_ac_remote_app",
     stack_size=4 * 1024,

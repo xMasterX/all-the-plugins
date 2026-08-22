@@ -1,6 +1,6 @@
 App(
     appid="mitsubishi_ac_remote",
-    name="Mitsubishi AC Remote",
+    name="Mitsubishi",
     apptype=FlipperAppType.EXTERNAL,
     targets=["f7"],
     entry_point="ac_remote_app",

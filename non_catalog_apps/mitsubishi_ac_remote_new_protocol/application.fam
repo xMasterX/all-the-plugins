@@ -1,6 +1,6 @@
 App(
     appid="mitsubishi_ac_remote_new_protocol",
-    name="Mitsubishi AC Remote(New)",
+    name="Mitsubishi (New)",
     apptype=FlipperAppType.EXTERNAL,
     targets=["f7"],
     entry_point="ac_remote_app",
