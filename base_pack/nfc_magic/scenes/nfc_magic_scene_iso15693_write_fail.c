@@ -60,6 +60,46 @@ static bool
     }
 }
 
+// The one thing every screen here has in common: exactly one centred FontPrimary title. That was twelve
+// identical widget_add_string_element calls differing only in the string, so the string is named here and
+// drawn once, below.
+//
+// Deliberately NOT a {reason, title, body} table. Only four of the twelve bodies are static; seven are
+// built from result counts and several carry conditional extra lines, so a table covering a third of them
+// would split one screen across two mechanisms and turn "what does reason X render?" into a two-place
+// lookup -- worse than one chain. The title is the part that really is uniform, so it is the part that
+// gets the table.
+static const char* nfc_magic_scene_iso15693_write_fail_title(uint32_t reason, bool wipe_mode) {
+    switch(reason) {
+    case NfcMagicIso15693WriteFailReasonWipeComplete:
+        return "Wipe complete";
+    case NfcMagicIso15693WriteFailReasonWipeStopped:
+        return "Wipe stopped";
+    case NfcMagicIso15693WriteFailReasonOverCapacity:
+        return "Clone finished";
+    case NfcMagicIso15693WriteFailReasonNothingWiped:
+        return "Wipe failed";
+    case NfcMagicIso15693WriteFailReasonNothingCloned:
+        return "Clone failed";
+    case NfcMagicIso15693WriteFailReasonWipeUidChanged:
+        return "UID changed";
+    case NfcMagicIso15693WriteFailReasonUidUnexpected:
+        return "Unexpected UID";
+    case NfcMagicIso15693WriteFailReasonGen1Failed:
+        return "gen1 failed";
+    case NfcMagicIso15693WriteFailReasonUidUnverifiable:
+        return "UID unchanged";
+    case NfcMagicIso15693WriteFailReasonEmptySource:
+        return "Nothing to clone";
+    case NfcMagicIso15693WriteFailReasonPartial:
+        // The only mode-dependent one, and the reason this is a function rather than an array.
+        return wipe_mode ? "Wipe partial" : "Clone partial";
+    default:
+        // CardLost and NotMagic share a screen -- see the final else of the render chain.
+        return "Write failed";
+    }
+}
+
 void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
     NfcMagicApp* instance = context;
     Widget* widget = instance->widget;
@@ -89,6 +129,16 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         instance->notifications,
         (over_capacity || wipe_complete) ? &sequence_success : &sequence_error);
 
+    // One title, drawn once, named by the lookup above. Every branch below adds only its body.
+    widget_add_string_element(
+        widget,
+        64,
+        0,
+        AlignCenter,
+        AlignTop,
+        FontPrimary,
+        nfc_magic_scene_iso15693_write_fail_title(reason, wipe_mode));
+
     if(wipe_complete) {
         // A clean wipe, reporting what it actually covered. This screen exists because the sweep's
         // length is measured, not assumed: it stops at the highest block the card answered for, which
@@ -99,8 +149,6 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         // Both figures, no verdict. blocks_total < advertised is NOT flagged as an error: a card
         // advertising 66 blocks against 64 physical is a normal, undamaged card, and calling its two
         // dropped phantom blocks a failure is the false report the tail-drop rule exists to prevent.
-        widget_add_string_element(
-            widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Wipe complete");
         FuriString* text = furi_string_alloc();
         furi_string_printf(
             text,
@@ -119,8 +167,6 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         // The clock stopped the sweep with blocks the card still claims unattempted. Those blocks have
         // no bitmap bits -- nothing tried them -- so these counts are the whole on-screen story and
         // Details carries the rest.
-        widget_add_string_element(
-            widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Wipe stopped");
         const uint16_t reached = instance->iso15693_result.blocks_total;
         const uint16_t failed = instance->iso15693_result.failed_count;
         FuriString* text = furi_string_alloc();
@@ -158,8 +204,6 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         const uint16_t extra = instance->iso15693_result.over_capacity;
         // The over-capacity gate guarantees >=1 block wrote, so extra < advertised.
         const uint16_t physical = (uint16_t)(advertised - extra);
-        widget_add_string_element(
-            widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Clone finished");
         FuriString* text = furi_string_alloc();
         furi_string_printf(
             text,
@@ -179,14 +223,6 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         const uint16_t not_written =
             instance->iso15693_result.failed_count + instance->iso15693_result.over_capacity;
         const uint16_t ok = (total >= not_written) ? (uint16_t)(total - not_written) : 0;
-        widget_add_string_element(
-            widget,
-            64,
-            0,
-            AlignCenter,
-            AlignTop,
-            FontPrimary,
-            wipe_mode ? "Wipe partial" : "Clone partial");
         FuriString* text = furi_string_alloc();
         furi_string_printf(
             text,
@@ -227,8 +263,6 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         // A wipe that cleared nothing: the card accepted no zero-write (read-only / no usable
         // geometry). The UID was never touched -- say so, since the generic "not a magic tag / UID
         // write" message would be wrong for a wipe.
-        widget_add_string_element(
-            widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Wipe failed");
         // A card that refuses every write while still answering reads is exactly the card the sweep's
         // time limit exists for, and it is also the one that ends here: nothing accepted, so the wipe
         // short-circuits to this screen before any of the truncation reporting. Three lines is all the
@@ -250,8 +284,6 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         // The gen2/gen1 UID write took, but every data block was rejected. Say what the card now holds:
         // it answers with the source's UID, so a UID-only reader accepts it while anything that reads
         // memory does not. No block list -- it would name every block.
-        widget_add_string_element(
-            widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Clone failed");
         widget_add_string_multiline_element(
             widget,
             0,
@@ -267,8 +299,6 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         // the wipe's zeros landing in blocks 56/57, which on gen1 ARE the UID registers. Print what it
         // answers to now: without that the card is simply lost, since it no longer responds to the UID
         // the user knows it by.
-        widget_add_string_element(
-            widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "UID changed");
         // success_or_partial ORs uid_changed with failed_count, so BOTH can hold: a wipe can move the UID
         // AND leave blocks uncleared. Lead with the counts rather than asserting "Data cleared", which
         // would be false in exactly that case -- and it costs nothing, since the counts replace a prose
@@ -296,8 +326,6 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         // lands on "Not a magic tag" is a card that did nothing; this one demonstrably responded to a
         // magic command, so saying it isn't magic would be exactly backwards. The card is now answering
         // to a UID nobody asked for, and printing it is the only way the user can find the card again.
-        widget_add_string_element(
-            widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Unexpected UID");
         // Prose kept to two lines so the UID lands on line 3: a 4th line at y=13 starts at row 46 and
         // runs into the button box at rows 52-63, and a clipped hex digit is a mis-readable UID.
         FuriString* text = furi_string_alloc();
@@ -316,8 +344,6 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         // ordinary WRITE BLOCKs that any writable tag accepts, so on the tag this most likely is --
         // an ordinary one -- those four blocks are gone. The user consented to that risk; they still
         // need to be told it was spent, and on which blocks, to restore them from a backup.
-        widget_add_string_element(
-            widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "gen1 failed");
         widget_add_string_multiline_element(
             widget,
             0,
@@ -331,8 +357,6 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         // last Info read, so this is two menu taps away. Nothing was sent: a read-back against a UID
         // the card already carries is passed by any tag at all, so the Success it would have earned
         // would have said nothing about the card. Tell the user how to get an answer instead.
-        widget_add_string_element(
-            widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "UID unchanged");
         widget_add_string_multiline_element(
             widget,
             0,
@@ -344,8 +368,6 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
     } else if(empty_source) {
         // A clone whose source image has no data blocks: nothing was written (not even the UID), so
         // the card is untouched. Distinct from a non-magic card.
-        widget_add_string_element(
-            widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Nothing to clone");
         widget_add_string_multiline_element(
             widget,
             0,
@@ -365,8 +387,6 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             card_lost  ? "Card removed\nbefore the write\ncould finish." :
                          "Not a magic tag.\nThis card doesn't\nsupport UID write.";
         widget_add_icon_element(widget, 83, 22, &I_WarningDolphinFlip_45x42);
-        widget_add_string_element(
-            widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Write failed");
         widget_add_string_multiline_element(
             widget, 0, 13, AlignLeft, AlignTop, FontSecondary, message);
     }
