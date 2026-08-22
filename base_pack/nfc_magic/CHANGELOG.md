@@ -143,7 +143,8 @@ the copy advertises the same chip identity.
   check at all** — it sweeps any ISO15693 tag presented to it — so on an un-finalized gen3 card a wipe
   zeroes the UID registers and the configuration signature along with everything else, leaving a card
   with a moved UID that no longer identifies as re-writable. The wipe's post-write UID re-check surfaces
-  the identity half of that as it would on any card; nothing speaks for the signature.
+  the identity half of that as it would on any card; nothing speaks for the signature. Tracked as #255,
+  with the armed-gen1 case beside it.
 
 ## 2.0
 

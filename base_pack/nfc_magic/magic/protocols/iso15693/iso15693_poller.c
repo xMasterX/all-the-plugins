@@ -880,7 +880,9 @@ static uint16_t iso15693_poller_wipe_blocks(
     const uint8_t size = block_size > sizeof(zeros) ? (uint8_t)sizeof(zeros) : block_size;
     uint16_t wiped = 0;
 
-    // OPEN QUESTION, gen1 only: this loop writes the gen1 UID registers (56/57) before it reaches
+    // OPEN QUESTION, gen1 only -- tracked as #255, which carries the gen3 case beside it because the two
+    // are the same class and only one of them can be checked for before the sweep. This loop writes the
+    // gen1 UID registers (56/57) before it reaches
     // unlock/commit (62/63). The gen1 arm sequence is unlock=0 then commit=0x6996 then the UID
     // blocks, and nothing ever clears commit again -- not this app, and not proxmark's
     // SetTag15693Uid -- so a card that has had a gen1 UID written may still be armed, and zeroing
