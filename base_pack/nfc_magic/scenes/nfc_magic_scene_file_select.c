@@ -108,9 +108,10 @@ void nfc_magic_scene_file_select_on_enter(void* context) {
             // command on a non-magic tag, and data blocks follow only once the UID reads back as the
             // target (see the poller), so nothing is clobbered before the card proves it takes that
             // UID; consent for the one destructive path, the gen1 fallback, is asked mid-write where it
-            // becomes real. Gen2 and Classic reach the write unprompted too when their card-derived
-            // checks find nothing (gen2_write_check.c); Gen1/Gen4/USCUID-UL show the static confirm
-            // below regardless of the card. The wipe prompts because destruction is its only product,
+            // becomes real. Gen2 reaches the write unprompted too when its pre-write checks find
+            // nothing (gen2_write_check.c) -- NOT Classic, whose check sets uid_locked unconditionally,
+            // so it always shows at least one WriteProblems screen. Gen1/Gen4/USCUID-UL show the static
+            // confirm below regardless of the card. The wipe prompts because destruction is its only product,
             // whereas a clone leaves the card holding the image the user picked.
             scene_manager_next_scene(instance->scene_manager, NfcMagicSceneWrite);
         } else {

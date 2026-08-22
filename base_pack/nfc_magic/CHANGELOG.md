@@ -39,8 +39,10 @@ the copy advertises the same chip identity.
 - **A wipe reports the range it covered** — "Cleared *N* blocks. Card claims *M*." Both figures, no
   verdict where the difference is benign: the advertised count is programmable, so a card cloned from a
   smaller source, or one with fake flash, will show a mismatch without anything being wrong. A sweep the
-  clock cut short is always reported as such. A dead stretch inside the claimed range is reported when
-  the app can tell it apart from memory that never existed, which is not always — see the limit below.
+  clock cut short is reported as such whenever the run reaches its own result screen — a card removed at
+  the moment of the cut reports as removed instead, which is accurate and retryable. A dead stretch
+  inside the claimed range is reported when the app can tell it apart from memory that never existed,
+  which is not always — see the limit below.
 - **Blocks the card claims are not written off without evidence.** A block that answers neither a write
   nor a read may be memory that does not exist, or memory that has stopped responding while still
   holding data. The wipe distinguishes them where it can: a block that read back **non-zero content**
@@ -65,10 +67,12 @@ the copy advertises the same chip identity.
   geometry exceeds its physical memory (fake-flash) clones faithfully for the blocks that fit.
 - **No data is written until the card takes the magic UID.** The write sends the gen2 backdoor UID
   first; data blocks and identity fields follow once that UID reads back as the target. A card that
-  doesn't take it is left untouched, so cloning has no up-front confirmation prompt — matching Gen2 and
-  Classic, which also write without one when their pre-write checks find nothing to report. The
-  destructive gen1 attempt carries its own consent screen instead. A wipe does prompt, since destruction
-  is a wipe's only product, whereas a clone leaves the card holding the image the user picked.
+  doesn't take it is left untouched, so cloning has no up-front confirmation prompt — matching Gen2,
+  which also writes without one when its pre-write checks find nothing to report. (Classic always
+  prompts: its check marks the UID locked unconditionally, so there is always at least one problem to
+  press through.) The destructive gen1 attempt carries its own consent screen instead. A wipe does
+  prompt, since destruction is a wipe's only product, whereas a clone leaves the card holding the image
+  the user picked.
 - **The gen1 fallback is opt-in.** It is offered only when the gen2 write leaves the UID unchanged, and
   only after the user accepts a screen stating what gen1 writes and that the gen1 path is not
   hardware-tested. gen1 writes the UID registers first and the data blocks only if that UID took, so a
@@ -135,8 +139,11 @@ the copy advertises the same chip identity.
   available).
 - **gen3 is not supported.** A third magic generation exists — proxmark's `hf 15 csetuid --v3` — which
   keeps its UID in blocks 0x10/0x11 with a configuration signature in 0x14/0x15, and is rewritable until
-  `hf 15 cfinalize` locks it. Such a card reports "not a magic tag" here, and a wipe or clone writes over
-  those blocks like any other data.
+  `hf 15 cfinalize` locks it. A clone or Write UID reports "not a magic tag" on one. **A wipe does not
+  check at all** — it sweeps any ISO15693 tag presented to it — so on an un-finalized gen3 card a wipe
+  zeroes the UID registers and the configuration signature along with everything else, leaving a card
+  with a moved UID that no longer identifies as re-writable. The wipe's post-write UID re-check surfaces
+  the identity half of that as it would on any card; nothing speaks for the signature.
 
 ## 2.0
 
