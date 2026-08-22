@@ -36,6 +36,9 @@
 // reads them. Each used to spell the set out, so the set existed four times and could disagree with
 // itself in four ways. Membership only -- the gen1 write SEQUENCE is ordered and stays written out at
 // its call site, where the order is the point.
+// COUNT_OF rather than sizeof at the three loops below: sizeof is right only while the element type is
+// uint8_t, and this file already contemplates block indices above 255 elsewhere. Widening the array
+// would silently shorten every one of those loops.
 static const uint8_t iso15693_poller_backdoor_blocks[] = {
     ISO15693_MAGIC_BLK_UID_7654,
     ISO15693_MAGIC_BLK_UID_3210,
@@ -44,7 +47,7 @@ static const uint8_t iso15693_poller_backdoor_blocks[] = {
 };
 
 static bool iso15693_poller_is_backdoor_block(uint16_t block) {
-    for(size_t i = 0; i < sizeof(iso15693_poller_backdoor_blocks); i++) {
+    for(size_t i = 0; i < COUNT_OF(iso15693_poller_backdoor_blocks); i++) {
         if(block == iso15693_poller_backdoor_blocks[i]) return true;
     }
     return false;
@@ -172,13 +175,25 @@ static bool iso15693_poller_is_backdoor_block(uint16_t block) {
 // A run cut here reports what it covered and says it was cut (pass_truncated), rather than passing
 // off a partial range as the card's extent -- the same distinction the advertised-count floor draws.
 //
-// BOTH passes use this, and the figures above are a WIPE's: a 4-byte zero write, the same payload
-// every time. A clone's data pass costs more per block -- its payload is the source's block size, up
-// to 32 bytes, so up to 8x the frame -- and since the probe went onto every persistent failure rather
-// than only the empty ones, more again. So a clone reaches this bound sooner than the arithmetic here
-// implies, and the shared name is deliberate: whatever this is set to has to be defensible for the
-// more expensive of the two, not the cheaper. See the capacity test in write_source_blocks for the
-// one place that costs something.
+// BOTH passes use this, and the shared name is deliberate: whatever the value is has to be defensible
+// for the more expensive of the two, not the cheaper.
+//
+// Which one that is does not have the obvious answer. Per REFUSED block the two passes are now the same
+// shape -- 3 writes, 3 waits, 1 read -- because the sweep reads on every refused block too, not only the
+// empty ones. So the difference is not the probe:
+//
+//   the WIPE pays more on the same geometry. It runs a card-present inventory every
+//     ISO15693_POLLER_WIPE_ABSENT_RUN absences, and a full re-probe of the trailing run after the loop,
+//     neither of which the clone has.
+//   the CLONE pays more only when the source's block size exceeds the target's, and then by the FRAME
+//     ratio, not the payload ratio: 4 -> 32 bytes of payload is roughly 2.5-4x the frame once flags,
+//     command, block number and CRC are counted, and about 15ms of the 40-70ms per refused block is
+//     furi_delay_ms, which no payload size touches at all.
+//
+// The figures above are also not "a 4-byte write" as a property of the code: the wipe's payload is
+// iso15693_3_get_block_size(target) clamped to ISO15693_MAX_BLOCK_SIZE. 4 is the sample card.
+//
+// See the capacity test in write_source_blocks for the one place this bound costs something.
 #define ISO15693_POLLER_PASS_MAX_MS (10000U)
 
 // How many CONSECUTIVE absent-looking blocks end the sweep. One is not evidence -- the same reasoning
@@ -589,7 +604,7 @@ static bool iso15693_poller_write_source_blocks(
     // skip below so the "Cloned X/Y" total isn't inflated by blocks that only ever hold the UID.
     uint16_t total = source_count;
     if(skip_backdoor) {
-        for(size_t i = 0; i < sizeof(iso15693_poller_backdoor_blocks); i++) {
+        for(size_t i = 0; i < COUNT_OF(iso15693_poller_backdoor_blocks); i++) {
             if(iso15693_poller_backdoor_blocks[i] < source_count) total--;
         }
     }
@@ -1076,9 +1091,14 @@ static uint16_t iso15693_poller_wipe_blocks(
     // dropped below a proven one is not an unexamined absence -- it was read, and it read back as
     // zeros. It held nothing, and dropping it conceals nothing.
     //
-    // That single property is load-bearing three times over: it bounds this divergence, it is why the
-    // "Not closed" note above is a correct disposition rather than a placeholder, and it is what makes
-    // the zeroed-entry argument at the read-back note deterministic. It is worth not re-deriving.
+    // That single property is load-bearing twice: it bounds this divergence, and it is why the "Not
+    // closed" note above is a correct disposition rather than a placeholder. It is worth not
+    // re-deriving.
+    //
+    // It is NOT what makes an unread cache entry read as empty -- that is pvPortMalloc's memset, a
+    // separate disassembly fact, cited at the read-back note. The two are independent and the keep
+    // branch leans on both: the prefix property says a dropped block WAS read, the memset says an
+    // unread entry reads as zeros. Neither implies the other.
     //
     // No i < advertised guard: block_held_data range-checks against the same object, so the two say the
     // same thing and one of them would drift.
@@ -1653,7 +1673,7 @@ bool iso15693_poller_source_uses_gen1_blocks(const Iso15693_3Data* source) {
     const uint16_t block_count = iso15693_3_get_block_count(source);
     const uint8_t block_size = iso15693_3_get_block_size(source);
     if(block_size == 0) return false;
-    for(size_t i = 0; i < sizeof(iso15693_poller_backdoor_blocks); i++) {
+    for(size_t i = 0; i < COUNT_OF(iso15693_poller_backdoor_blocks); i++) {
         const uint16_t block = iso15693_poller_backdoor_blocks[i];
         if(block >= block_count) continue;
         const uint8_t* data = iso15693_3_get_block_data(source, block);
