@@ -166,7 +166,8 @@ static bool iso15693_poller_is_backdoor_block(uint16_t block) {
 //
 // 10 seconds. Working from the ~1s a 64-block wipe takes (see ISO15693_POLLER_WIPE_ABSENT_RUN): a
 // refused block costs 3 writes plus 3 waits plus a read -- the retry loop has no break before its
-// last delay -- so an accepted one is a fraction of the 40-70ms, and the largest sweep any card can ask for -- 256 blocks all accepting -- lands somewhere
+// last delay -- so an accepted one is a fraction of the 40-70ms, and the largest sweep any card can
+// ask for -- 256 blocks all accepting -- lands somewhere
 // around 3-4s. Every figure here is an estimate from bench runs that were not instrumented for timing,
 // which is itself an argument for the wide margin. Note the true worst case is this bound PLUS one
 // re-probe of the trailing run, which is not deadline-checked (it would have to abandon the run
@@ -781,7 +782,7 @@ static bool iso15693_poller_write_source_blocks(
     // mid-run is the same fabrication in a new costume. Under-claiming leaves the user a correct report
     // and a Retry they can act on; over-claiming gives them a verdict about their hardware that the
     // pass never finished testing. A longer budget for the clone alone would close it, at the cost of
-    // more seconds during which Back is swallowed -- see #252. Neither trade is worth taking silently,
+    // more seconds during which Back is swallowed -- see #253. Neither trade is worth taking silently,
     // so it is written down instead.
     const bool failures_are_top_tail = any_failure && wrote_any && !wrote_above_failure &&
                                        !any_failure_answered && !instance->pass_truncated;
