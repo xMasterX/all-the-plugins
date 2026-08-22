@@ -1128,7 +1128,16 @@ static Iso15693PollerEvent iso15693_poller_success_or_partial(Iso15693Poller* in
     // source's UID with none of its data -- which reads correct to a UID-only reader and fails anything
     // that reads memory. That is a failure, not a qualified success. Wipe is unaffected: it reaches
     // here only when at least one block accepted, and its failed/accepted sets are disjoint.
-    if(clone && instance->clone_blocks_total > 0 &&
+    //
+    // A CUT run is excluded, and the counts are exactly why it has to be. The back-fill records every
+    // block above the cut as a failure, so on a clone that accepted nothing failed_count reaches
+    // blocks_total whether the card refused those blocks or nothing was ever sent to them. Judged on
+    // counts alone this branch then reports "no data block took" about a source the radio never
+    // addressed -- the same fabrication the truncation flag exists to prevent, one branch earlier in
+    // this same function, and on the outcome with the MOST blocks above the cut. The guard's own
+    // purpose survives: a cut run falls through to Partial, which names the clock and offers Retry
+    // rather than a Finish button under "Cloned 0/N".
+    if(clone && !instance->pass_truncated && instance->clone_blocks_total > 0 &&
        instance->clone_failed_count >= instance->clone_blocks_total) {
         return Iso15693PollerEventFail;
     }
