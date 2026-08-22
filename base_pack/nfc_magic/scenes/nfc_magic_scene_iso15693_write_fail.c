@@ -393,9 +393,13 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             widget, 0, 13, AlignLeft, AlignTop, FontSecondary, message);
     }
 
-    // THE RULE THE TWO FUNCTIONS SHARE, and the reason it has to be written down: the RIGHT slot means
-    // Details whenever has_details is true, and Exit only when it is false. on_event decides the same
-    // way. Nothing enforces it but this comment, and the last time it went unstated it broke -- while
+    // THE RULE THE TWO FUNCTIONS SHARE, and the reason it has to be written down. The right slot is
+    // three-way, not two:
+    //   has_details      -> Details
+    //   else retryable   -> Exit
+    //   else             -> no right button at all
+    // on_event decides the same way, in the same order. That third case matters to anyone extending
+    // this: a non-retryable reason with nothing behind Details gets NO right button, not an Exit. Nothing enforces it but this comment, and the last time it went unstated it broke -- while
     // is_retryable was {CardLost} and has_details(CardLost) was false, the two sets were disjoint, so
     // on_enter could branch on retryable and on_event on details and never disagree. Putting one reason
     // in both sets made a control labelled Exit open the Details scroll view. Add a reason to either

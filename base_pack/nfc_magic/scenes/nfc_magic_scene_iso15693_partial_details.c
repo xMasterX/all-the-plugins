@@ -134,9 +134,18 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
             "stops at the same block, the card is too slow to finish in one pass rather than refusing.");
     }
     if(wipe_mode && !instance->iso15693_result.uid_verified) {
-        // The wipe has three outcome screens and only "Wipe complete" has a spare body line for this,
-        // so on the other two the check that never ran was asserted by omission. The field's own doc
-        // says a caller reporting success should say so, and two of the three callers could not.
+        // Six wipe reason codes are reachable and this route covers the ones that need it: WipeComplete
+        // states it inline, WipeStopped always has Details, a wipe Partial has Details via
+        // failed_count > 0, and WipeUidChanged cannot apply -- observing a change requires the check to
+        // have answered. CardLost has no Details, but the card left, so it is moot.
+        //
+        // NothingWiped is the one with no route, and there uid_verified is false BY CONSTRUCTION: the
+        // wiped == 0 short-circuit skips the power-cycle and the verify entirely. Its reasoning is that
+        // no write landed which could have moved the UID -- the one inference this file declines to draw
+        // anywhere else, since the sweep did send three WRITE BLOCKs each at index 56 and 57 before
+        // giving up, and a tag can apply a write without answering (see write_identity). So on an armed
+        // gen1 card that is a wipe which can move the UID, reports "Wipe failed", never runs the check,
+        // and never says the check did not run. Filed rather than fixed: gen1, and no card to test it.
         //
         // It bites hardest on the card the check exists for. The sweep zeroes 56/57 at INDEX 56/57 --
         // long before any plausible cut -- so on a gen1 card left armed by an earlier UID write the UID

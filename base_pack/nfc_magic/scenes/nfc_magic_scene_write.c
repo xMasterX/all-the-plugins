@@ -420,6 +420,13 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
                 // Order is a priority: a moved UID outranks a cut sweep, which outranks ordinary
                 // block failures. All three are Partial to the poller; they differ in what the user
                 // most needs told.
+                // The order is also what decides Retry, which is worth saying here because the
+                // predicate that grants it cannot: a wipe that was BOTH cut and moved the UID takes the
+                // UID branch, and WipeUidChanged is not retryable. That is deliberate. Re-running a wipe
+                // against a card whose identity has already moved does not obviously help, and on gen1
+                // it is another pass over 56/57 -- the very blocks that moved it. The truncation note
+                // still reaches Details on that screen, so the cut is stated; only the button is
+                // withheld.
                 NfcMagicIso15693WriteFailReason partial_reason;
                 if(instance->iso15693_result.uid_changed) {
                     partial_reason = NfcMagicIso15693WriteFailReasonWipeUidChanged;
