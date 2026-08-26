@@ -1,28 +1,17 @@
+# For details & more options, see documentation/AppManifests.md in firmware repo
+
 App(
     appid="mitsubishi_ac_remote",
-    name="Mitsubishi",
+    name="Mitsubishi (Full)",
     apptype=FlipperAppType.EXTERNAL,
-    targets=["f7"],
-    entry_point="ac_remote_app",
-    cdefines=["APP_MITSUBISHI_AC_REMOTE"],
-    requires=[
-        "storage",
-        "gui",
-        "infrared",
-    ],
-    stack_size=1 * 2048,
-    order=90,
-    fap_description="Mitsubishi Electric Air Conditioner remote control",
-    fap_version="1.0",
-    fap_icon="ac_remote.png",
+    entry_point="mitsubishi_ac_remote_app",
+    stack_size=4 * 1024,
     fap_category="Infrared",
-    fap_icon_assets="assets",
-    fap_private_libs=[
-        Lib(
-            name="hvac_mitsubishi",
-            sources=[
-                "hvac_mitsubishi.c",
-            ],
-        ),
-    ],
+    fap_version="1.0",
+    fap_icon="mitsubishi_ac_remote.png",
+    fap_description="IR remote for Mitsubishi (Full)-protocol air conditioners",
+    fap_author="xMasterX",
+    fap_libs=["infrared"],
+    # tests/ holds a host-side harness built with cc, not the ARM toolchain
+    sources=["*.c*", "!tests"],
 )

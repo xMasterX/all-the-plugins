@@ -273,8 +273,10 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Pause Timer | ![IR Badge] | [by Matt-London](https://github.com/Matt-London/pause_timer) |  | [![Author Badge]](https://lab.flipper.net/apps/pause_timer) |
 | FlipIRFreq | ![IR Badge] | [by jsammarco](https://github.com/jsammarco/FlipIRFreq) | Send IR in carrier or low-frequency pulse modes with adjustable frequency, duty cycle, and output | ![None Badge] |
 | TagTinker | ![IR Badge] | [by i12bp8](https://github.com/i12bp8/TagTinker) |  | ![None Badge] |
-| Samsung AC Remote | ![IR Badge] | [by dappermint](https://github.com/dappermint/samsung-ac-remote-flipper-app) |  | [![Author Badge]](https://lab.flipper.net/apps/samsung_ac_remote) |
-| Mitsubishi AC Remote | ![IR Badge] | [by achistyakov](https://github.com/achistyakov/flipperzero-mitsubishi-ac-remote) |  | [![Author Badge]](https://lab.flipper.net/apps/mitsubishi_ac_remote) |
+| Samsung (Full) AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
+| Samsung (Old) AC Remote | ![IR Badge] | [by dappermint](https://github.com/dappermint/samsung-ac-remote-flipper-app) |  | [![Author Badge]](https://lab.flipper.net/apps/samsung_ac_remote) |
+| Mitsubishi (Full) AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
+| Mitsubishi (Old) AC Remote | ![IR Badge] | [by achistyakov](https://github.com/achistyakov/flipperzero-mitsubishi-ac-remote) |  | [![Author Badge]](https://lab.flipper.net/apps/mitsubishi_ac_remote) |
 | Mitsubishi AC Remote (New) | ![IR Badge] | [by Str4ch](https://github.com/Str4ch/flipperzero-mitsubishi-ac-remote-new-protocol) |  | [![Author Badge]](https://lab.flipper.net/apps/mitsubishi_ac_remote_new_protocol) |
 | HTW AC Remote | ![IR Badge] | [by sokogen](https://github.com/sokogen/flipperzero-htw-ac-remote) |  | [![Author Badge]](https://lab.flipper.net/apps/htw_ac_remote) |
 | Hitachi AC Remote | ![IR Badge] | [by dogtopus](https://github.com/dogtopus/flipperzero-hitachi-ac-remote) |  | [![Author Badge]](https://lab.flipper.net/apps/hitachi_ac_remote) |
