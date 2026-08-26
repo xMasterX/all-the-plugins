@@ -20,3 +20,6 @@ neoclima_ac_remote
 panasonic_ac_remote
 tcl_ac_remote
 toshiba_ac_remote
+kelon_ac_remote
+kelvinator_ac_remote
+ac_detector
