@@ -407,6 +407,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | USB Game Controller (Xbox360) | ![USB Badge] | [by expected-ingot](https://github.com/expected-ingot/flipper-xinput) |  | ![None Badge] |
 | Lego Dimensions ToyPad Emu | ![USB Badge] | [by SegerEnd](https://github.com/SegerEnd/Flipper-Zero-LD-Toypad-Emulator) |  | [![Author Badge]](https://lab.flipper.net/apps/ldtoypad) |
 | CCID | ![USB Badge] | [by kidbomb](https://github.com/kidbomb/flipper-ccid-app) |  | [![Author Badge]](https://lab.flipper.net/apps/ccid_test) |
+| Better Mouse | ![USB Badge] | [by Timon-sys](https://github.com/Timon-sys/Bettermouse) | USB mouse remote with acceleration, diagonals, scroll & momentum | [![Author Badge]](https://lab.flipper.net/apps/bettermouse) |
 
 
 #### Catalog links checked at `17 Feb 2026 00:01 GMT +3`
