@@ -151,8 +151,12 @@ static void page_lines(
 
     switch(m->page) {
     case PageBrands:
-        *a = known ? m->entry->brands : "Not in the database";
-        *scroll_a = known;
+        if(known && m->entry->consumer) {
+            *a = "Not an A/C protocol";
+        } else {
+            *a = known ? m->entry->brands : "Not in the database";
+        }
+        *scroll_a = known && !m->entry->consumer;
         *b = m->use_str;
         break;
     case PageModel:
@@ -333,7 +337,11 @@ static void format_result(DetectorModel* m, const AcDetection* d) {
         snprintf(m->bits_str, sizeof(m->bits_str), "%ub", frame_bits);
     }
 
-    if(m->entry && strcmp(m->entry->app, "-")) {
+    if(m->entry && m->entry->consumer) {
+        // No remote app can help here: there is no mode, fan or temperature
+        // field to drive. The stock Infrared app replays these fine.
+        snprintf(m->use_str, sizeof(m->use_str), "Use the Infrared app");
+    } else if(m->entry && strcmp(m->entry->app, "-")) {
         snprintf(m->use_str, sizeof(m->use_str), "Use: %s", m->entry->app);
     } else if(m->entry) {
         snprintf(m->use_str, sizeof(m->use_str), "No app for this one yet");

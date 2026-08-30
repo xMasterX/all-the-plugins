@@ -39,6 +39,12 @@ typedef struct {
     /// but puts three constant bits in the middle, so it is 67.
     uint16_t bits;
 
+    /// Set for general-purpose consumer protocols that are not air
+    /// conditioner protocols at all. Some cheap portable and window units use
+    /// a plain button-per-code remote instead of a full-state frame, and
+    /// saying so is far more useful than reporting Unknown.
+    uint8_t consumer;
+
     uint8_t msb_first; ///< Bit order within each byte
     uint8_t sig_kind; ///< AcSigKind
     uint8_t sig_len; ///< Bytes of sig[] in use
