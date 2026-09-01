@@ -286,6 +286,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Daikin AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
 | Delonghi AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
 | Fujitsu AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
+| Goodweather AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
 | Gree AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
 | Haier AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
 | Kelon AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |

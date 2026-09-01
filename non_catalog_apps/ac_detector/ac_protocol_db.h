@@ -13,6 +13,8 @@ typedef enum {
     AcSigPrefix, ///< Leading bytes match sig[] under sig_mask[]
     AcSigCoolix, ///< Three byte pairs, each second byte the complement
     AcSigMidea, ///< Six bytes, then the same six inverted, under a 0b10100 header
+    AcSigBytePairs, ///< Every second byte is the inverse of the one before it
+    AcSigNeoclima, ///< 0xA5 marker at byte 10 and a byte sum at byte 11
 } AcSigKind;
 
 /// One row of the protocol database.

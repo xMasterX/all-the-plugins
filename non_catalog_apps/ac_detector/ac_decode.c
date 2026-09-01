@@ -210,12 +210,40 @@ static bool sig_midea(const AcParse* p) {
     return true;
 }
 
+/// Goodweather puts every byte on the wire twice, the second time inverted,
+/// so a 96-bit frame carries only 48 bits of payload.
+static bool sig_byte_pairs(const AcParse* p) {
+    uint16_t bytes = (uint16_t)(p->pack_bits >> 3);
+    if(bytes < 2 || (bytes & 1)) return false;
+    for(uint16_t k = 0; k + 1 < bytes; k += 2) {
+        if(p->data[k] != (uint8_t)~p->data[k + 1]) return false;
+    }
+    return true;
+}
+
+/// Neoclima ends with a fixed 0xA5 and a sum of everything before it. Without
+/// this the entry claims any frame that merely has a similar header and the
+/// same bit count - which is how a Goodweather capture came back as Neoclima.
+static bool sig_neoclima(const AcParse* p) {
+    if((p->pack_bits >> 3) < 12) return false;
+    if(p->data[10] != 0xA5) return false;
+    uint8_t sum = 0;
+    for(uint8_t i = 0; i < 11; i++) {
+        sum = (uint8_t)(sum + p->data[i]);
+    }
+    return p->data[11] == sum;
+}
+
 static bool sig_check(const AcParse* p, const AcProtoEntry* e) {
     switch(e->sig_kind) {
     case AcSigCoolix:
         return sig_coolix(p);
     case AcSigMidea:
         return sig_midea(p);
+    case AcSigBytePairs:
+        return sig_byte_pairs(p);
+    case AcSigNeoclima:
+        return sig_neoclima(p);
     case AcSigPrefix:
         // A protocol with a preamble - Daikin opens with five stray bits -
         // pushes its signature past the first byte.

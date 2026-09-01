@@ -25,3 +25,4 @@ kelvinator_ac_remote
 ac_detector
 samsung_ac_remote_old
 mitsubishi_ac_remote_old
+goodweather_ac_remote
