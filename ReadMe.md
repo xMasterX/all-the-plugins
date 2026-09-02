@@ -299,6 +299,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | TCL AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
 | Toshiba AC Remote | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) |  | ![None Badge] |
 | AC Detector | ![IR Badge] | [by xMasterX](https://github.com/xMasterX/flipper_ac) | Identifies which AC protocol a remote speaks | ![None Badge] |
+| Cross Remote | ![IR Badge] | [by leedave](https://github.com/leedave/flipper-zero-cross-remote) | One-click macro remote: sends multiple IR/Sub-GHz commands | ![None Badge] |
 | BPM Tapper | ![Media Badge] | [by panki27](https://github.com/panki27/bpm-tapper) |  | [![UFW Badge]](https://lab.flipper.net/apps/bpm_tapper) |
 | Flizzer Tracker | ![Media Badge] | [by LTVA1](https://github.com/LTVA1/flizzer_tracker) |  | [![Author Badge]](https://lab.flipper.net/apps/flizzer_tracker) |
 | Music Beeper | ![Media Badge] | [by qqMajiKpp / Haseo](https://github.com/qqmajikpp/) |  | ![None Badge] |
