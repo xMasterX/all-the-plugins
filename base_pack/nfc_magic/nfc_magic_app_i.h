@@ -39,6 +39,7 @@
 #include "magic/protocols/gen1a/gen1a_poller.h"
 #include "magic/protocols/gen2/gen2_poller.h"
 #include "magic/protocols/gen4/gen4_poller.h"
+#include "magic/protocols/iso15693/iso15693_poller.h"
 
 #include "lib/nfc/protocols/mf_classic/mf_classic_poller.h"
 
@@ -70,6 +71,9 @@ enum NfcMagicAppCustomEvent {
     NfcMagicAppCustomEventDictAttackComplete,
     NfcMagicAppCustomEventDictAttackSkip,
     NfcMagicCustomEventTextInputDone,
+    NfcMagicCustomEventIso15693CardDetected,
+    NfcMagicCustomEventIso15693CardDetectFailed,
+    NfcMagicCustomEventIso15693NotGen2,
 };
 
 typedef struct {
@@ -97,6 +101,64 @@ typedef enum {
     NfcMagicWipeFailReasonGeneric, // an error occurred mid-wipe
     NfcMagicWipeFailReasonNoKeys, // no sector keys found, so the wipe never started
 } NfcMagicWipeFailReason;
+
+// Reason passed to the Iso15693WriteFail scene via its scene state so it can explain the outcome.
+typedef enum {
+    NfcMagicIso15693WriteFailReasonNotMagic, // card present, but the backdoor write was not accepted.
+        // Defensive fallback only: a card that really isn't magic leaves the UID unchanged, which is
+        // NotGen2 rather than Fail, and lands on the gen1 opt-in screen instead of here.
+    NfcMagicIso15693WriteFailReasonCardLost, // no card in the field / card removed mid-write
+    NfcMagicIso15693WriteFailReasonPartial, // clone: UID written but some data blocks failed
+    NfcMagicIso15693WriteFailReasonOverCapacity, // clone OK, but the card now advertises more blocks
+        // than it physically holds (the extra were empty, so nothing was lost) -- a success with a note
+    NfcMagicIso15693WriteFailReasonNothingWiped, // wipe: not one block accepted the zero-write
+    NfcMagicIso15693WriteFailReasonEmptySource, // clone: the source image has no data blocks to write
+    NfcMagicIso15693WriteFailReasonNothingCloned, // clone: the UID took but not one data block did, so
+        // the card carries the source's UID and none of its data
+    NfcMagicIso15693WriteFailReasonUidUnexpected, // the gen2 backdoor moved the UID, but to neither the
+        // original nor the target. The card IS magic -- this is the only outcome that proves it -- so
+        // it must not share the "not a magic tag" screen. The UID it answers with is in the result.
+    NfcMagicIso15693WriteFailReasonGen1Failed, // the opt-in gen1 UID didn't verify. The sequence is
+        // sent before anything is checked, so blocks 56/57/62/63 were overwritten regardless -- on what
+        // is most likely an ordinary tag. Naming them is the point of the screen.
+    NfcMagicIso15693WriteFailReasonUidUnverifiable, // Write UID: the requested UID is the card's own,
+        // so nothing was written -- a read-back against a UID the card already has proves nothing
+    NfcMagicIso15693WriteFailReasonWipeUidChanged, // wipe: the blocks cleared, but the UID read back
+        // afterwards is not the one the card presented before. On gen1 that is the wipe zeroing blocks
+        // 56/57, which ARE the UID registers, on a card left armed by an earlier gen1 UID write.
+    NfcMagicIso15693WriteFailReasonWipeComplete, // wipe: a clean success -- the sweep was not cut and
+        // nothing it reached is known to still hold data. NOT "no block refused": a block that refuses
+        // every write and then reads back empty is deliberately not counted, because nothing was lost
+        // there. Here rather than on the bare Success popup so it can report the
+        // range it measured beside the count the card advertises, since the two can differ without
+        // either being a fault. A wipe whose UID check never reached an answer still lands here and
+        // says so on the third line: the wipe finished, only the identity check did not run.
+    NfcMagicIso15693WriteFailReasonWipeStopped, // wipe: the sweep hit its time limit. Nothing ties the
+        // cut to the advertised count -- the check is a wall-clock test at the top of every iteration,
+        // so a card that accepts some writes and then answers reads at every address is cut with every
+        // claimed block already attempted and the cut index above that count. (NOT the refuses-every-
+        // write card: that one clears nothing, so the wipe short-circuits to NothingWiped before any
+        // truncation reporting -- see the note on that screen.) A partial
+        // outcome, not a qualified success -- the poller reports Partial for it -- so it carries the
+        // error tone and offers Retry, since re-running is the correct action when data may sit above
+        // the cut.
+} NfcMagicIso15693WriteFailReason;
+
+// Which ISO15693 operation the shared write scene is running. Replaces the old is-wipe bool, now that
+// Write-UID runs there too rather than in a scene of its own.
+typedef enum {
+    NfcMagicIso15693ModeClone, // write a saved .nfc image onto the card
+    NfcMagicIso15693ModeWipe, // zero every data block on the card, 56/57/62/63 included
+    NfcMagicIso15693ModeWriteUid, // write a hand-entered UID and nothing else
+} NfcMagicIso15693Mode;
+
+// Which flow reached the gen1 opt-in screen. The two consent to different things (a clone writes every
+// data block, a Write-UID writes only the UID registers) and return to different write scenes. Stored
+// as the opt-in scene's state by whichever scene routes to it.
+typedef enum {
+    NfcMagicIso15693Gen1OptinFromClone,
+    NfcMagicIso15693Gen1OptinFromWriteUid,
+} NfcMagicIso15693Gen1OptinSource;
 
 struct NfcMagicApp {
     ViewDispatcher* view_dispatcher;
@@ -138,6 +200,21 @@ struct NfcMagicApp {
 
     Gen4Poller* gen4_poller;
     UscuidUlPoller* uscuid_ul_poller;
+    // Allocated per-scene (in the ISO15693 get-info / write scenes), NOT at app startup:
+    // iso15693_poller_alloc -> nfc_poller_alloc(Iso15693_3) calls nfc_config() on the shared Nfc,
+    // and holding that config would make the scanner's first nfc_config() furi_check-fail.
+    Iso15693Poller* iso15693_poller;
+    Iso15693_3Data*
+        iso15693_data; // last read result, kept so the info scene survives the poller free
+    uint8_t
+        iso15693_target_uid[ISO15693_3_UID_SIZE]; // MSB-first UID to write to a magic ISO15693 card
+    NfcMagicIso15693Mode iso15693_mode; // which ISO15693 operation the shared write scene is running
+    bool iso15693_force_gen1; // ISO15693 clone / Write-UID: run the opt-in gen1 attempt (set by the
+        // gen1 opt-in scene, cleared when a fresh clone or Write-UID is started from the menu)
+    // Outcome of the last ISO15693 clone or wipe, fetched once per terminal event. See
+    // Iso15693PollerResult in iso15693_poller.h for the per-field meaning and its mode dependence.
+    Iso15693PollerResult iso15693_result;
+    // AFI/DSFID -- decided by GET SYSTEM INFO read-back, not by the write's return value
 
     Gen4* gen4_data;
 

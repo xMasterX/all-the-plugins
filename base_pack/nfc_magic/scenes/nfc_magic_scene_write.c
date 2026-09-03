@@ -154,20 +154,91 @@ NfcCommand
     return command;
 }
 
+// ISO15693 clone: our iso15693 poller uses a simpler event callback than the SDK-style pollers
+// above. Map its outcome onto the shared write events; the per-block partial stats are stashed for
+// the fail/partial screen.
+static void
+    nfc_magic_scene_write_iso15693_poller_callback(Iso15693PollerEvent event, void* context) {
+    NfcMagicApp* instance = context;
+
+    if(event == Iso15693PollerEventWriteProgress) {
+        // Same live counter the USCUID-UL clone drives, through the same app fields and event.
+        iso15693_poller_get_result(instance->iso15693_poller, &instance->iso15693_result);
+        instance->write_progress_current = instance->iso15693_result.blocks_done;
+        instance->write_progress_total = instance->iso15693_result.blocks_total;
+        view_dispatcher_send_custom_event(
+            instance->view_dispatcher, NfcMagicCustomEventWorkerProgress);
+    } else if(event == Iso15693PollerEventCardDetected) {
+        // First activation: flip the popup off "Apply the same card" to "Writing" (mirrors the other
+        // magic pollers, which all emit a card-detected event).
+        view_dispatcher_send_custom_event(
+            instance->view_dispatcher, NfcMagicCustomEventCardDetected);
+    } else if(event == Iso15693PollerEventSuccess) {
+        // Read the clone stats on success too, so the Success handler can distinguish an exact clone
+        // from one where the card ended up advertising more blocks than it physically holds
+        // (over-capacity with empty tail -- no data lost, but worth a note).
+        iso15693_poller_get_result(instance->iso15693_poller, &instance->iso15693_result);
+        view_dispatcher_send_custom_event(
+            instance->view_dispatcher, NfcMagicCustomEventWorkerSuccess);
+    } else if(event == Iso15693PollerEventPartial) {
+        iso15693_poller_get_result(instance->iso15693_poller, &instance->iso15693_result);
+        view_dispatcher_send_custom_event(
+            instance->view_dispatcher, NfcMagicCustomEventWorkerPartial);
+    } else if(event == Iso15693PollerEventCardLost) {
+        // Read the result here too: a card lost DURING an opt-in gen1 run has still had the destructive
+        // sequence written at blocks 56/57/62/63, and the card-lost screen is the only report the user
+        // gets. Without this, gen1_attempted is stale and that damage goes unmentioned -- the same gap
+        // the gen1-failure screen exists to close, on the path where the card left instead of refusing.
+        iso15693_poller_get_result(instance->iso15693_poller, &instance->iso15693_result);
+        view_dispatcher_send_custom_event(instance->view_dispatcher, NfcMagicCustomEventCardLost);
+    } else if(event == Iso15693PollerEventNotGen2) {
+        // gen2 left the UID unchanged (not a gen2 magic card). Offer the opt-in gen1 retry; nothing
+        // has been written, so the card is untouched.
+        view_dispatcher_send_custom_event(
+            instance->view_dispatcher, NfcMagicCustomEventIso15693NotGen2);
+    } else if(event == Iso15693PollerEventFail) {
+        // Backdoor write not accepted (not a magic tag), or an empty-source clone. Stash the stats so
+        // the fail handler can tell an empty source (blocks_total == 0) from a non-magic card.
+        iso15693_poller_get_result(instance->iso15693_poller, &instance->iso15693_result);
+        view_dispatcher_send_custom_event(
+            instance->view_dispatcher, NfcMagicCustomEventWorkerFail);
+    }
+    // Any other event is not expected from the clone/wipe poller and is intentionally ignored.
+}
+
+// "Wiping" vs "Writing": the USCUID-UL and ISO15693 wipes each set their own flag. Resolved here
+// once, because the header and the live progress line below both need it and previously disagreed --
+// the progress line tested only the USCUID-UL flag, which was harmless while ISO15693 emitted no
+// progress and wrong the moment it did.
+static bool nfc_magic_scene_write_is_wiping(NfcMagicApp* instance) {
+    return instance->uscuid_ul_is_wipe_mode ||
+           (instance->protocol == NfcMagicProtocolIso15693 &&
+            instance->iso15693_mode == NfcMagicIso15693ModeWipe);
+}
+
 static void nfc_magic_scene_write_setup_view(NfcMagicApp* instance) {
     Popup* popup = instance->popup;
     popup_reset(popup);
     uint32_t state = scene_manager_get_scene_state(instance->scene_manager, NfcMagicSceneWrite);
 
     if(state == NfcMagicSceneWriteStateCardSearch) {
+        // "the same card" means the one just scanned, which a hand-entered Write-UID never had.
+        const bool write_uid = (instance->protocol == NfcMagicProtocolIso15693) &&
+                               (instance->iso15693_mode == NfcMagicIso15693ModeWriteUid);
         popup_set_icon(instance->popup, 0, 8, &I_NFC_manual_60x50);
         popup_set_text(
-            instance->popup, "Apply the\nsame card\nto the back", 128, 32, AlignRight, AlignCenter);
+            instance->popup,
+            write_uid ? "Apply the\nmagic card\nto the back" : "Apply the\nsame card\nto the back",
+            128,
+            32,
+            AlignRight,
+            AlignCenter);
     } else {
+        const bool is_wipe = nfc_magic_scene_write_is_wiping(instance);
         popup_set_icon(popup, 12, 23, &I_Loading_24);
         popup_set_header(
             popup,
-            instance->uscuid_ul_is_wipe_mode ? "Wiping\nDon't move..." : "Writing\nDon't move...",
+            is_wipe ? "Wiping\nDon't move..." : "Writing\nDon't move...",
             52,
             32,
             AlignLeft,
@@ -216,6 +287,50 @@ void nfc_magic_scene_write_on_enter(void* context) {
         }
         uscuid_ul_poller_start(
             instance->uscuid_ul_poller, nfc_magic_scene_write_uscuid_ul_poller_callback, instance);
+    } else if(instance->protocol == NfcMagicProtocolIso15693) {
+        instance->iso15693_poller = iso15693_poller_alloc(instance->nfc);
+        if(instance->iso15693_mode == NfcMagicIso15693ModeWriteUid) {
+            // Write a hand-entered UID, no source image. gen2 first; the opt-in gen1 retry re-enters
+            // this scene with iso15693_force_gen1 set, exactly as the clone does.
+            if(instance->iso15693_force_gen1) {
+                iso15693_poller_start_write_uid_gen1(
+                    instance->iso15693_poller,
+                    instance->iso15693_target_uid,
+                    nfc_magic_scene_write_iso15693_poller_callback,
+                    instance);
+            } else {
+                iso15693_poller_start_write_uid(
+                    instance->iso15693_poller,
+                    instance->iso15693_target_uid,
+                    nfc_magic_scene_write_iso15693_poller_callback,
+                    instance);
+            }
+        } else if(instance->iso15693_mode == NfcMagicIso15693ModeWipe) {
+            // Zero every data block on the card (no source file).
+            iso15693_poller_start_wipe(
+                instance->iso15693_poller,
+                nfc_magic_scene_write_iso15693_poller_callback,
+                instance);
+        } else {
+            // Clone the loaded ISO15693 image onto the magic card. The gen2 attempt runs first;
+            // if the user opted into the destructive gen1 retry on the "not gen2 magic" screen
+            // (iso15693_force_gen1), run that instead.
+            const Iso15693_3Data* source =
+                nfc_device_get_data(instance->source_dev, NfcProtocolIso15693_3);
+            if(instance->iso15693_force_gen1) {
+                iso15693_poller_start_clone_gen1(
+                    instance->iso15693_poller,
+                    source,
+                    nfc_magic_scene_write_iso15693_poller_callback,
+                    instance);
+            } else {
+                iso15693_poller_start_clone(
+                    instance->iso15693_poller,
+                    source,
+                    nfc_magic_scene_write_iso15693_poller_callback,
+                    instance);
+            }
+        }
     } else {
         instance->gen4_poller = gen4_poller_alloc(instance->nfc);
         gen4_poller_set_password(instance->gen4_poller, instance->gen4_password);
@@ -235,9 +350,20 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
             nfc_magic_scene_write_setup_view(instance);
             consumed = true;
         } else if(event.event == NfcMagicCustomEventCardLost) {
-            scene_manager_set_scene_state(
-                instance->scene_manager, NfcMagicSceneWrite, NfcMagicSceneWriteStateCardSearch);
-            nfc_magic_scene_write_setup_view(instance);
+            if(instance->protocol == NfcMagicProtocolIso15693) {
+                // ISO15693 clone treats card-lost as terminal (not a resumable search).
+                scene_manager_set_scene_state(
+                    instance->scene_manager,
+                    NfcMagicSceneIso15693WriteFail,
+                    NfcMagicIso15693WriteFailReasonCardLost);
+                scene_manager_next_scene(instance->scene_manager, NfcMagicSceneIso15693WriteFail);
+            } else {
+                scene_manager_set_scene_state(
+                    instance->scene_manager,
+                    NfcMagicSceneWrite,
+                    NfcMagicSceneWriteStateCardSearch);
+                nfc_magic_scene_write_setup_view(instance);
+            }
             consumed = true;
         } else if(event.event == NfcMagicCustomEventWorkerProgress) {
             // Live "Writing X/N" while the USCUID-UL poller advances page by page.
@@ -245,20 +371,78 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
                 instance->text_store,
                 sizeof(instance->text_store),
                 "%s\n%u / %u",
-                instance->uscuid_ul_is_wipe_mode ? "Wiping" : "Writing",
+                nfc_magic_scene_write_is_wiping(instance) ? "Wiping" : "Writing",
                 instance->write_progress_current,
                 instance->write_progress_total);
             popup_set_header(
                 instance->popup, instance->text_store, 52, 32, AlignLeft, AlignCenter);
             consumed = true;
         } else if(event.event == NfcMagicCustomEventWorkerSuccess) {
-            scene_manager_next_scene(instance->scene_manager, NfcMagicSceneSuccess);
+            // Deliberately not nfc_magic_scene_write_is_wiping(): that is true for a USCUID-UL wipe too.
+            const bool iso15693 = (instance->protocol == NfcMagicProtocolIso15693);
+            const bool iso15693_wipe = iso15693 &&
+                                       (instance->iso15693_mode == NfcMagicIso15693ModeWipe);
+            if(iso15693 && instance->iso15693_mode == NfcMagicIso15693ModeWriteUid) {
+                // The poller verified the new UID reads back, so refresh the stored read result too --
+                // otherwise re-entering Write UID without a fresh Info read would seed the byte editor
+                // from the pre-write UID and look as though the write hadn't taken.
+                memcpy(
+                    instance->iso15693_data->uid,
+                    instance->iso15693_target_uid,
+                    ISO15693_3_UID_SIZE);
+            }
+            // Two ISO15693 successes carry information the bare "Success!" popup has nowhere to put:
+            // a clone that left the card advertising more blocks than it physically holds (empty
+            // over-capacity, no data lost), and any wipe -- whose sweep length is measured, so a run
+            // that stopped short of the card's claim and one that covered it would otherwise look the
+            // same. Both go to the result screen with their counts.
+            if(iso15693_wipe || (iso15693 && instance->iso15693_result.over_capacity > 0)) {
+                scene_manager_set_scene_state(
+                    instance->scene_manager,
+                    NfcMagicSceneIso15693WriteFail,
+                    iso15693_wipe ? NfcMagicIso15693WriteFailReasonWipeComplete :
+                                    NfcMagicIso15693WriteFailReasonOverCapacity);
+                scene_manager_next_scene(instance->scene_manager, NfcMagicSceneIso15693WriteFail);
+            } else {
+                scene_manager_next_scene(instance->scene_manager, NfcMagicSceneSuccess);
+            }
             consumed = true;
         } else if(event.event == NfcMagicCustomEventWorkerPartial) {
-            // Gen2/Classic clone uses the shared per-block partial screen; USCUID-UL has its own.
+            // Gen2/Classic clone uses the shared per-block partial screen; USCUID-UL and ISO15693 have
+            // their own.
             if(instance->protocol == NfcMagicProtocolGen2 ||
                instance->protocol == NfcMagicProtocolClassic) {
                 scene_manager_next_scene(instance->scene_manager, NfcMagicSceneGen2WipePartial);
+            } else if(instance->protocol == NfcMagicProtocolIso15693) {
+                // A wipe whose blocks cleared but whose UID moved gets its own screen, ahead of the
+                // ordinary partial: the block counts are beside the point next to the card's identity
+                // changing under an operation that never sends a UID command.
+                // Order is a priority: a moved UID outranks a cut sweep, which outranks ordinary
+                // block failures. All three are Partial to the poller; they differ in what the user
+                // most needs told.
+                // The order is also what decides Retry, which is worth saying here because the
+                // predicate that grants it cannot: a wipe that was BOTH cut and moved the UID takes the
+                // UID branch, and WipeUidChanged is not retryable. That is deliberate. Re-running a wipe
+                // against a card whose identity has already moved does not obviously help, and on gen1
+                // it is another pass over 56/57 -- the very blocks that moved it. The truncation note
+                // still reaches Details on that screen, so the cut is stated; only the button is
+                // withheld.
+                NfcMagicIso15693WriteFailReason partial_reason;
+                if(instance->iso15693_result.uid_changed) {
+                    partial_reason = NfcMagicIso15693WriteFailReasonWipeUidChanged;
+                } else if(
+                    instance->iso15693_result.pass_truncated &&
+                    instance->iso15693_mode == NfcMagicIso15693ModeWipe) {
+                    // Mode-gated because pass_truncated now covers a clone's data pass too, and
+                    // WipeStopped's screen is wipe-specific down to its wording. A cut clone stays on
+                    // the ordinary partial screen and is qualified there.
+                    partial_reason = NfcMagicIso15693WriteFailReasonWipeStopped;
+                } else {
+                    partial_reason = NfcMagicIso15693WriteFailReasonPartial;
+                }
+                scene_manager_set_scene_state(
+                    instance->scene_manager, NfcMagicSceneIso15693WriteFail, partial_reason);
+                scene_manager_next_scene(instance->scene_manager, NfcMagicSceneIso15693WriteFail);
             } else {
                 scene_manager_next_scene(instance->scene_manager, NfcMagicSceneUscuidUlPartial);
             }
@@ -267,9 +451,120 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
             scene_manager_next_scene(instance->scene_manager, NfcMagicSceneUscuidUlAuthFail);
             consumed = true;
         } else if(event.event == NfcMagicCustomEventWorkerFail) {
-            scene_manager_next_scene(instance->scene_manager, NfcMagicSceneWriteFail);
+            if(instance->protocol == NfcMagicProtocolIso15693) {
+                // Pick the reason: a Write UID with nothing to prove, a UID that moved somewhere
+                // unasked-for, a spent gen1 attempt, a wipe that cleared nothing, an empty-source
+                // clone (blocks_total == 0), or a clone whose UID took but whose every data block was
+                // rejected. Order matters throughout -- an empty source would satisfy the all-rejected
+                // test trivially, and the three UID/gen1 outcomes cut across every mode.
+                //
+                // NotMagic is now only the defensive fallback. A card that simply isn't magic leaves
+                // the UID unchanged, which is NotGen2, not Fail -- it reaches the gen1 opt-in screen,
+                // and declining there returns to the menu. So nothing routed here is known to be an
+                // ordinary tag. Before the branches above existed, the two routes that DID reach
+                // "Not a magic tag" were the unexpected-UID case -- the one outcome that proves the
+                // opposite -- and a failed opt-in gen1 verify, which had already spent four blocks.
+                NfcMagicIso15693WriteFailReason reason;
+                if(instance->iso15693_result.uid_unverifiable) {
+                    // Write UID asked for the UID the card already has, so nothing was sent. Checked
+                    // first: it is the one Fail where the card was never written to at all.
+                    reason = NfcMagicIso15693WriteFailReasonUidUnverifiable;
+                } else if(instance->iso15693_result.uid_unexpected) {
+                    // The UID moved, just not to what was asked for. Ahead of every mode-specific
+                    // reason below, because it is the one Fail that proves the card IS magic and
+                    // "Not a magic tag" would be exactly backwards.
+                    reason = NfcMagicIso15693WriteFailReasonUidUnexpected;
+                } else if(
+                    instance->iso15693_result.gen1_attempted &&
+                    !instance->iso15693_result.used_gen1) {
+                    // The opt-in gen1 sequence went out and the UID did NOT verify. Blocks 56/57/62/63
+                    // are overwritten either way, so this outranks the mode-specific reasons too --
+                    // the user needs to know what was spent, not just that it didn't work. The
+                    // used_gen1 term matters: a gen1 clone whose UID DID take and then lost every data
+                    // block is the "UID only" failure below, not a gen1 UID failure.
+                    reason = NfcMagicIso15693WriteFailReasonGen1Failed;
+                } else if(instance->iso15693_mode == NfcMagicIso15693ModeWriteUid) {
+                    // A Write-UID has no source blocks, so blocks_total is 0 for an unrelated reason
+                    // and must not fall through to the empty-source test below.
+                    reason = NfcMagicIso15693WriteFailReasonNotMagic;
+                } else if(instance->iso15693_mode == NfcMagicIso15693ModeWipe) {
+                    reason = NfcMagicIso15693WriteFailReasonNothingWiped;
+                } else if(instance->iso15693_result.blocks_total == 0) {
+                    reason = NfcMagicIso15693WriteFailReasonEmptySource;
+                } else if(
+                    instance->iso15693_result.failed_count >=
+                    instance->iso15693_result.blocks_total) {
+                    reason = NfcMagicIso15693WriteFailReasonNothingCloned;
+                } else {
+                    reason = NfcMagicIso15693WriteFailReasonNotMagic;
+                }
+                scene_manager_set_scene_state(
+                    instance->scene_manager, NfcMagicSceneIso15693WriteFail, reason);
+                scene_manager_next_scene(instance->scene_manager, NfcMagicSceneIso15693WriteFail);
+            } else {
+                scene_manager_next_scene(instance->scene_manager, NfcMagicSceneWriteFail);
+            }
+            consumed = true;
+        } else if(event.event == NfcMagicCustomEventIso15693NotGen2) {
+            // gen2 left the UID unchanged -> offer the opt-in gen1 retry on a dedicated screen. Tell
+            // it which flow it came from: a clone consents to a full data-block write, a Write-UID only
+            // to the four UID registers.
+            scene_manager_set_scene_state(
+                instance->scene_manager,
+                NfcMagicSceneIso15693Gen1Optin,
+                (instance->iso15693_mode == NfcMagicIso15693ModeWriteUid) ?
+                    NfcMagicIso15693Gen1OptinFromWriteUid :
+                    NfcMagicIso15693Gen1OptinFromClone);
+            scene_manager_next_scene(instance->scene_manager, NfcMagicSceneIso15693Gen1Optin);
             consumed = true;
         }
+    } else if(event.type == SceneManagerEventTypeBack) {
+        // ISO15693 only: once a card has been found, Back is swallowed until the poller reports an
+        // outcome.
+        //
+        // It never aborted a write in the first place -- leaving this scene runs on_exit ->
+        // <proto>_poller_stop -> furi_thread_join, which waits for the worker to finish whatever it is
+        // doing. Measured on an ISO15693 wipe: the key-down arrives, the GUI thread sits in the join,
+        // the worker runs the sweep to completion, and only then does the view change. So the write
+        // happens either way; Back only discarded the report.
+        //
+        // Worse for a clone, which has a NfcCommandReset between the UID write and the data pass. Back
+        // landing in that gap leaves the card carrying a new UID and reprogrammed geometry with none of
+        // the source's data -- the "UID only" state the nothing_cloned screen exists to warn about,
+        // reached silently, and at the very start of the write, which is exactly when someone who has
+        // changed their mind presses Back.
+        //
+        // NOT extended to the other four magic protocols, even though the same "Back discards rather
+        // than aborts" argument applies to them, because for them it would be a trap. Swallowing Back
+        // is only safe where the write is guaranteed to report an outcome.
+        //
+        // ISO15693 is: iso15693_poller_nfc_callback counts activation failures, against
+        // ISO15693_POLLER_MAX_ACTIVATION_ERRORS in general and the shorter
+        // ISO15693_POLLER_WIPE_VERIFY_ACTIVATIONS while a wipe's UID check is outstanding -- the first
+        // reports CardLost, the second reports the wipe's own result. Either way an outcome arrives.
+        //
+        // Two others are safe for a different reason and are excluded only for want of testing: gen1a
+        // and the USCUID-UL backdoor engine run on raw nfc_start, where PollerReady is a poll-cycle
+        // tick rather than an activation, so their handlers keep running with no card and reach Fail or
+        // Partial on their own.
+        //
+        // The genuinely unsafe ones are gen2/Classic (one poller, not two -- the Classic branch starts
+        // the gen2 one), USCUID-direct, and gen4. All are driven by an activation-Ready event and all
+        // stop advancing once the card is gone: gen2 halts after every block and USCUID-direct returns
+        // NfcCommandReset on a failed page to revive a tag that NAKed a locked one, so both need a
+        // RE-ACTIVATION partway through a write; gen4 has no activation-error budget at all and
+        // advances one block per Iso14443_3aPollerEventTypeReady (gen4_poller.c:281/:358/:460),
+        // returning NfcCommandContinue for every other event. In each case the poller reports the lost
+        // card as an Error event which those callbacks discard, and the state machine is never called
+        // again. Measured: 88 seconds with no state-machine activity at all (#252). Back is the user's
+        // only way off that popup, so swallowing it there needs a reboot to recover (#253).
+        //
+        // The card-search phase is untouched: nothing has been written there, so Back still leaves. Any
+        // terminal outcome releases the button.
+        consumed =
+            (instance->protocol == NfcMagicProtocolIso15693 &&
+             scene_manager_get_scene_state(instance->scene_manager, NfcMagicSceneWrite) ==
+                 NfcMagicSceneWriteStateCardFound);
     }
 
     return consumed;
@@ -294,6 +589,10 @@ void nfc_magic_scene_write_on_exit(void* context) {
         instance->protocol == NfcMagicProtocolUscuidUlNotDetected) {
         uscuid_ul_poller_stop(instance->uscuid_ul_poller);
         uscuid_ul_poller_free(instance->uscuid_ul_poller);
+    } else if(instance->protocol == NfcMagicProtocolIso15693) {
+        iso15693_poller_stop(instance->iso15693_poller);
+        iso15693_poller_free(instance->iso15693_poller);
+        instance->iso15693_poller = NULL;
     }
     scene_manager_set_scene_state(
         instance->scene_manager, NfcMagicSceneWrite, NfcMagicSceneWriteStateCardSearch);
