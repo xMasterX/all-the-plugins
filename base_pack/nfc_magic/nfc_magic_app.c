@@ -207,6 +207,23 @@ void nfc_magic_app_free(NfcMagicApp* instance) {
     free(instance);
 }
 
+// The dict attack owns exactly one key source at a time: a KeysDict for a dictionary phase, a
+// MfcKeyCache for the key cache phase. Freeing through here and dropping the pointer keeps every
+// exit path -- the phase chain, the scene's on_exit, a write-check back-out -- from freeing the
+// same one twice.
+void nfc_magic_app_free_dict_attack_keys(NfcMagicApp* instance) {
+    furi_assert(instance);
+
+    if(instance->nfc_dict_context.dict) {
+        keys_dict_free(instance->nfc_dict_context.dict);
+        instance->nfc_dict_context.dict = NULL;
+    }
+    if(instance->nfc_dict_context.key_cache) {
+        mfc_key_cache_free(instance->nfc_dict_context.key_cache);
+        instance->nfc_dict_context.key_cache = NULL;
+    }
+}
+
 static const NotificationSequence nfc_magic_sequence_blink_start_cyan = {
     &message_blink_start_10,
     &message_blink_set_color_cyan,

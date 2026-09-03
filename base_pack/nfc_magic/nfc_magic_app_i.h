@@ -2,6 +2,7 @@
 
 #include "nfc_magic_app.h"
 #include "helpers/nfc_magic_custom_events.h"
+#include "helpers/mfc_key_cache.h"
 
 #include <furi.h>
 #include <gui/gui.h>
@@ -73,7 +74,10 @@ enum NfcMagicAppCustomEvent {
 };
 
 typedef struct {
-    KeysDict* dict;
+    KeysDict* dict; // dictionary phases; NULL while the key cache phase runs
+    MfcKeyCache* key_cache; // key cache phase only; NULL selects the dictionary above. Mirrors the
+        // scene state -- prepare_view is the only place both are set
+    uint8_t cache_key_index; // cache cursor within current_sector: 0 = key A, 1 = key B
     uint8_t sectors_total;
     uint8_t sectors_read;
     uint8_t current_sector;
@@ -173,6 +177,8 @@ typedef enum {
     NfcMagicAppViewDictAttack,
     NfcMagicAppViewWriteProblems,
 } NfcMagicAppView;
+
+void nfc_magic_app_free_dict_attack_keys(NfcMagicApp* instance);
 
 void nfc_magic_app_blink_start(NfcMagicApp* nfc_magic);
 
