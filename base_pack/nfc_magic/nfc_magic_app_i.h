@@ -116,7 +116,9 @@ struct NfcMagicApp {
     Nfc* nfc;
     NfcMagicProtocol protocol;
     Gen2Type gen2_type;
-    uint8_t gen1_uid_len;
+    uint8_t gen1_uid_len; // Gen1 UID length class (4/7) derived from card_uid_len; 0 if not Gen1
+    uint8_t card_uid[ISO14443_3A_MAX_UID_SIZE]; // scanned card's UID; names its key cache entry
+    uint8_t card_uid_len; // 0 when the card never activated (backdoor-only)
     UscuidUlData uscuid_ul_data;
     uint16_t write_progress_current; // USCUID-UL: pages written so far (live progress)
     uint16_t write_progress_total; // USCUID-UL: total pages to write
