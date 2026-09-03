@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.1
+
+### Added
+
+- **MIFARE Classic key cache phase** - the dictionary attack now tries the NFC app's per-UID key
+  cache (`/ext/nfc/.cache/<UID>.keys`) before the user and system dictionaries, for both **Write**
+  and **Wipe**. A magic clone carries the original card's UID, so keys the NFC app recovered when
+  the original was saved are already on the SD card under the clone's own name. They are fed to
+  the poller as a dictionary, so each one is still authenticated against the card in front of you;
+  a stale entry costs a few failed auths and nothing more. When the cache alone finishes the card,
+  the two dictionary phases are skipped instead of being run for nothing. A card with no cache
+  entry runs exactly as before.
+
+### Fixed
+
+- **Wiping a Gen2 clone of a static-encrypted-nonce card (FM11RF08S)** dead-ended at
+  **"No keys found"**. Those keys only ever reach the per-UID dictionary, so neither shared
+  dictionary has them; the key cache phase now does.
+
 ## 2.0
 
 Major release. Adds magic **Ultralight / NTAG (USCUID-UL)** support, and reworks the magic
