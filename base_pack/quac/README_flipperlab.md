@@ -6,11 +6,11 @@ This app allows you to organize previously recorded signals, of any type, so tha
 
 The app does not provide any recording functionality - you can use the existing Flipperzero apps to create the saved files or import from existing files. Quac! provides some basic functionality to manage your files. Or, you can manage the folder structure manually on your SD card on your PC.
 
-* Supported files include: Sub-Ghz (.sub), RFID (.rfid), Infrared (.ir), NFC (.nfc), and iButton (.ibtn)
+* Supported files include: Sub-Ghz (.sub), RFID (.rfid), Infrared (.ir), NFC (.nfc), iButton (.ibtn), and Picopass/iClass (.picopass)
 
 ## Features
 
-* Playback of sub-ghz, rfid, IR, NFC, and iButton signals
+* Playback of sub-ghz, rfid, IR, NFC, iButton, and Picopass signals
 * Easy navigation
 * Flexible signal organization
 * In-app file management
@@ -21,7 +21,7 @@ The app does not provide any recording functionality - you can use the existing 
 
 ## Signal playback
 
-The signal files are played back as recorded. During playback/transmit, the LED light will flash blue until the action is complete. For SubGhz (non-RAW), RFID, NFC, and iButton signals, they are continuously played back for the durations specified in the Settings.
+The signal files are played back as recorded. During playback/transmit, the LED light will flash blue until the action is complete. For SubGhz (non-RAW), RFID, NFC, iButton, and Picopass signals, they are continuously played back for the durations specified in the Settings.
 
 ## Signal Organization
 
@@ -48,6 +48,7 @@ The settings menu will appear as the last item when you are viewing the "root" d
 * RFID Duration: Changes the length of time a RFID signal is transmitted. Can be overridden, per RFID file in a Playlist
 * NFC Duration: Changes the length of time a NFC signal is transmitted. Can be overridden, per NFC file in a Playlist
 * iButton Duration: Changes the length of time a iButton signal is transmitted. Can be overridden, per iButton file in a Playlist
+* Picopass Duration: Changes the length of time a Picopass signal is emulated. Can be overridden, per Picopass file in a Playlist
 * IR Ext Ant: Enables / Disables use of external IR antenna
 * Show Hidden: Toggles display of files/folders that start with a period.
 

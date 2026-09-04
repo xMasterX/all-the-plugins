@@ -30,8 +30,8 @@ void action_ibutton_tx(void* context, const FuriString* action_path, FuriString*
 
         ibutton_worker_emulate_start(worker, key);
 
-        int16_t time_ms = app->settings.ibutton_duration;
-        const int16_t interval_ms = 100;
+        uint32_t time_ms = app->settings.ibutton_duration;
+        const uint32_t interval_ms = 100;
         while(time_ms > 0) {
             furi_delay_ms(interval_ms);
             time_ms -= interval_ms;

@@ -122,6 +122,8 @@ bool infrared_utils_read_signal_at_index(
                    fff_data_file, "data", signal->payload.raw.timings, temp_data32)) {
                 // ACTION_SET_ERROR("IR: Failed to read data");
                 free(signal->payload.raw.timings);
+                signal->payload.raw.timings = NULL;
+                signal->is_raw = false;
                 break;
             }
             success = true;

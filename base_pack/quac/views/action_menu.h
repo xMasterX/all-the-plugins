@@ -23,6 +23,7 @@ typedef enum {
     ActionMenuItemTypeIR,
     ActionMenuItemTypeNFC,
     ActionMenuItemTypeiButton,
+    ActionMenuItemTypePicopass,
     ActionMenuItemTypePlaylist,
     ActionMenuItemTypeGroup,
     ActionMenuItemTypeSettings,

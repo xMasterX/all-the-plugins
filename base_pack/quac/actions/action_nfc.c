@@ -25,8 +25,8 @@ void action_nfc_tx(void* context, const FuriString* action_path, FuriString* err
         FURI_LOG_I(TAG, "NFC: Starting...");
         nfc_listener_start(listener, NULL, NULL);
 
-        int16_t time_ms = app->settings.nfc_duration;
-        const int16_t interval_ms = 100;
+        uint32_t time_ms = app->settings.nfc_duration;
+        const uint32_t interval_ms = 100;
         while(time_ms > 0) {
             furi_delay_ms(interval_ms);
             time_ms -= interval_ms;

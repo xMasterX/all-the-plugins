@@ -14,6 +14,7 @@ void quac_set_default_settings(App* app) {
     app->settings.rfid_duration = 2500;
     app->settings.nfc_duration = 1000;
     app->settings.ibutton_duration = 1000;
+    app->settings.picopass_duration = 1000;
     app->settings.ir_use_ext_module = false;
     app->settings.show_hidden = false;
 }
@@ -95,6 +96,12 @@ void quac_load_settings(App* app) {
             app->settings.ibutton_duration = temp_data32;
         }
 
+        if(!flipper_format_read_uint32(fff_settings, "Picopass Duration", &temp_data32, 1)) {
+            FURI_LOG_W(TAG, "SETTINGS: Missing 'Picopass Duration'");
+        } else {
+            app->settings.picopass_duration = temp_data32;
+        }
+
         if(!flipper_format_read_uint32(fff_settings, "IR Ext Module", &temp_data32, 1)) {
             FURI_LOG_W(TAG, "SETTINGS: Missing 'IR Ext Module'");
         } else {
@@ -166,6 +173,11 @@ void quac_save_settings(App* app) {
         if(!flipper_format_write_uint32(
                fff_settings, "iButton Duration", &app->settings.ibutton_duration, 1)) {
             FURI_LOG_E(TAG, "SETTINGS: Failed to write 'iButton Duration'");
+            break;
+        }
+        if(!flipper_format_write_uint32(
+               fff_settings, "Picopass Duration", &app->settings.picopass_duration, 1)) {
+            FURI_LOG_E(TAG, "SETTINGS: Failed to write 'Picopass Duration'");
             break;
         }
         temp_data32 = app->settings.ir_use_ext_module ? 1 : 0;

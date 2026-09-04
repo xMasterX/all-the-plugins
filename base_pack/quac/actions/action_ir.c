@@ -68,6 +68,9 @@ void action_ir_tx(void* context, const FuriString* action_path, FuriString* erro
     } while(false);
 
     furi_string_free(temp_str);
+    if(!flipper_format_file_close(fff_data_file)) {
+        FURI_LOG_E(TAG, "IR: Failed to close file");
+    }
     flipper_format_free(fff_data_file);
     infrared_utils_signal_free(signal);
 }

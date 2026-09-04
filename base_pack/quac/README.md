@@ -14,11 +14,11 @@ This app allows you to organize previously recorded signals, of any type*, so th
 
 The app does not provide any recording functionality - you must use the existing Flipperzero apps to create the saved files for your action/device. Quac! provides some basic functionality to manage your files. Or, you can manage the folder structure manually on your SD card.
 
-> Supported files include: Sub-Ghz (.sub), RFID (.rfid), Infrared (.ir), NFC (.nfc), and iButton (.ibtn)
+> Supported files include: Sub-Ghz (.sub), RFID (.rfid), Infrared (.ir), NFC (.nfc), iButton (.ibtn), and Picopass/iClass (.picopass)
 
 ## Features
 
-* [Playback of rfid, sub-ghz, IR, NFC, iButton signals](README.md#signal-playback)
+* [Playback of rfid, sub-ghz, IR, NFC, iButton, and Picopass signals](README.md#signal-playback)
 * [Easy navigation](README.md#navigation--controls)
 * [Flexible signal organization](README.md#signal-organization) - utilizing the SDcard filesystem
 * [In-app file management](README.md#action-settings) - rename, delete, import, import link
@@ -42,7 +42,7 @@ The app does not provide any recording functionality - you must use the existing
 
 ## Signal playback
 
-The signal files are played back as recorded. During playback/transmit, the LED light will flash blue until the action is complete. For RFID, NFC, and iButton signals, they are continuously played back for their defined durations: RFID - 2.5 seconds, NFC - 1 second, iButton - 1 second. These defaults can be changed in [application Settings](README.md#application-settings).
+The signal files are played back as recorded. During playback/transmit, the LED light will flash blue until the action is complete. For RFID, NFC, iButton, and Picopass signals, they are continuously played back for their defined durations: RFID - 2.5 seconds, NFC - 1 second, iButton - 1 second, Picopass - 1 second. These defaults can be changed in [application Settings](README.md#application-settings).
 
 SubGhz signals that are dynamic (i.e. have rolling codes / counters) will be re-saved on playback, ensuring the persistence of the new counter values. If an External SubGhz antenna is available, it will be used.
 
@@ -91,7 +91,7 @@ You can chain multiple signal playback actions together by creating a playlist. 
 * Comments: lines that start with a `#` are ignored
 * `pause <ms>` on a line will pause the playback by the specified millisecond duration
 * Signal file names can be absolute (full path) or relative to the current directory
-* SubGhz, RFID, and NFC files can have an optional duration specified. Simply add a space after the signal's file name, followed by a millisecond duration. This duration will override the Quac! Settings value, just for this one signal.
+* SubGhz, RFID, NFC, and Picopass files can have an optional duration specified. Simply add a space after the signal's file name, followed by a millisecond duration. This duration will override the Quac! Settings value, just for this one signal.
 
 Errors found in the playlist will halt playback and vibrate the Flipper. Blank lines are ignored.
 
@@ -110,9 +110,10 @@ pause 2500
 
 Lava_Lamp.rfid 4000
 Neon_Strobe.nfc
+Front_Gate.picopass 3000
 ```
 
-The first two `.sub` files live in the `/ext/apps_data/quac` folder, which is where `arrive_home.qpl` is located, and they will not show up in any UI screen since they are hidden (they start with a `.`). Next, we pause the playlist for 2.5 sec. The next two files live elsewhere, but can still be referenced by the playlist since they are specified via absolute path. For the last two signals: the RFID signal is transmitted for 4000ms, instead of the duration listed in Quac! Settings, followed by an NFC signal which is transmitted for the default duration.
+The first two `.sub` files live in the `/ext/apps_data/quac` folder, which is where `arrive_home.qpl` is located, and they will not show up in any UI screen since they are hidden (they start with a `.`). Next, we pause the playlist for 2.5 sec. The next two files live elsewhere, but can still be referenced by the playlist since they are specified via absolute path. For the remaining three signals: the RFID signal is transmitted for 4000ms, instead of the duration listed in Quac! Settings, followed by an NFC signal which is transmitted for the default duration, and a Picopass signal emulated for 3000ms.
 
 ## Sorting and Naming
 
@@ -131,6 +132,7 @@ The settings menu will appear as the last item when you are viewing the "root" (
 * RFID Duration: Changes the length of time a RFID signal is transmitted. Within playlists, this can be overridden per `.rfid` file.
 * NFC Duration: Changes the length of time a NFC signal is transmitted. Within playlists, this can be overridden per `.nfc` file.
 * iButton Duration: Changes the length of time a iButton signal is transmitted. Within playlists, this can be overridden per `.ibtn` file.
+* Picopass Duration: Changes the length of time a Picopass signal is emulated. Within playlists, this can be overridden per `.picopass` file.
 * IR Ext Ant: Whether to use the external device for IR signals. If enabled, but no external IR device is attached to TX, then the internal IR device will be used.
 * Show Hidden: Will display files and folders that start with a period (`.`)
 * About: Application info and version
