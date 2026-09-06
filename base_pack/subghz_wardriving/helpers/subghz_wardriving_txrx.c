@@ -51,12 +51,12 @@ static void subghz_wardriving_txrx_rx_pipeline_alloc(SubGhzWarDrivingTxRx* insta
     subghz_receiver_set_rx_callback(
         instance->receiver, instance->rx_callback, instance->rx_callback_context);
 
-    instance->worker = subghz_worker_alloc();
-    subghz_worker_set_overrun_callback(
-        instance->worker, (SubGhzWorkerOverrunCallback)subghz_receiver_reset);
-    subghz_worker_set_pair_callback(
-        instance->worker, (SubGhzWorkerPairCallback)subghz_receiver_decode);
-    subghz_worker_set_context(instance->worker, instance->receiver);
+    instance->worker = subghz_wardriving_worker_alloc();
+    subghz_wardriving_worker_set_overrun_callback(
+        instance->worker, (SubGhzWarDrivingWorkerOverrunCallback)subghz_receiver_reset);
+    subghz_wardriving_worker_set_pair_callback(
+        instance->worker, (SubGhzWarDrivingWorkerPairCallback)subghz_receiver_decode);
+    subghz_wardriving_worker_set_context(instance->worker, instance->receiver);
 }
 
 void subghz_wardriving_txrx_rx_pipeline_release(SubGhzWarDrivingTxRx* instance) {
@@ -66,7 +66,7 @@ void subghz_wardriving_txrx_rx_pipeline_release(SubGhzWarDrivingTxRx* instance) 
     if(instance->txrx_state == SubGhzTxRxStateRx || instance->txrx_state == SubGhzTxRxStateTx)
         return;
 
-    subghz_worker_free(instance->worker);
+    subghz_wardriving_worker_free(instance->worker);
     instance->worker = NULL;
     subghz_receiver_free(instance->receiver);
     instance->receiver = NULL;
@@ -128,7 +128,7 @@ void subghz_wardriving_txrx_free(SubGhzWarDrivingTxRx* instance) {
 
     subghz_devices_deinit();
 
-    if(instance->worker) subghz_worker_free(instance->worker);
+    if(instance->worker) subghz_wardriving_worker_free(instance->worker);
     if(instance->receiver) subghz_receiver_free(instance->receiver);
     if(instance->environment) subghz_environment_free(instance->environment);
     flipper_format_free(instance->fff_data);
@@ -307,8 +307,8 @@ static uint32_t subghz_wardriving_txrx_rx(SubGhzWarDrivingTxRx* instance, uint32
     subghz_wardriving_txrx_speaker_on(instance);
 
     subghz_devices_start_async_rx(
-        instance->radio_device, subghz_worker_rx_callback, instance->worker);
-    subghz_worker_start(instance->worker);
+        instance->radio_device, subghz_wardriving_worker_rx_callback, instance->worker);
+    subghz_wardriving_worker_start(instance->worker);
     instance->txrx_state = SubGhzTxRxStateRx;
     return value;
 }
@@ -326,8 +326,8 @@ static void subghz_wardriving_txrx_rx_end(SubGhzWarDrivingTxRx* instance) {
     furi_assert(instance);
     furi_assert(instance->txrx_state == SubGhzTxRxStateRx);
 
-    if(instance->worker && subghz_worker_is_running(instance->worker)) {
-        subghz_worker_stop(instance->worker);
+    if(instance->worker && subghz_wardriving_worker_is_running(instance->worker)) {
+        subghz_wardriving_worker_stop(instance->worker);
         subghz_devices_stop_async_rx(instance->radio_device);
     }
     subghz_devices_idle(instance->radio_device);

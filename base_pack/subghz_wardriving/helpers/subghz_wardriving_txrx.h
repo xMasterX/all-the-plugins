@@ -2,7 +2,7 @@
 
 #include "subghz_wardriving_types.h"
 
-#include <lib/subghz/subghz_worker.h>
+#include "subghz_wardriving_worker.h"
 #include <lib/subghz/subghz_setting.h>
 #include <lib/subghz/receiver.h>
 #include <lib/subghz/transmitter.h>

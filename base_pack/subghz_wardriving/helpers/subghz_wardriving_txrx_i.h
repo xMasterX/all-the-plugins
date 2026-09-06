@@ -3,7 +3,7 @@
 #include "subghz_wardriving_txrx.h"
 
 struct SubGhzWarDrivingTxRx {
-    SubGhzWorker* worker;
+    SubGhzWarDrivingWorker* worker;
 
     SubGhzEnvironment* environment;
     SubGhzReceiver* receiver;
