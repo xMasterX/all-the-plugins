@@ -366,6 +366,11 @@ bool subghz_load_protocol_from_file(SubGhz* subghz) {
         &browser_options, SUBGHZ_APP_FILENAME_EXTENSION, &I_sub1_10px);
     browser_options.base_path = SUBGHZ_WARDR_APP_FOLDER;
 
+    // The browser walks the whole folder and spins up its own worker thread, so
+    // give it the RX pipeline's heap for the duration. subghz_key_load() below
+    // brings the pipeline back up on its own.
+    subghz_wardriving_txrx_rx_pipeline_release(subghz->txrx);
+
     // Input events and views are managed by file_select
     bool res = dialog_file_browser_show(
         subghz->dialogs, subghz->file_path, subghz->file_path, &browser_options);

@@ -15,6 +15,10 @@ void subghz_scene_start_on_enter(void* context) {
         subghz->state_notifications = SubGhzNotificationStateIDLE;
     }
 
+    // Nothing on this screen decodes: hand the RX pipeline's heap back so
+    // whatever comes next (file browser, an active RPC session) can use it.
+    subghz_wardriving_txrx_rx_pipeline_release(subghz->txrx);
+
     submenu_add_item(
         subghz->submenu, "Read", SubmenuIndexRead, subghz_scene_start_submenu_callback, subghz);
     submenu_add_item(

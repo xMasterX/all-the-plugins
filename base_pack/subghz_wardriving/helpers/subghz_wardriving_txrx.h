@@ -34,6 +34,18 @@ SubGhzWarDrivingTxRx* subghz_wardriving_txrx_alloc(void);
 void subghz_wardriving_txrx_free(SubGhzWarDrivingTxRx* instance);
 
 /**
+ * Release the RX pipeline (worker, receiver and environment, ~40K) until it is
+ * needed again. A no-op while TX/RX is running, and safe to call at any time:
+ * the pipeline is transparently rebuilt by the first call that needs it.
+ *
+ * Invalidates the pointer returned by subghz_wardriving_txrx_get_decoder(), so
+ * only call it once the loaded signal is no longer on screen.
+ *
+ * @param instance Pointer to a SubGhzTxRx
+ */
+void subghz_wardriving_txrx_rx_pipeline_release(SubGhzWarDrivingTxRx* instance);
+
+/**
  * Check if the database is loaded
  * 
  * @param instance Pointer to a SubGhzTxRx
