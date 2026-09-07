@@ -126,7 +126,7 @@ NfcMagicApp* nfc_magic_app_alloc() {
         write_problems_get_view(instance->write_problems));
 
     instance->nfc = nfc_alloc();
-    instance->scanner = nfc_magic_scanner_alloc(instance->nfc);
+    instance->scanner = nfc_magic_scanner_alloc(instance->nfc, instance->storage);
 
     return instance;
 }
@@ -195,14 +195,14 @@ void nfc_magic_app_free(NfcMagicApp* instance) {
     furi_record_close(RECORD_DIALOGS);
     instance->dialogs = NULL;
 
-    // Storage
-    furi_record_close(RECORD_STORAGE);
-    instance->storage = NULL;
-
     gen4_free(instance->gen4_data);
 
     nfc_magic_scanner_free(instance->scanner);
     nfc_free(instance->nfc);
+
+    // Storage, closed after the scanner: the scanner borrows this handle for its key cache lookups.
+    furi_record_close(RECORD_STORAGE);
+    instance->storage = NULL;
 
     free(instance);
 }
