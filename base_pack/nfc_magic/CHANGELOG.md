@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.2
+
+### Changed
+
+- **Gen2 detection now tries the per-UID key cache for sector 0.** Confirming a CUID means
+  authenticating to sector 0 before block 0 can be probed, and the probe only ever knew the
+  default FF..FF key, so a clone with a personalised sector 0 and no recognised ATS came back as
+  **Magic Not Confirmed**. The sector-0 key A and key B the NFC app recorded for that UID in
+  `/ext/nfc/.cache/<UID>.keys` are now offered first, ahead of FF..FF, so such a card can be
+  confirmed as Gen 2 / CUID and still gets its static-nonce classification. The cache is read once
+  per card per scan, a card with no entry behaves exactly as before, and a cached key that doesn't
+  fit costs one more RF session and nothing else: the probe itself is unchanged, still only the
+  first phase of the write, so block 0 is never modified.
+
 ## 2.1
 
 ### Added

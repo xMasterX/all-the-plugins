@@ -6,6 +6,7 @@
 #include "protocols/nfc_magic_protocols.h"
 #include "protocols/gen2/gen2_poller.h"
 #include "protocols/uscuid_ul/uscuid_ul_poller.h"
+#include <storage/storage.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,7 +36,10 @@ typedef void (*NfcMagicScannerCallback)(NfcMagicScannerEvent event, void* contex
 
 typedef struct NfcMagicScanner NfcMagicScanner;
 
-NfcMagicScanner* nfc_magic_scanner_alloc(Nfc* nfc);
+// storage is used to look up the NFC app's per-UID MIFARE Classic key cache, whose sector-0 keys
+// widen the Gen2 CUID write probe beyond the default FF..FF. It is borrowed, never freed here, and
+// must outlive the scanner.
+NfcMagicScanner* nfc_magic_scanner_alloc(Nfc* nfc, Storage* storage);
 
 void nfc_magic_scanner_free(NfcMagicScanner* instance);
 
