@@ -72,11 +72,18 @@ static void player_join(HotspotArcadeApp* app, uint8_t pid, const char* nick) {
     }
     if(idx < 0) return;
     HaPlayer* p = &app->players[idx];
+    // Zero only when this is a NEW seat. The ESP re-sends JOIN for a pid it already knows as
+    // a rename re-announce, and zeroing there wiped that player's score off the host board
+    // mid-session while the board itself kept theirs.
+    bool fresh = !p->used || p->pid != pid;
     p->used = true;
     p->pid = pid;
     strlcpy(p->nick, (nick && nick[0]) ? nick : "PLAYER", HA_NICK_LEN);
     nick_upper(p->nick);
-    p->score = 0;
+    if(fresh) {
+        p->score = 0;
+        p->total = 0;
+    }
 }
 
 static void player_leave(HotspotArcadeApp* app, uint8_t pid) {
@@ -87,6 +94,13 @@ static void player_leave(HotspotArcadeApp* app, uint8_t pid) {
 static void player_score(HotspotArcadeApp* app, uint8_t pid, int delta) {
     int idx = player_find(app, pid);
     if(idx >= 0) app->players[idx].score += delta;
+}
+
+// SET, not add. TOTAL carries the board's own figure, so this copy is replaced outright and
+// cannot drift the way the accumulated score does.
+static void player_total(HotspotArcadeApp* app, uint8_t pid, int32_t total) {
+    int idx = player_find(app, pid);
+    if(idx >= 0) app->players[idx].total = total;
 }
 
 static void roster_clear(HotspotArcadeApp* app) {
@@ -216,7 +230,7 @@ static void content_stream_pack(
     furi_string_free(val);
 }
 
-#define HA_MAX_TOPICS (6)
+#define HA_MAX_TOPICS (8) // must match TRIVIA_MAX_TOPICS on the ESP (raised from 6 in v19)
 
 // Stream every .txt pack in one dir as votable topics, skipping names already streamed.
 // `seen` holds the filenames taken so far; *topics is the running total across dirs.
@@ -262,57 +276,81 @@ static void ha_content_stream_dir(
     storage_file_free(dir);
 }
 
-// Stream every pack to the ESP. User packs go first so they win both a name clash and
-// the topic cap, then the bundled ones fill what is left, then the legacy trivia-only
-// directories are swept for anything a user left there before the packs/ layout.
+// Stream one game's packs from packs/<sub> (user before bundled), into its per-game cap.
+// `sub` is the game dir, optionally with a "/<lang>" suffix for a translated set.
+static void ha_stream_subdir(
+    HotspotArcadeApp* app,
+    Storage* storage,
+    uint8_t game,
+    const char* sub,
+    char seen[HA_MAX_TOPICS][80],
+    int* topics) {
+    FuriString* d = furi_string_alloc();
+    furi_string_printf(d, "%s/%s", HA_USER_PACKS_DIR, sub);
+    ha_content_stream_dir(app, storage, furi_string_get_cstr(d), game, seen, topics);
+    furi_string_printf(d, "%s/%s", HA_BUNDLED_PACKS_DIR, sub);
+    ha_content_stream_dir(app, storage, furi_string_get_cstr(d), game, seen, topics);
+    furi_string_free(d);
+}
+
+// Stream every content game's packs to the ESP. User packs win over bundled (name clash
+// and the topic cap). If a language is selected, each game prefers packs/<game>/<lang>/
+// and falls back to English (packs/<game>/) when that language has none, so a partly
+// translated language still plays. English content is the unchanged root.
 static void ha_content_stream_packs(HotspotArcadeApp* app) {
     ha_proto_send(app->uart, HA_MSG_CONTENT_CLEAR, NULL, 0);
     furi_delay_ms(2);
     Storage* storage = furi_record_open(RECORD_STORAGE);
-    // `seen`/`topics` de-duplicate and cap packs PER GAME (each game stores its own
-    // set on the ESP), so every game restarts `topics` at 0. The streaming itself is
-    // generic — only the directory it reads and the game byte it tags differ.
+    // `seen`/`topics` de-duplicate and cap packs PER GAME (each game stores its own set
+    // on the ESP), so every game restarts `topics` at 0. Only the dir and game byte differ.
     char seen[HA_MAX_TOPICS][80];
-    FuriString* dir = furi_string_alloc();
+    const char* lang = app->lang; // "" = English
 
-    // Trivia: packs/trivia (user, then bundled) plus the legacy trivia-only dirs, all
-    // under one cap so a pack appearing in several is streamed once. User wins a clash.
-    int topics = 0;
-    furi_string_printf(dir, "%s/trivia", HA_USER_PACKS_DIR);
-    ha_content_stream_dir(app, storage, furi_string_get_cstr(dir), HA_GAME_TRIVIA, seen, &topics);
-    furi_string_printf(dir, "%s/trivia", HA_BUNDLED_PACKS_DIR);
-    ha_content_stream_dir(app, storage, furi_string_get_cstr(dir), HA_GAME_TRIVIA, seen, &topics);
-    ha_content_stream_dir(app, storage, HA_USER_TRIVIA_DIR, HA_GAME_TRIVIA, seen, &topics);
-    ha_content_stream_dir(app, storage, HA_BUNDLED_TRIVIA_DIR, HA_GAME_TRIVIA, seen, &topics);
-
-    // The other pack games. Same user-before-bundled precedence; each its own cap.
-    // Without this the packs bundled for wyr/scramble/draw never reach the ESP and
-    // those games start empty.
     static const struct {
         uint8_t game;
         const char* sub;
-    } more[] = {
+    } games[] = {
+        {HA_GAME_TRIVIA, "trivia"},
         {HA_GAME_WYR, "wyr"},
         {HA_GAME_SCRAMBLE, "scramble"},
         {HA_GAME_DRAW, "draw"},
+        {HA_GAME_SPECTRUM, "spectrum"},
+        {HA_GAME_KMK, "kmk"},
+        {HA_GAME_SECRETS, "secrets"},
+        {HA_GAME_FILLBLANK, "fillblank"},
+        {HA_GAME_SPYFALL, "spyfall"},
     };
-    for(unsigned g = 0; g < sizeof(more) / sizeof(more[0]); g++) {
-        topics = 0;
-        furi_string_printf(dir, "%s/%s", HA_USER_PACKS_DIR, more[g].sub);
-        ha_content_stream_dir(
-            app, storage, furi_string_get_cstr(dir), more[g].game, seen, &topics);
-        furi_string_printf(dir, "%s/%s", HA_BUNDLED_PACKS_DIR, more[g].sub);
-        ha_content_stream_dir(
-            app, storage, furi_string_get_cstr(dir), more[g].game, seen, &topics);
+    for(unsigned g = 0; g < sizeof(games) / sizeof(games[0]); g++) {
+        int topics = 0;
+        // Prefer the selected language's packs...
+        if(lang[0]) {
+            FuriString* s = furi_string_alloc();
+            furi_string_printf(s, "%s/%s", games[g].sub, lang);
+            ha_stream_subdir(app, storage, games[g].game, furi_string_get_cstr(s), seen, &topics);
+            furi_string_free(s);
+        }
+        // ...falling back to the English root when the language has none for this game.
+        if(topics == 0) ha_stream_subdir(app, storage, games[g].game, games[g].sub, seen, &topics);
+        // Trivia also sweeps the legacy trivia-only dirs (English, pre-packs/ layout),
+        // but only when it's on the English set.
+        if(games[g].game == HA_GAME_TRIVIA && (!lang[0] || topics == 0)) {
+            ha_content_stream_dir(app, storage, HA_USER_TRIVIA_DIR, HA_GAME_TRIVIA, seen, &topics);
+            ha_content_stream_dir(
+                app, storage, HA_BUNDLED_TRIVIA_DIR, HA_GAME_TRIVIA, seen, &topics);
+        }
     }
 
-    furi_string_free(dir);
     furi_record_close(RECORD_STORAGE);
 }
 
 // ---------------- game selection ----------------
 
 void ha_select_game(HotspotArcadeApp* app, uint8_t game) {
+    // The ESP zeroes every per-game score on SELECT_GAME and says nothing about it, so
+    // mirror that here or this side keeps showing the previous game's numbers. Totals are
+    // deliberately untouched: surviving the switch is the whole point of them.
+    for(int i = 0; i < HA_MAX_PLAYERS; i++)
+        if(app->players[i].used) app->players[i].score = 0;
     app->active_game = game;
     uint8_t g = game;
     ha_proto_send(app->uart, HA_MSG_SELECT_GAME, &g, 1);
@@ -320,7 +358,10 @@ void ha_select_game(HotspotArcadeApp* app, uint8_t game) {
 
 void ha_reset_scores(HotspotArcadeApp* app) {
     for(int i = 0; i < HA_MAX_PLAYERS; i++)
-        if(app->players[i].used) app->players[i].score = 0;
+        if(app->players[i].used) {
+            app->players[i].score = 0;
+            app->players[i].total = 0;
+        }
     ha_proto_send(app->uart, HA_MSG_RESET_SCORES, NULL, 0);
 }
 
@@ -328,7 +369,9 @@ void ha_reset_scores(HotspotArcadeApp* app) {
 
 static void send_config(HotspotArcadeApp* app) {
     FuriString* j = furi_string_alloc();
-    furi_string_printf(j, "{\"max\":%d}", HA_MAX_PLAYERS < 8 ? HA_MAX_PLAYERS : 8);
+    // `lang` is the phone-UI language; the ESP echoes it to each phone in `welcome`.
+    furi_string_printf(
+        j, "{\"max\":%d,\"lang\":\"%s\"}", HA_MAX_PLAYERS < 8 ? HA_MAX_PLAYERS : 8, app->lang);
     ha_proto_send(
         app->uart, HA_MSG_CONFIG, (const uint8_t*)furi_string_get_cstr(j), furi_string_size(j));
     furi_string_free(j);
@@ -348,10 +391,20 @@ static void send_next_file(HotspotArcadeApp* app) {
     FuriString* path = furi_string_alloc();
     furi_string_printf(path, "%s/%s", app->web_dir, a->file);
     FuriString* content = furi_string_alloc();
-    bool ok = ha_storage_read_file(furi_string_get_cstr(path), content, HA_FILE_MAX);
+    // Read one byte past the cap so an oversized file is DETECTED, not silently
+    // truncated: a clipped gzip stream serves a page whose tail (all the scripts)
+    // never arrives, which looks like "the app is broken" on every phone with no
+    // error anywhere. Better to refuse loudly here.
+    bool ok = ha_storage_read_file(furi_string_get_cstr(path), content, HA_FILE_MAX + 1);
     furi_string_free(path);
     if(!ok) {
         furi_string_set(app->status, "asset read err");
+        app->hs = HaHsErr;
+        furi_string_free(content);
+        return;
+    }
+    if(furi_string_size(content) > HA_FILE_MAX) {
+        furi_string_set(app->status, "web asset too big");
         app->hs = HaHsErr;
         furi_string_free(content);
         return;
@@ -393,6 +446,14 @@ static void start_handshake(HotspotArcadeApp* app) {
     uint8_t scratch[64];
     while(ha_uart_rx(app->uart, scratch, sizeof(scratch)) > 0) {
     }
+    if(app->web_bundle_crc != 0 && app->web_bundle_crc == app->board_bundle_crc) {
+        // The ESP already holds this exact bundle in flash (CRC from its PING beacon):
+        // skip CLEAR_FILES and the whole file stream, go straight to packs + SET_AP. We
+        // must NOT send CLEAR_FILES here, or the ESP would wipe the bundle we're relying on.
+        app->file_idx = app->asset_count;
+        send_next_file(app); // streams content packs, sends SET_AP, sets HaHsSetAp
+        return;
+    }
     ha_proto_send(app->uart, HA_MSG_CLEAR_FILES, NULL, 0);
     app->hs = HaHsClear;
 }
@@ -408,6 +469,7 @@ void ha_session_start(HotspotArcadeApp* app) {
 }
 
 void ha_session_stop(HotspotArcadeApp* app) {
+    ha_art_abort(app); // no half-written SVG survives the session
     ha_proto_send(app->uart, HA_MSG_STOP, NULL, 0);
     app->session_active = false;
     app->portal_running = false;
@@ -475,6 +537,26 @@ static void dispatch_frame(HotspotArcadeApp* app) {
            p[3] == HA_FW_MAGIC_3) {
             app->last_ping_tick = furi_get_tick();
             app->board_fw_version = (len >= 6) ? (uint16_t)(p[4] | ((uint16_t)p[5] << 8)) : 0;
+            // v19+: bytes 6-9 carry the CRC32 of the web bundle the ESP holds in flash, so
+            // we can skip re-streaming it when it already matches ours. Older boards omit it.
+            app->board_bundle_crc =
+                (len >= 10) ? (uint32_t)((uint32_t)p[6] | ((uint32_t)p[7] << 8) |
+                                         ((uint32_t)p[8] << 16) | ((uint32_t)p[9] << 24)) :
+                              0;
+            // v19+: byte 10 is the ESP's current game id. While hosting, mirror it so a
+            // phone-vote game change is reflected on the dashboard reliably (the beacon always
+            // arrives, unlike a one-off EVENT). Skip 0 (NONE): the ESP reports NONE for a beat
+            // after a reboot, before the "up" handler re-pushes the game to restore it -- don't
+            // clobber the game we're about to restore.
+            if(len >= 11 && app->session_active && p[10] != 0 && p[10] != app->active_game)
+                app->active_game = p[10];
+            // v1.7.1+: bytes 11-14 are the ESP's free internal heap and free PSRAM in KB (LE
+            // uint16 each), for the dashboard memory readout. Older boards omit them -> 0.
+            app->board_heap_kb = (len >= 13) ? (uint16_t)(p[11] | ((uint16_t)p[12] << 8)) : 0;
+            app->board_psram_kb = (len >= 15) ? (uint16_t)(p[13] | ((uint16_t)p[14] << 8)) : 0;
+            // v22: bytes 15-16 the heap low-water mark in KB, byte 17 a flags byte.
+            app->board_heap_min_kb = (len >= 17) ? (uint16_t)(p[15] | ((uint16_t)p[16] << 8)) : 0;
+            app->board_flags = (len >= 18) ? p[17] : 0;
         }
         return;
     }
@@ -512,19 +594,51 @@ static void dispatch_frame(HotspotArcadeApp* app) {
             player_score(app, p[0], d);
         }
         break;
+    case HA_MSG_TOTAL:
+        if(len >= 5) {
+            int32_t t = (int32_t)((uint32_t)p[1] | ((uint32_t)p[2] << 8) | ((uint32_t)p[3] << 16) |
+                                  ((uint32_t)p[4] << 24));
+            player_total(app, p[0], t);
+        }
+        break;
     case HA_MSG_ROUND_RESULT:
         furi_string_set_str(app->last_event, (const char*)p);
         console_add(app, (const char*)p);
         feedback_success(app); // trivia reveal scored, or a Connect Four win
+        break;
+    case HA_MSG_ART:
+        // Finished Frankendraw artwork: op byte + JSON. Straight through to the SVG
+        // writer -- a segment at a time, nothing held between frames.
+        if(len >= 1) {
+            const char* js = (const char*)p + 1;
+            if(p[0] == HA_ART_BEGIN)
+                ha_art_begin(app, js);
+            else if(p[0] == HA_ART_STROKE)
+                ha_art_stroke(app, js);
+            else if(p[0] == HA_ART_END)
+                ha_art_end(app);
+        }
         break;
     case HA_MSG_EVENT: {
         // Game-specific host-facing status line for the console / duel feed.
         char ev[64];
         if(ha_json_str((const char*)p, "duel", ev, sizeof(ev)) ||
            ha_json_str((const char*)p, "pong", ev, sizeof(ev)) ||
-           ha_json_str((const char*)p, "draw", ev, sizeof(ev))) {
+           ha_json_str((const char*)p, "draw", ev, sizeof(ev)) ||
+           ha_json_str((const char*)p, "chess", ev, sizeof(ev)) ||
+           ha_json_str((const char*)p, "bs", ev, sizeof(ev)) ||
+           ha_json_str((const char*)p, "spyfall", ev, sizeof(ev))) {
             furi_string_set_str(app->last_event, ev);
             console_add(app, ev);
+        } else if(ha_json_str((const char*)p, "gamevote", ev, sizeof(ev))) {
+            // A phone-initiated game change the ESP approved. Update our displayed active game
+            // immediately if this EVENT arrives; the PING beacon carries the current game as a
+            // reliable backstop regardless. Do NOT resend SELECT_GAME -- keeping active_game in
+            // sync is also what stops the "up" handler from reverting the vote after a reboot.
+            int id;
+            if(strcmp(ev, "approved") == 0 && ha_json_int((const char*)p, "id", &id) && id >= 0 &&
+               id <= HA_GAME_SECRETS)
+                app->active_game = (uint8_t)id;
         } else if(ha_json_str((const char*)p, "chat", ev, sizeof(ev))) {
             console_add(app, ev); // lobby chatter, not a game status line
         }

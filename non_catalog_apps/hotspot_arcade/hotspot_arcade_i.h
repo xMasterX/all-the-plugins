@@ -30,11 +30,18 @@
 #define HA_LINK_TIMEOUT_MS      (5000)
 #define HA_HANDSHAKE_TIMEOUT_MS (4000) // no ack progress -> board isn't our firmware
 #define HA_CONSOLE_MAX          (3072)
-#define HA_FILE_MAX             (60000) // max single web asset streamed to the ESP
+// Max single web asset streamed to the ESP. MUST equal web/build.mjs's CEIL (72*1024):
+// the build fails above CEIL, and send_next_file refuses a bigger file -- when this was
+// smaller than CEIL, the 63KB 20-game bundle was silently truncated at 60000 bytes and
+// every phone got a page whose scripts never arrived (v1.8.0 hardware test). The
+// bundled-assets CI job cross-checks this constant against the committed bundle.
+#define HA_FILE_MAX             (73728)
 
 #define HA_DATA_DIR    EXT_PATH("apps_data/hotspot_arcade")
 #define HA_LOGS_DIR    HA_DATA_DIR "/logs"
 #define HA_CONFIG_PATH HA_DATA_DIR "/config.txt"
+// Finished Frankendraw sheets, one SVG each (see ha_art_* in helpers/ha_storage.h).
+#define HA_ART_DIR     HA_DATA_DIR "/art"
 
 // Content (ESP firmware, web bundle, trivia packs) ships inside the fap via
 // fap_file_assets; the loader extracts it to apps_assets on launch, so a fresh install
@@ -75,12 +82,16 @@ typedef struct {
     bool gzip;
 } HaAsset;
 
-// A connected player, mirrored from the ESP (JOIN/LEAVE/SCORE).
+// A connected player, mirrored from the ESP (JOIN/LEAVE/SCORE/TOTAL).
 typedef struct {
     bool used;
     uint8_t pid;
     char nick[HA_NICK_LEN];
+    // Two numbers, as on the board. `score` is the current game only, accumulated from the
+    // SCORE delta stream. `total` is the evening across every game, and arrives absolute in
+    // a TOTAL frame precisely so this copy cannot drift from the board's.
     int32_t score;
+    int32_t total;
 } HaPlayer;
 
 // Handshake sequence at session start (driven by ESP STATUS acks).
@@ -113,6 +124,7 @@ typedef struct HotspotArcadeApp {
     char ssid_buf[HA_SSID_MAX];
     bool sound_on;
     bool vibro_on;
+    char lang[8]; // content language code, "" = English (streams packs/<game>/<lang>/)
 
     // Web bundle (from manifest.json)
     HaAsset assets[HA_MAX_ASSETS];
@@ -120,6 +132,7 @@ typedef struct HotspotArcadeApp {
     // Dir the loaded manifest came from (user bundle if present, else the bundled one).
     // Asset files are read from here, so a user bundle is never mixed with bundled files.
     const char* web_dir;
+    uint32_t web_bundle_crc; // CRC32 of the SD bundle (manifest "crc"); 0 = unknown/none
 
     // Live roster
     HaPlayer players[HA_MAX_PLAYERS];
@@ -153,6 +166,14 @@ typedef struct HotspotArcadeApp {
     uint32_t last_rx_tick;
     uint32_t last_ping_tick; // last valid PING frame = our firmware is present
     uint16_t board_fw_version; // firmware version reported in the beacon (0 = unknown)
+    uint32_t board_bundle_crc; // CRC32 of the bundle the ESP holds in flash (PING bytes 6-9)
+    uint16_t board_heap_kb; // ESP free internal heap, KB (PING bytes 11-12); 0 = unknown
+    uint16_t board_psram_kb;
+    // v22: the heap low-water mark since the board booted, and a flags byte (bit 0 = the
+    // captive-portal API option went out). The mark is what shows a slow drain; a sampled
+    // free-heap number cannot.
+    uint16_t board_heap_min_kb;
+    uint8_t board_flags; // ESP free PSRAM, KB (PING bytes 13-14); 0 = none/unknown
     bool link_lost;
     bool awaiting_board;
 
@@ -174,6 +195,14 @@ typedef struct HotspotArcadeApp {
     // have to tap RESET and then also confirm. Continue stays as the manual fallback.
     volatile bool flash_await_boot;
     // --- end ESP flasher ---
+
+    // Frankendraw artwork writer. The ESP streams a finished sheet as begin / one
+    // frame per line segment / end, and we append straight to the open SVG, so a
+    // whole picture is written without ever being held in RAM. `art_stamp` is set
+    // once per gallery so one game's sheets sort together on the SD card.
+    File* art_file; // open only between an ART begin and its end
+    Storage* art_storage; // record held while art_file is open
+    char art_stamp[16];
 
     volatile bool closing;
 } HotspotArcadeApp;

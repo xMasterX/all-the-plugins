@@ -1,0 +1,13 @@
+# Games / Board -- board, card, dice, casino.
+4inrow
+blackjack
+chess
+dice_app
+racso_ultimate_tic_tac_toe
+reversi
+slotmachine
+solitaire
+tarot
+tictactoe
+videopoker
+yatzee

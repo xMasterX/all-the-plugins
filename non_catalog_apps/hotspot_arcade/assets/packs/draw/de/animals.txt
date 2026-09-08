@@ -1,0 +1,65 @@
+Pack: Tiere
+
+Word: Elefant
+---
+Word: Pinguin
+---
+Word: Giraffe
+---
+Word: Krake
+---
+Word: Schnecke
+---
+Word: Spinne
+---
+Word: Schildkröte
+---
+Word: Hase
+---
+Word: Wal
+---
+Word: Eule
+---
+Word: Frosch
+---
+Word: Schlange
+---
+Word: Krabbe
+---
+Word: Schmetterling
+---
+Word: Hai
+---
+Word: Delfin
+---
+Word: Igel
+---
+Word: Känguru
+---
+Word: Flamingo
+---
+Word: Dinosaurier
+---
+Word: Biene
+---
+Word: Kamel
+---
+Word: Huhn
+---
+Word: Hirsch
+---
+Word: Adler
+---
+Word: Fuchs
+---
+Word: Hamster
+---
+Word: Qualle
+---
+Word: Marienkäfer
+---
+Word: Löwe
+---
+Word: Panda
+---
+Word: Seepferdchen

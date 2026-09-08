@@ -1,0 +1,7 @@
+# Tools / Calculators -- calculators, converters, decoders.
+calculator
+fordradiocode
+multi_converter
+programmercalc
+resistors
+vin_decoder

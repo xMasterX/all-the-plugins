@@ -51,7 +51,7 @@ ItemsView* item_get_items_view_from_path(void* context, const FuriString* input_
     if(dir_walk_open(dir_walk, cpath)) {
         while(dir_walk_read(dir_walk, path, NULL) == DirWalkOK) {
             // FURI_LOG_I(TAG, "> dir_walk: %s", furi_string_get_cstr(path));
-            const char* cpath = furi_string_get_cstr(path);
+            const char* cfilepath = furi_string_get_cstr(path);
 
             path_extract_filename(path, filename_tmp, false);
             // Always skip our .quac.conf file!
@@ -70,7 +70,7 @@ ItemsView* item_get_items_view_from_path(void* context, const FuriString* input_
             uint32_t i = 0;
             FileArray_it_t it;
             for(FileArray_it(it, flist); !FileArray_end_p(it); FileArray_next(it), ++i) {
-                if(strcmp(cpath, furi_string_get_cstr(*FileArray_ref(it))) > 0) {
+                if(strcmp(cfilepath, furi_string_get_cstr(*FileArray_ref(it))) > 0) {
                     continue;
                 }
                 // FURI_LOG_I(TAG, ">> Inserting at %lu", i);
@@ -164,6 +164,8 @@ ItemType item_get_item_type_from_extension(const char* ext) {
         type = Item_NFC;
     } else if(!strcmp(ext, ".ibtn")) {
         type = Item_iButton;
+    } else if(!strcmp(ext, ".picopass")) {
+        type = Item_Picopass;
     } else if(!strcmp(ext, ".qpl")) {
         type = Item_Playlist;
     }

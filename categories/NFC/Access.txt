@@ -1,0 +1,5 @@
+# NFC / Access -- access-control cards: HID iClass / PicoPass / SEOS / hotel.
+picopass
+seader
+seos
+saflip

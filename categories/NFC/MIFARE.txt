@@ -1,0 +1,9 @@
+# NFC / MIFARE -- MIFARE-family (Classic / Plus / Ultralight C) read, edit, attack.
+mfc_editor
+mfp_reader
+mifare_fuzzer
+nfc_magic
+ulc_brute
+ulc_relay
+ulcfkey
+ulcfkey_next

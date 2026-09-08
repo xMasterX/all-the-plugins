@@ -1,0 +1,65 @@
+Pack: Essen
+
+Word: Pizza
+---
+Word: Burger
+---
+Word: Nudeln
+---
+Word: Pfannkuchen
+---
+Word: Popcorn
+---
+Word: Avocado
+---
+Word: Spaghetti
+---
+Word: Cupcake
+---
+Word: Sandwich
+---
+Word: Brezel
+---
+Word: Waffel
+---
+Word: Muffin
+---
+Word: Burrito
+---
+Word: Donut
+---
+Word: Keks
+---
+Word: Banane
+---
+Word: Gurke
+---
+Word: Nachos
+---
+Word: Pudding
+---
+Word: Müsli
+---
+Word: Schokolade
+---
+Word: Erdbeere
+---
+Word: Ananas
+---
+Word: Wassermelone
+---
+Word: Lasagne
+---
+Word: Omelett
+---
+Word: Croissant
+---
+Word: Marmelade
+---
+Word: Zimt
+---
+Word: Blaubeere
+---
+Word: Blumenkohl
+---
+Word: Lebkuchen

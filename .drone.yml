@@ -24,6 +24,7 @@ steps:
       - rm -rf unleashed-firmware/dist/
       - rm -rf unleashed-firmware/.sconsign.dblite
       - mv base_pack/* unleashed-firmware/applications_user/
+      - sh strip_name_tags.sh unleashed-firmware/applications_user
       - ./parse_api_ver.sh
       - cd unleashed-firmware
       - export FBT_GIT_SUBMODULE_SHALLOW=1
@@ -58,6 +59,7 @@ steps:
       - mv unleashed-firmware/artifacts-base/ base_pack_build
       - mkdir -p base_pack_build/apps_data/totp
       - mv unleashed-firmware/artifacts-totp/* base_pack_build/apps_data/totp/
+      - sh categorize_apps.sh base_pack_build/artifacts-base
     environment:
       FBT_TOOLS_CUSTOM_LINK:
         from_secret: fbt_link
@@ -72,6 +74,7 @@ steps:
       - rm -rf unleashed-firmware/applications_user/*
       - mv apps_source_code/* unleashed-firmware/applications_user/
       - mv non_catalog_apps/* unleashed-firmware/applications_user/
+      - sh strip_name_tags.sh unleashed-firmware/applications_user
       - cd unleashed-firmware
       - export FBT_GIT_SUBMODULE_SHALLOW=1
       - ./fbt COMPACT=1 DEBUG=0 updater_package
@@ -100,9 +103,17 @@ steps:
       - cd ..
       - mkdir extra_pack_build
       - mv unleashed-firmware/artifacts-extra/ extra_pack_build
+      - sh categorize_apps.sh extra_pack_build/artifacts-extra
     environment:
       FBT_TOOLS_CUSTOM_LINK:
         from_secret: fbt_link
+
+  - name: "Build apps index"
+    image: python:3-alpine
+    commands:
+      - python3 make_apps_index.py --tag ${DRONE_TAG} --url "https://github.com/xMasterX/all-the-plugins/releases/download/{tag}/all-the-apps-{pack}.zip" base=base_pack_build/artifacts-base extra=extra_pack_build/artifacts-extra > apps_index.txt
+      - echo "--- apps_index.txt (head) ---"
+      - head -6 apps_index.txt
 
   - name: "Bundle packages"
     image: joshkeegan/zip
@@ -116,6 +127,7 @@ steps:
       - mv all-the-apps-base.zip ${DRONE_TAG}/
       - mv all-the-apps-extra.tgz ${DRONE_TAG}/
       - mv all-the-apps-base.tgz ${DRONE_TAG}/
+      - mv apps_index.txt ${DRONE_TAG}/
       - rm -rf extra_pack_build
       - rm -rf base_pack_build
       - rm -rf unleashed-firmware
@@ -134,6 +146,7 @@ steps:
       files:
         - ${DRONE_TAG}/*.tgz
         - ${DRONE_TAG}/*.zip
+        - ${DRONE_TAG}/apps_index.txt
       title: ${DRONE_TAG}
       note: CHANGELOG.md
       checksum:

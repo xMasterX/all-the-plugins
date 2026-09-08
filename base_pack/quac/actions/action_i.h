@@ -11,3 +11,4 @@ void action_ir_tx(void* context, const FuriString* action_path, FuriString* erro
 void action_nfc_tx(void* context, const FuriString* action_path, FuriString* error);
 void action_ibutton_tx(void* context, const FuriString* action_path, FuriString* error);
 void action_qpl_tx(void* context, const FuriString* action_path, FuriString* error);
+void action_picopass_tx(void* context, const FuriString* action_path, FuriString* error);

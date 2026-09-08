@@ -1,0 +1,96 @@
+Pack: Tastes
+Left: Bland
+Right: Tasty
+---
+Left: Sweet
+Right: Sour
+---
+Left: Mild
+Right: Spicy
+---
+Left: Healthy
+Right: Junk food
+---
+Left: Snack
+Right: Feast
+---
+Left: Bitter
+Right: Sugary
+---
+Left: Plain
+Right: Fancy
+---
+Left: Watery
+Right: Rich
+---
+Left: Raw
+Right: Cooked
+---
+Left: Tiny portion
+Right: Huge portion
+---
+Left: Cold drink
+Right: Hot drink
+---
+Left: Sip
+Right: Gulp
+---
+Left: Crunchy
+Right: Mushy
+---
+Left: Fresh
+Right: Stale
+---
+Left: Everyday meal
+Right: Special treat
+---
+Left: Bite
+Right: Banquet
+---
+Left: Sober breakfast
+Right: Dessert for dinner
+---
+Left: Cheap eats
+Right: Fine dining
+---
+Left: Under-seasoned
+Right: Over-seasoned
+---
+Left: Diet
+Right: Cheat day
+---
+Left: Room temperature
+Right: Molten
+---
+Left: A nibble
+Right: Seconds please
+---
+Left: Salty
+Right: Sweet
+---
+Left: Soggy
+Right: Crispy
+---
+Left: Boring salad
+Right: Loaded pizza
+---
+Left: Small plate
+Right: Family size
+---
+Left: Water
+Right: Energy drink
+---
+Left: Homemade
+Right: Takeaway
+---
+Left: One flavour
+Right: Everything at once
+---
+Left: Breakfast
+Right: Midnight snack
+---
+Left: Green and healthy
+Right: Deep fried
+---
+Left: Just cheese
+Right: Extra everything

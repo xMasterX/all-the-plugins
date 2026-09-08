@@ -4,7 +4,7 @@
 
 // Max length of a filename, final path element only
 #define MAX_NAME_LEN (size_t)64
-#define MAX_EXT_LEN  (size_t)6
+#define MAX_EXT_LEN  (size_t)12 // Increased for .picopass extension
 
 /** Defines an individual item action or item group. Each object contains
  * the relevant file and type information needed to both render correctly
@@ -17,6 +17,7 @@ typedef enum {
     Item_IR,
     Item_NFC,
     Item_iButton,
+    Item_Picopass,
     Item_Playlist,
     Item_Group,
     Item_Settings,

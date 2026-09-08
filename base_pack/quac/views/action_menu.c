@@ -29,6 +29,7 @@ static const Icon* ActionMenuIcons[] = {
     [ActionMenuItemTypeIR] = &I_IR_10px,
     [ActionMenuItemTypeNFC] = &I_NFC_10px,
     [ActionMenuItemTypeiButton] = &I_iButton_10px,
+    [ActionMenuItemTypePicopass] = &I_Picopass_10px,
     [ActionMenuItemTypePlaylist] = &I_Playlist_10px,
     [ActionMenuItemTypeGroup] = &I_Directory_10px,
     [ActionMenuItemTypeSettings] = &I_Settings_10px,
@@ -564,12 +565,11 @@ void action_menu_free(ActionMenu* action_menu) {
 void action_menu_set_selected_item(ActionMenu* action_menu, uint32_t index) {
     furi_assert(action_menu);
 
-    ActionMenuModel* m = view_get_model(action_menu->view);
-    if(m->layout == ActionMenuLayoutPortrait) {
-        with_view_model(
-            action_menu->view,
-            ActionMenuModel * model,
-            {
+    with_view_model(
+        action_menu->view,
+        ActionMenuModel * model,
+        {
+            if(model->layout == ActionMenuLayoutPortrait) {
                 size_t item_position = 0;
                 ActionMenuItemArray_it_t it;
                 for(ActionMenuItemArray_it(it, model->items); !ActionMenuItemArray_end_p(it);
@@ -579,13 +579,7 @@ void action_menu_set_selected_item(ActionMenu* action_menu, uint32_t index) {
                         break;
                     }
                 }
-            },
-            true);
-    } else {
-        with_view_model(
-            action_menu->view,
-            ActionMenuModel * model,
-            {
+            } else {
                 size_t position = 0;
                 ActionMenuItemArray_it_t it;
                 for(ActionMenuItemArray_it(it, model->items); !ActionMenuItemArray_end_p(it);
@@ -618,9 +612,9 @@ void action_menu_set_selected_item(ActionMenu* action_menu, uint32_t index) {
                         model->window_position = pos;
                     }
                 }
-            },
-            true);
-    }
+            }
+        },
+        true);
 }
 
 void action_menu_item_set_link(ActionMenuItem* action_item, bool is_link) {

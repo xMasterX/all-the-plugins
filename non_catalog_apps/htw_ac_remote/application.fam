@@ -1,0 +1,15 @@
+# For details & more options, see documentation/AppManifests.md in firmware repo
+
+App(
+    appid="htw_ac_remote",
+    name="HTW",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="htw_ac_remote_app",
+    stack_size=4 * 1024,
+    fap_category="Infrared",
+    fap_version="1.2",
+    fap_icon="htw_ac_remote.png",
+    fap_description="IR remote control for HTW air conditioner",
+    fap_author="sokogen",
+    fap_libs=["infrared"],
+)

@@ -1,0 +1,15 @@
+# Games / Puzzle -- logic, tiles, word, memory.
+color_guess
+game15
+game_2048
+game_vexed
+hangman
+minesweeper_redux
+montyhall
+morse_trainer
+racso_sokoban
+racso_zero
+rubiks_cube_scrambler
+simon_says
+sudoku
+tetris

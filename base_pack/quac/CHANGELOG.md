@@ -1,3 +1,10 @@
+## 0.10.0
+
+- Added support for Picopass / iClass (.picopass) emulation
+- New "Picopass Duration" setting controls how long a Picopass signal is emulated (also used as the playlist default)
+- Picopass files can be added to playlists with an optional duration
+- Added Picopass icon for the action menu and Import browser
+
 ## 0.9.1
 
 - Fixed About screen

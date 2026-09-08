@@ -1,6 +1,6 @@
 App(
     appid="gpioreader2",
-    name="[GPIO] Input Reader 2",
+    name="Input Reader 2",
     apptype=FlipperAppType.EXTERNAL,
     entry_point="gpio_app",
     requires=["gui"],

@@ -3,7 +3,7 @@
 #include "subghz_wardriving_txrx.h"
 
 struct SubGhzWarDrivingTxRx {
-    SubGhzWorker* worker;
+    SubGhzWarDrivingWorker* worker;
 
     SubGhzEnvironment* environment;
     SubGhzReceiver* receiver;
@@ -26,6 +26,12 @@ struct SubGhzWarDrivingTxRx {
 
     SubGhzTxRxNeedSaveCallback need_save_callback;
     void* need_save_context;
+
+    // Kept here so the lazily (re)allocated receiver can be restored to the
+    // filter/callback the app last asked for.
+    SubGhzProtocolFlag filter;
+    SubGhzReceiverCallback rx_callback;
+    void* rx_callback_context;
 
     bool debug_pin_state;
 

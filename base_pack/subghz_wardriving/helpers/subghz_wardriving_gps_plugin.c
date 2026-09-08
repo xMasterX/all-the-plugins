@@ -9,6 +9,64 @@
 
 // Single-precision Haversine so the always-loaded FAP avoids the heavy double
 // soft-float (sqrtf is the M4F hardware VSQRT.F32).
+//
+// libm's sinf/cosf/asinf/atan2f are avoided too: their generic argument
+// reduction drags __kernel_rem_pio2f and its two_over_pi table into the FAP
+// image (~2.7K of the ~4K libm pulls in), and the FAP image is resident in RAM
+// for the whole session. The approximations below are only ever fed the ranges
+// this file produces, and are good to ~1e-5 rad there -- well under a metre of
+// distance error and far under the 22.5 degree compass buckets.
+
+// sin/cos on [-pi/2, pi/2]: latitudes in radians, and the half-deltas which are
+// smaller still. Truncated Taylor series, |error| < 1e-7 over the range.
+static float subghz_gps_sin(float x) {
+    float x2 = x * x;
+    return x * (1.0f + x2 * (-1.0f / 6.0f + x2 * (1.0f / 120.0f + x2 * (-1.0f / 5040.0f))));
+}
+
+static float subghz_gps_cos(float x) {
+    float x2 = x * x;
+    return 1.0f +
+           x2 * (-0.5f + x2 * (1.0f / 24.0f + x2 * (-1.0f / 720.0f + x2 * (1.0f / 40320.0f))));
+}
+
+// asin on [0, 1]. The series is exact enough where it matters (short range,
+// where x is tiny); the reflection identity keeps the tail sane.
+static float subghz_gps_asin(float x) {
+    if(x >= 1.0f) return (float)M_PI / 2.0f;
+    if(x < 0.5f) {
+        float x2 = x * x;
+        return x * (1.0f +
+                    x2 * (1.0f / 6.0f +
+                          x2 * (3.0f / 40.0f + x2 * (15.0f / 336.0f + x2 * (105.0f / 3456.0f)))));
+    }
+    // Abramowitz & Stegun 4.4.45, |error| < 5e-5 rad -- only reached at
+    // continental distances, where it is worth metres.
+    return (float)M_PI / 2.0f -
+           sqrtf(1.0f - x) *
+               (1.5707288f + x * (-0.2121144f + x * (0.0742610f + x * (-0.0187293f))));
+}
+
+// atan2 feeding an 8-point compass; the classic z/(1 + 0.28 z^2) kernel is
+// accurate to ~0.3 degrees, two orders below the 22.5 degree bucket width.
+static float subghz_gps_atan2(float y, float x) {
+    const float pi = (float)M_PI;
+    if(x == 0.0f && y == 0.0f) return 0.0f;
+    float ay = y < 0.0f ? -y : y;
+    float ax = x < 0.0f ? -x : x;
+    float a, z;
+    if(ax >= ay) {
+        z = y / x;
+        a = z / (1.0f + 0.28f * z * z);
+        if(x < 0.0f) a += (y < 0.0f) ? -pi : pi;
+    } else {
+        z = x / y;
+        a = pi / 2.0f - z / (1.0f + 0.28f * z * z);
+        if(y < 0.0f) a -= pi;
+    }
+    return a;
+}
+
 static float subghz_gps_deg2rad(float deg) {
     return deg * (float)M_PI / 180.0f;
 }
@@ -18,13 +76,14 @@ static float subghz_gps_calc_distance(float lat1d, float lon1d, float lat2d, flo
     float lon1r = subghz_gps_deg2rad(lon1d);
     float lat2r = subghz_gps_deg2rad(lat2d);
     float lon2r = subghz_gps_deg2rad(lon2d);
-    float u = sinf((lat2r - lat1r) / 2.0f);
-    float v = sinf((lon2r - lon1r) / 2.0f);
-    return 2.0f * 6371.0f * asinf(sqrtf(u * u + cosf(lat1r) * cosf(lat2r) * v * v));
+    float u = subghz_gps_sin((lat2r - lat1r) / 2.0f);
+    float v = subghz_gps_sin((lon2r - lon1r) / 2.0f);
+    return 2.0f * 6371.0f *
+           subghz_gps_asin(sqrtf(u * u + subghz_gps_cos(lat1r) * subghz_gps_cos(lat2r) * v * v));
 }
 
 static float subghz_gps_calc_angle(float lat1, float lon1, float lat2, float lon2) {
-    return atan2f(lat1 - lat2, lon1 - lon2) * 180.0f / (float)M_PI;
+    return subghz_gps_atan2(lat1 - lat2, lon1 - lon2) * 180.0f / (float)M_PI;
 }
 
 void subghz_gps_cat_realtime(

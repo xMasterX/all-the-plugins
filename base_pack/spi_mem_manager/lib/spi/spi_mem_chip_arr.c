@@ -1394,9 +1394,12 @@ const SPIMemChip SPIMemChips[] = {
     {0x54, 0x40, 0x17, "DQ25Q64A", 8388608, 256, SPIMemChipVendorDOUQI, SPIMemChipWriteModePage},
     {0x0E, 0x40, 0x15, "FT25H16", 2097152, 256, SPIMemChipVendorFremont, SPIMemChipWriteModePage},
     {0xA1, 0x40, 0x13, "FM25Q04A", 524288, 256, SPIMemChipVendorFudan, SPIMemChipWriteModePage},
+    {0xA1, 0x40, 0x15, "FM25Q16A", 2097152, 256, SPIMemChipVendorFudan, SPIMemChipWriteModePage},
     {0xA1, 0x40, 0x16, "FM25Q32", 4194304, 256, SPIMemChipVendorFudan, SPIMemChipWriteModePage},
     {0xE0, 0x40, 0x14, "GT25Q80A", 1048576, 256, SPIMemChipVendorGenitop, SPIMemChipWriteModePage},
     {0xE0, 0x40, 0x13, "PN25F04A", 524288, 256, SPIMemChipVendorParagon, SPIMemChipWriteModePage},
     {0x0B, 0x40, 0x18, "XT25F128B", 16777216, 256, SPIMemChipVendorXTX, SPIMemChipWriteModePage},
     {0x20, 0x70, 0x17, "XM25QH64C", 8388608, 256, SPIMemChipVendorXMC, SPIMemChipWriteModePage},
-    {0x20, 0x70, 0x18, "XM25QH128A", 16777216, 256, SPIMemChipVendorXMC, SPIMemChipWriteModePage}};
+    {0x20, 0x70, 0x18, "XM25QH128A", 16777216, 256, SPIMemChipVendorXMC, SPIMemChipWriteModePage},
+    // Terminator: spi_mem_chip_find_all() walks this array until model_name is NULL
+    {0x00, 0x00, 0x00, NULL, 0, 0, SPIMemChipVendorUnknown, SPIMemChipWriteModeUnknown}};

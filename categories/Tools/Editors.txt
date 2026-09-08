@@ -1,0 +1,6 @@
+# Tools / Editors -- text / hex / icon editors and viewers.
+flipnote
+hex_editor
+hex_viewer
+iconedit
+text_viewer

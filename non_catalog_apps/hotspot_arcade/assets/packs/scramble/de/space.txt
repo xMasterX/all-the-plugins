@@ -1,0 +1,65 @@
+Pack: Weltraum
+
+Word: Planet
+---
+Word: Galaxie
+---
+Word: Komet
+---
+Word: Meteor
+---
+Word: Rakete
+---
+Word: Asteroid
+---
+Word: Nebel
+---
+Word: Schwerkraft
+---
+Word: Saturn
+---
+Word: Jupiter
+---
+Word: Finsternis
+---
+Word: Kosmos
+---
+Word: Satellit
+---
+Word: Teleskop
+---
+Word: Astronaut
+---
+Word: Krater
+---
+Word: Sternenstaub
+---
+Word: Universum
+---
+Word: Umlaufbahn
+---
+Word: Start
+---
+Word: Astronomie
+---
+Word: Raumanzug
+---
+Word: Supernova
+---
+Word: Sternbild
+---
+Word: Kosmonaut
+---
+Word: Raumschiff
+---
+Word: Meteorit
+---
+Word: Atmosphäre
+---
+Word: Ausstieg
+---
+Word: Startrampe
+---
+Word: Mondgestein
+---
+Word: Sternenlicht

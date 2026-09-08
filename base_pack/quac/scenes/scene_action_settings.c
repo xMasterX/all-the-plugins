@@ -86,6 +86,8 @@ static bool scene_action_settings_import_file_browser_callback(
         memcpy(*icon, icon_get_frame_data(&I_NFC_10px, 0), 32);
     } else if(!strcmp(ext, ".ibtn")) {
         memcpy(*icon, icon_get_frame_data(&I_iButton_10px, 0), 32);
+    } else if(!strcmp(ext, ".picopass")) {
+        memcpy(*icon, icon_get_frame_data(&I_Picopass_10px, 0), 32);
     } else if(!strcmp(ext, ".qpl")) {
         memcpy(*icon, icon_get_frame_data(&I_Playlist_10px, 0), 32);
     } else {
@@ -335,13 +337,14 @@ bool scene_action_settings_on_event(void* context, SceneManagerEvent event) {
                            FSAM_WRITE,
                            FSOM_CREATE_NEW)) {
                         const char* cimport_file = furi_string_get_cstr(import_file);
+                        const unsigned int cimport_file_len = strlen(cimport_file);
                         size_t bytes_written =
-                            storage_file_write(file_link, cimport_file, strlen(cimport_file));
-                        if(bytes_written != strlen(cimport_file)) {
+                            storage_file_write(file_link, cimport_file, cimport_file_len);
+                        if(bytes_written != cimport_file_len) {
                             FURI_LOG_E(
                                 TAG,
                                 "Copy as link failure: incorrect bytes written. Expected %d, wrote %d",
-                                strlen(cimport_file),
+                                cimport_file_len,
                                 bytes_written);
                         }
                     } else {

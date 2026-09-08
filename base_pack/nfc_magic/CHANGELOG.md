@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.1
+## 2.3
 
 Adds magic **ISO15693 / NfcV** support. Detect an ISO15693 tag, show its Info, and
 **clone / wipe** a magic ISO15693 card the same way the app handles its other magic types.
@@ -145,6 +145,39 @@ the copy advertises the same chip identity.
   with a moved UID that no longer identifies as re-writable. The wipe's post-write UID re-check surfaces
   the identity half of that as it would on any card; nothing speaks for the signature. Tracked as #255,
   with the armed-gen1 case beside it.
+
+## 2.2
+
+### Changed
+
+- **Gen2 detection now tries the per-UID key cache for sector 0.** Confirming a CUID means
+  authenticating to sector 0 before block 0 can be probed, and the probe only ever knew the
+  default FF..FF key, so a clone with a personalised sector 0 and no recognised ATS came back as
+  **Magic Not Confirmed**. The sector-0 key A and key B the NFC app recorded for that UID in
+  `/ext/nfc/.cache/<UID>.keys` are now offered first, ahead of FF..FF, so such a card can be
+  confirmed as Gen 2 / CUID and still gets its static-nonce classification. The cache is read once
+  per card per scan, a card with no entry behaves exactly as before, and a cached key that doesn't
+  fit costs one more RF session and nothing else: the probe itself is unchanged, still only the
+  first phase of the write, so block 0 is never modified.
+
+## 2.1
+
+### Added
+
+- **MIFARE Classic key cache phase** - the dictionary attack now tries the NFC app's per-UID key
+  cache (`/ext/nfc/.cache/<UID>.keys`) before the user and system dictionaries, for both **Write**
+  and **Wipe**. A magic clone carries the original card's UID, so keys the NFC app recovered when
+  the original was saved are already on the SD card under the clone's own name. They are fed to
+  the poller as a dictionary, so each one is still authenticated against the card in front of you;
+  a stale entry costs a few failed auths and nothing more. When the cache alone finishes the card,
+  the two dictionary phases are skipped instead of being run for nothing. A card with no cache
+  entry runs exactly as before.
+
+### Fixed
+
+- **Wiping a Gen2 clone of a static-encrypted-nonce card (FM11RF08S)** dead-ended at
+  **"No keys found"**. Those keys only ever reach the per-UID dictionary, so neither shared
+  dictionary has them; the key cache phase now does.
 
 ## 2.0
 

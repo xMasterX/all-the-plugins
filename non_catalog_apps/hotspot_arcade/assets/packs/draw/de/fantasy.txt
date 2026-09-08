@@ -1,0 +1,65 @@
+Pack: Fantasy
+
+Word: Drache
+---
+Word: Schloss
+---
+Word: Zauberer
+---
+Word: Einhorn
+---
+Word: Meerjungfrau
+---
+Word: Krone
+---
+Word: Schwert
+---
+Word: Gespenst
+---
+Word: Roboter
+---
+Word: Alien
+---
+Word: Rakete
+---
+Word: Pirat
+---
+Word: Ritter
+---
+Word: Hexe
+---
+Word: Fee
+---
+Word: Schatz
+---
+Word: Zaubertrank
+---
+Word: Raumschiff
+---
+Word: Monster
+---
+Word: Zauberstab
+---
+Word: Kobold
+---
+Word: Troll
+---
+Word: Phönix
+---
+Word: Greif
+---
+Word: Vampir
+---
+Word: Werwolf
+---
+Word: Elf
+---
+Word: Zwerg
+---
+Word: Riese
+---
+Word: Yeti
+---
+Word: Flaschengeist
+---
+Word: Kristallkugel

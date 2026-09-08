@@ -2,7 +2,7 @@
 
 App(
     appid="ghost_esp",  # Must be unique
-    name="[ESP32] Ghost ESP",  # Displayed in menus
+    name="Ghost ESP",  # Displayed in menus
     apptype=FlipperAppType.EXTERNAL,  # type: ignore
     entry_point="ghost_esp_app",
     stack_size=6 * 1024,
