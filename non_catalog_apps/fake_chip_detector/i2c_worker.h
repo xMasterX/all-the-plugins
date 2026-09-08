@@ -16,6 +16,7 @@
 #define I2C_REG_TIMEOUT_MS   50
 
 #include "chip_db.h"
+#include "uart_listen.h"
 
 typedef struct {
     uint8_t addr; // 7-bit
@@ -28,7 +29,36 @@ typedef enum {
     I2CWorkerEventScanProgress,
     I2CWorkerEventScanDone,
     I2CWorkerEventBusUpdate,
+    I2CWorkerEventPadUpdate,
+    I2CWorkerEventFixUpdate,
+    I2CWorkerEventSelftestDone,
 } I2CWorkerEvent;
+
+// Where a fix run has got to. Every step but the first ends on a measurement,
+// so the screen never says something happened that the app did not see.
+typedef enum {
+    I2CFixIdle, // not running: the pad meter owns the screen
+    I2CFixStrapping, // pulling the pad the way I2C needs it, reading it back
+    I2CFixPadHeld, // the pull lost: the board itself ties this pad
+    I2CFixWantPowerOff, // waiting for the module's pull-ups to disappear
+    I2CFixWantPowerOn, // they went; waiting for them to come back
+    I2CFixWantWire, // strap let go; waiting for the wire back on the bus
+    I2CFixDone, // bus healthy again, worth another sweep
+} I2CFixStage;
+
+// What a single pad is doing, measured with nothing but the internal pulls.
+// Input only: safe to point at a pin whose function nobody knows yet, which is
+// the whole premise of handing this to someone at a parcel counter.
+typedef enum {
+    // Nothing has been measured yet. First, so that a zeroed struct or a meter
+    // that has only just started cannot present itself as a reading. FLOATING
+    // is a result -- and the one that offers the fix on every mode family -- so
+    // it must never double as "no answer yet".
+    I2CPadUnknown,
+    I2CPadFloating, // nothing holds it either way
+    I2CPadHigh, // driven high, or tied to a rail
+    I2CPadLow, // driven low, or tied to ground
+} I2CPadLevel;
 
 // Result of the electrical sanity check performed before a scan.
 typedef enum {
@@ -69,6 +99,44 @@ bool i2c_worker_is_busy(I2CWorker* worker);
 void i2c_worker_watch_start(I2CWorker* worker);
 void i2c_worker_watch_stop(I2CWorker* worker);
 void i2c_worker_get_bus(I2CWorker* worker, I2CBusCheck* out);
+
+// Pad-meter mode: polls pin 15 (SDA) as a bare input so the user can walk that
+// wire onto a mode pin and watch the level. Emits I2CWorkerEventPadUpdate.
+// A level only changes after several agreeing reads: a finger resting on a
+// floating pad drags it around, and a display that flickers is a display
+// nobody trusts.
+void i2c_worker_pad_watch_start(I2CWorker* worker);
+void i2c_worker_pad_watch_stop(I2CWorker* worker);
+I2CPadLevel i2c_worker_get_pad(I2CWorker* worker);
+
+// The fix run: hold the pad at want_high through a restart, then hand the bus
+// back. It straps pin 15 with the internal pull and reads it back, tries once
+// to cut the 3V3 rail itself, and when that does not move the lines it waits
+// for the person to pull the sensor's power wire and put it back -- watching
+// the module's pull-ups vanish and return rather than believing them. Ends by
+// waiting for the wire to come back onto the bus, then emits a final
+// I2CFixDone. Progress arrives as I2CWorkerEventFixUpdate; read the stage with
+// i2c_worker_get_fix_stage. The strap and the rail are released on every path,
+// including the worker shutting down.
+void i2c_worker_fix_start(I2CWorker* worker, bool want_high);
+void i2c_worker_fix_stop(I2CWorker* worker);
+I2CFixStage i2c_worker_get_fix_stage(I2CWorker* worker);
+
+// What the listen that follows an empty sweep established. It runs by itself,
+// with nothing to press: the person this app exists for read the headline as a
+// conclusion and handed a working sensor back, so an extra question they have
+// to think of asking is no question at all. It costs about two seconds and
+// only on a sweep that already failed.
+//
+// UartListenUnavailable on every path where no listening happened, including
+// before the first scan. The zero value claims nothing, which is the answer a
+// caller who forgets to check should get.
+UartListenOutcome i2c_worker_get_listen(I2CWorker* worker, UartListenResult* out);
+
+// True between the end of the sweep and the end of the listen, so the busy
+// screen can say what it is doing rather than sit at 0x77 looking wedged.
+bool i2c_worker_is_listening(I2CWorker* worker);
+
 uint8_t i2c_worker_get_progress(I2CWorker* worker);
 size_t i2c_worker_get_found(I2CWorker* worker, I2CFoundDevice* out, size_t max_count);
 
@@ -97,3 +165,33 @@ bool i2c_worker_write_reg(uint8_t addr7, uint8_t reg, uint8_t value, uint32_t ti
 // convenience on top of these two.
 bool i2c_worker_write_raw(uint8_t addr7, const uint8_t* data, size_t len, uint32_t timeout_ms);
 bool i2c_worker_read_raw(uint8_t addr7, uint8_t* data, size_t len, uint32_t timeout_ms);
+
+/* ---- LPUART loopback self-test ---- */
+
+// How the loopback ended. Never run is the zero value, so a caller who reads
+// this before anything has been tried is told nothing rather than told it
+// passed -- the same rule the listen outcome follows.
+typedef enum {
+    I2CSelftestNeverRun,
+    I2CSelftestPassed,
+    I2CSelftestFailed,
+    // Not a result. Pull-ups were seen on pins 15 and 16, so something is still
+    // wired to them, and the test drives one of those pins. Refusing to run is
+    // a different thing from running and failing, and the user needs to be told
+    // which one happened.
+    I2CSelftestBlocked,
+} I2CSelftestState;
+
+// Big enough for what uart_selftest_loopback writes; it truncates at 40 itself.
+#define I2C_SELFTEST_DETAIL_SIZE 40
+
+// Runs the jumper loopback on the worker thread. It stands the expansion
+// service down and takes the serial handle, which is not work for the thread
+// that is drawing the screen.
+void i2c_worker_selftest_start(I2CWorker* worker);
+
+// detail receives the line the test wrote about itself, verbatim; pass NULL to
+// skip. It is preset to "LPUART unavailable" and only overwritten when the body
+// actually reached the wire, which is what tells "never got a handle" apart
+// from "sent and heard nothing back".
+I2CSelftestState i2c_worker_get_selftest(I2CWorker* worker, char* detail, size_t detail_size);

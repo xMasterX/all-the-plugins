@@ -2,6 +2,7 @@
 #include "i2c_worker.h"
 
 #include <furi.h>
+#include <string.h>
 
 // Every constant below was checked against the manufacturer datasheet or the
 // vendor's own driver. A wrong value here makes the app accuse a genuine
@@ -87,7 +88,34 @@ static const IdCheck hmc5883l_checks[] = {
     {0x0B, 0x34, M8, false, false},
     {0x0C, 0x33, M8, false, false},
 };
+// One read of one register, and the register is 0xFF on more than this part.
+// It stays because a QMC5883L has nothing better to offer -- 0x0D is the only
+// thing in its map that is fixed -- but it is the weakest signature in this
+// table, and the AK09911 below shares one of its addresses. Which one wins is
+// settled by chip_db_identify on the number of registers each had to get
+// right, so nothing here depends on the order these two rows are written in.
 static const IdCheck qmc5883l_checks[] = {{0x0D, 0xFF, M8, false, false}};
+// QST QMC5883P Rev. E section 9.2.1: "Register 00H stores the chip ID. The
+// default value is 80H." Section 5.4: "The default I2C address for QMC5883P is
+// 2CH." Not the same part as the QMC5883L above and not at the same address --
+// a GY-271 board photographed at 0x2C is a QMC5883P candidate, and this row is
+// what would confirm it. Nobody has read 0x2C on one yet.
+static const IdCheck qmc5883p_checks[] = {{0x00, 0x80, M8, false, false}};
+// WIA1 at 0x00 is the AKM company code and WIA2 at 0x01 the device code, both
+// fixed. The two values are the one thing in this row that does NOT come from a
+// datasheet read for it: AKM publishes the register map only in the full
+// MS1526-E-01, which would not download here, and the ShortDatasheet-E-00 that
+// did has no register section. They are the values issue #38 cites from
+// MS1526-E-01 sections 7.1.4 and 8.3.1, and they are also what a purple
+// AK09911C breakout answered on 8 Sep 2026, reading 48 05 20 00 across
+// 0x00-0x03. Two independent sources agreeing, neither of them read here.
+//
+// That same board is why this row exists: it was being reported as a GENUINE
+// QMC5883L, because 0x0D on it reads 0xFF too.
+static const IdCheck ak09911_checks[] = {
+    {0x00, 0x48, M8, false, false},
+    {0x01, 0x05, M8, false, false},
+};
 
 /* --- light / proximity / ToF --- */
 // ST time-of-flight parts index their registers with a 16-bit address.
@@ -124,26 +152,26 @@ static const IdCheck lps25hb_checks[] = {{0x0F, 0xBD, M8, false, false}};
 static const IdCheck cst816s_checks[] = {{0xA7, 0xB4, M8, false, false}};
 
 static const ChipEntry chip_db[] = {
-    /* name, addrs, range_lo, range_hi, checks, count, note */
-    {"BNO055", "9-axis IMU + fusion", {0x28, 0x29, 0xFF}, 0, 0, bno055_checks, 4, NULL},
+    /* name, kind, addrs, range_lo, range_hi, checks, count, note */
+    {"BNO055", "9-axis fusion IMU", {0x28, 0x29, 0xFF}, 0, 0, bno055_checks, 4, NULL},
     {"BMP280", "Pressure sensor", {0x76, 0x77, 0xFF}, 0, 0, bmp280_checks, 1, NULL},
-    {"BME280", "Press/temp/humidity", {0x76, 0x77, 0xFF}, 0, 0, bme280_checks, 1, NULL},
+    {"BME280", "Climate sensor", {0x76, 0x77, 0xFF}, 0, 0, bme280_checks, 1, NULL},
     {"BMP180", "Pressure sensor", {0x77, 0xFF}, 0, 0, bmp180_checks, 1, NULL},
     {"BMP388", "Pressure sensor", {0x76, 0x77, 0xFF}, 0, 0, bmp388_checks, 1, NULL},
     {"BMP390", "Pressure sensor", {0x76, 0x77, 0xFF}, 0, 0, bmp390_checks, 1, NULL},
-    {"BME680", "Air quality + climate", {0x76, 0x77, 0xFF}, 0, 0, bme680_checks, 2, NULL},
-    {"BME688", "Air quality + climate", {0x76, 0x77, 0xFF}, 0, 0, bme688_checks, 2, NULL},
+    {"BME680", "Gas + climate sensor", {0x76, 0x77, 0xFF}, 0, 0, bme680_checks, 2, NULL},
+    {"BME688", "Gas + climate sensor", {0x76, 0x77, 0xFF}, 0, 0, bme688_checks, 2, NULL},
     {"DPS310", "Pressure sensor", {0x76, 0x77, 0xFF}, 0, 0, dps310_checks, 1, NULL},
     {"CCS811",
-     "Air quality (VOC)",
+     "Air quality sensor",
      {0x5A, 0x5B, 0xFF},
      0,
      0,
      ccs811_checks,
      1,
      "EOL part, clones common"},
-    {"ENS160", "Air quality (VOC)", {0x52, 0x53, 0xFF}, 0, 0, ens160_checks, 2, NULL},
-    {"HDC1080", "Temp + humidity", {0x40, 0xFF}, 0, 0, hdc1080_checks, 2, NULL},
+    {"ENS160", "Air quality sensor", {0x52, 0x53, 0xFF}, 0, 0, ens160_checks, 2, NULL},
+    {"HDC1080", "Humidity sensor", {0x40, 0xFF}, 0, 0, hdc1080_checks, 2, NULL},
 
     {"MPU6050", "6-axis IMU", {0x68, 0x69, 0xFF}, 0, 0, mpu6050_checks, 1, "TDK EOL, old stock"},
     {"MPU6500", "6-axis IMU", {0x68, 0x69, 0xFF}, 0, 0, mpu6500_checks, 1, "often sold as MPU9250"},
@@ -191,16 +219,25 @@ static const ChipEntry chip_db[] = {
      3,
      "EOL since 2016, mostly fake"},
     {"QMC5883L", "Magnetometer", {0x0D, 0xFF}, 0, 0, qmc5883l_checks, 1, NULL},
+    {"QMC5883P", "Magnetometer", {0x2C, 0xFF}, 0, 0, qmc5883p_checks, 1, NULL},
+    {"AK09911",
+     "Magnetometer",
+     {0x0C, 0x0D, 0xFF},
+     0,
+     0,
+     ak09911_checks,
+     2,
+     "RST must be high to answer"},
 
     {"VL53L0X", "Laser rangefinder", {0x29, 0xFF}, 0, 0, vl53l0x_checks, 1, NULL},
     {"VL53L1X", "Laser rangefinder", {0x29, 0xFF}, 0, 0, vl53l1x_checks, 2, NULL},
     {"VL6180X", "Laser rangefinder", {0x29, 0xFF}, 0, 0, vl6180x_checks, 1, NULL},
     {"TCS34725", "Colour sensor", {0x29, 0xFF}, 0, 0, tcs34725_checks, 1, NULL},
     {"TSL2591", "Light sensor", {0x29, 0xFF}, 0, 0, tsl2591_checks, 1, NULL},
-    {"APDS9960", "Gesture + colour", {0x39, 0xFF}, 0, 0, apds9960_checks, 1, NULL},
+    {"APDS9960", "Gesture + RGB sensor", {0x39, 0xFF}, 0, 0, apds9960_checks, 1, NULL},
     {"LTR-390UV", "UV + light sensor", {0x53, 0xFF}, 0, 0, ltr390_checks, 1, NULL},
     {"MAX30102",
-     "Heart rate / SpO2",
+     "Pulse oximeter",
      {0x57, 0xFF},
      0,
      0,
@@ -228,10 +265,10 @@ static const ChipEntry chip_db[] = {
      NULL,
      0,
      "SH1106 fakes undetectable"},
-    {"AHT10/AHT20", "Temp + humidity", {0x38, 0xFF}, 0, 0, NULL, 0, NULL},
+    {"AHT10/AHT20", "Humidity sensor", {0x38, 0xFF}, 0, 0, NULL, 0, NULL},
     {"BH1750", "Light sensor", {0x23, 0x5C, 0xFF}, 0, 0, NULL, 0, NULL},
     {"SHT3x/SHT4x",
-     "Temp + humidity",
+     "Humidity sensor",
      {0x44, 0x45, 0xFF},
      0,
      0,
@@ -239,13 +276,13 @@ static const ChipEntry chip_db[] = {
      0,
      "grade relabels undetectable"},
     {"SCD4x", "CO2 sensor", {0x62, 0xFF}, 0, 0, NULL, 0, NULL},
-    {"SGP30", "Air quality (VOC)", {0x58, 0xFF}, 0, 0, NULL, 0, NULL},
-    {"SGP40/41", "Air quality (VOC)", {0x59, 0xFF}, 0, 0, NULL, 0, NULL},
+    {"SGP30", "Air quality sensor", {0x58, 0xFF}, 0, 0, NULL, 0, NULL},
+    {"SGP40/41", "Air quality sensor", {0x59, 0xFF}, 0, 0, NULL, 0, NULL},
     {"SCD30", "CO2 sensor", {0x61, 0xFF}, 0, 0, NULL, 0, NULL},
-    {"Si7021/HTU21D", "Temp + humidity", {0x40, 0xFF}, 0, 0, NULL, 0, NULL},
+    {"Si7021/HTU21D", "Humidity sensor", {0x40, 0xFF}, 0, 0, NULL, 0, NULL},
     {"MLX90614", "IR thermometer", {0x5A, 0xFF}, 0, 0, NULL, 0, NULL},
     {"MLX90640", "Thermal camera", {0x33, 0xFF}, 0, 0, NULL, 0, NULL},
-    {"AS5600", "Magnetic angle", {0x36, 0xFF}, 0, 0, NULL, 0, NULL},
+    {"AS5600", "Magnetic angle sensor", {0x36, 0xFF}, 0, 0, NULL, 0, NULL},
     {"MAX17048", "Battery fuel gauge", {0x36, 0xFF}, 0, 0, NULL, 0, NULL},
     {"ADS1115", "ADC", {0xFF}, 0x48, 0x4B, NULL, 0, NULL},
     {"INA219", "Current monitor", {0xFF}, 0x40, 0x4F, NULL, 0, NULL},
@@ -259,14 +296,7 @@ static const ChipEntry chip_db[] = {
     {"MS5611", "Pressure sensor", {0x76, 0x77, 0xFF}, 0, 0, NULL, 0, NULL},
     {"VEML6070", "UV sensor", {0x38, 0x39, 0xFF}, 0, 0, NULL, 0, NULL},
     {"MAX44009", "Light sensor", {0x4A, 0x4B, 0xFF}, 0, 0, NULL, 0, NULL},
-    {"BNO085",
-     "9-axis IMU + fusion",
-     {0x4A, 0x4B, 0xFF},
-     0,
-     0,
-     NULL,
-     0,
-     "SHTP protocol, no WHO_AM_I"},
+    {"BNO085", "9-axis fusion IMU", {0x4A, 0x4B, 0xFF}, 0, 0, NULL, 0, "SHTP protocol, no WHO_AM_I"},
 };
 
 #define CHIP_DB_COUNT (sizeof(chip_db) / sizeof(chip_db[0]))
@@ -335,61 +365,101 @@ static int32_t chip_try_candidate(const ChipEntry* chip, uint8_t addr7, IdReadRe
     return all_reads_ok ? matches : -1;
 }
 
+size_t chip_db_no_id_at(uint8_t addr7, const ChipEntry** out, size_t max) {
+    size_t n = 0;
+    for(size_t i = 0; i < CHIP_DB_COUNT; i++) {
+        const ChipEntry* chip = &chip_db[i];
+        if(chip->checks != NULL || !chip_has_addr(chip, addr7)) continue;
+        if(out && n < max) out[n] = chip;
+        n++;
+    }
+    return n;
+}
+
 void chip_db_identify(uint8_t addr7, ChipIdentification* out) {
+    // Zero here means VerdictNotChecked, not VerdictGenuine. Every return below
+    // sets a verdict of its own, so this only ever shows if someone later adds
+    // a path that forgets to -- and then it says "not checked" rather than
+    // calling an unexamined part real.
     memset(out, 0, sizeof(*out));
 
-    const ChipEntry* no_id_candidate = NULL;
+    const ChipEntry* no_id_first = NULL;
+    const size_t no_id_count = chip_db_no_id_at(addr7, &no_id_first, 1);
+
     const ChipEntry* best_chip = NULL;
     IdReadResult best_reads[CHIP_MAX_CHECKS] = {0};
     uint8_t best_read_count = 0;
-    int32_t best_matches = -1; // -1 = every read of every candidate failed
+    // -2, not -1, because -1 is a real score: chip_try_candidate returns it
+    // when a read failed. Starting at -1 meant the first such candidate never
+    // beat the initial value, so best_chip stayed NULL and the verdict below
+    // shipped with read_count == 0 -- the detail screen of a part that answers
+    // its address and nothing else was blank, which is the one case where the
+    // registers it refused to answer are the whole story.
+    int32_t best_matches = -2;
+    bool best_full = false;
+    bool best_tied = false;
+    uint8_t best_tie_count = 1;
+
+    bool any_read_attempted = false;
     bool any_read_ok = false;
 
     for(size_t i = 0; i < CHIP_DB_COUNT; i++) {
         const ChipEntry* chip = &chip_db[i];
-        if(!chip_has_addr(chip, addr7)) continue;
+        if(chip->checks == NULL || !chip_has_addr(chip, addr7)) continue;
 
-        if(chip->checks == NULL) {
-            if(!no_id_candidate) no_id_candidate = chip;
-            continue;
-        }
-
+        const uint8_t count = chip->check_count < CHIP_MAX_CHECKS ? chip->check_count :
+                                                                    CHIP_MAX_CHECKS;
         IdReadResult reads[CHIP_MAX_CHECKS];
-        int32_t matches = chip_try_candidate(chip, addr7, reads);
-        for(uint8_t r = 0; r < chip->check_count && r < CHIP_MAX_CHECKS; r++) {
+        const int32_t matches = chip_try_candidate(chip, addr7, reads);
+        for(uint8_t r = 0; r < count; r++) {
+            any_read_attempted = true;
             if(reads[r].read_ok) any_read_ok = true;
         }
 
-        if(matches == (int32_t)chip->check_count) {
-            out->chip = chip;
-            out->verdict = VerdictGenuine;
-            memcpy(out->reads, reads, sizeof(reads));
-            out->read_count = chip->check_count;
-            return;
+        const bool full = (count > 0 && matches == (int32_t)count);
+
+        // Two full matches at one address are decided by how many registers
+        // each one had to get right, never by which row was typed first. At
+        // 0x0D the AK09911 answers two ID registers taken from its datasheet,
+        // while the QMC5883L candidate is a single read of a register that is
+        // reserved on both parts and comes back 0xFF either way. Ordering the
+        // table differently must not change what a board is called, and adding
+        // a row must not quietly rename one.
+        bool better;
+        if(full != best_full) {
+            better = full; // any full match beats any partial one
+        } else if(full) {
+            better = count > best_read_count;
+        } else {
+            better = matches > best_matches;
         }
-        if(matches > best_matches) {
+
+        // ponytail: equal-length full matches are called ambiguous rather than
+        // scored further. Weighing a wide unique value against a narrow common
+        // one would separate them, and wants a per-check weight in the table
+        // to do honestly. No address in the database needs it yet.
+        if(full && best_full && count == best_read_count && !better) {
+            best_tied = true;
+            best_tie_count++;
+            continue;
+        }
+
+        if(better) {
+            best_full = full;
             best_matches = matches;
             best_chip = chip;
-            memcpy(best_reads, reads, sizeof(reads));
-            best_read_count = chip->check_count;
+            best_read_count = count;
+            best_tied = false;
+            best_tie_count = 1;
+            memcpy(best_reads, reads, sizeof(best_reads));
         }
     }
 
-    // The device ACKed its address but no register read ever succeeded.
-    // Report that honestly instead of guessing at a no-ID chip.
-    if(!any_read_ok && (best_chip != NULL || no_id_candidate == NULL)) {
-        out->chip = best_chip;
-        out->verdict = VerdictNoAnswer;
-        memcpy(out->reads, best_reads, sizeof(best_reads));
-        out->read_count = best_read_count;
-        return;
-    }
-
-    if(best_chip == NULL && no_id_candidate == NULL) {
+    if(best_chip == NULL && no_id_count == 0) {
         // Address is unknown: probe the common WHO_AM_I locations so the user
         // has raw bytes to search for.
         static const uint8_t probe_regs[] = {0x00, 0x0F, 0x75, 0xD0};
-        out->verdict = VerdictUnknown;
+        bool probe_ok = false;
         for(size_t i = 0; i < sizeof(probe_regs) && out->read_count < CHIP_MAX_CHECKS; i++) {
             IdReadResult* r = &out->reads[out->read_count];
             uint8_t byte = 0;
@@ -397,41 +467,74 @@ void chip_db_identify(uint8_t addr7, ChipIdentification* out) {
             r->has_expected = false;
             r->read_ok = i2c_worker_read_reg(addr7, probe_regs[i], &byte, I2C_REG_TIMEOUT_MS);
             r->actual = byte;
+            if(r->read_ok) probe_ok = true;
             out->read_count++;
         }
-        return;
-    }
-
-    if(no_id_candidate && best_matches <= 0) {
-        // Reads worked but matched nothing, and a known chip without an ID
-        // register lives here (DS3231 at 0x68, SSD1306 at 0x3C). Presence is
-        // all we can honestly claim — never GENUINE without an ID to check.
-        out->chip = no_id_candidate;
-        out->verdict = VerdictDetectedNoId;
-        memcpy(out->reads, best_reads, sizeof(best_reads));
-        out->read_count = best_read_count;
+        // "Not in the database" and "would not talk" are different faults with
+        // different fixes, and only the first is about the database. Sending
+        // someone to look up bytes that were never read is the worse of the two
+        // mistakes, so an address that answered nothing says so.
+        out->verdict = probe_ok ? VerdictUnknown : VerdictNoAnswer;
         return;
     }
 
     memcpy(out->reads, best_reads, sizeof(best_reads));
     out->read_count = best_read_count;
 
+    if(any_read_attempted && !any_read_ok) {
+        // The device ACKed its address and then answered no register at all.
+        // It is deliberately left unnamed: a part that will not read has
+        // identified itself as nothing, and the failed registers below are the
+        // only evidence there is.
+        out->chip = NULL;
+        out->verdict = VerdictNoAnswer;
+        return;
+    }
+
+    if(best_full) {
+        // A tie survived to here, so two parts each answered the same number of
+        // ID registers correctly and both are telling the truth about
+        // themselves. Naming either would be a coin toss printed as a reading.
+        out->chip = best_tied ? NULL : best_chip;
+        out->verdict = best_tied ? VerdictAmbiguous : VerdictGenuine;
+        out->candidates = best_tied ? best_tie_count : 0;
+        return;
+    }
+
     if(best_matches > 0) {
         // Some of a known chip's IDs match and the rest do not. A genuine part
         // has all of them, so this is real evidence of a counterfeit.
         out->chip = best_chip;
         out->verdict = VerdictWrongChip;
-    } else {
-        // Nothing matched at all. That is far more often a chip missing from
-        // the database than a fake, so do not accuse it — show the bytes and
-        // let the user look them up.
-        out->chip = NULL;
-        out->verdict = VerdictNoMatch;
+        return;
     }
+
+    // Reads worked but matched nothing, and a known chip without an ID register
+    // lives here. Presence is all we can honestly claim -- never GENUINE
+    // without an ID to check, and never a name when more than one part fits.
+    if(no_id_count == 1) {
+        out->chip = no_id_first;
+        out->verdict = VerdictDetectedNoId;
+        return;
+    }
+    if(no_id_count > 1) {
+        out->chip = NULL;
+        out->verdict = VerdictAmbiguous;
+        out->candidates = no_id_count > UINT8_MAX ? UINT8_MAX : (uint8_t)no_id_count;
+        return;
+    }
+
+    // Nothing matched at all. That is far more often a chip missing from the
+    // database than a fake, so do not accuse it -- show the bytes and let the
+    // user look them up.
+    out->chip = NULL;
+    out->verdict = VerdictNoMatch;
 }
 
 const char* chip_verdict_str(ChipVerdict verdict) {
     switch(verdict) {
+    case VerdictNotChecked:
+        return "NOT CHECKED";
     case VerdictGenuine:
         return "GENUINE";
     case VerdictWrongChip:
@@ -444,6 +547,8 @@ const char* chip_verdict_str(ChipVerdict verdict) {
         return "UNKNOWN";
     case VerdictNoAnswer:
         return "NO ANSWER";
+    case VerdictAmbiguous:
+        return "SEVERAL POSSIBLE";
     default:
         return "?";
     }
@@ -451,6 +556,8 @@ const char* chip_verdict_str(ChipVerdict verdict) {
 
 const char* chip_verdict_headline(ChipVerdict verdict) {
     switch(verdict) {
+    case VerdictNotChecked:
+        return "NOT CHECKED";
     case VerdictGenuine:
         return "GENUINE";
     case VerdictWrongChip:
@@ -463,6 +570,8 @@ const char* chip_verdict_headline(ChipVerdict verdict) {
         return "UNKNOWN";
     case VerdictNoAnswer:
         return "NO ANSWER";
+    case VerdictAmbiguous:
+        return "AMBIGUOUS";
     default:
         return "?";
     }
@@ -473,6 +582,10 @@ const char* chip_verdict_headline(ChipVerdict verdict) {
 // imply it compared anything to a label — it asks the user to do that.
 void chip_verdict_explain(ChipVerdict verdict, const char** line1, const char** line2) {
     switch(verdict) {
+    case VerdictNotChecked:
+        *line1 = "Nothing was checked yet.";
+        *line2 = "This should not appear.";
+        break;
     case VerdictGenuine:
         *line1 = "All ID registers match.";
         *line2 = "Does the label agree?";
@@ -493,6 +606,10 @@ void chip_verdict_explain(ChipVerdict verdict, const char** line1, const char** 
         *line1 = "It answers, reads fail.";
         *line2 = "Check pull-ups and wires.";
         break;
+    case VerdictAmbiguous:
+        *line1 = "More than one part fits.";
+        *line2 = "Nothing tells them apart.";
+        break;
     default:
         *line1 = "Address not in database.";
         *line2 = "Raw bytes are in details.";
@@ -500,12 +617,20 @@ void chip_verdict_explain(ChipVerdict verdict, const char** line1, const char** 
     }
 }
 
+// Ambiguous belongs here for the same reason DetectedNoId does: the address is
+// populated and not one byte read from it is evidence of anything wrong. It is
+// a weaker answer than either of the others, never a worse one, and routing it
+// down the "NOT YOURS" path would turn "this tool cannot tell two real parts
+// apart" into an accusation aimed at whoever sold the board.
 bool chip_verdict_is_good(ChipVerdict verdict) {
-    return verdict == VerdictGenuine || verdict == VerdictDetectedNoId;
+    return verdict == VerdictGenuine || verdict == VerdictDetectedNoId ||
+           verdict == VerdictAmbiguous;
 }
 
 const char* chip_verdict_short_str(ChipVerdict verdict) {
     switch(verdict) {
+    case VerdictNotChecked:
+        return "not checked";
     case VerdictGenuine:
         return "GENUINE";
     case VerdictWrongChip:
@@ -518,6 +643,8 @@ const char* chip_verdict_short_str(ChipVerdict verdict) {
         return "unknown";
     case VerdictNoAnswer:
         return "silent";
+    case VerdictAmbiguous:
+        return "ambiguous";
     default:
         return "?";
     }
@@ -526,4 +653,94 @@ const char* chip_verdict_short_str(ChipVerdict verdict) {
 const ChipEntry* chip_db_get(size_t index) {
     if(index >= CHIP_DB_COUNT) return NULL;
     return &chip_db[index];
+}
+
+// Pins that take a healthy part off the I2C bus. Same rule as the ID table
+// above, and it matters more here: a wrong `i2c_high` sends someone to strap a
+// pin the wrong way round, so a row nobody could verify is a row that is not
+// here. Quotes are from the datasheet named on each line.
+//
+// Two things deliberately absent. Address-select pins (AD0, ADR, SDO used as
+// an address bit) are not mode pins -- the sweep covers 0x08-0x77, so they
+// cannot hide anything, and listing them would have the screen cry wolf. And
+// the MPU6050 has no SPI at all; only the MPU6500/9250 siblings do.
+//
+// Still to verify before adding: BMP388, BMP390, BME688, BMI160, BMI270,
+// BMI088, MPU6500, MPU9250, MPU6886, ICM20948, ICM42605, ICM42688P,
+// LSM6DS3TR-C, LSM6DSO/OX, LSM6DSV16X, LIS3MDL, LIS2MDL, LPS22HB, LPS25HB,
+// ADXL355, and XSHUT on the VL53/VL6180X family.
+static const ChipModePin chip_mode_pins[] = {
+    // Bosch BST-BNO055-DS000 Table 4-4: PS1.PS0 = 0b00 is I2C, 0b10 is UART.
+    // Table 4-5: in UART mode COM2 (the SCL pad) becomes Tx and COM3 (the ADR
+    // pad) becomes Rx, so the part has no I2C address at all. The PS pins are
+    // read at reset, and the datasheet forbids leaving them floating.
+    {"BNO055", "PS1", ModePinProtocol, ModeAltUart, false, true},
+
+    // Bosch BST-BMP280-DS001, BST-BME280-DS002 and BME680 all carry the same
+    // sentence: "If CSB is connected to VDDIO, the I2C interface is active. If
+    // CSB is pulled down, the SPI interface is activated. After CSB has been
+    // pulled down once (regardless of whether any clock cycle occurred), the
+    // I2C interface is disabled until the next power-on-reset." One glitch on
+    // that pad is therefore permanent until the rail is cycled.
+    {"BMP280", "CSB", ModePinProtocol, ModeAltSpi, true, true},
+    {"BME280", "CSB", ModePinProtocol, ModeAltSpi, true, true},
+    {"BME680", "CSB", ModePinProtocol, ModeAltSpi, true, true},
+
+    // ST LIS3DH: "When using the I2C, CS must be tied high." Sampled live
+    // rather than latched, so raising the pad is enough on its own.
+    {"LIS3DH/2DH12", "CS", ModePinProtocol, ModeAltSpi, true, false},
+
+    // ST LSM6DS3 pin table, pin 12 CS: "I2C/SPI mode selection (1: SPI idle
+    // mode / I2C communication enabled; 0: SPI communication mode / I2C
+    // disabled)".
+    {"LSM6DS3", "CS", ModePinProtocol, ModeAltSpi, true, false},
+
+    // ADI ADXL345: "I2C mode is enabled if the CS pin is tied high to VDD I/O.
+    // The CS pin should always be tied high to VDD I/O."
+    {"ADXL345/343", "CS", ModePinProtocol, ModeAltSpi, true, false},
+
+    // AKM AK09911 ShortDatasheet-E-00 section 6.2: "(3) Reset pin (RSTN) --
+    // AK09911 is reset by Reset pin. When Reset pin is not used, connect to
+    // VID." The pin table puts RSTN in the VID domain, and the reset-current
+    // figure IDD4 is specified with "RSTN pin = 'L'", which is what makes the
+    // low the asserted level and the high the one this app needs.
+    //
+    // Held low the part is in reset and acknowledges nothing, which on a sweep
+    // looks exactly like an empty bus. A purple AK09911C breakout brings RST
+    // out to a pad with no pull-up on it, so a module wired VCC/GND/SDA/SCL and
+    // nothing else ships in that state and scans as absent.
+    //
+    // Nothing is latched -- reset is held, not sampled -- so raising the pad is
+    // enough on its own, and there is no moment where letting go is safe. This
+    // is the first row of its kind here: the XSHUT/RES/EN screen has been
+    // giving advice with no verified part behind it since it was written.
+    //
+    // The CAD pad on the same board is deliberately not here. Same datasheet,
+    // slave address table: CAD to VSS is 0001100 and CAD to VDD is 0001101, so
+    // it picks between 0x0C and 0x0D and the sweep covers both. An address pin
+    // cannot hide a part from this app.
+    {"AK09911", "RST", ModePinEnable, ModeAltOff, true, false},
+};
+
+#define CHIP_MODE_PIN_COUNT (sizeof(chip_mode_pins) / sizeof(chip_mode_pins[0]))
+
+const ChipModePin* chip_mode_pin_for(const char* chip_name) {
+    if(!chip_name) return NULL;
+    for(size_t i = 0; i < CHIP_MODE_PIN_COUNT; i++) {
+        if(strcmp(chip_mode_pins[i].chip, chip_name) == 0) return &chip_mode_pins[i];
+    }
+    return NULL;
+}
+
+bool chip_mode_pin_matches(const ChipModePin* pin, uint8_t kind, uint8_t alt, bool i2c_high) {
+    return pin && pin->kind == kind && pin->alt == alt && pin->i2c_high == i2c_high;
+}
+
+size_t chip_mode_pin_count(void) {
+    return CHIP_MODE_PIN_COUNT;
+}
+
+const ChipModePin* chip_mode_pin_get(size_t index) {
+    if(index >= CHIP_MODE_PIN_COUNT) return NULL;
+    return &chip_mode_pins[index];
 }

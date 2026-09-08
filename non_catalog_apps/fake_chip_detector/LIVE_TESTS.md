@@ -219,6 +219,11 @@ tick when it is reached. Pick something the part cannot fake by holding still:
   like 1 g on Z forever; it cannot hand the weight over to X when the board is tipped.
 - **AHT / SHT** — humidity rises 15 points above the lowest reading seen.
 - **MLX90614** — the object temperature runs 5 °C above the ambient the same part reports.
+- **AK09911** — the built-in self-test coil fires and the adjusted answer lands inside the
+  datasheet window (X and Y within ±30 counts, Z between −400 and −50), **and** the field
+  afterwards moves by 100 counts on two different axes. Same shape as BH1750: the self-test
+  alone says the magnetic sensor responds, and a part replaying a canned self-test answer
+  still cannot make that answer follow the room when the board is turned.
 
 Two of these are worth copying for the shape rather than the numbers. The BH1750 test insists
 on **both directions**, which is what stops a dead part passing by accident. The accelerometer

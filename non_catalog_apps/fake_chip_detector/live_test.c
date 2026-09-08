@@ -2,6 +2,7 @@
 #include "i2c_worker.h"
 
 #include "live_adxl345.h"
+#include "live_ak09911.h"
 #include "live_aht.h"
 #include "live_apds9960.h"
 #include "live_bh1750.h"
@@ -39,6 +40,7 @@ const LiveTestI2c* live_test_i2c(void) {
 // lookup is by chip name, so it does not otherwise matter.
 static const LiveTest* const live_tests[] = {
     &live_test_adxl345,
+    &live_test_ak09911,
     &live_test_aht,
     &live_test_apds9960,
     &live_test_bh1750,
