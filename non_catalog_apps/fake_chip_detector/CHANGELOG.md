@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.13 — beta
+
+- **Two drawing fixes from xMasterX**, found running the app on a Flipper with nothing wired to
+  the I2C pins and sent as a patch on the Apps Catalog pull request. The Right-key glyph on the
+  save log, details and find out bars spans seven rows around the y it is given, so the y it was
+  drawn at put its last row one below the bottom of a 64-row screen and cut the tip off the
+  arrow. And on the pad meter the title and the key hint were drawn at the same height from
+  opposite edges with nothing checking they fit, so **Pad reads FLOATING** ran straight through
+  **save**. The hint is drawn first now and the title fitted to the room left over, so no title
+  can overlap it again — and the titles are shorter, which means none of them has to be.
+
+## 0.12 — beta
+
+- **The QMC5883L has a live test now.** It is the die a GY-271 board most often carries, and the
+  one this app could identify and then say nothing more about. The test asks the field to move by
+  240 counts on two different axes while the board is turned, and that is its only claim. There is
+  no self-test half, because this part has no self-test: its second control register holds a soft
+  reset, a pointer-roll bit and an interrupt enable and nothing else, so there is no coil to fire
+  on command. The threshold is arithmetic off the datasheet's sensitivity figure — sixteen per
+  cent of what turning a board end over end reaches at the weakest place on earth, and forty times
+  the noise its own resolution figure implies — and it has never been compared against a still
+  part. No QMC5883L has been on the bench at all: the board that prompted the work carries a P.
+  Sixteen live tests now, thirteen of which have never met the chip they were written for.
+
+## 0.11 — beta
+
+- **The QMC5883P live test now waits for the part instead of racing it.** Its measurement loop
+  read and redrew as fast as the I2C bus would go. The part produces a new sample ten times a
+  second and no faster, so most of those reads returned the number already on the screen, and
+  every one of them was published again — which drove the display, and anything watching the
+  screen over USB, at a rate nothing needed. It now waits a sample period between reads.
+- **And it establishes the mode with Suspend rather than a soft reset.** 0.10 put a soft reset
+  in front of each configuration to stop the part carrying state from one run into the next.
+  That was the right idea and the wrong instruction: the datasheet gives no settling time for a
+  soft reset anywhere, so a configuration written straight after one is written into a part that
+  may still be resetting. Suspend Mode is what the datasheet actually asks for in the middle of a
+  mode shift, it is one write, and it needs no guess about timing.
+
 ## 0.10 — beta
 
 - **A GY-271 board reading QMC5883P no longer looks like a contradiction.** The number
@@ -13,6 +51,19 @@
   HMC5883L made famous and the number people still search for. The die inside one bought today is
   usually a QST part, and a P is not register-compatible with either the HMC5883L or the
   QMC5883L, so a driver written for the name on the silkscreen will not talk to it.
+- **The QMC5883P has a live test now.** It fires the part's internal self-test coil and checks
+  that all three channels deflect, then asks the field to move by 300 counts on two different
+  axes while the board is turned. The coil half is deliberately a floor rather than a
+  specification: QST's datasheet says to compare the deflection with a threshold value and then
+  publishes no threshold anywhere, so the test checks that a deflection happened at all, by a
+  margin three times the part's own documented noise. A GY-271 board passed it on 9 Sep 2026 —
+  1036 reads, the coil fired, the field followed the board — which makes the thresholds
+  reachable but not measured: the movement threshold is still arithmetic off the datasheet's
+  sensitivity figure, and the lesson from the AK09911 is that a threshold means nothing until
+  the still part's noise floor is measured under it. A second run on the same board exposed two
+  faults, both fixed here: the self-test was waiting on a data-ready flag the part stops
+  producing when the self-test ends, and the measurement was configured on top of whatever the
+  previous run had left rather than from a soft reset.
 - **The QMC5883P row has met a part.** It was added in 0.8 from its datasheet with nothing to
   answer it. On 9 Sep 2026 a blue GY-271 board answered at 0x2C and read 0x80 at register 0x00,
   which is that row and no other.
