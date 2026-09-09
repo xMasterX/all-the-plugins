@@ -6,7 +6,7 @@
    list, it doesn't touch scan state, so we poll it periodically while "pingscan" keeps running
    to build the list live (populating IPs to pick a port-scan target from). */
 #define WIFI_PORT_PICK_REFRESH_TICKS 15 /* ~1.5s at the app's 100ms tick period */
-#define WIFI_PORT_PICK_MARQUEE_TICKS 2
+#define WIFI_PORT_PICK_MARQUEE_TICKS 3
 #define WIFI_PORT_PICK_MARQUEE_DELAY_TICKS \
     30 /* ~3s pause before a highlighted row starts scrolling */
 

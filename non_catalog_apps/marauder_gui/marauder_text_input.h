@@ -12,8 +12,8 @@ typedef void (*MarauderTextInputCallback)(void* context);
 typedef bool (
     *MarauderTextInputValidatorCallback)(const char* text, FuriString* error, void* context);
 
-/** Allocate and initialize text input 
- * 
+/** Allocate and initialize text input
+ *
  * This text input is used to enter string
  *
  * @return     MarauderTextInput instance

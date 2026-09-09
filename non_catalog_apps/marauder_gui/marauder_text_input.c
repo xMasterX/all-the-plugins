@@ -235,9 +235,11 @@ static bool char_is_lowercase(char letter) {
 }
 
 static char char_to_uppercase(const char letter) {
-    if(letter == '_') {
-        return 0x20;
-    } else if(letter == ':') {
+    /* '_' has its own dedicated key here (unlike the stock Marauder keyboard, where it was a
+       shifted-space) - mapping it to 0x20 meant typing '_' as the very first character in any
+       input (auto-"shifted" by the text_length==0 rule below) silently produced a space instead.
+       No legitimate shifted-form for '_' exists in this layout, so it just stays '_'. */
+    if(letter == ':') {
         return 0x3B;
     } else if(letter == '/') {
         return 0x5C;

@@ -2,8 +2,6 @@
 
 enum {
     DeviceMenuIndexSettings,
-    DeviceMenuIndexGps,
-    DeviceMenuIndexRecon,
     DeviceMenuIndexTools,
     DeviceMenuIndexInfo,
     DeviceMenuIndexReboot,
@@ -16,14 +14,6 @@ static const MarauderMenuItem marauder_device_menu_items[] = {
      "Settings>",
      "Force PMKID, Force Probe, Save Pcap, Enable LED, EP Deauth, Channel Hop ayarlarini ac/kapa.",
      "Toggle Force PMKID, Force Probe, Save Pcap, Enable LED, EP Deauth, Channel Hop settings."},
-    {"GPS>",
-     "GPS>",
-     "GPS verisi, NMEA akisi, takip ve POI - ESP32'ye bagli bir GPS modulu gerektirir.",
-     "GPS data, NMEA stream, tracker and POI - needs a GPS module wired to the ESP32."},
-    {"Recon>",
-     "Recon>",
-     "WiFi/BLE kesif gorevi (Marauder v1.16.0 ile geldi) - baslat, durum, durdur.",
-     "WiFi/BLE recon mission (new in Marauder v1.16.0) - start, status, stop."},
     {"Araclar>",
      "Tools>",
      "SD listele, firmware guncelle, wardrive yukle, yardim ve WiFi'yi kapat.",
@@ -59,12 +49,6 @@ bool marauder_gui_scene_device_menu_on_event(void* context, SceneManagerEvent ev
     if(event.type == SceneManagerEventTypeCustom) {
         if(event.event == DeviceMenuIndexSettings) {
             scene_manager_next_scene(app->scene_manager, MarauderGuiSceneDeviceSettings);
-            consumed = true;
-        } else if(event.event == DeviceMenuIndexGps) {
-            scene_manager_next_scene(app->scene_manager, MarauderGuiSceneGpsMenu);
-            consumed = true;
-        } else if(event.event == DeviceMenuIndexRecon) {
-            scene_manager_next_scene(app->scene_manager, MarauderGuiSceneReconMenu);
             consumed = true;
         } else if(event.event == DeviceMenuIndexTools) {
             scene_manager_next_scene(app->scene_manager, MarauderGuiSceneToolsMenu);

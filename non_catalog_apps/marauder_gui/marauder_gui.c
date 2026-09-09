@@ -49,6 +49,68 @@ static bool marauder_gui_navigation_event_callback(void* context) {
     return scene_manager_handle_back_event(app->scene_manager);
 }
 
+/* Attributes one live-captured frame (peeked bytes from MarauderPcapLiveParser) to an AP row in
+   app->pcap_live_aps, grouped by BSSID rather than SSID so frame types that carry no SSID of
+   their own (Data, Auth, Deauth, ...) still land on the right row. BSSID is read straight out of
+   the 802.11 MAC header rather than reusing marauder_pcap_classify_frame()'s SSID-only output,
+   since that function (shared with the saved-file indexer, which has no need for addressing)
+   never looks at addr1/addr2/addr3.
+
+   For every Management subtype (Beacon, Probe, Auth, Deauth, Assoc, ...) addr3 is always the
+   BSSID per the 802.11 spec - no per-subtype special-casing needed. For Data frames the BSSID
+   depends on which of ToDS/FromDS is set (station->AP: addr1, AP->station: addr2, IBSS: addr3);
+   the rare ToDS+FromDS (WDS, 4-address) case has no single BSSID field and is left unattributed,
+   same as marauder_pcap_classify_frame() already does for it. */
+static void marauder_gui_pcap_live_frame_callback(void* ctx, const uint8_t* data, size_t len) {
+    MarauderGuiApp* app = ctx;
+    if(len < 24) return; /* no full MAC header - nothing to resolve an address out of */
+
+    char ssid[16];
+    MarauderPcapFrameType type = marauder_pcap_classify_frame(data, len, ssid, sizeof(ssid));
+
+    uint8_t frame_type = (data[0] >> 2) & 0x3;
+    const uint8_t* bssid = NULL;
+    if(frame_type == 0) {
+        bssid = data + 16; /* Management - addr3 */
+    } else if(frame_type == 2) {
+        bool to_ds = data[1] & 0x1;
+        bool from_ds = (data[1] >> 1) & 0x1;
+        if(to_ds && !from_ds) {
+            bssid = data + 4; /* Data, station -> AP: addr1 */
+        } else if(!to_ds && from_ds) {
+            bssid = data + 10; /* Data, AP -> station: addr2 */
+        } else if(!to_ds && !from_ds) {
+            bssid = data + 16; /* Data, IBSS: addr3 */
+        }
+    }
+    if(!bssid) return;
+
+    static const uint8_t broadcast[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    if(memcmp(bssid, broadcast, 6) == 0) return; /* undirected probe etc. - nothing to attribute */
+
+    size_t row = app->pcap_live_ap_count;
+    for(size_t i = 0; i < app->pcap_live_ap_count; i++) {
+        if(memcmp(app->pcap_live_aps[i].bssid, bssid, 6) == 0) {
+            row = i;
+            break;
+        }
+    }
+    if(row == app->pcap_live_ap_count) {
+        if(app->pcap_live_ap_count >= MARAUDER_AP_LIST_MAX)
+            return; /* dashboard full - keep tracking what we already have */
+        memcpy(app->pcap_live_aps[row].bssid, bssid, 6);
+        app->pcap_live_aps[row].ssid[0] = '\0';
+        memset(app->pcap_live_aps[row].counts, 0, sizeof(app->pcap_live_aps[row].counts));
+        app->pcap_live_ap_count++;
+    }
+    if(ssid[0]) {
+        strncpy(app->pcap_live_aps[row].ssid, ssid, sizeof(app->pcap_live_aps[row].ssid) - 1);
+        app->pcap_live_aps[row].ssid[sizeof(app->pcap_live_aps[row].ssid) - 1] = '\0';
+    }
+    app->pcap_live_aps[row].counts[type]++;
+    app->pcap_live_dirty = true;
+}
+
 /* Drains bytes received over UART since the last tick, reassembles them into lines, and
    forwards each complete line to whichever scene currently wants them (if any). Runs on the
    ViewDispatcher's own thread, so it is safe to touch view/model state directly here. */
@@ -85,6 +147,12 @@ static void marauder_gui_tick_event_callback(void* context) {
         if(app->is_writing_pcap && app->capture_file) {
             storage_file_write(app->capture_file, pcap_buf, pcap_len);
             app->pcap_bytes += pcap_len;
+            marauder_pcap_live_parser_feed(
+                &app->pcap_live_parser,
+                pcap_buf,
+                pcap_len,
+                marauder_gui_pcap_live_frame_callback,
+                app);
         }
     }
 
@@ -151,6 +219,9 @@ static MarauderGuiApp* marauder_gui_app_alloc(void) {
     view_dispatcher_add_view(
         app->view_dispatcher, MarauderGuiViewAttackStatus, app->attack_status_view);
 
+    app->pcap_table_view = marauder_gui_pcap_table_view_alloc(app);
+    view_dispatcher_add_view(app->view_dispatcher, MarauderGuiViewPcapTable, app->pcap_table_view);
+
     return app;
 }
 
@@ -172,6 +243,13 @@ static void marauder_gui_app_free(MarauderGuiApp* app) {
 
     view_dispatcher_remove_view(app->view_dispatcher, MarauderGuiViewAttackStatus);
     view_free(app->attack_status_view);
+
+    view_dispatcher_remove_view(app->view_dispatcher, MarauderGuiViewPcapTable);
+    view_free(app->pcap_table_view);
+
+    if(app->pcap_index) {
+        free(app->pcap_index);
+    }
 
     scene_manager_free(app->scene_manager);
     view_dispatcher_free(app->view_dispatcher);

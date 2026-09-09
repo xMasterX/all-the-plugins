@@ -9,7 +9,7 @@
    Selecting an entry here feeds Karma ("karma -p <index>" needs the same probe_req_ssids
    index), which needs an index.html on the device's SD card to actually serve a page. */
 #define WIFI_PROBE_SNIFF_REFRESH_TICKS 15 /* ~1.5s at the app's 100ms tick period */
-#define WIFI_PROBE_MARQUEE_TICKS       2
+#define WIFI_PROBE_MARQUEE_TICKS       3
 #define WIFI_PROBE_MARQUEE_DELAY_TICKS 30 /* ~3s pause before a highlighted row starts scrolling */
 
 /* Marauder prints probe request entries as "[<index>] <ssid>" (see CommandLine.cpp's "list -p"

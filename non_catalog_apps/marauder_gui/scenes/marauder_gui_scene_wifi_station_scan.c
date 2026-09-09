@@ -4,7 +4,7 @@
 #include <string.h>
 
 #define WIFI_STATION_SCAN_REFRESH_TICKS 15 /* ~1.5s at the app's 100ms tick period */
-#define WIFI_STATION_MARQUEE_TICKS      2
+#define WIFI_STATION_MARQUEE_TICKS      3
 #define WIFI_STATION_MARQUEE_DELAY_TICKS \
     30 /* ~3s pause before a highlighted row starts scrolling */
 

@@ -10,10 +10,14 @@
 
 #include "marauder_uart.h"
 #include "file/sequential_file.h"
+#include "marauder_gui_pcap_index.h"
 #include "scenes/marauder_gui_scene.h"
 
-#define MARAUDER_AP_LIST_MAX 32
-#define MARAUDER_LINE_MAX    96
+#define MARAUDER_AP_LIST_MAX          32
+#define MARAUDER_LINE_MAX             96
+/* Max distinct SSIDs the pcap-filter SSID picker can track at once - capped at the same size as
+   MARAUDER_AP_LIST_MAX since that list (unique SSIDs seen in the file) is built the same way. */
+#define MARAUDER_PCAP_SSID_FILTER_MAX MARAUDER_AP_LIST_MAX
 
 /* Where PCAP captures land on the Flipper's SD card. Both dirs are created (if missing) right
    before the first capture file is opened - see marauder_gui_scene_pcap_sniff.c. */
@@ -69,6 +73,7 @@ typedef enum {
     MarauderGuiViewTextInput,
     MarauderGuiViewMenu,
     MarauderGuiViewAttackStatus,
+    MarauderGuiViewPcapTable,
 } MarauderGuiView;
 
 /* Persisted in APP_DATA_PATH("language.bin") (see marauder_gui_save_language()/ the read in
@@ -100,6 +105,7 @@ struct MarauderGuiApp {
     MarauderTextInput* text_input;
     View* menu_view;
     View* attack_status_view;
+    View* pcap_table_view;
 
     MarauderLanguage language;
 
@@ -256,6 +262,50 @@ struct MarauderGuiApp {
        instead of one AP/station, no deselect-on-exit). Always reset to false in wifi_attack.c's
        on_exit so it never leaks into a later single-AP attack. */
     bool wifi_attack_multi_ap;
+
+    /* Saved-.pcap browsing/filtering (see marauder_gui_pcap_index.c and the pcap_file_list/
+       pcap_view/pcap_filter scenes). pcap_view_filename is set by the file-picker scene (which
+       reuses ap_list/wifi_list like every other "pick from a list" scene); pcap_index is built
+       once from it on entering the viewer and reused across filter changes (filtering just
+       re-walks the already-parsed index, no re-reading the file). */
+    char pcap_view_filename[64];
+    /* Which file pcap_index currently holds - compared against pcap_view_filename in on_enter so
+       returning from the filter/SSID sub-screens (same file) skips re-parsing and keeps the
+       filter the user just set, while actually picking a different file (via pcap_file_list)
+       triggers a fresh parse + resets the filter to "show everything". */
+    char pcap_index_loaded_filename[64];
+    MarauderPcapIndexEntry* pcap_index;
+    size_t pcap_index_count;
+    size_t pcap_index_capacity;
+    bool pcap_index_truncated;
+    size_t pcap_view_selected;
+    size_t pcap_view_scroll_offset;
+    size_t pcap_view_marquee_tick;
+    size_t pcap_view_marquee_hold;
+    uint32_t pcap_view_marquee_delay;
+    /* (1 << MarauderPcapFrameType) bits; defaults to "all types" on first entry. */
+    uint16_t pcap_filter_type_mask;
+    /* SSID allow-list picked from the SSIDs actually seen in this file (pcap_filter_ssid.c) -
+       not free-typed, so it can only ever contain strings that genuinely appear in the index. */
+    char pcap_filter_ssids[MARAUDER_PCAP_SSID_FILTER_MAX][16];
+    size_t pcap_filter_ssid_count;
+    /* Scratch buffer for pcap_rename.c - holds the file's base name (".pcap" stripped) while the
+       text input edits it; re-joined with ".pcap" only once the user confirms. Sized so
+       base + ".pcap" + '\0' can never exceed pcap_view_filename's 64 bytes. */
+    char pcap_rename_buffer[59];
+
+    /* Live per-AP/type packet-count dashboard shown by pcap_sniff.c while a live capture is
+       running (see marauder_gui_pcap_live_frame_callback in marauder_gui.c, and
+       MarauderPcapLiveParser in marauder_gui_pcap_index.h/.c). Fed straight from the same byte
+       stream that's already being written to the .pcap file - never re-reads the file. Reuses
+       ap_list/MarauderGuiViewWifiList for the actual on-screen table like every other "list of
+       rows" scene; pcap_live_aps is the underlying per-AP counters that ap_list's row strings get
+       reformatted from whenever pcap_live_dirty says something changed. */
+    MarauderPcapLiveParser pcap_live_parser;
+    MarauderPcapLiveApStat pcap_live_aps[MARAUDER_AP_LIST_MAX];
+    size_t pcap_live_ap_count;
+    bool pcap_live_dirty;
+    uint32_t pcap_live_refresh_tick;
 };
 
 /* Picks the TR or EN string based on the app's current language - the one helper every scene
@@ -285,6 +335,12 @@ void marauder_gui_save_language(MarauderGuiApp* app);
    marquee-scrolling long-name highlight) used only by that scene. */
 View* marauder_gui_wifi_list_view_alloc(MarauderGuiApp* app);
 void marauder_gui_wifi_list_redraw(MarauderGuiApp* app);
+
+/* Implemented in scenes/marauder_gui_scene_pcap_view.c - a small custom View (filterable,
+   scrollable table over app->pcap_index) used only by that scene, following the same pattern as
+   marauder_gui_wifi_list_view_alloc() above. */
+View* marauder_gui_pcap_table_view_alloc(MarauderGuiApp* app);
+void marauder_gui_pcap_table_redraw(MarauderGuiApp* app);
 
 /* Implemented in marauder_gui_attack_view.c - a custom View shared by every attack/spam status
    scene (wifi_attack.c, bt_spam.c) that replaces Marauder's raw confirmation line with an

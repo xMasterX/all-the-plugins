@@ -218,7 +218,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Logic analyzer | ![GPIO Badge] | [by g3gg0](https://github.com/g3gg0/flipper-logic_analyzer) | [How to use](https://github.com/g3gg0/flipper-logic_analyzer#readme) | [![UFW Badge]](https://lab.flipper.net/apps/logic_analyzer) |
 | LORA Terminal | ![GPIO Badge] | [by aafksab](https://github.com/aafksab/LORA-Term) |  | ![None Badge] |
 | MagSpoof (WIP) | ![GPIO Badge] | [by zacharyweiss](https://github.com/zacharyweiss/magspoof_flipper) | Read mode [by hummusec](https://github.com/hummusec/magspoof_flipper) - + GPIO & Power fixes | [![Author Badge]](https://lab.flipper.net/apps/magspoof) |
-| Marauder GUI | ![GPIO Badge] | [by mel4mi](https://github.com/mel4mi/Marauder-GUI-Flipper) | Menu driven ESP32 Marauder companion - PCAP capture to SD card, PMKID options, GPS & Tools menus, 5V on launch, UART and UI fixes **by @xMasterX** | ![None Badge] |
+| Marauder GUI | ![GPIO Badge] | [by mel4mi](https://github.com/mel4mi/Marauder-GUI-Flipper) | Menu driven ESP32 Marauder companion - PCAP capture to SD card with a saved .pcap viewer, PMKID options, GPS, Recon and Tools menus | ![None Badge] |
 | Mx2125 Dual-Axis Accelerometer | ![GPIO Badge] | [by jamisonderek](https://github.com/jamisonderek/flipper-zero-tutorials/tree/main/gpio) |  | ![None Badge] |
 | MH-Z19 - CO2 sensor | ![GPIO Badge] | [by meshchaninov](https://github.com/meshchaninov/flipper-zero-mh-z19) |  | [![Author Badge]](https://lab.flipper.net/apps/mh_z19) |
 | NRF24 Batch Read/Send (WIP) | ![GPIO Badge] | [by vad7](https://github.com/vad7/nRF24-Batch) |  | ![None Badge] |

@@ -7,7 +7,7 @@
    Reuses the app's shared list-view state (ap_list/ap_count/wifi_list_*) and the WifiList
    custom View - see marauder_gui_scene_wifi_scanning.c for that view's implementation. */
 #define BT_TRACKER_SCAN_REFRESH_TICKS  15 /* ~1.5s at the app's 100ms tick period */
-#define BT_TRACKER_MARQUEE_TICKS       2
+#define BT_TRACKER_MARQUEE_TICKS       3
 #define BT_TRACKER_MARQUEE_DELAY_TICKS 30 /* ~3s pause before a highlighted row starts scrolling */
 
 /* Marauder prints tracker entries as "[<index>]MAC: <mac>" (see CommandLine.cpp's "list -t"

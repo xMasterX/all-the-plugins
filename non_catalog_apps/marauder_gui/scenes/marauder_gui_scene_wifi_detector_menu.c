@@ -1,15 +1,19 @@
 #include "../marauder_gui_app_i.h"
 
 enum {
+    WifiDetectorMenuIndexPcapSniff,
     WifiDetectorMenuIndexPineapple,
     WifiDetectorMenuIndexMultiSSID,
     WifiDetectorMenuIndexPwnagotchi,
     WifiDetectorMenuIndexDeauthSniff,
     WifiDetectorMenuIndexMactrack,
-    WifiDetectorMenuIndexPcapSniff,
 };
 
 static const MarauderMenuItem marauder_wifi_detector_menu_items[] = {
+    {"PCAP Kayit>",
+     "PCAP Capture>",
+     "Cerceveleri (raw/beacon/deauth/probe/pmkid/pwn) yakalayip SD karta .pcap olarak kaydeder.",
+     "Captures frames (raw/beacon/deauth/probe/pmkid/pwn) and saves them to SD as .pcap."},
     {"Pineapple Tespiti",
      "Pineapple Detection",
      "Sahte AP kurup araya giren (MITM) 'WiFi Pineapple' cihazlarini tespit eder.",
@@ -30,10 +34,6 @@ static const MarauderMenuItem marauder_wifi_detector_menu_items[] = {
      "MAC Monitor",
      "Yakinda surekli gorunen (seni takip ediyor olabilecek) cihazlari tespit eder.",
      "Detects devices that keep appearing nearby (which may be following/tracking you)."},
-    {"PCAP Kayit>",
-     "PCAP Capture>",
-     "Cerceveleri (raw/beacon/deauth/probe/pmkid/pwn) yakalayip SD karta .pcap olarak kaydeder.",
-     "Captures frames (raw/beacon/deauth/probe/pmkid/pwn) and saves them to SD as .pcap."},
 };
 
 void marauder_gui_scene_wifi_detector_menu_on_enter(void* context) {

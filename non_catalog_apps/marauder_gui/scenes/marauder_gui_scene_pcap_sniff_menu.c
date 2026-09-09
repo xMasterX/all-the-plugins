@@ -8,23 +8,43 @@
    Everything here is a broadcast capture that starts straight away; only PMKID takes extra setup
    (passive / active / targeted / on-channel), so it opens its own options menu instead. Note
    "sniffdeauth" is a passive sniffer that ignores AP selection and channel entirely (see
-   CommandLine.cpp's SNIFF_DEAUTH_CMD handler), so there is nothing to pick for it either. */
+   CommandLine.cpp's SNIFF_DEAUTH_CMD handler), so there is nothing to pick for it either.
+
+   "Open Saved .pcap" isn't a capture at all - it's kept in the same index-aligned array (rather
+   than a trailing "index == count" sentinel like before) so reordering this menu can't silently
+   desync the two arrays again; action tells on_event which of the three things a row does. */
+typedef enum {
+    MarauderPcapSniffActionCapture,
+    MarauderPcapSniffActionPmkidMenu,
+    MarauderPcapSniffActionOpenSaved,
+} MarauderPcapSniffAction;
+
 typedef struct {
-    const char* cmd; /* NULL = row opens the PMKID options submenu instead of capturing */
-    const char* prefix; /* .pcap filename prefix */
+    MarauderPcapSniffAction action;
+    const char* cmd; /* only meaningful when action == Capture */
+    const char* prefix; /* .pcap filename prefix, only meaningful when action == Capture */
 } MarauderPcapSniffType;
 
 static const MarauderPcapSniffType marauder_pcap_sniff_types[] = {
-    {"sniffraw", "sniffraw"},
-    {"sniffbeacon", "sniffbeacon"},
-    {"sniffdeauth", "sniffdeauth"},
-    {"sniffprobe", "sniffprobe"},
-    {NULL, "sniffpmkid"},
-    {"sniffpwn", "sniffpwn"},
-    {"wardrive", "wardrive"},
+    {MarauderPcapSniffActionPmkidMenu, NULL, NULL},
+    {MarauderPcapSniffActionOpenSaved, NULL, NULL},
+    {MarauderPcapSniffActionCapture, "sniffraw", "sniffraw"},
+    {MarauderPcapSniffActionCapture, "sniffbeacon", "sniffbeacon"},
+    {MarauderPcapSniffActionCapture, "sniffdeauth", "sniffdeauth"},
+    {MarauderPcapSniffActionCapture, "sniffprobe", "sniffprobe"},
+    {MarauderPcapSniffActionCapture, "sniffpwn", "sniffpwn"},
+    {MarauderPcapSniffActionCapture, "wardrive", "wardrive"},
 };
 
 static const MarauderMenuItem marauder_pcap_sniff_menu_items[] = {
+    {"PMKID PCAP>",
+     "PMKID PCAP>",
+     "WPA2 el sikismasi/PMKID yakalama - pasif, aktif (deauth), hedefli veya kanal secenekleriyle.",
+     "WPA2 handshake/PMKID capture - with passive, active (deauth), targeted or channel options."},
+    {"Kayitli .pcap Ac>",
+     "Open Saved .pcap>",
+     "Daha once kaydedilmis bir .pcap dosyasini acip cerceve turu/SSID'ye gore filtreleyerek gosterir.",
+     "Opens a previously saved .pcap file and shows it as a table, filterable by frame type/SSID."},
     {"Raw PCAP",
      "Raw PCAP",
      "Tum 802.11 cercevelerini yakalar ve SD karta .pcap olarak kaydeder. En cok veri bu modda gelir.",
@@ -41,10 +61,6 @@ static const MarauderMenuItem marauder_pcap_sniff_menu_items[] = {
      "Probe PCAP",
      "Probe request cercevelerini yakalayip .pcap olarak kaydeder.",
      "Captures probe request frames and saves them as .pcap."},
-    {"PMKID PCAP>",
-     "PMKID PCAP>",
-     "WPA2 el sikismasi/PMKID yakalama - pasif, aktif (deauth), hedefli veya kanal secenekleriyle.",
-     "WPA2 handshake/PMKID capture - with passive, active (deauth), targeted or channel options."},
     {"Pwnagotchi PCAP",
      "Pwnagotchi PCAP",
      "Pwnagotchi yayinlarini yakalayip .pcap olarak kaydeder.",
@@ -72,8 +88,10 @@ bool marauder_gui_scene_pcap_sniff_menu_on_event(void* context, SceneManagerEven
         size_t count = sizeof(marauder_pcap_sniff_types) / sizeof(marauder_pcap_sniff_types[0]);
         if(event.event < count) {
             const MarauderPcapSniffType* type = &marauder_pcap_sniff_types[event.event];
-            if(type->cmd == NULL) {
+            if(type->action == MarauderPcapSniffActionPmkidMenu) {
                 scene_manager_next_scene(app->scene_manager, MarauderGuiScenePcapPmkidMenu);
+            } else if(type->action == MarauderPcapSniffActionOpenSaved) {
+                scene_manager_next_scene(app->scene_manager, MarauderGuiScenePcapFileList);
             } else {
                 app->pcap_sniff_cmd = type->cmd;
                 app->pcap_sniff_prefix = type->prefix;

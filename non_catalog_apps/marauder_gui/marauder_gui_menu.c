@@ -12,7 +12,7 @@
 #define MARAUDER_MENU_ROW_HEIGHT    13
 #define MARAUDER_MENU_HEADER_HEIGHT 13
 #define MARAUDER_MENU_VISIBLE_ROWS  4
-#define MARAUDER_MENU_MARQUEE_TICKS 2
+#define MARAUDER_MENU_MARQUEE_TICKS 3
 #define MARAUDER_MENU_MARQUEE_DELAY_TICKS \
     30 /* ~3s pause before a highlighted row starts scrolling */
 

@@ -5,9 +5,16 @@
 
 /* Runs a Marauder sniff/wardrive command with "-serial" so the ESP32 streams raw PCAP back over
    the wire, and writes those bytes straight into a sequential .pcap file on the Flipper SD card.
-   The actual byte draining/writing happens in the shared app tick (marauder_gui.c) whenever
-   app->is_writing_pcap is set; this scene opens/closes the file, shows a live byte count, and
-   echoes Marauder's latest text line so it's obvious the command is actually running.
+   The actual byte draining/writing/live-classifying happens in the shared app tick
+   (marauder_gui.c) whenever app->is_writing_pcap is set; this scene opens/closes the file and
+   shows the results as a live per-AP dashboard: one row per AP, with a running count of how many
+   packets of each interesting type have been seen from it (e.g. "MyWiFi | 115 data | 5 auth | 90
+   probe |") - not a raw packet-by-packet feed, so the user can tell at a glance whether the
+   traffic they're after (a handshake, a specific AP's data, ...) is showing up without having to
+   read anything. Reuses ap_list/MarauderGuiViewWifiList like every other "list of rows" scene;
+   rows are reformatted from app->pcap_live_aps (see marauder_gui_pcap_live_frame_callback in
+   marauder_gui.c) whenever pcap_live_dirty says something changed, throttled to a few times a
+   second so this doesn't reformat MARAUDER_AP_LIST_MAX strings on every single 100ms tick.
 
    For the "targeted" PMKID modes (app->pcap_ap_scoped) the flow scanned and selected an AP first;
    here we "select -a" it so Marauder's "-l" (run on selected list) has a target, then toggle that
@@ -19,6 +26,11 @@
    leave set (which is also exactly what the "Starting TARGETED PMKID sniff ... on channel N"
    line reports), so a target on ch 8 would be sniffed on, say, ch 132 and capture nothing. */
 
+#define PCAP_LIVE_REFRESH_TICKS 5 /* ~0.5s at the app's 100ms tick period */
+#define PCAP_LIVE_MARQUEE_TICKS 3 /* advance the marquee once every N ticks - "slowly" */
+#define PCAP_LIVE_MARQUEE_DELAY_TICKS \
+    30 /* ~3s pause on a newly-highlighted row before it scrolls */
+
 /* AP lines look like "[N][CH:6] ssid rssi" - same parser wifi_attack.c uses. */
 static int marauder_gui_scene_pcap_sniff_parse_channel(const char* line) {
     const char* p = strstr(line, "CH:");
@@ -26,57 +38,68 @@ static int marauder_gui_scene_pcap_sniff_parse_channel(const char* line) {
     return (int)strtol(p + 3, NULL, 10);
 }
 
-static void marauder_gui_scene_pcap_sniff_redraw(MarauderGuiApp* app) {
-    widget_reset(app->widget);
-    widget_add_string_element(
-        app->widget, 64, 0, AlignCenter, AlignTop, FontPrimary, app->pcap_sniff_label);
-
-    if(app->is_writing_pcap) {
-        widget_add_string_element(
-            app->widget, 64, 13, AlignCenter, AlignTop, FontSecondary, app->pcap_save_name);
-
-        char bytes[32];
-        snprintf(
-            bytes,
-            sizeof(bytes),
-            marauder_gui_text(app, "%lu bayt - Geri: Durdur", "%lu bytes - Back: Stop"),
-            (unsigned long)app->pcap_bytes);
-        widget_add_string_element(
-            app->widget, 64, 23, AlignCenter, AlignTop, FontSecondary, bytes);
+/* Row text for one tracked AP - BSSID text as a placeholder name until a Beacon/ProbeResp for it
+   supplies the real SSID (see marauder_gui_pcap_live_frame_callback). Long rows are fine: the
+   selected row marquee-scrolls (same mechanism wifi_scanning.c's AP list already uses), so
+   nothing here needs to fit 128px on its own. */
+static void marauder_gui_scene_pcap_sniff_format_row(MarauderGuiApp* app, size_t i) {
+    const MarauderPcapLiveApStat* ap = &app->pcap_live_aps[i];
+    char name[18];
+    if(ap->ssid[0]) {
+        strncpy(name, ap->ssid, sizeof(name) - 1);
+        name[sizeof(name) - 1] = '\0';
     } else {
-        widget_add_string_element(
-            app->widget,
-            64,
-            18,
-            AlignCenter,
-            AlignTop,
-            FontSecondary,
-            marauder_gui_text(app, "SD dosyasi acilamadi", "Cannot open SD file"));
+        snprintf(
+            name,
+            sizeof(name),
+            "%02X:%02X:%02X:%02X:%02X:%02X",
+            ap->bssid[0],
+            ap->bssid[1],
+            ap->bssid[2],
+            ap->bssid[3],
+            ap->bssid[4],
+            ap->bssid[5]);
     }
-
-    /* Marauder's latest serial line in a wrapping/scrollable box so long lines (e.g. a deauth
-       frame's two MAC addresses) don't run off the 128px edge - or a placeholder so the screen is
-       never blank while we wait for the first line to arrive. */
-    widget_add_text_scroll_element(
-        app->widget,
-        0,
-        35,
-        128,
-        29,
-        app->last_uart_line[0] ? app->last_uart_line :
-                                 marauder_gui_text(app, "Dinleniyor...", "Listening..."));
+    snprintf(
+        app->ap_list[i],
+        MARAUDER_LINE_MAX,
+        "%s | %lu data | %lu auth | %lu probe |",
+        name,
+        (unsigned long)ap->counts[MarauderPcapFrameData],
+        (unsigned long)ap->counts[MarauderPcapFrameAuth],
+        (unsigned long)ap->counts[MarauderPcapFrameProbe]);
 }
 
-/* Marauder still prints textual status/notification lines (outside the pcap markers) even while
-   streaming packets - keep the most recent one for the display. */
-static void marauder_gui_scene_pcap_sniff_uart_line(MarauderGuiApp* app, const char* line) {
-    strncpy(app->last_uart_line, line, sizeof(app->last_uart_line) - 1);
-    app->last_uart_line[sizeof(app->last_uart_line) - 1] = '\0';
+static void marauder_gui_scene_pcap_sniff_refresh_rows(MarauderGuiApp* app) {
+    app->ap_count = app->pcap_live_ap_count;
+    for(size_t i = 0; i < app->pcap_live_ap_count; i++) {
+        marauder_gui_scene_pcap_sniff_format_row(app, i);
+    }
+    app->pcap_live_dirty = false;
+    marauder_gui_wifi_list_redraw(app);
 }
 
 static void marauder_gui_scene_pcap_sniff_tick(MarauderGuiApp* app) {
-    /* Byte count is bumped by the shared tick's pcap drain; just refresh the display. */
-    marauder_gui_scene_pcap_sniff_redraw(app);
+    app->pcap_live_refresh_tick++;
+    if(app->pcap_live_refresh_tick >= PCAP_LIVE_REFRESH_TICKS) {
+        app->pcap_live_refresh_tick = 0;
+        if(app->pcap_live_dirty) {
+            marauder_gui_scene_pcap_sniff_refresh_rows(app);
+        }
+    }
+
+    /* elements_scrollable_text_line derives scroll speed straight from how fast this counter
+       grows, not from how often we redraw - see the identical pattern in wifi_scanning.c. */
+    if(app->wifi_list_marquee_delay > 0) {
+        app->wifi_list_marquee_delay--;
+    } else {
+        app->wifi_list_marquee_hold++;
+        if(app->wifi_list_marquee_hold >= PCAP_LIVE_MARQUEE_TICKS) {
+            app->wifi_list_marquee_hold = 0;
+            app->wifi_list_marquee_tick++;
+            marauder_gui_wifi_list_redraw(app);
+        }
+    }
 }
 
 void marauder_gui_scene_pcap_sniff_on_enter(void* context) {
@@ -85,10 +108,13 @@ void marauder_gui_scene_pcap_sniff_on_enter(void* context) {
     app->pcap_bytes = 0;
     app->is_writing_pcap = false;
     app->pcap_save_name[0] = '\0';
-    app->last_uart_line[0] = '\0';
 
     /* Start from a clean demux state (and drop any stale buffered bytes from a previous scene). */
     marauder_uart_reset_capture(app->uart);
+    marauder_pcap_live_parser_reset(&app->pcap_live_parser);
+    app->pcap_live_ap_count = 0;
+    app->pcap_live_dirty = false;
+    app->pcap_live_refresh_tick = 0;
 
     /* Make sure the target folders exist (mkdir is a no-op if they already do). */
     storage_common_mkdir(app->storage, MARAUDER_GUI_DATA_DIR);
@@ -108,16 +134,25 @@ void marauder_gui_scene_pcap_sniff_on_enter(void* context) {
         free(path);
     }
 
-    /* Targeted ("-l") capture: select the picked AP so Marauder's selected-AP list has a target. */
+    if(!app->is_writing_pcap) {
+        widget_reset(app->widget);
+        widget_add_string_element(
+            app->widget,
+            64,
+            18,
+            AlignCenter,
+            AlignTop,
+            FontSecondary,
+            marauder_gui_text(app, "SD dosyasi acilamadi", "Cannot open SD file"));
+        view_dispatcher_switch_to_view(app->view_dispatcher, MarauderGuiViewWidget);
+        return;
+    }
+
+    /* Targeted ("-l") capture: select the picked AP so Marauder's selected-AP list has a target.
+       Must read app->ap_list (still holding the AP-scan results from the previous scene) before
+       the WifiList reset below repurposes it for this scene's own live dashboard rows. */
     if(app->pcap_ap_scoped && app->selected_ap_index >= 0 &&
        (size_t)app->selected_ap_index < app->ap_count) {
-        /* Show the target AP until Marauder's own lines start arriving. */
-        strncpy(
-            app->last_uart_line,
-            app->ap_list[app->selected_ap_index],
-            sizeof(app->last_uart_line) - 1);
-        app->last_uart_line[sizeof(app->last_uart_line) - 1] = '\0';
-
         char cmd[32];
         snprintf(cmd, sizeof(cmd), "select -a %d", app->selected_ap_index);
         marauder_uart_send_line(app->uart, cmd);
@@ -133,11 +168,23 @@ void marauder_gui_scene_pcap_sniff_on_enter(void* context) {
         }
     }
 
-    app->uart_line_handler = marauder_gui_scene_pcap_sniff_uart_line;
+    app->ap_count = 0;
+    app->wifi_list_selected = 0;
+    app->wifi_list_scroll_offset = 0;
+    app->wifi_list_marquee_tick = 0;
+    app->wifi_list_marquee_hold = 0;
+    app->wifi_list_marquee_delay = PCAP_LIVE_MARQUEE_DELAY_TICKS;
+    app->wifi_scan_frozen = false;
+    app->wifi_list_show_selected_count = false;
+    /* Points straight at pcap_save_name (a stable app-struct buffer, never freed) rather than a
+       copy - showing the file this dashboard's counts are being saved into. */
+    app->wifi_list_scanning_label = app->pcap_save_name;
+    app->wifi_list_empty_label = marauder_gui_text(app, "AP bekleniyor...", "Waiting for APs...");
+
     app->tick_handler = marauder_gui_scene_pcap_sniff_tick;
 
-    marauder_gui_scene_pcap_sniff_redraw(app);
-    view_dispatcher_switch_to_view(app->view_dispatcher, MarauderGuiViewWidget);
+    view_dispatcher_switch_to_view(app->view_dispatcher, MarauderGuiViewWifiList);
+    marauder_gui_wifi_list_redraw(app);
 
     /* "<cmd> -serial\n" - the -serial flag is what makes Marauder stream PCAP over the wire. */
     marauder_uart_send(app->uart, app->pcap_sniff_cmd);
@@ -162,9 +209,15 @@ void marauder_gui_scene_pcap_sniff_on_exit(void* context) {
        scan, not to the PMKID menu, so the user can pick another AP and come straight back in.
        Clearing it would skip the "select -a" above on that second run and Marauder would answer
        "You don't have any targets selected". Every path into this scene sets the flag itself
-       (the broadcast rows and the channel picker set it false), so it can't leak. */
-    if(app->pcap_ap_scoped && app->selected_ap_index >= 0 &&
-       (size_t)app->selected_ap_index < app->ap_count) {
+       (the broadcast rows and the channel picker set it false), so it can't leak.
+
+       Only checking ">= 0" (not also "< ap_count" like on_enter does) is deliberate: on_enter
+       resets ap_list/ap_count for this scene's own live dashboard rows right after reading the
+       target AP out of the original scan data, so by the time on_exit runs, ap_count no longer
+       means "how many APs the scan found" - it means "how many APs the dashboard has tracked so
+       far". selected_ap_index was already bounds-checked against the real scan count back when
+       wifi_scanning.c set it, so that's not lost, just no longer re-checkable here. */
+    if(app->pcap_ap_scoped && app->selected_ap_index >= 0) {
         char cmd[32];
         snprintf(cmd, sizeof(cmd), "select -a %d", app->selected_ap_index);
         marauder_uart_send_line(app->uart, cmd);

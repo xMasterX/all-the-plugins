@@ -7,7 +7,7 @@
 /* Marauder's "list -a" only reads its internal AP list, it doesn't touch scan state, so we can
    poll it periodically while "scanall" keeps running to build the list live. */
 #define WIFI_SCAN_REFRESH_TICKS 15 /* ~1.5s at the app's 100ms tick period */
-#define WIFI_LIST_MARQUEE_TICKS 2 /* advance the marquee once every N ticks - "slowly" */
+#define WIFI_LIST_MARQUEE_TICKS 3 /* advance the marquee once every N ticks - "slowly" */
 #define WIFI_LIST_MARQUEE_DELAY_TICKS \
     30 /* ~3s pause on a newly-highlighted row before it scrolls */
 #define WIFI_LIST_ROW_HEIGHT    12

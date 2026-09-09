@@ -12,7 +12,7 @@
    "Frames:"/"Last Seen:" wording) - reusing the indexed WifiList view instead turns each entry
    into its own row (marquee-scrollable when selected, like a long AP SSID) rather than a wall of
    repeating text, and the existing freeze/resume convention applies for free. */
-#define MACTRACK_MARQUEE_TICKS       2
+#define MACTRACK_MARQUEE_TICKS       3
 #define MACTRACK_MARQUEE_DELAY_TICKS 30 /* ~3s pause before a highlighted row starts scrolling */
 
 static void
