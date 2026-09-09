@@ -6,6 +6,7 @@ evil_portal
 camera
 camera_suite
 esp32_wifi_marauder
+marauder_gui
 hotspot_arcade
 wifi_map
 wifi_scanner

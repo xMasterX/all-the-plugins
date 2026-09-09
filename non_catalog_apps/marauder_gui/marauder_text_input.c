@@ -1,10 +1,10 @@
-#include "wifi_marauder_text_input.h"
+#include "marauder_text_input.h"
 #include <gui/elements.h>
-#include "esp32_wifi_marauder_icons.h"
-#include "wifi_marauder_app_i.h"
+#include "marauder_gui_icons.h"
+
 #include <furi.h>
 
-struct WIFI_TextInput {
+struct MarauderTextInput {
     View* view;
     FuriTimer* timer;
 };
@@ -13,10 +13,10 @@ typedef struct {
     const char text;
     const uint8_t x;
     const uint8_t y;
-} WIFI_TextInputKey;
+} MarauderTextInputKey;
 
 typedef struct {
-    const WIFI_TextInputKey* rows[3];
+    const MarauderTextInputKey* rows[3];
     const uint8_t keyboard_index;
 } Keyboard;
 
@@ -30,18 +30,18 @@ typedef struct {
     bool cursor_select;
     size_t cursor_pos;
 
-    WIFI_TextInputCallback callback;
+    MarauderTextInputCallback callback;
     void* callback_context;
 
     uint8_t selected_row;
     uint8_t selected_column;
     uint8_t selected_keyboard;
 
-    WIFI_TextInputValidatorCallback validator_callback;
+    MarauderTextInputValidatorCallback validator_callback;
     void* validator_callback_context;
     FuriString* validator_text;
     bool validator_message_visible;
-} WIFI_TextInputModel;
+} MarauderTextInputModel;
 
 static const uint8_t keyboard_origin_x = 1;
 static const uint8_t keyboard_origin_y = 29;
@@ -52,7 +52,7 @@ static const uint8_t keyboard_count = 2;
 #define BACKSPACE_KEY       '\b'
 #define SWITCH_KEYBOARD_KEY 0xfe
 
-static const WIFI_TextInputKey keyboard_keys_row_1[] = {
+static const MarauderTextInputKey keyboard_keys_row_1[] = {
     {'q', 1, 8},
     {'w', 10, 8},
     {'e', 19, 8},
@@ -69,7 +69,7 @@ static const WIFI_TextInputKey keyboard_keys_row_1[] = {
     {'3', 120, 8},
 };
 
-static const WIFI_TextInputKey keyboard_keys_row_2[] = {
+static const MarauderTextInputKey keyboard_keys_row_2[] = {
     {'a', 1, 20},
     {'s', 10, 20},
     {'d', 19, 20},
@@ -85,7 +85,7 @@ static const WIFI_TextInputKey keyboard_keys_row_2[] = {
     {'6', 120, 20},
 };
 
-static const WIFI_TextInputKey keyboard_keys_row_3[] = {
+static const MarauderTextInputKey keyboard_keys_row_3[] = {
     {SWITCH_KEYBOARD_KEY, 1, 23},
     {'z', 13, 32},
     {'x', 21, 32},
@@ -94,14 +94,16 @@ static const WIFI_TextInputKey keyboard_keys_row_3[] = {
     {'b', 44, 32},
     {'n', 52, 32},
     {'m', 59, 32},
-    {'_', 67, 32},
+    /* Space lives on the main keyboard because Marauder commands are full of it
+       ("sniffpmkid -d -c 6"); '_' moved to the symbol page, which had room. */
+    {' ', 67, 32},
     {ENTER_KEY, 74, 23},
     {'7', 100, 32},
     {'8', 110, 32},
     {'9', 120, 32},
 };
 
-static const WIFI_TextInputKey symbol_keyboard_keys_row_1[] = {
+static const MarauderTextInputKey symbol_keyboard_keys_row_1[] = {
     {'!', 2, 8},
     {'@', 12, 8},
     {'#', 22, 8},
@@ -117,7 +119,7 @@ static const WIFI_TextInputKey symbol_keyboard_keys_row_1[] = {
     {'3', 120, 8},
 };
 
-static const WIFI_TextInputKey symbol_keyboard_keys_row_2[] = {
+static const MarauderTextInputKey symbol_keyboard_keys_row_2[] = {
     {'~', 2, 20},
     {'+', 12, 20},
     {'-', 22, 20},
@@ -132,13 +134,15 @@ static const WIFI_TextInputKey symbol_keyboard_keys_row_2[] = {
     {'6', 120, 20},
 };
 
-static const WIFI_TextInputKey symbol_keyboard_keys_row_3[] = {
+static const MarauderTextInputKey symbol_keyboard_keys_row_3[] = {
     {SWITCH_KEYBOARD_KEY, 1, 23},
-    {'.', 15, 32},
-    {',', 29, 32},
-    {':', 41, 32},
-    {'/', 53, 32},
-    {'\'', 65, 32},
+    /* Shifted left a little to fit '_' in before the Save key at x=74. */
+    {'.', 12, 32},
+    {',', 23, 32},
+    {':', 34, 32},
+    {'/', 45, 32},
+    {'\'', 56, 32},
+    {'_', 66, 32},
     {ENTER_KEY, 74, 23},
     {'7', 100, 32},
     {'8', 110, 32},
@@ -170,7 +174,7 @@ static const Keyboard* keyboards[] = {
     &symbol_keyboard,
 };
 
-static void switch_keyboard(WIFI_TextInputModel* model) {
+static void switch_keyboard(MarauderTextInputModel* model) {
     model->selected_keyboard = (model->selected_keyboard + 1) % keyboard_count;
 }
 
@@ -209,8 +213,8 @@ static uint8_t get_row_size(const Keyboard* keyboard, uint8_t row_index) {
     return row_size;
 }
 
-static const WIFI_TextInputKey* get_row(const Keyboard* keyboard, uint8_t row_index) {
-    const WIFI_TextInputKey* row = NULL;
+static const MarauderTextInputKey* get_row(const Keyboard* keyboard, uint8_t row_index) {
+    const MarauderTextInputKey* row = NULL;
     if(row_index < 3) {
         row = keyboard->rows[row_index];
     } else {
@@ -220,7 +224,7 @@ static const WIFI_TextInputKey* get_row(const Keyboard* keyboard, uint8_t row_in
     return row;
 }
 
-static char get_selected_char(WIFI_TextInputModel* model) {
+static char get_selected_char(MarauderTextInputModel* model) {
     return get_row(
                keyboards[model->selected_keyboard], model->selected_row)[model->selected_column]
         .text;
@@ -246,7 +250,7 @@ static char char_to_uppercase(const char letter) {
     }
 }
 
-static void wifi_text_input_backspace_cb(WIFI_TextInputModel* model) {
+static void marauder_text_input_backspace_cb(MarauderTextInputModel* model) {
     if(model->clear_default_text) {
         model->text_buffer[0] = 0;
         model->cursor_pos = 0;
@@ -257,8 +261,8 @@ static void wifi_text_input_backspace_cb(WIFI_TextInputModel* model) {
     }
 }
 
-static void wifi_text_input_view_draw_callback(Canvas* canvas, void* _model) {
-    WIFI_TextInputModel* model = _model;
+static void marauder_text_input_view_draw_callback(Canvas* canvas, void* _model) {
+    MarauderTextInputModel* model = _model;
     uint8_t text_length = model->text_buffer ? strlen(model->text_buffer) : 0;
     uint8_t needed_string_width = canvas_width(canvas) - 8;
     uint8_t start_pos = 4;
@@ -324,7 +328,7 @@ static void wifi_text_input_view_draw_callback(Canvas* canvas, void* _model) {
 
     for(uint8_t row = 0; row < keyboard_row_count; row++) {
         const uint8_t column_count = get_row_size(keyboards[model->selected_keyboard], row);
-        const WIFI_TextInputKey* keys = get_row(keyboards[model->selected_keyboard], row);
+        const MarauderTextInputKey* keys = get_row(keyboards[model->selected_keyboard], row);
 
         for(size_t column = 0; column < column_count; column++) {
             bool selected = !model->cursor_select && model->selected_row == row &&
@@ -355,7 +359,16 @@ static void wifi_text_input_view_draw_callback(Canvas* canvas, void* _model) {
                     canvas_set_color(canvas, ColorWhite);
                 }
 
-                if(model->clear_default_text || text_length == 0) {
+                if(keys[column].text == ' ') {
+                    /* A space glyph draws nothing, so mark the key with a small bar - otherwise
+                       it would look like an empty gap in the keyboard. */
+                    canvas_draw_line(
+                        canvas,
+                        keyboard_origin_x + keys[column].x,
+                        keyboard_origin_y + keys[column].y - 1,
+                        keyboard_origin_x + keys[column].x + 4,
+                        keyboard_origin_y + keys[column].y - 1);
+                } else if(model->clear_default_text || text_length == 0) {
                     canvas_draw_glyph(
                         canvas,
                         keyboard_origin_x + keys[column].x,
@@ -384,9 +397,10 @@ static void wifi_text_input_view_draw_callback(Canvas* canvas, void* _model) {
     }
 }
 
-static void
-    wifi_text_input_handle_up(WIFI_TextInput* wifi_text_input, WIFI_TextInputModel* model) {
-    UNUSED(wifi_text_input);
+static void marauder_text_input_handle_up(
+    MarauderTextInput* marauder_text_input,
+    MarauderTextInputModel* model) {
+    UNUSED(marauder_text_input);
     if(model->selected_row > 0) {
         model->selected_row--;
         if(model->selected_row == 0 &&
@@ -407,9 +421,10 @@ static void
     }
 }
 
-static void
-    wifi_text_input_handle_down(WIFI_TextInput* wifi_text_input, WIFI_TextInputModel* model) {
-    UNUSED(wifi_text_input);
+static void marauder_text_input_handle_down(
+    MarauderTextInput* marauder_text_input,
+    MarauderTextInputModel* model) {
+    UNUSED(marauder_text_input);
     if(model->cursor_select) {
         model->cursor_select = false;
     } else if(model->selected_row < keyboard_row_count - 1) {
@@ -429,9 +444,10 @@ static void
     }
 }
 
-static void
-    wifi_text_input_handle_left(WIFI_TextInput* wifi_text_input, WIFI_TextInputModel* model) {
-    UNUSED(wifi_text_input);
+static void marauder_text_input_handle_left(
+    MarauderTextInput* marauder_text_input,
+    MarauderTextInputModel* model) {
+    UNUSED(marauder_text_input);
     if(model->cursor_select) {
         if(model->cursor_pos > 0) {
             model->cursor_pos = CLAMP(model->cursor_pos - 1, strlen(model->text_buffer), 0u);
@@ -444,9 +460,10 @@ static void
     }
 }
 
-static void
-    wifi_text_input_handle_right(WIFI_TextInput* wifi_text_input, WIFI_TextInputModel* model) {
-    UNUSED(wifi_text_input);
+static void marauder_text_input_handle_right(
+    MarauderTextInput* marauder_text_input,
+    MarauderTextInputModel* model) {
+    UNUSED(marauder_text_input);
     if(model->cursor_select) {
         model->cursor_pos = CLAMP(model->cursor_pos + 1, strlen(model->text_buffer), 0u);
     } else if(
@@ -458,9 +475,9 @@ static void
     }
 }
 
-static void wifi_text_input_handle_ok(
-    WIFI_TextInput* wifi_text_input,
-    WIFI_TextInputModel* model,
+static void marauder_text_input_handle_ok(
+    MarauderTextInput* marauder_text_input,
+    MarauderTextInputModel* model,
     InputType type) {
     if(model->cursor_select) return;
     bool shift = type == InputTypeLong;
@@ -473,7 +490,7 @@ static void wifi_text_input_handle_ok(
            (!model->validator_callback(
                model->text_buffer, model->validator_text, model->validator_callback_context))) {
             model->validator_message_visible = true;
-            furi_timer_start(wifi_text_input->timer, furi_kernel_get_tick_frequency() * 4);
+            furi_timer_start(marauder_text_input->timer, furi_kernel_get_tick_frequency() * 4);
         } else if(model->callback != 0 && text_length >= model->minimum_length) {
             model->callback(model->callback_context);
         }
@@ -481,7 +498,7 @@ static void wifi_text_input_handle_ok(
         switch_keyboard(model);
     } else {
         if(selected == BACKSPACE_KEY) {
-            wifi_text_input_backspace_cb(model);
+            marauder_text_input_backspace_cb(model);
         } else if(!repeat) {
             if(model->clear_default_text) {
                 text_length = 0;
@@ -506,14 +523,14 @@ static void wifi_text_input_handle_ok(
     }
 }
 
-static bool wifi_text_input_view_input_callback(InputEvent* event, void* context) {
-    WIFI_TextInput* wifi_text_input = context;
-    furi_assert(wifi_text_input);
+static bool marauder_text_input_view_input_callback(InputEvent* event, void* context) {
+    MarauderTextInput* marauder_text_input = context;
+    furi_assert(marauder_text_input);
 
     bool consumed = false;
 
     // Acquire model
-    WIFI_TextInputModel* model = view_get_model(wifi_text_input->view);
+    MarauderTextInputModel* model = view_get_model(marauder_text_input->view);
 
     if((!(event->type == InputTypePress) && !(event->type == InputTypeRelease)) &&
        model->validator_message_visible) {
@@ -523,19 +540,19 @@ static bool wifi_text_input_view_input_callback(InputEvent* event, void* context
         consumed = true;
         switch(event->key) {
         case InputKeyUp:
-            wifi_text_input_handle_up(wifi_text_input, model);
+            marauder_text_input_handle_up(marauder_text_input, model);
             break;
         case InputKeyDown:
-            wifi_text_input_handle_down(wifi_text_input, model);
+            marauder_text_input_handle_down(marauder_text_input, model);
             break;
         case InputKeyLeft:
-            wifi_text_input_handle_left(wifi_text_input, model);
+            marauder_text_input_handle_left(marauder_text_input, model);
             break;
         case InputKeyRight:
-            wifi_text_input_handle_right(wifi_text_input, model);
+            marauder_text_input_handle_right(marauder_text_input, model);
             break;
         case InputKeyOk:
-            wifi_text_input_handle_ok(wifi_text_input, model, event->type);
+            marauder_text_input_handle_ok(marauder_text_input, model, event->type);
             break;
         default:
             consumed = false;
@@ -545,22 +562,22 @@ static bool wifi_text_input_view_input_callback(InputEvent* event, void* context
         consumed = true;
         switch(event->key) {
         case InputKeyUp:
-            wifi_text_input_handle_up(wifi_text_input, model);
+            marauder_text_input_handle_up(marauder_text_input, model);
             break;
         case InputKeyDown:
-            wifi_text_input_handle_down(wifi_text_input, model);
+            marauder_text_input_handle_down(marauder_text_input, model);
             break;
         case InputKeyLeft:
-            wifi_text_input_handle_left(wifi_text_input, model);
+            marauder_text_input_handle_left(marauder_text_input, model);
             break;
         case InputKeyRight:
-            wifi_text_input_handle_right(wifi_text_input, model);
+            marauder_text_input_handle_right(marauder_text_input, model);
             break;
         case InputKeyOk:
-            wifi_text_input_handle_ok(wifi_text_input, model, event->type);
+            marauder_text_input_handle_ok(marauder_text_input, model, event->type);
             break;
         case InputKeyBack:
-            wifi_text_input_backspace_cb(model);
+            marauder_text_input_backspace_cb(model);
             break;
         default:
             consumed = false;
@@ -570,22 +587,22 @@ static bool wifi_text_input_view_input_callback(InputEvent* event, void* context
         consumed = true;
         switch(event->key) {
         case InputKeyUp:
-            wifi_text_input_handle_up(wifi_text_input, model);
+            marauder_text_input_handle_up(marauder_text_input, model);
             break;
         case InputKeyDown:
-            wifi_text_input_handle_down(wifi_text_input, model);
+            marauder_text_input_handle_down(marauder_text_input, model);
             break;
         case InputKeyLeft:
-            wifi_text_input_handle_left(wifi_text_input, model);
+            marauder_text_input_handle_left(marauder_text_input, model);
             break;
         case InputKeyRight:
-            wifi_text_input_handle_right(wifi_text_input, model);
+            marauder_text_input_handle_right(marauder_text_input, model);
             break;
         case InputKeyOk:
-            wifi_text_input_handle_ok(wifi_text_input, model, event->type);
+            marauder_text_input_handle_ok(marauder_text_input, model, event->type);
             break;
         case InputKeyBack:
-            wifi_text_input_backspace_cb(model);
+            marauder_text_input_backspace_cb(model);
             break;
         default:
             consumed = false;
@@ -594,36 +611,37 @@ static bool wifi_text_input_view_input_callback(InputEvent* event, void* context
     }
 
     // Commit model
-    view_commit_model(wifi_text_input->view, consumed);
+    view_commit_model(marauder_text_input->view, consumed);
 
     return consumed;
 }
 
-void wifi_text_input_timer_callback(void* context) {
+void marauder_text_input_timer_callback(void* context) {
     furi_assert(context);
-    WIFI_TextInput* wifi_text_input = context;
+    MarauderTextInput* marauder_text_input = context;
 
     with_view_model(
-        wifi_text_input->view,
-        WIFI_TextInputModel * model,
+        marauder_text_input->view,
+        MarauderTextInputModel * model,
         { model->validator_message_visible = false; },
         true);
 }
 
-WIFI_TextInput* wifi_text_input_alloc() {
-    WIFI_TextInput* wifi_text_input = malloc(sizeof(WIFI_TextInput));
-    wifi_text_input->view = view_alloc();
-    view_set_context(wifi_text_input->view, wifi_text_input);
-    view_allocate_model(wifi_text_input->view, ViewModelTypeLocking, sizeof(WIFI_TextInputModel));
-    view_set_draw_callback(wifi_text_input->view, wifi_text_input_view_draw_callback);
-    view_set_input_callback(wifi_text_input->view, wifi_text_input_view_input_callback);
+MarauderTextInput* marauder_text_input_alloc() {
+    MarauderTextInput* marauder_text_input = malloc(sizeof(MarauderTextInput));
+    marauder_text_input->view = view_alloc();
+    view_set_context(marauder_text_input->view, marauder_text_input);
+    view_allocate_model(
+        marauder_text_input->view, ViewModelTypeLocking, sizeof(MarauderTextInputModel));
+    view_set_draw_callback(marauder_text_input->view, marauder_text_input_view_draw_callback);
+    view_set_input_callback(marauder_text_input->view, marauder_text_input_view_input_callback);
 
-    wifi_text_input->timer =
-        furi_timer_alloc(wifi_text_input_timer_callback, FuriTimerTypeOnce, wifi_text_input);
+    marauder_text_input->timer = furi_timer_alloc(
+        marauder_text_input_timer_callback, FuriTimerTypeOnce, marauder_text_input);
 
     with_view_model(
-        wifi_text_input->view,
-        WIFI_TextInputModel * model,
+        marauder_text_input->view,
+        MarauderTextInputModel * model,
         {
             model->validator_text = furi_string_alloc();
             model->minimum_length = 1;
@@ -632,34 +650,34 @@ WIFI_TextInput* wifi_text_input_alloc() {
         },
         false);
 
-    wifi_text_input_reset(wifi_text_input);
+    marauder_text_input_reset(marauder_text_input);
 
-    return wifi_text_input;
+    return marauder_text_input;
 }
 
-void wifi_text_input_free(WIFI_TextInput* wifi_text_input) {
-    furi_assert(wifi_text_input);
+void marauder_text_input_free(MarauderTextInput* marauder_text_input) {
+    furi_assert(marauder_text_input);
     with_view_model(
-        wifi_text_input->view,
-        WIFI_TextInputModel * model,
+        marauder_text_input->view,
+        MarauderTextInputModel * model,
         { furi_string_free(model->validator_text); },
         false);
 
     // Send stop command
-    furi_timer_stop(wifi_text_input->timer);
+    furi_timer_stop(marauder_text_input->timer);
     // Release allocated memory
-    furi_timer_free(wifi_text_input->timer);
+    furi_timer_free(marauder_text_input->timer);
 
-    view_free(wifi_text_input->view);
+    view_free(marauder_text_input->view);
 
-    free(wifi_text_input);
+    free(marauder_text_input);
 }
 
-void wifi_text_input_reset(WIFI_TextInput* wifi_text_input) {
-    furi_assert(wifi_text_input);
+void marauder_text_input_reset(MarauderTextInput* marauder_text_input) {
+    furi_assert(marauder_text_input);
     with_view_model(
-        wifi_text_input->view,
-        WIFI_TextInputModel * model,
+        marauder_text_input->view,
+        MarauderTextInputModel * model,
         {
             model->header = "";
             model->selected_row = 0;
@@ -681,21 +699,21 @@ void wifi_text_input_reset(WIFI_TextInput* wifi_text_input) {
         true);
 }
 
-View* wifi_text_input_get_view(WIFI_TextInput* wifi_text_input) {
-    furi_assert(wifi_text_input);
-    return wifi_text_input->view;
+View* marauder_text_input_get_view(MarauderTextInput* marauder_text_input) {
+    furi_assert(marauder_text_input);
+    return marauder_text_input->view;
 }
 
-void wifi_text_input_set_result_callback(
-    WIFI_TextInput* wifi_text_input,
-    WIFI_TextInputCallback callback,
+void marauder_text_input_set_result_callback(
+    MarauderTextInput* marauder_text_input,
+    MarauderTextInputCallback callback,
     void* callback_context,
     char* text_buffer,
     size_t text_buffer_size,
     bool clear_default_text) {
     with_view_model(
-        wifi_text_input->view,
-        WIFI_TextInputModel * model,
+        marauder_text_input->view,
+        MarauderTextInputModel * model,
         {
             model->callback = callback;
             model->callback_context = callback_context;
@@ -716,21 +734,23 @@ void wifi_text_input_set_result_callback(
         true);
 }
 
-void wifi_text_input_set_minimum_length(WIFI_TextInput* wifi_text_input, size_t minimum_length) {
+void marauder_text_input_set_minimum_length(
+    MarauderTextInput* marauder_text_input,
+    size_t minimum_length) {
     with_view_model(
-        wifi_text_input->view,
-        WIFI_TextInputModel * model,
+        marauder_text_input->view,
+        MarauderTextInputModel * model,
         { model->minimum_length = minimum_length; },
         true);
 }
 
-void wifi_text_input_set_validator(
-    WIFI_TextInput* wifi_text_input,
-    WIFI_TextInputValidatorCallback callback,
+void marauder_text_input_set_validator(
+    MarauderTextInput* marauder_text_input,
+    MarauderTextInputValidatorCallback callback,
     void* callback_context) {
     with_view_model(
-        wifi_text_input->view,
-        WIFI_TextInputModel * model,
+        marauder_text_input->view,
+        MarauderTextInputModel * model,
         {
             model->validator_callback = callback;
             model->validator_callback_context = callback_context;
@@ -738,28 +758,28 @@ void wifi_text_input_set_validator(
         true);
 }
 
-WIFI_TextInputValidatorCallback
-    wifi_text_input_get_validator_callback(WIFI_TextInput* wifi_text_input) {
-    WIFI_TextInputValidatorCallback validator_callback = NULL;
+MarauderTextInputValidatorCallback
+    marauder_text_input_get_validator_callback(MarauderTextInput* marauder_text_input) {
+    MarauderTextInputValidatorCallback validator_callback = NULL;
     with_view_model(
-        wifi_text_input->view,
-        WIFI_TextInputModel * model,
+        marauder_text_input->view,
+        MarauderTextInputModel * model,
         { validator_callback = model->validator_callback; },
         false);
     return validator_callback;
 }
 
-void* wifi_text_input_get_validator_callback_context(WIFI_TextInput* wifi_text_input) {
+void* marauder_text_input_get_validator_callback_context(MarauderTextInput* marauder_text_input) {
     void* validator_callback_context = NULL;
     with_view_model(
-        wifi_text_input->view,
-        WIFI_TextInputModel * model,
+        marauder_text_input->view,
+        MarauderTextInputModel * model,
         { validator_callback_context = model->validator_callback_context; },
         false);
     return validator_callback_context;
 }
 
-void wifi_text_input_set_header_text(WIFI_TextInput* wifi_text_input, const char* text) {
+void marauder_text_input_set_header_text(MarauderTextInput* marauder_text_input, const char* text) {
     with_view_model(
-        wifi_text_input->view, WIFI_TextInputModel * model, { model->header = text; }, true);
+        marauder_text_input->view, MarauderTextInputModel * model, { model->header = text; }, true);
 }
