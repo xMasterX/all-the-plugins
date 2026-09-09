@@ -11,6 +11,11 @@ static const char* const marauder_tools_commands[] = {
     "upload -d both", /* Upload wardrive logs (WiGLE + WiGLE DB) */
     "help", /* Command help */
     "stopscan -f", /* Force-shutdown WiFi */
+    /* SPIFFS backup/restore + protocol info, added in Marauder firmware v1.16.0 */
+    "backupspiffs",
+    "backupstatus",
+    "restorespiffs",
+    "protocolinfo",
 };
 
 static const MarauderMenuItem marauder_tools_menu_items[] = {
@@ -35,6 +40,22 @@ static const MarauderMenuItem marauder_tools_menu_items[] = {
      "Shutdown WiFi",
      "Tum taramalari durdurur ve ESP32'nin WiFi surucusunu kapatir.",
      "Stops all scans and shuts down the ESP32's WiFi driver."},
+    {"SPIFFS Yedekle",
+     "Backup SPIFFS",
+     "ESP32'nin SPIFFS icerigini SD kartta /spiffs klasorune kopyalar.",
+     "Copies the ESP32's SPIFFS content to /spiffs on its SD card."},
+    {"Yedek Durumu",
+     "Backup Status",
+     "SD karttaki /spiffs yedegini inceler.",
+     "Inspects the /spiffs backup on the SD card."},
+    {"SPIFFS Geri Yukle",
+     "Restore SPIFFS",
+     "SD karttaki /spiffs yedeginden SPIFFS icerigini geri yukler.",
+     "Restores SPIFFS content from the /spiffs backup on the SD card."},
+    {"Protokol Bilgisi",
+     "Protocol Info",
+     "Marauder'in makine protokolu hakkinda bilgi verir.",
+     "Reports information about Marauder's machine protocol."},
 };
 
 void marauder_gui_scene_tools_menu_on_enter(void* context) {

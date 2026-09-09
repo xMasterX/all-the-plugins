@@ -27,7 +27,8 @@
 #include <lib/toolbox/path.h>
 #include <dialogs/dialogs.h>
 
-#define NUM_MENU_ITEMS (34)
+/* 34 upstream entries + Recon / SPIFFS / Protocol Info, added locally for Marauder fw v1.16.0 */
+#define NUM_MENU_ITEMS (37)
 
 #define WIFI_MARAUDER_TEXT_BOX_STORE_SIZE   (4096)
 #define WIFI_MARAUDER_TEXT_INPUT_STORE_SIZE (512)
