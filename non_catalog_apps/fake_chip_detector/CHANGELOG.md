@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.8 — beta
+
+- **The app no longer names a chip the bus never identified.** When more than one part fits
+  what was read — two chips with no ID register sharing an address, or two whose ID checks both
+  passed — the verdict is now **SEVERAL POSSIBLE** and every candidate is named, on the screen
+  and in the saved report. Previously the first row in the table won silently. This is not an
+  accusation: it says the tool cannot tell two real parts apart, which is a limit of two wires
+  and not a fault in the chip.
+- A silent device now keeps the failed reads that prove it went quiet. **NO ANSWER** used to
+  reach the detail screen with nothing on it.
+- **New chips: AK09911 and QMC5883P magnetometers.** 82 chips in the database now.
+- **New live test: AK09911.** It fires the part's built-in self-test coil, checks the answer
+  against the datasheet window after applying the fuse-ROM sensitivity correction, then asks
+  the field to move on two different axes. It has never been run on hardware.
+- The silent-bus screen now names **RST** alongside **XSHUT**, **RES** and **EN**, and the AK09911
+  carries a mode-pin row for it: that part answers nothing at all while its reset pad is low,
+  and the board it was reported on leaves that pad floating.
+
 ## 0.7 — beta
 
 - First public release, and deliberately not called 1.0. Everything here is built and reviewed,

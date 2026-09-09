@@ -33,7 +33,7 @@ which of the two they are looking at.
 Tests do not have to be built into the app. A test can be shipped as a single `.fal` file, and
 the app will find it, list it and run it — no rebuild, no reflash.
 
-1. Get the `.fal`. Build it yourself from [`test_plugin_template/`](https://github.com/hleserg/flipper-fake-chip-detector/tree/master/test_plugin_template), or
+1. Get the `.fal`. Build it yourself from [`test_plugin_template/`](../test_plugin_template), or
    take one somebody published.
 2. Open **Live tests** once. The app creates the folder it looks in, which saves you guessing at
    the spelling.
@@ -219,6 +219,11 @@ tick when it is reached. Pick something the part cannot fake by holding still:
   like 1 g on Z forever; it cannot hand the weight over to X when the board is tipped.
 - **AHT / SHT** — humidity rises 15 points above the lowest reading seen.
 - **MLX90614** — the object temperature runs 5 °C above the ambient the same part reports.
+- **AK09911** — the built-in self-test coil fires and the adjusted answer lands inside the
+  datasheet window (X and Y within ±30 counts, Z between −400 and −50), **and** the field
+  afterwards moves by 100 counts on two different axes. Same shape as BH1750: the self-test
+  alone says the magnetic sensor responds, and a part replaying a canned self-test answer
+  still cannot make that answer follow the room when the board is turned.
 
 Two of these are worth copying for the shape rather than the numbers. The BH1750 test insists
 on **both directions**, which is what stops a dead part passing by accident. The accelerometer
@@ -288,7 +293,7 @@ A test does not have to be merged here to be useful. Built as a `.fal` and copie
 it appears in the browser and runs like any other — no rebuild of the app, no pull request, no
 waiting for anyone.
 
-Start from [`test_plugin_template/`](https://github.com/hleserg/flipper-fake-chip-detector/tree/master/test_plugin_template) in the upstream repository. It is a
+Start from [`test_plugin_template/`](../test_plugin_template) in the repository root. It is a
 complete working test, not a snippet: copy the folder, change the registers, the pass condition
 and the strings, then
 
