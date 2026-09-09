@@ -33,7 +33,7 @@ which of the two they are looking at.
 Tests do not have to be built into the app. A test can be shipped as a single `.fal` file, and
 the app will find it, list it and run it — no rebuild, no reflash.
 
-1. Get the `.fal`. Build it yourself from [`test_plugin_template/`](../test_plugin_template), or
+1. Get the `.fal`. Build it yourself from [`test_plugin_template/`](https://github.com/hleserg/flipper-fake-chip-detector/tree/master/test_plugin_template), or
    take one somebody published.
 2. Open **Live tests** once. The app creates the folder it looks in, which saves you guessing at
    the spelling.
@@ -232,6 +232,31 @@ tick when it is reached. Pick something the part cannot fake by holding still:
   choosing a movement threshold for a magnetometer, measure the still part first: the noise
   floor is the half that says whether the number means anything.
 
+- **QMC5883P** — the internal self-test coil deflects all three channels by more than the
+  part's own published noise, **and** the field afterwards moves by 300 counts on two different
+  axes at the ±8 G range. The coil half is deliberately a floor and not a specification: QST
+  says to "compare with threshold value" and then publishes no threshold anywhere in the
+  datasheet, so this checks that a deflection happened at all, by a margin three times the
+  documented standard deviation. Three hundred is arithmetic, not measurement — the earth is
+  0.25 to 0.65 G, which is 937 counts at the weakest place on earth and 1875 of swing when a
+  board is turned end over end — and it has never been compared against a still part. Do that
+  before trusting it. A GY-271 board passed this test on 9 Sep 2026, which makes the numbers
+  reachable but says nothing about how much room is under them.
+
+- **QMC5883L** — the field moves by 240 counts on two different axes at the ±8 G range, and
+  that is the whole test. There is no coil half here and there cannot be: this part's control
+  register 2 holds a soft reset, a pointer-roll bit and an interrupt enable, and nothing else,
+  so it has no self-test to fire. One honest claim is what the silicon supports. Two hundred
+  and forty is the QMC5883P's 300 rescaled to this part's 3000 LSB/G, which is sixteen per cent
+  of the 1500-count ceiling a board turned end over end reaches at the weakest place on earth,
+  and forty times the 6 counts its datasheet's 2 mGauss resolution figure implies. Like the
+  QMC5883P's, it is arithmetic rather than measurement, and no QMC5883L has been on the bench
+  at all. It does insist on at least eight readings before it will pass, which the QMC5883P test
+  does not: that one once passed on silicon after two, and two readings is few enough that a
+  sensor reconnecting mid-test could have supplied the whole swing on its own. The P has a coil
+  firing underneath it and this one has nothing but the movement, so the movement has to come
+  from a run of readings.
+
 Two of these are worth copying for the shape rather than the numbers. The BH1750 test insists
 on **both directions**, which is what stops a dead part passing by accident. The accelerometer
 tests pass on a **change of which axis** holds gravity rather than on any absolute value, so
@@ -300,7 +325,7 @@ A test does not have to be merged here to be useful. Built as a `.fal` and copie
 it appears in the browser and runs like any other — no rebuild of the app, no pull request, no
 waiting for anyone.
 
-Start from [`test_plugin_template/`](../test_plugin_template) in the repository root. It is a
+Start from [`test_plugin_template/`](https://github.com/hleserg/flipper-fake-chip-detector/tree/master/test_plugin_template) in the upstream repository. It is a
 complete working test, not a snippet: copy the folder, change the registers, the pass condition
 and the strings, then
 
