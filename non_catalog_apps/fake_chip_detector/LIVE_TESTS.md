@@ -33,7 +33,7 @@ which of the two they are looking at.
 Tests do not have to be built into the app. A test can be shipped as a single `.fal` file, and
 the app will find it, list it and run it — no rebuild, no reflash.
 
-1. Get the `.fal`. Build it yourself from [`test_plugin_template/`](https://github.com/hleserg/flipper-fake-chip-detector/tree/master/test_plugin_template), or
+1. Get the `.fal`. Build it yourself from [`test_plugin_template/`](../test_plugin_template), or
    take one somebody published.
 2. Open **Live tests** once. The app creates the folder it looks in, which saves you guessing at
    the spelling.
@@ -221,9 +221,27 @@ tick when it is reached. Pick something the part cannot fake by holding still:
 - **MLX90614** — the object temperature runs 5 °C above the ambient the same part reports.
 - **AK09911** — the built-in self-test coil fires and the adjusted answer lands inside the
   datasheet window (X and Y within ±30 counts, Z between −400 and −50), **and** the field
-  afterwards moves by 100 counts on two different axes. Same shape as BH1750: the self-test
+  afterwards moves by 30 counts on two different axes. Same shape as BH1750: the self-test
   alone says the magnetic sensor responds, and a part replaying a canned self-test answer
   still cannot make that answer follow the room when the board is turned.
+
+  Thirty is small because the earth is: the whole field vector is about 50 raw counts, so one
+  axis cannot swing more than a hundred however hard it is waved. The first version of this
+  test asked for a hundred on two axes and therefore could not pass at all — the threshold had
+  been calibrated against a bench capture with a magnet sitting next to the sensor. If you are
+  choosing a movement threshold for a magnetometer, measure the still part first: the noise
+  floor is the half that says whether the number means anything.
+
+- **QMC5883P** — the internal self-test coil deflects all three channels by more than the
+  part's own published noise, **and** the field afterwards moves by 300 counts on two different
+  axes at the ±8 G range. The coil half is deliberately a floor and not a specification: QST
+  says to "compare with threshold value" and then publishes no threshold anywhere in the
+  datasheet, so this checks that a deflection happened at all, by a margin three times the
+  documented standard deviation. Three hundred is arithmetic, not measurement — the earth is
+  0.25 to 0.65 G, which is 937 counts at the weakest place on earth and 1875 of swing when a
+  board is turned end over end — and it has never been compared against a still part. Do that
+  before trusting it. A GY-271 board passed this test on 9 Sep 2026, which makes the numbers
+  reachable but says nothing about how much room is under them.
 
 Two of these are worth copying for the shape rather than the numbers. The BH1750 test insists
 on **both directions**, which is what stops a dead part passing by accident. The accelerometer
@@ -293,7 +311,7 @@ A test does not have to be merged here to be useful. Built as a `.fal` and copie
 it appears in the browser and runs like any other — no rebuild of the app, no pull request, no
 waiting for anyone.
 
-Start from [`test_plugin_template/`](https://github.com/hleserg/flipper-fake-chip-detector/tree/master/test_plugin_template) in the upstream repository. It is a
+Start from [`test_plugin_template/`](../test_plugin_template) in the repository root. It is a
 complete working test, not a snippet: copy the folder, change the registers, the pass condition
 and the strings, then
 

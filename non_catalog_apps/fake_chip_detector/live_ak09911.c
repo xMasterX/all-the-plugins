@@ -80,15 +80,26 @@
 #define AK_SELFTEST_Z_MIN    (-400)
 #define AK_SELFTEST_Z_MAX    (-50)
 
-// ponytail: a heuristic, not a specification. On the bench on 8 Sep 2026 the
-// same board rotated together with the Flipper moved 7/21/8 counts on X/Y/Z --
-// that is the noise floor, and it includes whatever the Flipper's own field
-// contributes. Moving the module alone gave 146/812/261. A hundred counts sits
-// five times above the worst of the noise and below the weakest real motion,
-// on two axes so that one drifting channel cannot carry it. Anyone with a
-// magnetically quieter fixture should re-measure both numbers rather than
-// trust these two.
-#define AK_MOVE_COUNTS 100
+// ponytail: a heuristic, not a specification, and the first version of it was
+// wrong in a way only hardware could show. It was set to 100 from a bench
+// capture where waving the module gave 146/812/261 counts -- but 812 counts is
+// 487 uT, ten times the earth's field, so something magnetic was sitting next
+// to the sensor during that capture. Against the earth alone the whole vector
+// is only about 50 raw counts here, and one axis cannot swing further than
+// twice that even when turned exactly end over end. A hundred counts on two
+// axes was therefore above the physical maximum: the test could not pass, and
+// on 9 Sep 2026 somebody turned the board for two and a half minutes proving
+// it -- 1545 reads, swings plateaued at 38/47/26 and the counter never left
+// 0/2.
+//
+// Thirty is set from that same session: stationary noise was 4/5/7 counts, so
+// it sits four to seven times above the noise, and ordinary handling reached
+// 38 and 47 on two axes. The weakest place on earth has a field about half of
+// this one's, where 30 still needs most of a full inversion -- if it proves
+// unreachable somewhere, re-measure both numbers there rather than trusting
+// these. Measure the still board first: the noise floor is the half that says
+// whether a threshold means anything.
+#define AK_MOVE_COUNTS 30
 #define AK_MOVE_AXES   2
 
 // Two things are proven here, and they are proven separately: the part's own
@@ -307,8 +318,18 @@ static void ak_run(const LiveTestEnv* env) {
                 // Saturated. Somebody is holding a magnet against it, which is
                 // a fine thing to be doing and not a reason to give up on the
                 // part -- so this does not count towards the error budget and
-                // does not go into the ranges either.
+                // does not go into the ranges either. It does have to reach
+                // the screen, though: HOFL stays set for as long as the magnet
+                // is there, so skipping the publish froze the display on the
+                // last good frame and the advice to back off never appeared.
                 overflows++;
+                memset(&st, 0, sizeof(st));
+                st.phase = LiveTestPhaseRunning;
+                st.progress = self_ok ? 1 : 0;
+                st.progress_max = AK_PROOF_STEPS;
+                snprintf(st.lines[0], LIVE_TEST_LINE_LEN, "Too strong - back it off");
+                snprintf(st.lines[1], LIVE_TEST_LINE_LEN, "Saturated x%u", (unsigned)overflows);
+                publish(ctx, &st);
                 continue;
             }
             if(got != AkSampleOk) {
@@ -340,35 +361,27 @@ static void ak_run(const LiveTestEnv* env) {
             st.progress_max = AK_PROOF_STEPS;
             snprintf(st.heading, sizeof(st.heading), "%u", (unsigned)field);
             snprintf(st.unit, sizeof(st.unit), "uT");
+            // Two lines, not three. With a big heading and the progress
+            // boxes the generic screen has room for exactly two: it starts at
+            // y=46, steps 9 and stops at 55, so a third is composed and then
+            // silently dropped. That is how this test shipped -- the progress
+            // count and the saturation warning were both written to lines[2]
+            // and neither was ever drawn, which left the screen showing raw
+            // counts and no hint that the user was meant to do anything.
+            //
+            // So line 0 is the instruction, carrying its own feedback the way
+            // the ADXL345 test's "Gravity on X - tip it" does, and line 1 is
+            // the evidence. Raw XYZ came out: the heading is the same field in
+            // uT and it moves, and "1/2 axes" says what the triple was there
+            // to say in the form the user can act on.
             snprintf(
-                st.lines[0],
-                LIVE_TEST_LINE_LEN,
-                "%ld %ld %ld",
-                (long)raw[0],
-                (long)raw[1],
-                (long)raw[2]);
+                st.lines[0], LIVE_TEST_LINE_LEN, "Turn it over - %u/%u axes", moved, AK_MOVE_AXES);
             snprintf(
                 st.lines[1],
                 LIVE_TEST_LINE_LEN,
                 self_ran ? (self_ok ? "Self-test OK    %lus" : "Self-test FAIL  %lus") :
                            "No self-test    %lus",
                 (unsigned long)((furi_get_tick() - started) / furi_ms_to_ticks(1000)));
-            if(overflows) {
-                // Saying "wave it" at somebody whose sensor is saturating is
-                // advice pointing the wrong way: the field is already too
-                // strong to measure and the magnet needs backing off, not
-                // moving.
-                snprintf(
-                    st.lines[2], LIVE_TEST_LINE_LEN, "Field too strong x%u", (unsigned)overflows);
-            } else {
-                snprintf(
-                    st.lines[2],
-                    LIVE_TEST_LINE_LEN,
-                    "%lu reads, %u/%u axes",
-                    (unsigned long)samples,
-                    moved,
-                    AK_MOVE_AXES);
-            }
             publish(ctx, &st);
         }
 
@@ -387,13 +400,17 @@ static void ak_run(const LiveTestEnv* env) {
             st.progress = AK_PROOF_STEPS;
             snprintf(st.heading, sizeof(st.heading), "%lu", (unsigned long)samples);
             snprintf(st.unit, sizeof(st.unit), "reads");
-            snprintf(st.lines[0], LIVE_TEST_LINE_LEN, "Self-test passed, and");
-            snprintf(st.lines[1], LIVE_TEST_LINE_LEN, "the field followed you.");
-            snprintf(
-                st.lines[2],
-                LIVE_TEST_LINE_LEN,
-                parked ? "%u dropped" : "%u dropped, not parked",
-                (unsigned)dropped);
+            // Same two-line budget as the running screen, and "not parked"
+            // is the half worth keeping: a part left in continuous mode goes
+            // on drawing current and the next run inherits it. The dropped
+            // count was diagnostic and went with the third line.
+            if(parked) {
+                snprintf(st.lines[0], LIVE_TEST_LINE_LEN, "Self-test passed, and");
+                snprintf(st.lines[1], LIVE_TEST_LINE_LEN, "the field followed you.");
+            } else {
+                snprintf(st.lines[0], LIVE_TEST_LINE_LEN, "Passed, but the part was");
+                snprintf(st.lines[1], LIVE_TEST_LINE_LEN, "left configured. Repower.");
+            }
             publish(ctx, &st);
             // The screen belongs to the user now. Nothing is being measured
             // and nothing is configured, so this is a plain wait for Back.

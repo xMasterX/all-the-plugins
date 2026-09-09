@@ -721,10 +721,27 @@ static void scan_draw_callback(Canvas* canvas, void* model) {
             canvas_set_font(canvas, FontSecondary);
             if(kind) canvas_draw_str(canvas, 26, 25, kind);
 
+            // The note belongs on this screen and not only on the detail
+            // screen behind it. This is the screen that asks whether the part
+            // is what was bought, and a GY-271 board reading QMC5883P is
+            // exactly the case where the user cannot answer that from what is
+            // drawn: the number silkscreened on the module and the number
+            // burned into the die are different things, and nothing else here
+            // says so. Every note in the database fits centred on 128px --
+            // tools/screen_width.py measures them, the widest clears by four
+            // -- so none needs truncating; they do need the room, which is why
+            // the two lines below drop by five when a note is present.
+            const char* note = dev->ident.chip ? dev->ident.chip->note : NULL;
+            uint8_t vy = 38, qy = 49;
+            if(note) {
+                canvas_draw_str_aligned(canvas, 64, 34, AlignCenter, AlignBottom, note);
+                vy = 43;
+                qy = 52;
+            }
             snprintf(buf, sizeof(buf), "%s at 0x%02X", chip_verdict_headline(v), dev->addr);
-            canvas_draw_str_aligned(canvas, 64, 38, AlignCenter, AlignBottom, buf);
+            canvas_draw_str_aligned(canvas, 64, vy, AlignCenter, AlignBottom, buf);
             canvas_draw_str_aligned(
-                canvas, 64, 49, AlignCenter, AlignBottom, "Is this what you bought?");
+                canvas, 64, qy, AlignCenter, AlignBottom, "Is this what you bought?");
             draw_choice_bar(canvas);
             return;
         }

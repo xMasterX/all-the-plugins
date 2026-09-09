@@ -61,7 +61,7 @@ label claims.
 | **MMC5603** | Magnetometer | 0x30 | `0x39` | `0x10` | 8-bit | — |  |
 | **HMC5883L** | Magnetometer | 0x1E | `0x0A`<br>`0x0B`<br>`0x0C` | `0x48`<br>`0x34`<br>`0x33` | 8-bit<br>8-bit<br>8-bit | — | EOL since 2016, mostly fake |
 | **QMC5883L** | Magnetometer | 0x0D | `0x0D` | `0xFF` | 8-bit | — |  |
-| **QMC5883P** | Magnetometer | 0x2C | `0x00` | `0x80` | 8-bit | — |  |
+| **QMC5883P** | Magnetometer | 0x2C | `0x00` | `0x80` | 8-bit | Turn it through a field | GY-271 board, not a 5883L |
 | **AK09911** | Magnetometer | 0x0C, 0x0D | `0x00`<br>`0x01` | `0x48`<br>`0x05` | 8-bit<br>8-bit | Wave it through a field | RST must be high to answer |
 | **VL53L0X** | Laser rangefinder | 0x29 | `0xC0` | `0xEE` | 8-bit | — |  |
 | **VL53L1X** | Laser rangefinder | 0x29 | `0x010F` MODEL_ID<br>`0x0110` MODULE_TYPE | `0xEA`<br>`0xCC` | 8-bit<br>8-bit | — |  |

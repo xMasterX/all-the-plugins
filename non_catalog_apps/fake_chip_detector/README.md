@@ -15,10 +15,11 @@ you bought?
   `/ext/apps_data/fake_chip_detector/`.
 - **Wiring diagnosis** with live per-line detection — missing pull-up, line shorted to ground,
   SDA shorted to SCL, or the module plugged into the wrong header pins entirely.
-- **14 live tests.** An ID register is one byte and a byte can be copied; a working sensor
+- **15 live tests.** An ID register is one byte and a byte can be copied; a working sensor
   cannot. Breathe on an AHT or SHT, cover a BH1750, tip an MPU6050 or ADXL345, wave at an
   APDS9960, point an MLX90614 at your palm, watch a DS3231 tick, blink an SSD1306, turn a BNO055
-  through a figure-8, wave an AK09911 through a field, hold a hand in front of a VL6180X.
+  through a figure-8, turn an AK09911 or a QMC5883P over and watch the earth's field follow it,
+  hold a hand in front of a VL6180X.
 - **1-Wire scanning** on pin 17 with a real temperature conversion, so a DS18S20 sold as a
   DS18B20 is caught.
 - Tests can also be **loaded from the SD card as .fal plugins** — see [LIVE_TESTS.md](LIVE_TESTS.md).
