@@ -99,7 +99,13 @@ static const IdCheck qmc5883l_checks[] = {{0x0D, 0xFF, M8, false, false}};
 // default value is 80H." Section 5.4: "The default I2C address for QMC5883P is
 // 2CH." Not the same part as the QMC5883L above and not at the same address --
 // a GY-271 board photographed at 0x2C is a QMC5883P candidate, and this row is
-// what would confirm it. Nobody has read 0x2C on one yet.
+// what confirms it. One did, on 9 Sep 2026: a blue board silkscreened GY-271
+// answered at 0x2C and read 0x80 at register 0x00, which is this row and no
+// other. The note it carries comes from that board. GY-271 is the module name
+// the HMC5883L made famous and the number people search for; the die inside is
+// now usually a QST part, and a P is not register-compatible with either the
+// HMC5883L or the QMC5883L, so a driver written for the number on the silkscreen
+// will not talk to it.
 static const IdCheck qmc5883p_checks[] = {{0x00, 0x80, M8, false, false}};
 // WIA1 at 0x00 is the AKM company code and WIA2 at 0x01 the device code, both
 // fixed. The two values are the one thing in this row that does NOT come from a
@@ -219,7 +225,14 @@ static const ChipEntry chip_db[] = {
      3,
      "EOL since 2016, mostly fake"},
     {"QMC5883L", "Magnetometer", {0x0D, 0xFF}, 0, 0, qmc5883l_checks, 1, NULL},
-    {"QMC5883P", "Magnetometer", {0x2C, 0xFF}, 0, 0, qmc5883p_checks, 1, NULL},
+    {"QMC5883P",
+     "Magnetometer",
+     {0x2C, 0xFF},
+     0,
+     0,
+     qmc5883p_checks,
+     1,
+     "GY-271 board, not a 5883L"},
     {"AK09911",
      "Magnetometer",
      {0x0C, 0x0D, 0xFF},
