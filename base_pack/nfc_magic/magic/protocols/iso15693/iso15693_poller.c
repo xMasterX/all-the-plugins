@@ -53,7 +53,7 @@ static bool iso15693_poller_is_backdoor_block(uint16_t block) {
     return false;
 }
 
-// Standard ISO15693 identity writes, used to make a clone match the source's AFI / DSFID.
+// Standard ISO15693 identity writes -- see iso15693_poller_write_identity for what they are for.
 #define ISO15693_MAGIC_CMD_WRITE_AFI   (0x27U) // ISO15693 WRITE AFI
 #define ISO15693_MAGIC_CMD_WRITE_DSFID (0x29U) // ISO15693 WRITE DSFID
 
@@ -101,9 +101,10 @@ static bool iso15693_poller_is_backdoor_block(uint16_t block) {
 #define ISO15693_POLLER_VERIFY_ATTEMPTS (3U)
 #define ISO15693_POLLER_VERIFY_RETRY_MS (5U)
 
-// Retry a failed clone WRITE BLOCK this many times before treating the block as genuinely unwritable.
-// On these cards writes are gated by physical memory, so a block that fails EVERY attempt is past the
-// card's real capacity; retrying rides out a transient RF error that would otherwise look like one.
+// Retry a failed WRITE BLOCK this many times -- either block pass -- before treating the block as
+// genuinely unwritable. On these cards writes are gated by physical memory, so a block that fails
+// EVERY attempt is past the card's real capacity; retrying rides out a transient RF error that would
+// otherwise look like one.
 #define ISO15693_POLLER_WRITE_ATTEMPTS (3U)
 
 // How many progress updates a block pass may emit, in total.
@@ -221,10 +222,9 @@ static bool iso15693_poller_is_backdoor_block(uint16_t block) {
 // trip is what makes a filled run recoverable, so this number sets how much dropout is absorbed
 // silently rather than how much is caught. (Below that count the sweep never stops on absence at all.)
 // What remains: a card whose memory is present but answers neither a write nor a read across a whole run,
-// even on re-probe, is indistinguishable from one that ends there by any means available here. Note the
-// counting rule that keeps the fake-flash case honest -- a trailing run is judged by whether it answers,
-// never by the advertised count, so a card claiming 66 blocks against 64 physical still drops 64/65
-// rather than reporting them as "not cleared".
+// even on re-probe, is indistinguishable from one that ends there by any means available here. What keeps
+// the fake-flash case honest is not this number but the tail-drop rule, which judges a trailing run by
+// whether it answers rather than by the advertised count -- see the sweep's absence handling.
 #define ISO15693_POLLER_WIPE_ABSENT_RUN (8U)
 
 // Write-mode state machine. Each verify runs after a NfcCommandReset field power-cycle.
@@ -477,10 +477,9 @@ static void
     iso15693_poller_report(instance, Iso15693PollerEventWriteProgress);
 }
 
-// The one write both block passes make. A block that fails EVERY attempt is genuinely unwritable;
-// retrying rides out a transient RF error that would otherwise look like one. Retries only ever run
-// on a failure, so a card that takes its writes pays nothing for them. There is deliberately no break
-// before the last delay, which is where ISO15693_POLLER_PASS_MAX_MS gets its per-refused-block figure.
+// The one write both block passes make; ISO15693_POLLER_WRITE_ATTEMPTS says why it retries at all.
+// Retries only ever run on a failure, so a card that takes its writes pays nothing for them. There is
+// deliberately no break before the last delay, which is where the per-refused-block figure comes from.
 static Iso15693_3Error iso15693_poller_write_block_retried(
     Iso15693_3Poller* iso_poller,
     const uint8_t* data,
