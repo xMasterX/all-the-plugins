@@ -1,4 +1,5 @@
 #include "../nfc_magic_app_i.h"
+#include "../magic/protocols/iso15693/iso15693_info.h"
 #include <lib/nfc/protocols/iso15693_3/iso15693_3.h>
 
 void nfc_magic_scene_write_confirm_widget_callback(
@@ -36,10 +37,7 @@ void nfc_magic_scene_write_confirm_on_enter(void* context) {
         // so show the UID compactly (two 4-byte groups) on one line. Keep the whole box to 3 short
         // lines (UID + 2 warning): a 4th line gets squashed into the ~38px the buttons leave below
         // the title.
-        for(size_t i = 0; i < ISO15693_3_UID_SIZE; ++i) {
-            furi_string_cat_printf(uid_str, "%02X", instance->iso15693_target_uid[i]);
-            if(i == 3) furi_string_push_back(uid_str, ' ');
-        }
+        iso15693_info_cat_uid(uid_str, instance->iso15693_target_uid, Iso15693UidFormatGrouped);
         furi_string_cat_str(uid_str, "\nOnly magic ISO15693\ntags accept this.");
         title = "Write UID?";
         confirm_label = "Write";

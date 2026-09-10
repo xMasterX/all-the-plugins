@@ -1,4 +1,5 @@
 #include "../nfc_magic_app_i.h"
+#include "../magic/protocols/iso15693/iso15693_info.h"
 
 // LINE BUDGET for every body in this file: FontSecondary advances 11px, so a body at y=13 puts line
 // tops at 13/24/35/46 and a fourth line's lower rows fall inside the button box at rows 52-63. Three
@@ -315,10 +316,8 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             "Wiped %u/%u. The card's\nUID moved. Now reads:\n",
             (wiped_total >= wiped_bad) ? (uint16_t)(wiped_total - wiped_bad) : 0,
             wiped_total);
-        for(size_t i = 0; i < ISO15693_3_UID_SIZE; i++) {
-            if(i == 4) furi_string_push_back(text, ' ');
-            furi_string_cat_printf(text, "%02X", instance->iso15693_result.uid_readback[i]);
-        }
+        iso15693_info_cat_uid(
+            text, instance->iso15693_result.uid_readback, Iso15693UidFormatGrouped);
         widget_add_string_multiline_element(
             widget, 0, 13, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(text));
         furi_string_free(text);
@@ -330,12 +329,8 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         // Prose kept to two lines so the UID lands on line 3, per the line budget above.
         FuriString* text = furi_string_alloc();
         furi_string_set_str(text, "Card is magic, but the\nUID it took isn't yours:\n");
-        for(size_t i = 0; i < ISO15693_3_UID_SIZE; i++) {
-            // Two 4-byte groups, unspaced: the spaced form the Info screen uses is 23 characters and
-            // overruns the 128px line here.
-            if(i == 4) furi_string_push_back(text, ' ');
-            furi_string_cat_printf(text, "%02X", instance->iso15693_result.uid_readback[i]);
-        }
+        iso15693_info_cat_uid(
+            text, instance->iso15693_result.uid_readback, Iso15693UidFormatGrouped);
         widget_add_string_multiline_element(
             widget, 0, 13, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(text));
         furi_string_free(text);

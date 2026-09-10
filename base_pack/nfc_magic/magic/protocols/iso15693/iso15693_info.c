@@ -2,6 +2,7 @@
 
 #include <furi.h>
 #include <stdint.h>
+#include <lib/nfc/protocols/iso15693_3/iso15693_3.h>
 
 // ISO/IEC 7816-6 manufacturer byte decoding
 
@@ -277,4 +278,19 @@ const char* iso15693_info_get_chip_info_ex(const uint8_t* uid) {
     }
 
     return iso15693_info_get_chip_info(vendor_id, chip_id);
+}
+
+void iso15693_info_cat_uid(FuriString* out, const uint8_t* uid, Iso15693UidFormat format) {
+    furi_assert(out);
+    furi_assert(uid);
+
+    for(size_t i = 0; i < ISO15693_3_UID_SIZE; ++i) {
+        // Separators BETWEEN bytes, never before the first: a caller that wants a leading space owns
+        // it, which is what keeps this usable after a label as well as at the start of a line.
+        if(i > 0 &&
+           (format == Iso15693UidFormatSpaced || (format == Iso15693UidFormatGrouped && i == 4))) {
+            furi_string_push_back(out, ' ');
+        }
+        furi_string_cat_printf(out, "%02X", uid[i]);
+    }
 }
