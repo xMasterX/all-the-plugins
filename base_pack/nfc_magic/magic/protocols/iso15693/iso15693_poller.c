@@ -256,8 +256,10 @@ struct Iso15693Poller {
     bool attempt_gen1;
     uint32_t activation_errors; // consecutive activation failures (no card) -> timeout
     Iso15693_3Data* clone_source; // kept apart from `data` so start_internal's reset cannot wipe it
-    // Everything from here down to `callback` is this run's reporting state, and get_result copies all
-    // of it into an Iso15693PollerResult, one assignment per field. THAT function is the mapping, and
+    // Everything from here down to `callback` is this run's reporting state, and get_result copies it
+    // into an Iso15693PollerResult one assignment per field -- every field in the span except
+    // progress_step, which is internal bookkeeping for the progress bands and is never reported. THAT
+    // function is the mapping, and
     // iso15693_poller.h owns what each field means -- so this side comments only what the header cannot
     // know. The `clone_` prefix is historical: a wipe reuses the same fields, which is why
     // clone_blocks_total ends up holding a wipe's measured block count.
@@ -284,7 +286,8 @@ struct Iso15693Poller {
     bool uid_unexpected;
     uint8_t uid_readback[ISO15693_3_UID_SIZE];
     // Equal to attempt_gen1, kept as its own field so the scene needn't know when the gen1 frames go
-    // out. "Unconditionally" would be too strong: two paths return from Start before the send -- a
+    // out. "Unconditionally" would be too strong: on a gen1 run two paths return from Start before the
+    // send -- a
     // Write-UID asking for the card's own UID, and an empty clone source -- leaving this true with
     // nothing transmitted. Neither is reachable from the opt-in screen today, but start_clone_gen1 and
     // start_write_uid_gen1 are public entry points.
