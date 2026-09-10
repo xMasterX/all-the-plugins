@@ -141,8 +141,8 @@ typedef enum {
         // cut to the advertised count -- the check is a wall-clock test at the top of every iteration,
         // so a card that accepts some writes and then answers reads at every address is cut with every
         // claimed block already attempted and the cut index above that count. (NOT the refuses-every-
-        // write card: that one clears nothing, so the wipe short-circuits to NothingWiped before any
-        // truncation reporting -- see the note on that screen.) A partial
+        // write card: that one clears nothing, so the wipe short-circuits to NothingWiped before the
+        // WipeStopped truncation reporting -- that screen states the cut itself.) A partial
         // outcome, not a qualified success -- the poller reports Partial for it -- so it carries the
         // error tone and offers Retry, since re-running is the correct action when data may sit above
         // the cut.

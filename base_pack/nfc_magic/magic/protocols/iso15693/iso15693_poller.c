@@ -177,12 +177,18 @@ static bool iso15693_poller_is_backdoor_block(uint16_t block) {
 // for the more expensive of the two, not the cheaper.
 //
 // Which one that is does not have the obvious answer. Per REFUSED block the two passes are the same
-// shape, because the sweep reads on every refused block too, not only the empty ones -- so the
-// difference is not the probe:
+// shape, because the CLONE's probe now goes onto every persistent failure rather than only the empty
+// ones -- see write_source_blocks. The wipe never had an emptiness-conditional read: its read is what
+// DETERMINES emptiness. So the difference is not the probe:
 //
-//   the WIPE pays more on the same geometry. It runs a card-present inventory every
-//     ISO15693_POLLER_WIPE_ABSENT_RUN absences, and a full re-probe of the trailing run after the loop,
-//     neither of which the clone has.
+//   the WIPE pays more, but only on a geometry that CONTAINS absent blocks. Both of its extra costs are
+//     driven by absences -- a card-present inventory every ISO15693_POLLER_WIPE_ABSENT_RUN of them, and
+//     a re-probe of a tripped run, which happens INSIDE the loop, not after it. absent_run increments
+//     only on the read-failure path, and the inventory is gated on !claimed_range_attempted as well, so
+//     it runs only BELOW the advertised count. So on the very card this bound exists for -- refuses
+//     every write, answers a read at every address -- it accumulates ZERO absences, pays no inventory,
+//     has no run to re-probe, and the two passes cost the same. What runs after the loop is the
+//     tail-drop, which reads the activation cache and costs no airtime.
 //   the CLONE pays more only when the source's block size exceeds the target's, and then by the FRAME
 //     ratio, not the payload ratio: 4 -> 32 bytes of payload is roughly 2.5-4x the frame once flags,
 //     command, block number and CRC are counted, and about 15ms of the 40-70ms per refused block is
@@ -504,10 +510,12 @@ static Iso15693_3Error iso15693_poller_write_block_retried(
 // poller never asks whether a bit is set -- only the report does, in another translation unit, through
 // nfc_magic_partial_details_any_index.
 //
-// The point is not the six lines. Two of the clears live inside the densest reasoning in this file,
-// three and five lines from a set, where `|=` and `&= ~` differ by two characters and a slip would read
-// as correct. A named call makes the direction visible at a glance, which is the whole reason this was
-// on the list.
+// The point is not the six lines. Both clears are the else-arm of a two-way decision about a block's
+// CONTENT, whose other arm counts the block as a real failure and leaves its provisional bit standing --
+// so a slip at either is `mark_failed` where `unmark_failed` belongs: one word wrong, setting a bit that
+// should be cleared, in a branch that reads correct. `|=` against `&= ~` differs by two characters and
+// gives no such signal. A named call makes the direction visible at a glance, which is the whole reason
+// this was on the list.
 static void iso15693_poller_mark_failed(Iso15693Poller* instance, uint16_t block) {
     instance->clone_failed_bitmap[block / 8] |= (uint8_t)(1u << (block % 8));
 }

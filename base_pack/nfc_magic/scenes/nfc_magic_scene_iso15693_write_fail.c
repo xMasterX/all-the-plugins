@@ -167,14 +167,18 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             widget, 0, 13, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(text));
         furi_string_free(text);
     } else if(wipe_stopped) {
-        // The clock stopped the sweep with blocks the card still claims unattempted. Those blocks have
+        // The clock stopped the sweep short of its natural end. Which blocks were left depends on where
+        // the cut fell: below the card's claim there are claimed blocks still unattempted, above it every
+        // claimed block was attempted and what is left is past the claim entirely. Either way they have
         // no bitmap bits -- nothing tried them -- so these counts are the whole on-screen story and
         // Details carries the rest.
         const uint16_t reached = instance->iso15693_result.blocks_total;
         const uint16_t failed = instance->iso15693_result.failed_count;
         FuriString* text = furi_string_alloc();
         // Two separate corrections, both in one line of text. The figure is the CUT, not blocks_total:
-        // the latter is highest_present + 1 -- a COUNT of the blocks proven present, not an index -- and
+        // the latter is a COUNT, not an index (see blocks_total in the header, which is the description
+        // that survives: highest_present + 1 is the size of the range up to the highest proven block,
+        // NOT a tally of proven blocks, since interior absences fold in) -- and
         // it sits at or below the cut, so a sweep
         // that attempted 55 blocks and proved 50 present reported "Stopped at 50".
         //
@@ -238,10 +242,13 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             total,
             not_written);
         // The body sits at y=20 with the button row below it, so only three FontSecondary lines fit:
-        // the two count lines plus ONE qualifier. Show the most significant (real data loss > gen1 UID
-        // clobber > AFI/DSFID). A lower one is dropped from THIS screen only -- "Details" below is
-        // offered whenever any caveat applies and lists all of them, so nothing is unreachable.
-        // A cut sweep is not among them: it has its own reason code and screen.
+        // the two count lines plus ONE qualifier. Show the most significant, and there are FOUR in
+        // priority order: the cut (pass_truncated) > real data loss (capacity_confirmed) > gen1 UID
+        // clobber (used_gen1) > AFI/DSFID (identity_failed). A lower one is dropped from THIS screen
+        // only -- "Details" below is offered whenever any caveat applies and lists all of them, so
+        // nothing is unreachable.
+        // The cut ranks FIRST here, and it is a cut CLONE: a cut wipe has its own reason code and
+        // screen, but a cut clone has none, so this branch is where it lands.
         if(instance->iso15693_result.pass_truncated) {
             // Outranks the rest on a cut run, because it is the only one that explains the count above
             // it: most of "Not written" is blocks nothing was sent to, not blocks the card refused.

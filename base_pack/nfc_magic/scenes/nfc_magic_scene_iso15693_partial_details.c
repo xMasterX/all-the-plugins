@@ -78,7 +78,8 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
         // count can be qualified.
         if(furi_string_size(message) > 0) furi_string_push_back(message, '\n');
         // The cut index, never blocks_total: this is a claim about which blocks were TRIED, and
-        // blocks_total is the highest that answered. Below the cut it under-reports (the trailing run
+        // blocks_total is a COUNT, one past the highest block that answered. Below the cut it
+        // under-reports (the trailing run
         // the tail-drop discards was attempted -- three writes and a read each -- yet would be excluded
         // by the sentence); above it, a card claiming 200 while holding 10 read "time limit at block
         // 10" about 170 blocks that were attempted and answered nothing.

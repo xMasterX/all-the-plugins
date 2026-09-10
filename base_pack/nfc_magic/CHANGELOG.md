@@ -144,7 +144,10 @@ the copy advertises the same chip identity.
   available).
 - **gen3 is not supported.** A third magic generation exists — proxmark's `hf 15 csetuid --v3` — which
   keeps its UID in blocks 0x10/0x11 with a configuration signature in 0x14/0x15, and is rewritable until
-  `hf 15 cfinalize` locks it. A clone or Write UID reports "not a magic tag" on one. **A wipe does not
+  `hf 15 cfinalize` locks it. A gen3 card ignores the gen2 backdoor, so the UID reads back unchanged and
+  a clone or Write UID lands on the **"Not gen2 magic card"** opt-in screen rather than reporting "not a
+  magic tag" — which means **accepting that opt-in sends four ordinary WRITE BLOCKs into 56/57/62/63, so
+  the clone path can damage a gen3 card too, not only the wipe**. **A wipe does not
   check at all** — it sweeps any ISO15693 tag presented to it — so on an un-finalized gen3 card a wipe
   zeroes the UID registers and the configuration signature along with everything else, leaving a card
   with a moved UID that no longer identifies as re-writable. The wipe's post-write UID re-check surfaces
