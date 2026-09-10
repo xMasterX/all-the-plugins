@@ -115,12 +115,9 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
                 "card -- they are counted as not written, but the card did not refuse them.",
                 instance->iso15693_result.cut_block);
         }
-        // What Retry can and cannot do, said once for both modes. The bound is a WALL CLOCK, not a
-        // position, so re-running repeats the same work against the same budget: a card that is
-        // consistently this slow is cut in the same place every time, and only a transient -- marginal
-        // coupling forcing per-block retries -- clears on a second pass. So the wording may not promise
-        // that a retry succeeds: the Retry button already implies it, and this is the only place that
-        // can qualify it.
+        // What Retry can and cannot do, said once for both modes -- see pass_truncated for why a re-run
+        // is not a promise. The wording therefore may not claim a retry succeeds: the Retry button
+        // already implies it, and this is the only place that can qualify it.
         furi_string_cat_str(
             message,
             "\nRetrying may get further, but the limit is a time budget rather than a position: if it "

@@ -149,6 +149,11 @@ typedef struct {
     // out of the loop and both of its bit-setting sites are inside the body the deadline gates, so the
     // unreached blocks are outside the denominator rather than inside the numerator -- which leaves this
     // flag as the only thing that mentions those blocks at all.
+    //
+    // What a re-run can do about it, since two screens have to answer that: the bound is a WALL CLOCK,
+    // not a position, so a card that is consistently this slow is cut in the same place every time and
+    // only a transient -- marginal coupling forcing per-block retries -- clears on a second pass.
+    // Observed: a retried wipe stopped at the same block. So Retry may be offered but never promised.
     bool pass_truncated;
     // Where the clock cut the run: the first block index NOT attempted. Only meaningful when the flag
     // above is set, and NOT derivable from blocks_total -- after a wipe that is highest_present + 1 and

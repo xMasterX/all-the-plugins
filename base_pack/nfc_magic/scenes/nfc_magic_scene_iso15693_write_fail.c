@@ -28,10 +28,8 @@ static bool
            // A cut clone, which has no reason code of its own -- it stays on the ordinary partial
            // screen, so the flag is the only thing that distinguishes it there. Re-running is the only
            // thing that CAN write the blocks above the cut, which is a better claim on Retry than the
-           // blocks below it have: those were tried and refused. Note it is not a promise -- the bound
-           // is a wall clock, so a card that is consistently too slow is cut in the same place every
-           // time and only a transient (marginal coupling forcing retries) clears on a second run. The
-           // Details note has to say that; the button cannot.
+           // blocks below it have: those were tried and refused. It is not a promise, though -- see
+           // pass_truncated -- and the Details note has to say so, because the button cannot.
            (reason == NfcMagicIso15693WriteFailReasonPartial &&
             instance->iso15693_result.pass_truncated);
 }

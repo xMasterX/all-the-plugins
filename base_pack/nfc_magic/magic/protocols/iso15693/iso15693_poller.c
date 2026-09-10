@@ -1332,12 +1332,12 @@ static NfcCommand
         // pass having observed nothing -- on precisely the card it exists for, since zeroing 56/57 on an
         // armed gen1 card IS a gen1 UID write.
         //
-        // Reported ONLY from a positive observation of a different UID. An inventory that fails tells us
-        // nothing, and treating it as a failure would turn "user lifted the card the instant the wipe
-        // finished" into an error on every gen2 wipe, for the sake of a gen1 case nobody can test. So it
-        // is logged and left alone -- which does mean a card bricked so thoroughly that it no longer
-        // inventories at all goes unreported. The card not coming back from the reset at all is the same
-        // case; see the activation-error path in iso15693_poller_nfc_callback.
+        // uid_changed is set only from a positive observation, and the cost of that rule is here rather
+        // than in its doc: a card bricked so thoroughly that it no longer inventories at all goes
+        // unreported. Taking silence as failure instead would turn "user lifted the card the instant the
+        // wipe finished" into an error on every gen2 wipe, for the sake of a gen1 case nobody can test.
+        // A card that never comes back from the reset is the same case; see the activation-error path in
+        // iso15693_poller_nfc_callback.
         if(iso15693_poller_verify_inventory(iso_poller, readback) != Iso15693_3ErrorNone) {
             FURI_LOG_W(TAG, "wipe: card did not answer the UID read-back");
         } else {
@@ -1543,7 +1543,7 @@ void iso15693_poller_start_write_uid_gen1(
     furi_assert(instance);
     furi_assert(uid);
     // Opt-in gen1 retry after gen2 left the UID unchanged. write_step sends ONLY the gen1 UID sequence
-    // and verifies it; a Write-UID has no payload to follow, so a verified UID is a clean Success.
+    // and verifies it.
     memcpy(instance->target_uid, uid, ISO15693_3_UID_SIZE);
     iso15693_poller_start_internal(instance, Iso15693PollerModeWriteUid, true, callback, context);
 }
