@@ -81,6 +81,9 @@ static const char* nfc_magic_scene_iso15693_write_fail_title(uint32_t reason, bo
         return "Wipe stopped";
     case NfcMagicIso15693WriteFailReasonOverCapacity:
         return "Clone finished";
+    case NfcMagicIso15693WriteFailReasonPartial:
+        // The only mode-dependent one, and the reason this is a function rather than an array.
+        return wipe_mode ? "Wipe partial" : "Clone partial";
     case NfcMagicIso15693WriteFailReasonNothingWiped:
         return "Wipe failed";
     case NfcMagicIso15693WriteFailReasonNothingCloned:
@@ -95,9 +98,6 @@ static const char* nfc_magic_scene_iso15693_write_fail_title(uint32_t reason, bo
         return "UID unchanged";
     case NfcMagicIso15693WriteFailReasonEmptySource:
         return "Nothing to clone";
-    case NfcMagicIso15693WriteFailReasonPartial:
-        // The only mode-dependent one, and the reason this is a function rather than an array.
-        return wipe_mode ? "Wipe partial" : "Clone partial";
     default:
         // CardLost and NotMagic share a screen -- see the final else of the render chain.
         return "Write failed";

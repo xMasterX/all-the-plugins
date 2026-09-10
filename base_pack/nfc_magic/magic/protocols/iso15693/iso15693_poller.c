@@ -1183,6 +1183,28 @@ static bool iso15693_poller_card_still_present(Iso15693_3Poller* iso_poller) {
 }
 
 // Drives one write-mode step. Runs on the Nfc worker thread with the field active. Returns the
+// The tail both UID verifies share, once the UID has read back as the target. It exists because the two
+// were byte-identical apart from skip_backdoor, and the call sites sit ~80 lines apart -- so a change to
+// the gen2
+// arm could silently fail to reach the gen1 one. That seam is the reason, not the nine lines.
+//
+// skip_backdoor is the whole difference: a gen2 UID lives in a separate register space, so data-block
+// writes cannot disturb it; a gen1 UID lives IN blocks 56/57/62/63, so a gen1 clone must skip them.
+static NfcCommand iso15693_poller_finish_write(
+    Iso15693Poller* instance,
+    Iso15693_3Poller* iso_poller,
+    bool skip_backdoor) {
+    if(instance->mode == Iso15693PollerModeClone) {
+        iso15693_poller_write_identity(instance, iso_poller);
+        if(!iso15693_poller_write_source_blocks(instance, iso_poller, skip_backdoor)) {
+            iso15693_poller_report(instance, Iso15693PollerEventCardLost);
+            return NfcCommandStop;
+        }
+    }
+    iso15693_poller_report(instance, iso15693_poller_success_or_partial(instance));
+    return NfcCommandStop;
+}
+
 // NfcCommand for the poller: Reset power-cycles the field (so the next Ready verifies a freshly
 // re-powered card), Stop ends the operation.
 static NfcCommand
@@ -1313,15 +1335,7 @@ static NfcCommand
             // presented already had that UID the comparison passes without the write having done
             // anything. In practice that tag is the one the source was read from, so the payload it
             // then receives is the data it already holds.
-            if(instance->mode == Iso15693PollerModeClone) {
-                iso15693_poller_write_identity(instance, iso_poller);
-                if(!iso15693_poller_write_source_blocks(instance, iso_poller, false)) {
-                    iso15693_poller_report(instance, Iso15693PollerEventCardLost);
-                    return NfcCommandStop;
-                }
-            }
-            iso15693_poller_report(instance, iso15693_poller_success_or_partial(instance));
-            return NfcCommandStop;
+            return iso15693_poller_finish_write(instance, iso_poller, false);
         }
         if(memcmp(readback, instance->original_uid, ISO15693_3_UID_SIZE) == 0) {
             // gen2 changed nothing: a gen1 card, or a non-magic tag. Nothing has been written yet, so
@@ -1399,15 +1413,7 @@ static NfcCommand
         // UID took -> now write the payload. For a clone: AFI/DSFID + every data block EXCEPT the gen1
         // backdoor registers 56/57/62/63 (writing those would clobber the UID we just set). A bare
         // Write-UID has no payload.
-        if(instance->mode == Iso15693PollerModeClone) {
-            iso15693_poller_write_identity(instance, iso_poller);
-            if(!iso15693_poller_write_source_blocks(instance, iso_poller, true)) {
-                iso15693_poller_report(instance, Iso15693PollerEventCardLost);
-                return NfcCommandStop;
-            }
-        }
-        iso15693_poller_report(instance, iso15693_poller_success_or_partial(instance));
-        return NfcCommandStop;
+        return iso15693_poller_finish_write(instance, iso_poller, true);
     }
     }
 }
@@ -1463,8 +1469,9 @@ static NfcCommand iso15693_poller_nfc_callback(NfcGenericEvent event, void* cont
     // On the FIRST activation of any write mode (write_state still Start, before any write step), tell
     // the scene a card was detected so its popup switches from "apply the card" to "writing". Fires
     // once, because write_step advances the state.
-    if(instance->write_state == Iso15693WriteStateStart &&
-       instance->mode != Iso15693PollerModeInfo) {
+    // No Info-mode test needed: Info returns unconditionally above, which is what guarantees the
+    // "Not sent in Info mode" half of CardDetected's contract.
+    if(instance->write_state == Iso15693WriteStateStart) {
         iso15693_poller_report(instance, Iso15693PollerEventCardDetected);
     }
 
@@ -1477,17 +1484,14 @@ Iso15693Poller* iso15693_poller_alloc(Nfc* nfc) {
     instance->poller = nfc_poller_alloc(nfc, NfcProtocolIso15693_3);
     instance->data = iso15693_3_alloc();
     instance->clone_source = iso15693_3_alloc();
-    instance->mode = Iso15693PollerModeInfo;
-    instance->write_state = Iso15693WriteStateStart;
-    instance->attempt_gen1 = false;
-    instance->activation_errors = 0;
-    instance->clone_blocks_total = 0;
-    instance->clone_failed_count = 0;
-    instance->clone_over_capacity = 0;
-    memset(instance->clone_failed_bitmap, 0, sizeof(instance->clone_failed_bitmap));
+    // Only what must hold BEFORE a start. Everything else is set by start_internal, which is the
+    // authoritative reset list and covers all 28 state and reporting fields -- no public entry point
+    // reaches the struct without going through it, and it asserts !running. Zeroing a subset here too
+    // would read as a second reset list while being sixteen fields short of the real one, so someone
+    // adding a field would find two and have to work out which is binding.
+    instance->running = false;
     instance->callback = NULL;
     instance->context = NULL;
-    instance->running = false;
     return instance;
 }
 
