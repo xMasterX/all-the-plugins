@@ -149,10 +149,12 @@ the copy advertises the same chip identity.
   magic tag" — which means **accepting that opt-in sends four ordinary WRITE BLOCKs into 56/57/62/63, so
   the clone path can damage a gen3 card too, not only the wipe**. **A wipe does not
   check at all** — it sweeps any ISO15693 tag presented to it — so on an un-finalized gen3 card a wipe
-  zeroes the UID registers and the configuration signature along with everything else, leaving a card
-  with a moved UID that no longer identifies as re-writable. The wipe's post-write UID re-check surfaces
-  the identity half of that as it would on any card; nothing speaks for the signature. Tracked as #255,
-  with the armed-gen1 case beside it.
+  zeroes the UID registers and the configuration signature along with everything else. **The cost is the
+  card, not just its identity:** @0x6r1an0y, who wrote proxmark's ISO15693 V3 magic support, reports that
+  zeroing those blocks bricks an un-finalized V3 card permanently. Stated on his authority rather than
+  ours — no gen3 card exists on either side of this PR, so nothing here has been observed. The wipe's
+  post-write UID re-check surfaces the identity change as it would on any card; nothing speaks for the
+  signature. Tracked as #255, with the armed-gen1 case beside it.
 - **A wipe reaches every ISO15693 tag in the field, not just the selected one** — any generation, magic
   or not. The WRITE BLOCK frames go out unaddressed, so a second tag in range has its blocks zeroed too,
   with nothing on screen saying another tag was ever there. The post-wipe UID re-read is exposed the same

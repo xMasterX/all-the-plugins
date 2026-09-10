@@ -27,7 +27,7 @@ void nfc_magic_scene_write_confirm_on_enter(void* context) {
     // of the string it is given, so this is freed before the view switch.
     FuriString* uid_str = furi_string_alloc();
 
-    const char* title = is_wipe ? "Wipe card?" : "Risky operation";
+    const char* title = is_wipe ? "Wipe? (gen1/gen2 only)" : "Risky operation";
     const char* confirm_label = "Continue";
     uint8_t text_height = 54;
 
@@ -50,9 +50,34 @@ void nfc_magic_scene_write_confirm_on_enter(void* context) {
         // wipe re-reads the UID afterwards and reports a change instead of claiming one. See the open
         // question in iso15693_poller_wipe_blocks.
         //
+        // The gen3 line is the only warning that reaches the person holding the card. The wipe performs
+        // NO magic detection -- menu, confirm, sweep -- so this cannot say "your card is gen3", only
+        // what a gen3 card would cost, and @0x6r1an0y (who wrote proxmark's V3 support) reports that
+        // cost is the card itself, permanently. #255 is where a pre-flight probe would go; until then a
+        // static line is the whole of the mitigation and the CHANGELOG only reaches release notes.
+        //
+        // No warning GLYPH, and this is not an oversight: FontSecondary is u8g2_font_haxrcorp4089_tr,
+        // whose _r suffix is u8g2's restricted set -- ASCII 32-127 only, so an emoji renders as a
+        // missing glyph. The smallest warning icon available is Warning_30x23, which is two text lines
+        // tall and 30 of the 128px wide; it would force an indent and cost a line. Hence "!".
+        //
         // Hard line breaks: elements_text_box wraps on its own, and left to itself it split "including"
-        // mid-word. Each line is <= 24 characters, the widest that fits this 128px box.
-        text = "Zeroes every data block,\nincluding the gen1 magic\nblocks 56/57/62/63.";
+        // mid-word.
+        //
+        // WHAT BINDS IS PIXEL WIDTH, NOT CHARACTER COUNT. FontSecondary is u8g2_font_haxrcorp4089_tr,
+        // which has no `m` in its suffix and so is PROPORTIONAL -- `profont11_mr` (FontKeyboard) is the
+        // monospace one. A line of narrow glyphs therefore fits far more than a line of wide ones, and
+        // the three lines below run to 29, 23 and 27 characters against the ~24 an average mix allows.
+        // Measured on device rather than counted: canvas_string_width is the only honest answer, and a
+        // character budget in a comment is how a usable line gets rejected as too long.
+        //
+        // THREE lines is the budget, and that part IS fixed -- the font advances 11px regardless of
+        // glyph, so they land at y=13/24/35 and a fourth reaches the button box at rows 52-63.
+        // text_height is 38 for the same reason: at the default 54 the box runs to y=67, past the
+        // screen, so an over-long string would draw UNDER the button instead of clipping.
+        text_height = 38;
+        text =
+            "Zeroes every block, including\ngen1 magic 56/57/62/63.\nThis can \e#brick\e# a gen3 card!";
     } else if(instance->uscuid_ul_is_wipe_mode) {
         text = "Blank factory dump: config &\npassword cleared, UID zeroed.";
     } else {
