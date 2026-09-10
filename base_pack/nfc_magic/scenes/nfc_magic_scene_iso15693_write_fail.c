@@ -397,7 +397,8 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
     //   else retryable   -> Exit
     //   else             -> no right button at all
     // on_event decides the same way, in the same order. That third case matters to anyone extending
-    // this: a non-retryable reason with nothing behind Details gets NO right button, not an Exit. Nothing enforces it but this comment, and the last time it went unstated it broke -- while
+    // this: a non-retryable reason with nothing behind Details gets NO right button, not an Exit.
+    // Nothing enforces it but this comment, and the last time it went unstated it broke -- while
     // is_retryable was {CardLost} and has_details(CardLost) was false, the two sets were disjoint, so
     // on_enter could branch on retryable and on_event on details and never disagree. Putting one reason
     // in both sets made a control labelled Exit open the Details scroll view. Add a reason to either

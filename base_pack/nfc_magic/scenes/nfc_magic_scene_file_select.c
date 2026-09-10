@@ -111,8 +111,8 @@ void nfc_magic_scene_file_select_on_enter(void* context) {
             // becomes real. Gen2 reaches the write unprompted too when its pre-write checks find
             // nothing (gen2_write_check.c) -- NOT Classic, whose check sets uid_locked unconditionally,
             // so it always shows at least one WriteProblems screen. Gen1/Gen4/USCUID-UL show the static
-            // confirm below regardless of the card. The wipe prompts because destruction is its only product,
-            // whereas a clone leaves the card holding the image the user picked.
+            // confirm below regardless of the card. The wipe prompts because destruction is its only
+            // product, whereas a clone leaves the card holding the image the user picked.
             scene_manager_next_scene(instance->scene_manager, NfcMagicSceneWrite);
         } else {
             scene_manager_next_scene(instance->scene_manager, NfcMagicSceneWriteConfirm);
