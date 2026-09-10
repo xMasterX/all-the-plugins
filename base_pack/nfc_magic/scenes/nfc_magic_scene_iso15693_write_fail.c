@@ -270,8 +270,9 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         // write" message would be wrong for a wipe.
         // A card that refuses every write while still answering reads is exactly the card the sweep's
         // time limit exists for, and it is also the one that ends here: nothing accepted, so the wipe
-        // short-circuits to this screen before any of the truncation reporting. Three lines is all the
-        // body has, so the cut replaces the prose rather than adding to it.
+        // short-circuits past the WipeStopped screen, which is where a cut wipe would normally be
+        // reported. The cut is NOT lost -- it is reported right below, in place of the prose, because
+        // three lines is all the body has.
         FuriString* text = furi_string_alloc();
         if(instance->iso15693_result.pass_truncated) {
             furi_string_printf(

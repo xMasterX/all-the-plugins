@@ -157,13 +157,19 @@ typedef struct {
     bool pass_truncated;
     // Where the clock cut the run: the first block index NOT attempted. Only meaningful when the flag
     // above is set, and NOT derivable from blocks_total -- after a wipe that is highest_present + 1 and
-    // sits at or below the cut. Two different cards separate them, in opposite directions:
+    // sits at or below the cut -- structurally, so no card can put blocks_total above it. What two
+    // cards DO differ in is which side of the ADVERTISED COUNT the cut lands on, and only one of them
+    // opens a gap between the cut and the total:
     //   past the claim -- a card that refuses every write but answers a read everywhere never
     //     accumulates an absent run, so the sweep walks beyond the advertised count and the cut lands
     //     above it. But every one of those reads calls wipe_note_present, so blocks_total == cut_block
-    //     exactly, and the gap is bounded by ISO15693_POLLER_WIPE_ABSENT_RUN -- getting past the claim
-    //     at all requires never hitting that many consecutive absences, since past the claim such a
-    //     run ends the sweep.
+    //     exactly, so there is no gap at all on this card. Where a gap can open, the bound is
+    //     ISO15693_POLLER_WIPE_ABSENT_RUN - 1: the deadline is tested at the TOP of the iteration, so on
+    //     every path the run still open when the clock fires is at most that, giving
+    //     cut_block - blocks_total <= 7. NOT "you cannot reach the claim after that many absences" --
+    //     you can. Below the claim the trip falls through to continue rather than ending the sweep,
+    //     which is the advertised-count floor doing its job, and one later block that answers zeroes
+    //     the run.
     //   below the claim -- a card claiming 200 while holding 10. Under the claim the sweep never stops
     //     on absence alone, so it grinds on to the clock with the cut somewhere in the middle and
     //     blocks_total stuck at 10. THIS is where the gap gets large.

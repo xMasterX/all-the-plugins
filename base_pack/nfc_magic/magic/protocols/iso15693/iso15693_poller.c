@@ -37,8 +37,9 @@
 // itself in four ways. Membership only -- the gen1 write SEQUENCE is ordered and stays written out at
 // its call site, where the order is the point.
 // COUNT_OF rather than sizeof at the three loops below: sizeof is right only while the element type is
-// uint8_t, and this file already contemplates block indices above 255 elsewhere. Widening the array
-// would silently shorten every one of those loops.
+// uint8_t, and this file already contemplates block indices above 255 elsewhere. Widen it to uint16_t
+// and sizeof(array) goes 4 -> 8 while the element count stays 4, so a sizeof-bounded loop would run
+// EIGHT iterations over a four-element array, touching indices 4..7 -- FOUR elements past the end.
 static const uint8_t iso15693_poller_backdoor_blocks[] = {
     ISO15693_MAGIC_BLK_UID_7654,
     ISO15693_MAGIC_BLK_UID_3210,
