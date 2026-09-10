@@ -23,10 +23,10 @@ the copy advertises the same chip identity.
 - **Wipe** — zero every data block the card physically holds, including 56/57/62/63. On a gen2 card
   those are ordinary user data, so sparing them would leave real data behind on the card people
   actually have. On a **gen1** card they are the UID / unlock / commit registers, so a wipe cannot
-  promise to leave the UID intact — instead it **re-reads the UID afterwards and reports a change**
-  rather than claiming one (see below). Like proxmark's `hf 15 wipe`, no attempt is made to disarm the
-  card first; whether that is needed is flagged in the code as an open question pending a gen1 card to
-  test against.
+  promise to leave the UID intact — instead it **re-reads the UID afterwards, where it can, and reports
+  a change** rather than claiming one (see below, including the one case where it cannot). Like
+  proxmark's `hf 15 wipe`, no attempt is made to disarm the card first; whether that is needed is
+  flagged in the code as an open question pending a gen1 card to test against.
 - **The wipe is bounded by the card, not by what the card claims.** A magic card's advertised block
   count is programmable — cloning a 28-block source onto a 64-block card makes it advertise 28 — while
   the blocks above that count stay readable and writable. A wipe that trusted the count would therefore
@@ -100,6 +100,11 @@ the copy advertises the same chip identity.
   without which the card would be unreachable. If the card never comes back from the power-cycle, or no
   longer answers at all, the check has reached no answer: the wipe says "UID not re-checked" rather than
   implying the identity was confirmed.
+  **Limit:** a wipe that clears *nothing* — no usable geometry, or every block write-protected — reports
+  "Wipe failed" and does not attempt the check at all, so it does not say the check was skipped either.
+  That is the one gap in this reporting, and it is not benign on an armed gen1 card: the refused writes
+  still went to blocks 56/57, and a tag can apply a write without answering. Tracked with the other gen1
+  register hazards in #255.
 - **A card lifted mid-write reports "Card removed".** Losing the card partway through makes every
   remaining block fail, which looks the same as reaching the card's physical capacity, so when a block
   fails the write re-checks that the card is still present before reporting a capacity verdict. Both the
