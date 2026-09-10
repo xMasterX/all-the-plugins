@@ -480,6 +480,11 @@ static void
 // The one write both block passes make; ISO15693_POLLER_WRITE_ATTEMPTS says why it retries at all.
 // Retries only ever run on a failure, so a card that takes its writes pays nothing for them. There is
 // deliberately no break before the last delay, which is where the per-refused-block figure comes from.
+//
+// Every block write in this file funnels through here, and the SDK builds these frames UNADDRESSED:
+// iso15693_3_poller_write_block sets only SUBCARRIER_1 | DATA_RATE_HI, with no ADDRESSED flag and no
+// UID in the frame. So a second ISO15693 tag inside the field receives them too, and a wipe zeroes it
+// with nothing on screen saying another tag was ever there. Tracked as #251, split out for follow-up.
 static Iso15693_3Error iso15693_poller_write_block_retried(
     Iso15693_3Poller* iso_poller,
     const uint8_t* data,
@@ -1141,6 +1146,13 @@ static Iso15693PollerEvent iso15693_poller_success_or_partial(Iso15693Poller* in
 // Read the UID back for verification, retrying a few times so a momentary miss right after the field
 // power-cycle isn't mistaken for a removed card. Runs on the Nfc worker thread (furi_delay_ms is the
 // same primitive the SDK poller uses between activation attempts).
+//
+// The SDK's inventory is 1-SLOT (INVENTORY_T5 | T5_N_SLOTS_1), so with two tags in the field it returns
+// whichever wins the slot instead of reporting a collision. After a wipe that is worse than it sounds:
+// the answer can come from the bystander, and the "UID changed" screen would print a UID belonging to
+// a different card as though it were this one -- strictly worse than printing nothing, since the whole
+// point of that screen is to be the route back to a card whose identity moved. Same root cause as the
+// unaddressed writes above; #251.
 static Iso15693_3Error
     iso15693_poller_verify_inventory(Iso15693_3Poller* iso_poller, uint8_t* uid) {
     Iso15693_3Error error = Iso15693_3ErrorNone;
