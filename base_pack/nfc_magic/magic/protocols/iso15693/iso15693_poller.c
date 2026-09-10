@@ -127,10 +127,10 @@ static bool iso15693_poller_is_backdoor_block(uint16_t block) {
 // cursor) the way uscuid_ul_poller.c does, and only then is per-block safe.
 #define ISO15693_POLLER_PROGRESS_STEPS (8U)
 
-// The wipe sweeps ABOVE the card's advertised block count, because that count is not the card's
-// capacity -- the gen2 CFG frame PROGRAMS what the card advertises. Cloning a 28-block source onto a
-// 64-block card leaves it advertising 28, and a wipe bounded by that clears 28 of 64 and calls it
-// Success. Measured on hardware 2026-08-04: seed all 64 blocks with a marker, clone a 28-block source
+// The wipe sweeps ABOVE the card's advertised block count, because that count is programmed rather
+// than physical -- see blocks_advertised in the header. Cloning a 28-block source onto a 64-block card
+// leaves it advertising 28, and a wipe bounded by that clears 28 of 64 and calls it Success.
+// Measured on hardware 2026-08-04: seed all 64 blocks with a marker, clone a 28-block source
 // over it, wipe (screen said Success), then read with a proxmark -- block 20 was zeroed, blocks 28, 40
 // and 63 still returned the marker. 36 of 64 blocks survived a "successful" wipe.
 //
@@ -164,24 +164,19 @@ static bool iso15693_poller_is_backdoor_block(uint16_t block) {
 // So it is set generously, well clear of any sweep a real card can ask for, and NOT tuned down for the
 // second case -- the block ceiling already caps that at roughly the 18s above.
 //
-// 10 seconds. Working from the ~1s a 64-block wipe takes (see ISO15693_POLLER_WIPE_ABSENT_RUN): a
-// refused block costs 3 writes plus 3 waits plus a read -- the retry loop has no break before its
-// last delay -- so an accepted one is a fraction of the 40-70ms, and the largest sweep any card can
-// ask for -- 256 blocks all accepting -- lands somewhere
-// around 3-4s. Every figure here is an estimate from bench runs that were not instrumented for timing,
-// which is itself an argument for the wide margin. Note the true worst case is this bound PLUS one
-// re-probe of the trailing run, which is not deadline-checked (it would have to abandon the run
-// half-classified); that is bounded by the run length.
-//
-// A run cut here reports what it covered and says it was cut (pass_truncated), rather than passing
-// off a partial range as the card's extent -- the same distinction the advertised-count floor draws.
+// 10 seconds. ISO15693_POLLER_WIPE_ABSENT_RUN derives the per-block cost and the ~1s a 64-block wipe
+// takes; an ACCEPTED block is a fraction of that, so the largest sweep any card can ask for -- 256
+// blocks all accepting -- lands somewhere around 3-4s. Those are estimates, which is itself an argument
+// for the wide margin. The true worst case is this bound PLUS one re-probe of the trailing run, which
+// is not deadline-checked (it would have to abandon the run half-classified) and is bounded by the run
+// length.
 //
 // BOTH passes use this, and the shared name is deliberate: whatever the value is has to be defensible
 // for the more expensive of the two, not the cheaper.
 //
-// Which one that is does not have the obvious answer. Per REFUSED block the two passes are now the same
-// shape -- 3 writes, 3 waits, 1 read -- because the sweep reads on every refused block too, not only the
-// empty ones. So the difference is not the probe:
+// Which one that is does not have the obvious answer. Per REFUSED block the two passes are the same
+// shape, because the sweep reads on every refused block too, not only the empty ones -- so the
+// difference is not the probe:
 //
 //   the WIPE pays more on the same geometry. It runs a card-present inventory every
 //     ISO15693_POLLER_WIPE_ABSENT_RUN absences, and a full re-probe of the trailing run after the loop,
@@ -222,10 +217,9 @@ static bool iso15693_poller_is_backdoor_block(uint16_t block) {
 // the run is caught by the re-probe at the trip, which is what makes the run length a tolerance rather
 // than a blind spot.
 //
-// The run length is deliberately NOT the only guard, and it never ends the sweep below the advertised
-// count -- the card claims those blocks, so the sweep attempts all of them however they answer. Above
-// that, the re-probe at the trip is what makes a filled run recoverable, so this number sets how much
-// dropout is absorbed silently rather than how much is caught.
+// The run length is deliberately NOT the only guard: above the advertised count the re-probe at the
+// trip is what makes a filled run recoverable, so this number sets how much dropout is absorbed
+// silently rather than how much is caught. (Below that count the sweep never stops on absence at all.)
 // What remains: a card whose memory is present but answers neither a write nor a read across a whole run,
 // even on re-probe, is indistinguishable from one that ends there by any means available here. Note the
 // counting rule that keeps the fake-flash case honest -- a trailing run is judged by whether it answers,
@@ -790,10 +784,8 @@ static void iso15693_poller_wipe_note_present(
     if(block > *highest_present) *highest_present = block;
 }
 
-// Wipe mode: write zeros to every data block the card PHYSICALLY holds -- no UID command is sent.
-// The card's advertised block count is only the starting point, not the bound: see
-// ISO15693_POLLER_WIPE_MAX_BLOCKS for why, and for the hardware measurement that settled it. The sweep
-// runs upward until a run of ISO15693_POLLER_WIPE_ABSENT_RUN blocks answers neither a write nor a read.
+// The wipe's block sweep. Its contract is iso15693_poller_start_wipe's, and the bound it runs to is
+// ISO15693_POLLER_WIPE_MAX_BLOCKS, with the hardware measurement behind it. Decided HERE:
 // We attempt every block rather than pre-skipping the target's locked ones: a magic card often ignores
 // its own lock bits and accepts the write. Each refused write is then classified by a FRESH read-back
 // (not the copy taken at activation -- see below), which answers a question the write cannot:
@@ -807,13 +799,11 @@ static void iso15693_poller_wipe_note_present(
 //                              top, which was never the card's to clear -- dropped entirely.
 // That last distinction is what stops a card advertising more blocks than it holds from reporting a
 // partial wipe for blocks that do not exist.
-// The gen1 backdoor registers (blocks 56/57/62/63) live in this same block-number space and ARE
-// cleared, deliberately. Skipping them would spare a gen1 card's UID registers at the cost of leaving
-// four blocks of real user data behind on every gen2 card, where they are ordinary memory -- a certain
-// loss on the card we actually have, to hedge a hazard only gen1 has. Note the narrow form of the
-// argument: a wipe cannot ARM a gen1 UID change by itself, since arming needs 0x6996 in the commit
-// block and a wipe writes zero -- but that says nothing about a card that is armed ALREADY. See the
-// OPEN QUESTION in the loop below.
+// The gen1 backdoor registers live in this same block-number space and ARE cleared, deliberately:
+// skipping them would spare a gen1 card's UID registers at the cost of leaving four blocks of real
+// user data behind on every gen2 card, where they are ordinary memory -- a certain loss on the card we
+// actually have, to hedge a hazard only gen1 has. The hazard itself, and why nothing here can check
+// for it before sweeping, is the OPEN QUESTION in the loop below.
 // Returns the number of blocks that actually accepted the zero-write, so the caller can tell a
 // genuine wipe from one where nothing could be cleared.
 static uint16_t iso15693_poller_wipe_blocks(
