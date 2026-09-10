@@ -84,8 +84,7 @@ bool nfc_magic_scene_iso15693_gen1_optin_on_event(void* context, SceneManagerEve
     if(event.type == SceneManagerEventTypeCustom) {
         if(event.event == GuiButtonTypeRight) {
             // Opt in: re-run the write in gen1 mode. The gen2 attempt wrote nothing, so this is the
-            // first thing to touch the card. Both flows resume in the shared write scene, which reads
-            // iso15693_force_gen1 and iso15693_mode on enter.
+            // first thing to touch the card.
             instance->iso15693_force_gen1 = true;
             scene_manager_next_scene(instance->scene_manager, NfcMagicSceneWrite);
             consumed = true;

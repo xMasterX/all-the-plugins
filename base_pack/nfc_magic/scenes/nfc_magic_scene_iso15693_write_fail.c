@@ -1,5 +1,10 @@
 #include "../nfc_magic_app_i.h"
 
+// LINE BUDGET for every body in this file: FontSecondary advances 11px, so a body at y=13 puts line
+// tops at 13/24/35/46 and a fourth line's lower rows fall inside the button box at rows 52-63. Three
+// lines, therefore, for anything at y=13 with buttons under it -- and where the body carries a UID that
+// budget decides the prose, because a clipped hex digit is a mis-readable UID.
+
 void nfc_magic_scene_iso15693_write_fail_widget_callback(
     GuiButtonType result,
     InputType type,
@@ -142,9 +147,8 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
     if(wipe_complete) {
         // A clean wipe, reporting what it actually covered. This screen exists because the sweep's
         // length is measured, not assumed: it stops at the highest block the card answered for, which
-        // can be short of the card's claim or past it (a card cloned from a smaller source advertises
-        // the smaller count while still holding everything above). On the bare Success popup those
-        // render identically.
+        // can be short of the card's claim or past it -- see blocks_advertised. On the bare Success
+        // popup those render identically.
         //
         // Both figures, no verdict. blocks_total < advertised is NOT flagged as an error: a card
         // advertising 66 blocks against 64 physical is a normal, undamaged card, and calling its two
@@ -253,7 +257,6 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             // nothing and is reported as an over-capacity success, not here.)
             furi_string_cat_str(text, "\nCard too small");
         } else if(instance->iso15693_result.used_gen1) {
-            // gen1 fallback stamped the UID/commit into blocks 56/57/62/63, so they differ.
             furi_string_cat_str(text, "\ngen1: 56/57/62/63 differ");
         } else if(instance->iso15693_result.identity_failed) {
             // All data blocks took, but the card rejected the AFI/DSFID write.
@@ -296,19 +299,14 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             FontSecondary,
             "The UID was written,\nbut no data block took.\nThe card has UID only.");
     } else if(wipe_uid_changed) {
-        // The wipe cleared its blocks and the card came back answering a different UID. On gen2 that
-        // cannot happen -- the wipe sends no UID command and the gen2 UID lives in a separate register
-        // space -- so in practice this is a gen1 card that an earlier gen1 UID write left armed, with
-        // the wipe's zeros landing in blocks 56/57, which on gen1 ARE the UID registers. Print what it
-        // answers to now: without that the card is simply lost, since it no longer responds to the UID
-        // the user knows it by.
+        // The wipe cleared its blocks and the card came back answering a different UID -- in practice a
+        // gen1 card an earlier UID write left armed, which #255 covers and gen2 cannot do at all. Print
+        // what it answers to now: without that the card is simply lost, since it no longer responds to
+        // the UID the user knows it by.
         // success_or_partial ORs uid_changed with failed_count, so BOTH can hold: a wipe can move the UID
         // AND leave blocks uncleared. Lead with the counts rather than asserting "Data cleared", which
         // would be false in exactly that case -- and it costs nothing, since the counts replace a prose
-        // line. The UID then lands on line 3, which matters: FontSecondary advances 11px per line, so a
-        // body at y=13 puts line tops at 13/24/35/46 and a 4th line's lower rows fall inside the button
-        // box at rows 52-63. This UID is the only way back to a card that has stopped answering to the
-        // one the user knows, and a clipped hex digit is a mis-readable UID.
+        // line, which is what keeps the UID on line 3 inside the line budget above.
         const uint16_t wiped_total = instance->iso15693_result.blocks_total;
         const uint16_t wiped_bad = instance->iso15693_result.failed_count;
         FuriString* text = furi_string_alloc();
@@ -325,12 +323,11 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             widget, 0, 13, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(text));
         furi_string_free(text);
     } else if(uid_unexpected) {
-        // The gen2 backdoor moved the UID to neither the original nor the target. Everything else that
-        // lands on "Not a magic tag" is a card that did nothing; this one demonstrably responded to a
-        // magic command, so saying it isn't magic would be exactly backwards. The card is now answering
+        // Everything else that lands on "Not a magic tag" is a card that did nothing; this one
+        // demonstrably responded to a magic command, so saying it isn't magic would be exactly
+        // backwards -- see uid_unexpected for why that is proof rather than an anomaly. It is answering
         // to a UID nobody asked for, and printing it is the only way the user can find the card again.
-        // Prose kept to two lines so the UID lands on line 3: a 4th line at y=13 starts at row 46 and
-        // runs into the button box at rows 52-63, and a clipped hex digit is a mis-readable UID.
+        // Prose kept to two lines so the UID lands on line 3, per the line budget above.
         FuriString* text = furi_string_alloc();
         furi_string_set_str(text, "Card is magic, but the\nUID it took isn't yours:\n");
         for(size_t i = 0; i < ISO15693_3_UID_SIZE; i++) {
@@ -343,10 +340,9 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             widget, 0, 13, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(text));
         furi_string_free(text);
     } else if(gen1_failed) {
-        // The opt-in gen1 UID sequence didn't verify. It is sent before anything is checked, as four
-        // ordinary WRITE BLOCKs that any writable tag accepts, so on the tag this most likely is --
-        // an ordinary one -- those four blocks are gone. The user consented to that risk; they still
-        // need to be told it was spent, and on which blocks, to restore them from a backup.
+        // The opt-in gen1 UID sequence didn't verify, so gen1_attempted's four blocks are most likely
+        // gone on what is most likely an ordinary tag. The user consented to that risk; they still need
+        // to be told it was spent, and on which blocks, to restore them from a backup.
         widget_add_string_multiline_element(
             widget,
             0,
@@ -356,10 +352,10 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             FontSecondary,
             "UID didn't take, so not\na gen1 card. 56/57/62/63\nmay be overwritten.");
     } else if(uid_unverifiable) {
-        // Write UID was asked for the UID the card already has -- the editor pre-seeds itself from the
-        // last Info read, so this is two menu taps away. Nothing was sent: a read-back against a UID
-        // the card already carries is passed by any tag at all, so the Success it would have earned
-        // would have said nothing about the card. Tell the user how to get an answer instead.
+        // Write UID was asked for the UID the card already has, and nothing was sent -- see
+        // uid_unverifiable. Worth a screen of its own rather than a generic Fail because the editor
+        // pre-seeds itself from the last Info read, so this is two menu taps away rather than a typo.
+        // Tell the user how to get an answer instead.
         widget_add_string_multiline_element(
             widget,
             0,

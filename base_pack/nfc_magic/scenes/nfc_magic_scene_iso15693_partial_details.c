@@ -14,19 +14,12 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
         scene_manager_get_scene_state(instance->scene_manager, NfcMagicSceneIso15693WriteFail);
     const bool over_capacity = (reason == NfcMagicIso15693WriteFailReasonOverCapacity);
     const bool wipe_mode = (instance->iso15693_mode == NfcMagicIso15693ModeWipe);
-    // Bound the list at the cut. What that saves differs by mode, and only the CLONE has the problem it
-    // was written for:
-    //
-    //   clone -- the bitmap holds two different things at two different addresses. Below the cut are
-    //     blocks the card was asked for and refused; at and above it are blocks the back-fill recorded so
-    //     the "written" figure, derived by subtracting failures from the total, could not claim they
-    //     landed. Only the lower group is a fact about the card, and listing them together names the
-    //     upper group as refusals -- which is the whole complaint.
-    //   wipe -- there is no back-fill. Nothing above the cut is recorded at all, so the bound is a no-op
-    //     and the note below is the only thing that mentions those blocks.
-    //
-    // The bound is applied in both modes anyway, because a rule that holds in one and is inert in the
-    // other is simpler than a mode test, and the note below carries the rest either way.
+    // Bound the list at the cut, for the reason pass_truncated gives: on a clone the bitmap holds two
+    // different things at two different addresses, and only the group below the cut is a fact about the
+    // card. Listing them together names the back-filled group as refusals, which is the whole
+    // complaint. A cut wipe records nothing above its cut, so the bound is inert there and the note
+    // below is the only thing that mentions those blocks -- but it is applied in both modes anyway,
+    // because a rule that holds in one and is inert in the other beats a mode test.
     const uint16_t list_upto = instance->iso15693_result.pass_truncated ?
                                    instance->iso15693_result.cut_block :
                                    (uint16_t)(ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8);
@@ -158,8 +151,7 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
             "moved its UID is unknown.");
     }
     if(instance->iso15693_result.used_gen1) {
-        // The gen1 fallback stamped the UID/commit into blocks 56/57/62/63, so they differ from the
-        // source regardless of the write results above.
+        // Unconditional: those four blocks differ from the source whatever the write results above say.
         if(furi_string_size(message) > 0) furi_string_push_back(message, '\n');
         furi_string_cat_str(message, "gen1: 56/57/62/63 hold UID + unlock/commit, not file data.");
     }

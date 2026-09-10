@@ -174,9 +174,8 @@ static void
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventCardDetected);
     } else if(event == Iso15693PollerEventSuccess) {
-        // Read the clone stats on success too, so the Success handler can distinguish an exact clone
-        // from one where the card ended up advertising more blocks than it physically holds
-        // (over-capacity with empty tail -- no data lost, but worth a note).
+        // Read the clone stats on success too: the Success handler below needs them to choose between
+        // the bare popup and the result screen.
         iso15693_poller_get_result(instance->iso15693_poller, &instance->iso15693_result);
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventWorkerSuccess);

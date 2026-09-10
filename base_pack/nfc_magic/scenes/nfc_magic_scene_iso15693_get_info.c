@@ -58,8 +58,8 @@ bool nfc_magic_scene_iso15693_get_info_on_event(void* context, SceneManagerEvent
             scene_manager_next_scene(app->scene_manager, NfcMagicSceneIso15693Info);
             consumed = true;
         } else if(event.event == NfcMagicCustomEventIso15693CardDetectFailed) {
-            // No card activated within the poller's retry budget. Show a dolphin fail screen (same
-            // layout as the gen4 "no response" screen) rather than silently dropping to the menu.
+            // Show a dolphin fail screen, same layout as the gen4 "no response" screen, rather than
+            // silently dropping to the menu.
             nfc_magic_app_blink_stop(app);
             Widget* widget = app->widget;
             widget_add_icon_element(widget, 72, 17, &I_DolphinCommon_56x48);
