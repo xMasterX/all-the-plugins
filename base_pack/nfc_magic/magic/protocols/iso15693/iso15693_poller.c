@@ -833,33 +833,23 @@ static uint16_t iso15693_poller_wipe_blocks(
     const uint8_t size = block_size > sizeof(zeros) ? (uint8_t)sizeof(zeros) : block_size;
     uint16_t wiped = 0;
 
-    // OPEN QUESTION, gen1 only -- tracked as #255, which carries the gen3 case beside it because the two
-    // are the same class and only one of them can be checked for before the sweep. This loop writes the
-    // gen1 UID registers (56/57) before it reaches
-    // unlock/commit (62/63). The gen1 arm sequence is unlock=0 then commit=0x6996 then the UID
-    // blocks, and nothing ever clears commit again -- not this app, and not proxmark's
-    // SetTag15693Uid -- so a card that has had a gen1 UID written may still be armed, and zeroing
-    // 56/57 while it is would be the arm sequence with a zero payload.
+    // OPEN QUESTION, gen1 only. The full argument, the gen3 case beside it and what would settle either
+    // are in #255. In brief: this loop zeroes the gen1 UID registers (56/57) before it reaches
+    // unlock/commit (62/63); the arm sequence is unlock=0 then commit=0x6996 then the UID blocks; and
+    // nothing ever clears commit again -- not this app, not proxmark's SetTag15693Uid -- so a card left
+    // armed by an earlier gen1 UID write can have its UID moved by a wipe.
     //
-    // Do NOT try to de-arm by pre-writing the commit block. Writing commit before unlock is the
-    // reverse of the only order anyone has observed the hardware accept, so it is either rejected
-    // outright or -- worse -- leaves unlock freshly zeroed, one step INTO the arm sequence, immediately
-    // before this loop touches the UID registers. No blind ordering is safe, because the only route to
-    // the latch is through the sequence that sets it.
+    // Do NOT try to de-arm by pre-writing the commit block. Writing commit before unlock reverses the
+    // only order anyone has observed the hardware accept, so it is either rejected outright or -- worse
+    // -- leaves unlock freshly zeroed, one step INTO the arm sequence, immediately before this loop
+    // touches the UID registers. No blind ordering is safe, because the only route to the latch is
+    // through the sequence that sets it. That conclusion survives the unlock/commit reading above being
+    // wrong, since it follows from not knowing what those registers do rather than from knowing.
     //
-    // The write ORDER is therefore left alone, matching proxmark's `hf 15 wipe`, which also makes no
-    // attempt to de-arm. What IS done is the grounded half: the caller re-reads the UID once the sweep
-    // finishes and reports a mismatch instead of promising the UID is unchanged. That check runs in
-    // Iso15693WriteStateVerifyWipe, behind a field power-cycle -- which is what lets it see a gen1 latch
-    // at all, since a card latches a UID written into 56/57 only on the next power-up and answers the
-    // old one until then. It converts a silent identity change into a reported one; it does not prevent
-    // the change.
-    //
-    // Note what this argument does NOT rest on. The unlock/commit reading above is our inference from
-    // one implementation's send order, and if it is wrong the arming model is wrong with it -- but the
-    // conclusion survives either way, because "no blind ordering is safe" follows from not knowing what
-    // those registers do rather than from the interpretation being right. Settling the question needs a
-    // gen1 card to test against, and nobody on this PR has one.
+    // So the order is left alone, matching proxmark's `hf 15 wipe`, and what ships is the grounded half:
+    // Iso15693WriteStateVerifyWipe re-reads the UID after the sweep, behind a field power-cycle, since a
+    // card latches a UID written into 56/57 only on the next power-up and answers the old one until
+    // then. It converts a silent identity change into a reported one; it does not prevent the change.
     bool any_present = false; // has any block answered at all?
     uint16_t highest_present = 0; // top block proven to exist -> the reported total
     // Consecutive absent-looking blocks. Doubles as the count of absences not yet resolved as
