@@ -250,83 +250,46 @@ struct Iso15693Poller {
     uint8_t target_uid[ISO15693_3_UID_SIZE];
     uint8_t original_uid[ISO15693_3_UID_SIZE]; // UID before the write, to gate the gen1 fallback
     Iso15693WriteState write_state;
-    // This run is the opt-in gen1 attempt (write the gen1 UID, verify it, then the payload), entered
-    // from the "not gen2 magic" screen. Set for a clone AND for a bare Write-UID. A normal run leaves
-    // this false and tries gen2 first, offering gen1 only if gen2 leaves the UID unchanged.
+    // This run is the opt-in gen1 attempt, entered from the "not gen2 magic" screen: Start sends the
+    // gen1 sequence instead of the gen2 one, and VerifyGen1 rather than VerifyGen2 does the checking.
     bool attempt_gen1;
     uint32_t activation_errors; // consecutive activation failures (no card) -> timeout
-    // Clone mode: the source image (kept separate from `data` so start_internal's reset can't wipe
-    // it) and per-block write results.
-    Iso15693_3Data* clone_source;
-    uint16_t clone_blocks_total; // clone: blocks on the source image, less 56/57/62/63 on a gen1 run
-        // (they carry the UID, not source data). wipe: the advertised count while the sweep runs, so the
-        // progress popup has a denominator, then the count the card PROVED it holds once it ends
-    // Clone mode: blocks that failed to write and count as a real problem: either they held source
-    // data (lost), or they were empty failures that did NOT form a clean capacity tail (so we can't
-    // call them over-capacity). Drives Partial. Wipe mode: reused as the count of blocks that still
-    // held data after a failed zero-write (i.e. all wipe failures).
+    Iso15693_3Data* clone_source; // kept apart from `data` so start_internal's reset cannot wipe it
+    // Everything from here down to `callback` is this run's reporting state, and get_result copies all
+    // of it into an Iso15693PollerResult, one assignment per field. THAT function is the mapping, and
+    // iso15693_poller.h owns what each field means -- so this side comments only what the header cannot
+    // know. The `clone_` prefix is historical: a wipe reuses the same fields, which is why
+    // clone_blocks_total ends up holding a wipe's measured block count.
+    uint16_t clone_blocks_total;
     uint16_t clone_failed_count;
-    // Clone mode: empty source blocks past the card's real capacity -- a contiguous run above the last
-    // block that did write, so nothing was lost. Drives the "clone complete, with a note" Success.
-    // Wipe mode: unused (stays 0).
     uint16_t clone_over_capacity;
-    // Wipe mode: the block count the card advertised, kept alongside the measured figure that replaces
-    // it in clone_blocks_total once the sweep ends. Clone mode: unused (stays 0).
     uint16_t wipe_advertised;
-    // BOTH modes: the run hit ISO15693_POLLER_PASS_MAX_MS and stopped short, so its range is a cut
-    // rather than the card's extent and the report has to say so. The clone sets it too -- see the
-    // truncation break in write_source_blocks -- and nfc_magic_scene_write.c mode-gates on it precisely
-    // because it is not wipe-only. A reader who believes otherwise deletes that gate and puts a cut
-    // clone on the wipe-specific screen.
+    // Set by the WIPE's sweep and by the CLONE's data pass -- see the truncation break in
+    // write_source_blocks. nfc_magic_scene_write.c mode-gates on this for exactly that reason, so a
+    // reader who takes it for wipe-only deletes that gate and lands a cut clone on the wipe screen.
     bool pass_truncated;
-    // Where the clock cut the pass: the first block index NOT attempted. Only meaningful alongside the
-    // truncation flag above. Kept as its own figure because nothing else in the result carries it --
-    // clone_blocks_total is the source's count, and after a wipe it is the highest block that ANSWERED,
-    // which sits at or below the cut and can sit far below it. A sweep that walks past the advertised
-    // count before the clock fires has a cut index above that count and a total below it, so the two
-    // are not interchangeable in either direction.
     uint16_t pass_cut_block;
-    // Wipe mode: the post-power-cycle UID check reached an answer. False means it never ran to one, so
-    // uid_changed being false is an absent observation rather than a clean result.
     bool uid_verified;
     uint8_t clone_failed_bitmap[ISO15693_POLLER_BLOCK_BITMAP_SIZE];
-    // Set when the gen1 fallback (not gen2) actually set the UID. gen1 stamps the UID/commit into
-    // data blocks 56/57/62/63, so a clone that fell back to gen1 can't be byte-identical there.
-    // NOTE: the gen1 path is NOT hardware-validated -- we only have a gen2 test card. See the PR note.
     bool clone_used_gen1;
-    // Set when the blocks that couldn't be written are a persistent, contiguous run at the very top
-    // of the card -- the signature of "source larger than the card's physical capacity". Gates the
-    // "Card too small" message; a scattered/anomalous failure leaves it false (generic report).
     bool clone_capacity_confirmed;
-    // Clone mode: the source reported an AFI / DSFID, but reading it back with GET SYSTEM INFO did not
-    // return that field carrying the source's value, so the copy does not advertise it. Decided by
-    // read-back rather than by the write's return value, so neither an in-band refusal nor a silent
-    // accept is misread (see iso15693_poller_write_identity). Downgrades the clone to Partial with a
-    // note; it never fails the clone -- the UID and data blocks are the real payload.
+    // Two flags, one result field: get_result ORs them behind a mode gate. Both are decided by a GET
+    // SYSTEM INFO read-back rather than by the write's return value -- see write_identity for why the
+    // return value cannot settle it.
     bool clone_afi_failed;
     bool clone_dsfid_failed;
-    uint16_t clone_blocks_done; // blocks attempted so far, for the progress popup
+    uint16_t clone_blocks_done;
     uint8_t progress_step; // last progress band emitted this pass (see PROGRESS_STEPS)
-    // The gen2 backdoor moved the UID to neither the original nor the target. That is the one outcome
-    // that PROVES the card is magic -- an inert tag cannot change its UID -- so it must not be reported
-    // as "not a magic tag". uid_readback holds what the card actually answered with.
     bool uid_unexpected;
     uint8_t uid_readback[ISO15693_3_UID_SIZE];
-    // The destructive gen1 UID sequence was sent this run, so blocks 56/57/62/63 have been overwritten
-    // whatever the outcome. Reported so a gen1 failure can name them instead of saying only "not a
-    // magic tag". Equal to attempt_gen1 -- kept as its own result field so the scene doesn't have to
-    // know when the gen1 frames are sent. Note "unconditionally" would be too strong: two paths return
-    // from Start before the send (a Write-UID asking for the card's own UID, and an empty clone source),
-    // leaving this true with nothing transmitted. Neither is reachable from the opt-in screen today,
-    // but start_clone_gen1 / start_write_uid_gen1 are public entry points.
+    // Equal to attempt_gen1, kept as its own field so the scene needn't know when the gen1 frames go
+    // out. "Unconditionally" would be too strong: two paths return from Start before the send -- a
+    // Write-UID asking for the card's own UID, and an empty clone source -- leaving this true with
+    // nothing transmitted. Neither is reachable from the opt-in screen today, but start_clone_gen1 and
+    // start_write_uid_gen1 are public entry points.
     bool gen1_attempted;
-    // Write-UID only: the requested UID is the one the card already has, so reading it back afterwards
-    // proves nothing about the card -- a plain tag passes the check having ignored every frame. The run
-    // stops before writing and reports this instead of a Success it cannot justify.
     bool uid_unverifiable;
-    // Wipe only: the UID read back after the wipe is not the one the card presented before it. Only ever
-    // set from a POSITIVE observation -- see Iso15693WriteStateVerifyWipe.
-    bool uid_changed;
+    bool uid_changed; // set only from a positive observation -- see Iso15693WriteStateVerifyWipe
     Iso15693PollerCallback callback;
     void* context;
     bool running;
