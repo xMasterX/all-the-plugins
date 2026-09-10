@@ -150,6 +150,13 @@ the copy advertises the same chip identity.
   with a moved UID that no longer identifies as re-writable. The wipe's post-write UID re-check surfaces
   the identity half of that as it would on any card; nothing speaks for the signature. Tracked as #255,
   with the armed-gen1 case beside it.
+- **A wipe reaches every ISO15693 tag in the field, not just the selected one** — any generation, magic
+  or not. The WRITE BLOCK frames go out unaddressed, so a second tag in range has its blocks zeroed too,
+  with nothing on screen saying another tag was ever there. The post-wipe UID re-read is exposed the same
+  way: the inventory is single-slot, so with two tags present it returns whichever wins the slot rather
+  than reporting a collision, and the "UID changed" screen can then print the bystander's UID as though
+  it were the card's. Needs two ISO15693 tags inside the field at once, which a badge holder or a wallet
+  does. Tracked as #251, raised in review of this feature and split out for follow-up.
 
 ## 2.2
 
