@@ -86,11 +86,12 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
             // Which side of the claim the cut lands on changes what is true, so it changes the
             // sentence. The sweep runs past the advertised count deliberately, so "of the N this card
             // claims" is only a frame when the cut is actually inside it.
-            // <= not <: at equality the sweep stopped exactly AT the claim, having attempted the claimed
-            // range and nothing beyond it, so block N itself was not attempted and the first sentence is
-            // the accurate one. Strict < sent that case to the "past the N this card claims" wording.
-            if(instance->iso15693_result.cut_block <=
-               instance->iso15693_result.blocks_advertised) {
+            // STRICT <, and the boundary is why: blocks_advertised is a COUNT and cut_block is an INDEX,
+            // so at equality the claimed blocks are 0..N-1 and the cut sits at index N -- the first block
+            // PAST the claim. "at block N of the N this card claims" would name an index that is not one
+            // of the N, and read as a completed fraction on the one boundary where the sweep really was
+            // cut. Both of us have had this backwards once; test_write_fail_scene.c pins it.
+            if(instance->iso15693_result.cut_block < instance->iso15693_result.blocks_advertised) {
                 furi_string_cat_printf(
                     message,
                     "Sweep hit its time limit at block %u of the %u this card claims. Blocks above "
