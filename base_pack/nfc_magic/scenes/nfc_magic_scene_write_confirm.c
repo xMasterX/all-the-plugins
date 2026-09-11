@@ -27,7 +27,7 @@ void nfc_magic_scene_write_confirm_on_enter(void* context) {
     // of the string it is given, so this is freed before the view switch.
     FuriString* uid_str = furi_string_alloc();
 
-    const char* title = is_wipe ? "Wipe? (gen1/gen2 only)" : "Risky operation";
+    const char* title = is_wipe ? "Wipe card?" : "Risky operation";
     const char* confirm_label = "Continue";
     uint8_t text_height = 54;
 
@@ -75,6 +75,10 @@ void nfc_magic_scene_write_confirm_on_enter(void* context) {
         // glyph, so they land at y=13/24/35 and a fourth reaches the button box at rows 52-63.
         // text_height is 38 for the same reason: at the default 54 the box runs to y=67, past the
         // screen, so an over-long string would draw UNDER the button instead of clipping.
+        //
+        // The title is set HERE and not from is_wipe, which also covers the USCUID-UL wipe: that card
+        // is neither gen1 nor gen2, and in this app those words name the MIFARE Classic protocols.
+        title = "Wipe? (gen1/gen2 only)";
         text_height = 38;
         text =
             "Zeroes every block, including\ngen1 magic 56/57/62/63.\nThis can \e#brick\e# a gen3 card!";
