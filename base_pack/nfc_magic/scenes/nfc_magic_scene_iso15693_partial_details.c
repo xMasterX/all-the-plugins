@@ -91,7 +91,8 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
             // so at equality the claimed blocks are 0..N-1 and the cut sits at index N -- the first block
             // PAST the claim. "at block N of the N this card claims" would name an index that is not one
             // of the N, and read as a completed fraction on the one boundary where the sweep really was
-            // cut. Both of us have had this backwards once; test_write_fail_scene.c pins it.
+            // cut. Both of us have had this backwards once, which is why the derivation is written out
+            // rather than left as a bare operator.
             if(instance->iso15693_result.cut_block < instance->iso15693_result.blocks_advertised) {
                 furi_string_cat_printf(
                     message,
