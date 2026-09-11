@@ -102,9 +102,11 @@ the copy advertises the same chip identity.
   implying the identity was confirmed.
   **Limit:** a wipe that clears *nothing* — no usable geometry, or every block write-protected — reports
   "Wipe failed" and does not attempt the check at all, so it does not say the check was skipped either.
-  That is the one gap in this reporting, and it is not benign on an armed gen1 card: the refused writes
-  still went to blocks 56/57, and a tag can apply a write without answering. Tracked with the other gen1
-  register hazards in #255.
+  That is the one gap in this reporting, and on the card it can actually happen to — one that answers
+  reads at every address — it is not benign: the sweep does reach blocks 56/57 and the writes do go out
+  there, and a tag can apply a write without answering, so an armed gen1 card can still have its UID
+  moved. (A card that reports no usable geometry transmits nothing at all, and one claiming fewer than
+  57 blocks never gets that far.) Tracked with the other gen1 register hazards in #255.
 - **A card lifted mid-write reports "Card removed".** Losing the card partway through makes every
   remaining block fail, which looks the same as reaching the card's physical capacity, so when a block
   fails the write re-checks that the card is still present before reporting a capacity verdict. Both the

@@ -1242,15 +1242,18 @@ static NfcCommand
                 return NfcCommandStop;
             }
 
-            // If not a single block accepted the zero-write, nothing was wiped: the card reported no
-            // usable geometry, or every block is read-only / write-protected. Report Fail rather than a
-            // hollow Success, and skip the power-cycle -- but NOT because the UID is safe. "No write
-            // landed, so the UID cannot have moved" is the one inference this file declines to draw
-            // anywhere else: the sweep sent three WRITE BLOCKs each at 56 and 57 before giving up, and
-            // write_identity's own comment says a tag can apply a write without answering. So on an
-            // ARMED gen1 card this path can move the UID, report "Wipe failed", never run the check and
-            // never say the check did not run -- the one path where the mitigation #255 describes does
-            // not run at all. The short-circuit predates this feature and is left as it is.
+            // If not a single block accepted the zero-write, nothing was wiped: the card reported
+            // no usable geometry, or every block is read-only / write-protected. Report Fail
+            // rather than a hollow Success, and skip the power-cycle -- but NOT because the UID is
+            // safe. "No write landed, so the UID cannot have moved" is the one inference this file
+            // declines to draw anywhere else: on a card the sweep reached index 56/57 on, three
+            // WRITE BLOCKs each went out there before it gave up, and write_identity's own comment
+            // says a tag can apply a write without answering. (Not every dead card gets that far
+            // -- no usable geometry returns above the loop, and a card claiming under 57 blocks
+            // ends the sweep near its own claim.) So on an ARMED gen1 card this path can move the
+            // UID, report "Wipe failed", never run the check and never say the check did not run
+            // -- the one path where the mitigation #255 describes does not run at all. The
+            // short-circuit predates this feature and is left as it is.
             if(wiped == 0) {
                 iso15693_poller_report(instance, Iso15693PollerEventFail);
                 return NfcCommandStop;
