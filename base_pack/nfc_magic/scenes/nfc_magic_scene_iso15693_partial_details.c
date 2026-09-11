@@ -132,17 +132,13 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
         // have answered. CardLost has no Details, but the card left, so it is moot.
         //
         // NothingWiped is the one with no route, and there uid_verified is false BY CONSTRUCTION: the
-        // wiped == 0 short-circuit skips the power-cycle and the verify entirely. Its reasoning is that
-        // no write landed which could have moved the UID -- the one inference this file declines to draw
-        // anywhere else, since the sweep did send three WRITE BLOCKs each at index 56 and 57 before
-        // giving up, and a tag can apply a write without answering (see write_identity). So on an armed
-        // gen1 card that is a wipe which can move the UID, reports "Wipe failed", never runs the check,
-        // and never says the check did not run. Filed rather than fixed: gen1, and no card to test it.
+        // wiped == 0 short-circuit skips the power-cycle and the verify entirely. Why that is a hazard
+        // rather than a safe inference, and why it is left alone, belongs to the control flow that does
+        // it -- see the wiped == 0 short-circuit in write_step.
         //
-        // It bites hardest on the card the check exists for. The sweep zeroes 56/57 at INDEX 56/57 --
-        // long before any plausible cut -- so on a gen1 card left armed by an earlier UID write the UID
-        // registers are already overwritten by the time a truncation is decided. "Wipe stopped" then
-        // offers Retry without saying the identity check never reached an answer.
+        // What is this screen's own: on an armed gen1 card the UID registers are overwritten long
+        // before any plausible cut, since the sweep reaches 56/57 at index 56/57. So "Wipe stopped" can
+        // offer Retry without ever saying the identity check did not reach an answer.
         if(furi_string_size(message) > 0) furi_string_push_back(message, '\n');
         furi_string_cat_str(
             message,
