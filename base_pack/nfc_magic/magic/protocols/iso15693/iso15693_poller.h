@@ -163,16 +163,19 @@ typedef struct {
     //   past the claim -- a card that refuses every write but answers a read everywhere never
     //     accumulates an absent run, so the sweep walks beyond the advertised count and the cut lands
     //     above it. But every one of those reads calls wipe_note_present, so blocks_total == cut_block
-    //     exactly, so there is no gap at all on this card. Where a gap can open, the bound is
-    //     ISO15693_POLLER_WIPE_ABSENT_RUN - 1: the deadline is tested at the TOP of the iteration, so on
-    //     every path the run still open when the clock fires is at most that, giving
-    //     cut_block - blocks_total <= 7. NOT "you cannot reach the claim after that many absences" --
-    //     you can. Below the claim the trip falls through to continue rather than ending the sweep,
-    //     which is the advertised-count floor doing its job, and one later block that answers zeroes
-    //     the run.
-    //   below the claim -- a card claiming 200 while holding 10. Under the claim the sweep never stops
-    //     on absence alone, so it grinds on to the clock with the cut somewhere in the middle and
-    //     blocks_total stuck at 10. THIS is where the gap gets large.
+    //     exactly, so there is no gap at all on this card. Where a gap does open HERE it is
+    //     bounded by ISO15693_POLLER_WIPE_ABSENT_RUN - 1, so cut_block - blocks_total <= 7. What
+    //     bounds it is the tripped-run handling: above the claim a run that reaches the threshold
+    //     is either re-probed back under it or ends the sweep, so no iteration starts with more
+    //     than 7 absences open. NOT the deadline's position, which only fixes block as the
+    //     exclusive end of the attempted range, and NOT "you cannot reach the claim after that
+    //     many absences".
+    //   below the claim -- a card claiming 200 while holding 10. THE BOUND ABOVE DOES NOT HOLD
+    //     HERE: the trip falls through to continue WITHOUT clearing absent_run, which is the
+    //     advertised-count floor doing its job, so the run grows unchecked while the sweep grinds
+    //     on to the clock. Claiming 200, holding 10, clock at block 150: absent_run 140, the
+    //     tail-drop clears 10..149, blocks_total stuck at 10, cut_block 150 -- a gap of 140. THIS
+    //     is where the gap gets large. One later block that answers zeroes the run.
     // Either way, any string naming where the run stopped has to read this, not blocks_total.
     uint16_t cut_block;
     // Wipe only: the post-power-cycle UID check reached an answer. When false it did not run -- the card
