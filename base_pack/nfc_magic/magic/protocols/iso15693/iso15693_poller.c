@@ -20,6 +20,16 @@
 // non-magic tag -- only as an explicit user opt-in after gen2 leaves the UID unchanged.
 #define ISO15693_MAGIC_FLAGS (0x02U) // high data rate, unaddressed (ISO15_REQ_DATARATE_HIGH)
 
+// UNADDRESSED IS THE WHOLE OF #251, AND IT COVERS EVERY WRITE THIS APP SENDS, not just data blocks:
+// no frame from this file carries the ADDRESSED flag or a UID, so a second tag in the field takes all
+// of it, with nothing on screen saying it was there. By blast radius:
+//   - data blocks. The SDK's write_block builds its own frame (SUBCARRIER_1 | DATA_RATE_HI), so it is
+//     unaddressed on its own account rather than via this define. A wipe zeroes the bystander too.
+//   - WRITE AFI / WRITE DSFID, from the clone's identity pass. STANDARD commands, so they reach a
+//     bystander of ANY size, and a changed AFI can drop a tag out of selective inventory.
+//   - the gen1 backdoor: plain 0x21 at 56/57/62/63, ordinary user data on a tag that big.
+//   - the gen2 backdoor: 0xE0, proprietary, so a conforming tag should reject it.
+
 // gen1: WRITE BLOCK (0x21) to backdoor blocks; 4 data bytes each. The UID blocks are named by the
 // UID bytes they carry (uid[0] is the MSB, so uid[7..4] is the numerically low half of the UID).
 #define ISO15693_MAGIC_CMD_WRITE    (0x21U) // ISO15693 WRITE BLOCK
@@ -491,10 +501,8 @@ static void
 // Retries only ever run on a failure, so a card that takes its writes pays nothing for them. There is
 // deliberately no break before the last delay, which is where the per-refused-block figure comes from.
 //
-// Every block write in this file funnels through here, and the SDK builds these frames UNADDRESSED:
-// iso15693_3_poller_write_block sets only SUBCARRIER_1 | DATA_RATE_HI, with no ADDRESSED flag and no
-// UID in the frame. So a second ISO15693 tag inside the field receives them too, and a wipe zeroes it
-// with nothing on screen saying another tag was ever there. Tracked as #251, split out for follow-up.
+// Every DATA-block write in this file funnels through here -- the backdoor and identity writes do
+// not. All of them are unaddressed; ISO15693_MAGIC_FLAGS carries the full #251 scope.
 static Iso15693_3Error iso15693_poller_write_block_retried(
     Iso15693_3Poller* iso_poller,
     const uint8_t* data,
