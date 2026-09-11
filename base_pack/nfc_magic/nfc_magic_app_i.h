@@ -142,10 +142,10 @@ typedef enum {
         // so a card that accepts some writes and then answers reads at every address is cut with every
         // claimed block already attempted and the cut index above that count. (NOT the refuses-every-
         // write card: that one clears nothing, so the wipe short-circuits to NothingWiped before the
-        // WipeStopped truncation reporting -- that screen states the cut itself.) A partial
-        // outcome, not a qualified success -- the poller reports Partial for it -- so it carries the
-        // error tone and offers Retry, since re-running is the correct action when data may sit above
-        // the cut.
+        // WipeStopped truncation reporting -- it is NothingWiped's screen that states the cut.) A
+        // partial outcome, not a qualified success -- the poller reports Partial for it -- so it
+        // carries the error tone and offers Retry, since re-running is the correct action when
+        // data may sit above the cut.
 } NfcMagicIso15693WriteFailReason;
 
 // Which ISO15693 operation the shared write scene is running. Replaces the old is-wipe bool, now that
