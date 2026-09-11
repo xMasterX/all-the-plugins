@@ -50,11 +50,12 @@ void nfc_magic_scene_write_confirm_on_enter(void* context) {
         // wipe re-reads the UID afterwards and reports a change instead of claiming one. See the open
         // question in iso15693_poller_wipe_blocks.
         //
-        // The gen3 line is the only warning that reaches the person holding the card. The wipe performs
-        // NO magic detection -- menu, confirm, sweep -- so this cannot say "your card is gen3", only
-        // what a gen3 card would cost, and @0x6r1an0y (who wrote proxmark's V3 support) reports that
-        // cost is the card itself, permanently. #255 is where a pre-flight probe would go; until then a
-        // static line is the whole of the mitigation and the CHANGELOG only reaches release notes.
+        // The gen3 line is the only warning that names the COST; the title above it warns too, but
+        // only about scope. The wipe performs NO magic detection -- menu, confirm, sweep -- so
+        // this cannot say "your card is gen3", only what a gen3 card would cost, and @0x6r1an0y
+        // (who wrote proxmark's V3 support) reports that cost is the card itself, permanently.
+        // #255 is where a pre-flight probe would go; until then a static line is the whole of the
+        // mitigation and the CHANGELOG only reaches release notes.
         //
         // No warning GLYPH, and this is not an oversight: FontSecondary is u8g2_font_haxrcorp4089_tr,
         // whose _r suffix is u8g2's restricted set -- ASCII 32-127 only, so an emoji renders as a
