@@ -273,13 +273,11 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         furi_string_free(text);
     } else if(nothing_wiped) {
         // A wipe that cleared nothing: the card accepted no zero-write (read-only / no usable
-        // geometry). The UID was never touched -- say so, since the generic "not a magic tag / UID
-        // write" message would be wrong for a wipe.
-        // A card that refuses every write while still answering reads is exactly the card the sweep's
-        // time limit exists for, and it is also the one that ends here: nothing accepted, so the wipe
-        // short-circuits past the WipeStopped screen, which is where a cut wipe would normally be
-        // reported. The cut is NOT lost -- it is reported right below, in place of the prose, because
-        // three lines is all the body has.
+        // geometry). A card that refuses every write while still answering reads is exactly the
+        // card the sweep's time limit exists for, and it is also the one that ends here: nothing
+        // accepted, so the wipe short-circuits past the WipeStopped screen, which is where a cut
+        // wipe would normally be reported. The cut is NOT lost -- it is reported right below, in
+        // place of the prose, because three lines is all the body has.
         FuriString* text = furi_string_alloc();
         if(instance->iso15693_result.pass_truncated) {
             furi_string_printf(
