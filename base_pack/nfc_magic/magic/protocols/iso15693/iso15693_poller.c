@@ -1498,10 +1498,15 @@ Iso15693Poller* iso15693_poller_alloc(Nfc* nfc) {
     instance->data = iso15693_3_alloc();
     instance->clone_source = iso15693_3_alloc();
     // Only what must hold BEFORE a start. Everything else is set by start_internal, which is the
-    // authoritative reset list and covers all 28 state and reporting fields -- no public entry point
-    // reaches the struct without going through it, and it asserts !running. Zeroing a subset here too
-    // would read as a second reset list while being sixteen fields short of the real one, so someone
-    // adding a field would find two and have to work out which is binding.
+    // authoritative reset list -- no public entry point reaches the struct without going through
+    // it, and it asserts !running. Zeroing a subset here too would read as a second reset list
+    // while being sixteen fields short of the real one, so someone adding a field would find two
+    // and have to work out which is binding.
+    //
+    // A NEW FIELD BELONGS IN start_internal unless it is one of the four it deliberately leaves
+    // alone: `poller` and `clone_source` are owned allocations, and `target_uid` / `original_uid`
+    // are set by the caller and by write_step, so resetting them would discard the run's own
+    // inputs.
     instance->running = false;
     instance->callback = NULL;
     instance->context = NULL;
