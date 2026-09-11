@@ -1,10 +1,13 @@
 #include "../nfc_magic_app_i.h"
 #include "../magic/protocols/iso15693/iso15693_info.h"
 
-// LINE BUDGET for every body in this file: FontSecondary advances 11px, so a body at y=13 puts line
-// tops at 13/24/35/46 and a fourth line's lower rows fall inside the button box at rows 52-63. Three
-// lines, therefore, for anything at y=13 with buttons under it -- and where the body carries a UID that
-// budget decides the prose, because a clipped hex digit is a mis-readable UID.
+// LINE BUDGET for every body in this file. FontSecondary advances 11px and the button box occupies
+// rows 52-63, so the body's y decides how many lines clear it. Two y values are used here, and both
+// come out at THREE:
+//   y=13 -- tops at 13/24/35, and a fourth at 46 puts its lower rows inside the box.
+//   y=20 -- tops at 20/31/42, and a fourth at 53 sits inside the box entirely.
+// Where the body carries a UID that budget decides the prose, because a clipped hex digit is a
+// mis-readable UID.
 
 void nfc_magic_scene_iso15693_write_fail_widget_callback(
     GuiButtonType result,
@@ -191,9 +194,8 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         //
         // "Timed out" rather than "Stopped": the clock is the only thing that sets this reason code, and
         // with a Retry button on screen the user needs to know what they are retrying against. It goes
-        // in THIS line rather than a fourth one because a fourth line at y=13 lands its bottom rows
-        // inside the button box (tops at 13/24/35/46/57 against a box at rows 52-63), and this body
-        // already reaches three when blocks failed.
+        // in THIS line rather than a fourth one because this body already reaches three when blocks
+        // failed, and three is the whole budget at y=13 -- see the top of the file.
         furi_string_printf(
             text,
             "Cleared %u blocks.\nTimed out at block %u.",
@@ -239,8 +241,8 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             ok,
             total,
             not_written);
-        // The body sits at y=20 with the button row below it, so only three FontSecondary lines fit:
-        // the two count lines plus ONE qualifier. Show the most significant, and there are FOUR in
+        // Three lines fit at y=20 -- see the top of the file -- so this body is the two count lines
+        // plus ONE qualifier. Show the most significant, and there are FOUR in
         // priority order: the cut (pass_truncated) > real data loss (capacity_confirmed) > gen1 UID
         // clobber (used_gen1) > AFI/DSFID (identity_failed). A lower one is dropped from THIS screen
         // only -- "Details" below is offered whenever any caveat applies and lists all of them, so
