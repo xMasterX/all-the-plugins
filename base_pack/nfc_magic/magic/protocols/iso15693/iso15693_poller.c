@@ -859,9 +859,11 @@ static uint16_t iso15693_poller_wipe_blocks(
 
     // OPEN QUESTION, gen1 only. The full argument, the gen3 case beside it and what would settle either
     // are in #255. In brief: this loop zeroes the gen1 UID registers (56/57) before it reaches
-    // unlock/commit (62/63); the arm sequence is unlock=0 then commit=0x6996 then the UID blocks; and
-    // nothing ever clears commit again -- not this app, not proxmark's SetTag15693Uid -- so a card left
-    // armed by an earlier gen1 UID write can have its UID moved by a wipe.
+    // unlock/commit (62/63); the arm sequence is unlock=0 then commit=0x6996 then the UID blocks;
+    // and no gen1 UID write clears commit afterwards -- neither this app's nor proxmark's
+    // SetTag15693Uid -- so a card left armed by an earlier gen1 UID write stays armed, and a wipe
+    // can move its UID. This sweep does reach commit and zero it; ORDER is what decides the
+    // outcome, since 56/57 go first, while commit still holds 0x6996.
     //
     // Do NOT try to de-arm by pre-writing the commit block. Writing commit before unlock reverses the
     // only order anyone has observed the hardware accept, so it is either rejected outright or -- worse
