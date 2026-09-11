@@ -129,10 +129,13 @@ void iso15693_poller_start_clone_gen1(
 typedef struct {
     // The blocks this run attempted and reports against, which is mode-dependent: the source block
     // count for a gen2 clone, that count MINUS the 4 skipped gen1 registers for a gen1 clone, or, for a
-    // wipe, the advertised count WHILE the sweep runs (the progress popup needs a denominator before
-    // the sweep's true length is known) and then the number of blocks the card PROVED it holds.
-    // Terminal events therefore always report the measured figure; only WriteProgress can see the
-    // advertised one. A count, never an index. See ISO15693_POLLER_WIPE_MAX_BLOCKS in the .c.
+    // wipe, the advertised count WHILE the sweep runs (the progress popup needs a denominator
+    // before the sweep's true length is known) and then highest_present + 1. That last one is a
+    // RANGE SIZE, not a tally: it spans up to the highest block the card proved it holds, and
+    // interior absences fall inside the span rather than reducing it -- they are carried by
+    // failed_count instead. Terminal events therefore always report the measured figure; only
+    // WriteProgress can see the advertised one. A count, never an index (a different axis, and
+    // also true). See ISO15693_POLLER_WIPE_MAX_BLOCKS in the .c.
     uint16_t blocks_total;
     // Wipe only: the block count the card ADVERTISED, so a report can put the measured figure beside
     // the claim. The gen2 CFG frame programs this number, which is why the two differing is
@@ -255,8 +258,8 @@ bool iso15693_poller_source_uses_gen1_blocks(const Iso15693_3Data* source);
 // than promises: uid_changed and uid_verified carry the answer. See the open question in
 // iso15693_poller_wipe_blocks.
 // Emits CardDetected, then Success / Partial / Fail (nothing could be wiped) / CardLost. Per-block
-// detail is in iso15693_poller_get_result(), whose blocks_total is what the card proved it holds, so
-// blocks that do not exist are never reported as blocks that wouldn't clear.
+// detail is in iso15693_poller_get_result(), whose blocks_total spans up to the highest block the card
+// proved it holds, so blocks that do not exist are never reported as blocks that wouldn't clear.
 void iso15693_poller_start_wipe(
     Iso15693Poller* instance,
     Iso15693PollerCallback callback,

@@ -1087,7 +1087,7 @@ static uint16_t iso15693_poller_wipe_blocks(
         iso15693_poller_unmark_failed(instance, i);
     }
 
-    // Report against what the card proved it holds, not what it advertises.
+    // Report against the range the card proved, not the count it advertises.
     instance->clone_blocks_total = any_present ? (uint16_t)(highest_present + 1) : 0;
 
     // One line covering every exit -- the card's top, the block ceiling, the time limit, and a card

@@ -175,12 +175,10 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         const uint16_t reached = instance->iso15693_result.blocks_total;
         const uint16_t failed = instance->iso15693_result.failed_count;
         FuriString* text = furi_string_alloc();
-        // Two separate corrections, both in one line of text. The figure is the CUT, not blocks_total:
-        // the latter is a COUNT, not an index (see blocks_total in the header, which is the description
-        // that survives: highest_present + 1 is the size of the range up to the highest proven block,
-        // NOT a tally of proven blocks, since interior absences fold in) -- and
-        // it sits at or below the cut, so a sweep
-        // that attempted 55 blocks and proved 50 present reported "Stopped at 50".
+        // Two separate corrections, both in one line of text. The figure is the CUT, not
+        // blocks_total: the latter is a COUNT, not an index (see blocks_total in the header), and
+        // it sits at or below the cut, so a sweep that attempted 55 blocks and proved 50 present
+        // reported "Stopped at 50".
         //
         // And the "of %u" had to go with it. The sweep deliberately runs past the advertised count, so on
         // a card that accepts some writes and then answers reads everywhere the cut lands above the
