@@ -11,6 +11,11 @@ typedef struct Iso15693Poller Iso15693Poller;
 
 // Size (bytes) of the per-block failure bitmap; covers up to 256 blocks (the ISO15693 max).
 #define ISO15693_POLLER_BLOCK_BITMAP_SIZE (32U)
+// The block range that bitmap can address, which is also the ISO15693 block-number space. Every block
+// bound in this feature is this number, so it is named once here rather than spelled BITMAP_SIZE * 8
+// at each site. ISO15693_POLLER_WIPE_MAX_BLOCKS in the .c is the same value and carries the hardware
+// argument for using it as the sweep's ceiling.
+#define ISO15693_POLLER_MAX_BLOCKS        (ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8U)
 
 typedef enum {
     Iso15693PollerModeInfo, // detect + read UID / system info

@@ -22,7 +22,7 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
     // because a rule that holds in one and is inert in the other beats a mode test.
     const uint16_t list_upto = instance->iso15693_result.pass_truncated ?
                                    instance->iso15693_result.cut_block :
-                                   (uint16_t)(ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8);
+                                   (uint16_t)ISO15693_POLLER_MAX_BLOCKS;
     // A partial can reach this screen with NO failed blocks -- when its only problem is the gen1 UID
     // clobber, a rejected AFI/DSFID, or a cut that happened before anything was refused. Titling an
     // empty list "Blocks not written" would be wrong, so name the screen for what it actually shows.

@@ -160,7 +160,7 @@ static bool iso15693_poller_is_backdoor_block(uint16_t block) {
 // `edgepages` test found phantom writes rejected, phantom reads failing, and block 0 unchanged
 // (`aliased: false`) across four runs. A card that DID alias would only receive the zeros a wipe is
 // writing anyway.
-#define ISO15693_POLLER_WIPE_MAX_BLOCKS (ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8U)
+#define ISO15693_POLLER_WIPE_MAX_BLOCKS ISO15693_POLLER_MAX_BLOCKS
 
 // Wall-clock bound on the sweep, because the block ceiling above is not a tight one.
 //
@@ -578,8 +578,8 @@ static bool iso15693_poller_write_source_blocks(
     // Clamped ONCE, here, and never reassigned -- which is what lets both loops below bound themselves
     // on source_count alone. Re-testing the bitmap size in their headers restated this in two more
     // places without adding a guarantee.
-    if(source_count > ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8) {
-        source_count = ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8;
+    if(source_count > ISO15693_POLLER_MAX_BLOCKS) {
+        source_count = ISO15693_POLLER_MAX_BLOCKS;
     }
 
     // Report the count of blocks we actually attempt: for gen1, exclude the 4 backdoor registers we
