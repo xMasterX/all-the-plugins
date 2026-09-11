@@ -1195,11 +1195,9 @@ static bool iso15693_poller_card_still_present(Iso15693_3Poller* iso_poller) {
     return iso15693_poller_verify_inventory(iso_poller, uid) == Iso15693_3ErrorNone;
 }
 
-// Drives one write-mode step. Runs on the Nfc worker thread with the field active. Returns the
 // The tail both UID verifies share, once the UID has read back as the target. It exists because the two
 // were byte-identical apart from skip_backdoor, and the call sites sit ~80 lines apart -- so a change to
-// the gen2
-// arm could silently fail to reach the gen1 one. That seam is the reason, not the nine lines.
+// the gen2 arm could silently fail to reach the gen1 one. That seam is the reason, not the nine lines.
 //
 // skip_backdoor is the whole difference: a gen2 UID lives in a separate register space, so data-block
 // writes cannot disturb it; a gen1 UID lives IN blocks 56/57/62/63, so a gen1 clone must skip them.
@@ -1218,6 +1216,7 @@ static NfcCommand iso15693_poller_finish_write(
     return NfcCommandStop;
 }
 
+// Drives one write-mode step. Runs on the Nfc worker thread with the field active. Returns the
 // NfcCommand for the poller: Reset power-cycles the field (so the next Ready verifies a freshly
 // re-powered card), Stop ends the operation.
 static NfcCommand
