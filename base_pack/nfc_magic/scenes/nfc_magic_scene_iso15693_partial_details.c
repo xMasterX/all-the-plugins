@@ -146,9 +146,9 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
         furi_string_cat_str(
             message,
             card_lost ? "UID not re-checked: the card stopped answering before the identity check "
-                        "could finish, so whether the wipe moved its UID is unknown." :
+                        "could finish, so whether the wipe changed the card's UID is unknown." :
                         "UID not re-checked: the card did not answer after the field reset, so "
-                        "whether the wipe moved its UID is unknown.");
+                        "whether the wipe changed the card's UID is unknown.");
     }
     if(instance->iso15693_result.used_gen1) {
         // Unconditional: those four blocks differ from the source whatever the write results above say.
