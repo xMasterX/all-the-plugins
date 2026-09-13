@@ -850,11 +850,6 @@ static uint16_t iso15693_poller_wipe_blocks(
     const uint16_t advertised = iso15693_3_get_block_count(target);
     const uint8_t block_size = iso15693_3_get_block_size(target);
 
-    // The advertised count, as a LIVE denominator for the progress popup: the scene reads blocks_total
-    // on every WriteProgress event, so leaving it 0 until the sweep ends renders "Wiping 33 / 0" for the
-    // whole pass. Overwritten at the end with what the card actually proved it holds, before any terminal
-    // event -- so the popup counts against the claim and the result reports against the measurement.
-    instance->clone_blocks_total = advertised;
     instance->wipe_advertised = advertised;
     instance->clone_failed_count = 0;
     instance->clone_over_capacity = 0; // clone-only: a wipe never reports an over-capacity success
@@ -864,30 +859,44 @@ static uint16_t iso15693_poller_wipe_blocks(
     // us it has no blocks (and block_size is what the zero-write needs).
     if(advertised == 0 || block_size == 0) return 0;
 
+    // The advertised count, as a LIVE denominator for the progress popup: the scene reads blocks_total
+    // on every WriteProgress event, so leaving it 0 until the sweep ends renders "Wiping 33 / 0" for the
+    // whole pass. Overwritten at the end with what the card actually proved it holds, before any terminal
+    // event -- so the popup counts against the claim and the result reports against the measurement.
+    //
+    // Below the geometry guard, because a card that returns there leaves this unoverwritten and the
+    // wiped == 0 path would carry the card's own claim into a terminal event -- which blocks_total's
+    // doc forbids.
+    instance->clone_blocks_total = advertised;
+
     // 32-byte zero buffer covers every valid geometry; the clamp is belt-and-braces.
     uint8_t zeros[ISO15693_MAX_BLOCK_SIZE] = {0};
     const uint8_t size = block_size > sizeof(zeros) ? (uint8_t)sizeof(zeros) : block_size;
     uint16_t wiped = 0;
 
     // OPEN QUESTION, gen1 only. The full argument, the gen3 case beside it and what would settle either
-    // are in #255. In brief: this loop zeroes the gen1 UID registers (56/57) before it reaches
-    // unlock/commit (62/63); the arm sequence is unlock=0 then commit=0x6996 then the UID blocks;
-    // and no gen1 UID write clears commit afterwards -- neither this app's nor proxmark's
-    // SetTag15693Uid -- so a card left armed by an earlier gen1 UID write stays armed, and a wipe
-    // can move its UID. This sweep does reach commit and zero it; ORDER is what decides the
-    // outcome, since 56/57 go first, while commit still holds 0x6996.
+    // are in #255. In brief: this loop zeroes the gen1 UID registers (56/57); the arm sequence is
+    // unlock=0 then commit=0x6996 then the UID blocks; and an ARMED card refuses writes to 62/63
+    // with error 0x10, so the sweep reaches commit and is turned away rather than clearing it. A
+    // card left armed by an earlier gen1 UID write therefore stays armed while its UID moves.
+    // Reproduced 2026-09-08 on an armed LRi2K: it reported "Wiped 58/58", the UID changed
+    // immediately, the re-read below caught it as Partial, and the card was STILL ARMED afterwards
+    // -- which is what makes it a reusable fixture for this case.
     //
-    // Do NOT try to de-arm by pre-writing the commit block. Writing commit before unlock reverses the
-    // only order anyone has observed the hardware accept, so it is either rejected outright or -- worse
-    // -- leaves unlock freshly zeroed, one step INTO the arm sequence, immediately before this loop
-    // touches the UID registers. No blind ordering is safe, because the only route to the latch is
-    // through the sequence that sets it. That conclusion survives the unlock/commit reading above being
-    // wrong, since it follows from not knowing what those registers do rather than from knowing.
+    // Do NOT try to de-arm by pre-writing the commit block. On an armed card that write is refused
+    // outright, so there is nothing to reorder; on any other, writing commit before unlock reverses
+    // the only order observed to work -- ours on an LRi2K as well as proxmark's -- so it is either
+    // rejected too or, worse, leaves unlock freshly zeroed, one step INTO the arm sequence,
+    // immediately before this loop touches the UID registers. No blind ordering is safe, because
+    // the only route to the armed state is through the sequence that sets it. That conclusion
+    // survives the unlock/commit reading above being wrong, since it follows from not knowing what
+    // those registers do rather than from knowing.
     //
-    // So the order is left alone, matching proxmark's `hf 15 wipe`, and what ships is the grounded half:
-    // Iso15693WriteStateVerifyWipe re-reads the UID after the sweep, behind a field power-cycle, since a
-    // card latches a UID written into 56/57 only on the next power-up and answers the old one until
-    // then. It converts a silent identity change into a reported one; it does not prevent the change.
+    // So the order is left alone, matching proxmark's `hf 15 wipe`, and what ships is the
+    // reporting: Iso15693WriteStateVerifyWipe re-reads the UID after the sweep, behind a field
+    // power-cycle. The power-cycle is not what makes the change visible -- it is visible
+    // immediately -- it just gives a clean re-activation to read from. This converts a silent
+    // identity change into a reported one; it does not prevent the change.
     bool any_present = false; // has any block answered at all?
     uint16_t highest_present = 0; // top block proven to exist -> the reported total
     // Consecutive absent-looking blocks. Doubles as the count of absences not yet resolved as
@@ -967,8 +976,8 @@ static uint16_t iso15693_poller_wipe_blocks(
         if(++absent_run < ISO15693_POLLER_WIPE_ABSENT_RUN) continue;
 
         // Below the advertised count a long run is not a capacity signal at all: the card itself says
-        // those blocks exist, and the bounded loop this sweep replaced always attempted every one of
-        // them. Stopping here would abandon the rest and report a bare Success over them -- a 64-block
+        // those blocks exist, so every one of them is owed an attempt.
+        // Stopping here would abandon the rest and report a bare Success over them -- a 64-block
         // card with a coupling wobble at block 15 would report "wiped 15 of 15" while 15..63 still held
         // the previous card's data. So keep sweeping. The absences stay provisional and the ordinary
         // rules resolve them: a later block that answers folds them in as interior faults, and a run
@@ -1008,10 +1017,18 @@ static uint16_t iso15693_poller_wipe_blocks(
         //     block just below the physical top gets padded out to a full run by the nonexistent blocks
         //     above it, and the drop then discards a block that still holds data.
         // So re-probe the run now that the card is known to be answering. Any member that reads is there
-        // after all: it did not clear, and nothing below it in the run can be the top either, so both
-        // fail closed. Then re-derive the trailing absence; if the run no longer reaches the threshold,
-        // this was not the edge and the sweep carries on.
-        // Bounded by the run length, and only ever spent when a run trips -- once, on a healthy card.
+        // after all, so it is not past the card's top and nothing below it in the run can be the top
+        // either -- THAT is what fails closed. Whether it CLEARED is a separate question, and it is
+        // decided by content below, not by the fact that it answered: a block that answers and reads
+        // empty did clear, and is unmarked. Then re-derive the trailing absence; if the run no longer
+        // reaches the threshold, this was not the edge and the sweep carries on.
+        //
+        // Bounded by the run length, and not deadline-checked -- it would have to abandon the run
+        // half-classified. On a healthy card that is one short run, once. The boundary case is a card
+        // that advertises far more than it holds: below the claim the run never trips (the trip needs
+        // block + 1 >= advertised), so it can grow to the whole claimed range and be re-probed in one
+        // go, with Back swallowed throughout. iso15693_poller.h states that as the true worst case
+        // beside the budget; this is not "once, on a healthy card" in that shape.
         const uint16_t run_start = (uint16_t)(block + 1 - absent_run);
         uint16_t still_absent = 0;
         for(uint16_t probe = run_start; probe <= block; probe++) {
@@ -1260,12 +1277,24 @@ static NfcCommand
             // safe. "No write landed, so the UID cannot have moved" is the one inference this file
             // declines to draw anywhere else: on a card the sweep reached index 56/57 on, three
             // WRITE BLOCKs each went out there before it gave up, and write_identity's own comment
-            // says a tag can apply a write without answering. (Not every dead card gets that far
-            // -- no usable geometry returns above the loop, and a card claiming under 57 blocks
-            // ends the sweep near its own claim.) So on an ARMED gen1 card this path can move the
-            // UID, report "Wipe failed", never run the check and never say the check did not run
-            // -- the one path where the mitigation #255 describes does not run at all. The
-            // short-circuit predates this feature and is left as it is.
+            // says a tag can apply a write without answering. Two things stop the sweep short of
+            // 56/57, and only two: the card ANSWERS NOTHING above its claim AND claims fewer than 49
+            // blocks -- a card that refuses every write but still serves a read never accumulates a
+            // run, so it walks past 56/57 whatever it claims (see the backstop note at
+            // ISO15693_POLLER_PASS_MAX_MS) -- or the geometry guard above returned before the first
+            // write, where 56/57 are missed because nothing was asked, not because nothing answered.
+            // That second case also lands here, since it returns 0.
+            //
+            // 49 is not a threshold about the claim CONTAINING 56. The sweep runs past the advertised
+            // count until ISO15693_POLLER_WIPE_ABSENT_RUN blocks answer nothing, so a card silent
+            // from block A is attempted through A+7, and a write that lands resets the run -- which
+            // is why 57 goes with 56 rather than one claim later. Measured, and pinned by test.
+            //
+            // So on an
+            // ARMED gen1 card this path can move the UID, report "Wipe failed", never run the
+            // check and never say the check did not run -- the one path where the mitigation #255
+            // describes does not run at all. The short-circuit predates this feature and is left
+            // as it is.
             if(wiped == 0) {
                 iso15693_poller_report(instance, Iso15693PollerEventFail);
                 return NfcCommandStop;

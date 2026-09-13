@@ -13,6 +13,7 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
     const uint32_t reason =
         scene_manager_get_scene_state(instance->scene_manager, NfcMagicSceneIso15693WriteFail);
     const bool over_capacity = (reason == NfcMagicIso15693WriteFailReasonOverCapacity);
+    const bool card_lost = (reason == NfcMagicIso15693WriteFailReasonCardLost);
     const bool wipe_mode = (instance->iso15693_mode == NfcMagicIso15693ModeWipe);
     // Bound the list at the cut, for the reason pass_truncated gives: on a clone the bitmap holds two
     // different things at two different addresses, and only the group below the cut is a fact about the
@@ -20,9 +21,14 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
     // complaint. A cut wipe records nothing above its cut, so the bound is inert there and the note
     // below is the only thing that mentions those blocks -- but it is applied in both modes anyway,
     // because a rule that holds in one and is inert in the other beats a mode test.
-    const uint16_t list_upto = instance->iso15693_result.pass_truncated ?
-                                   instance->iso15693_result.cut_block :
-                                   (uint16_t)ISO15693_POLLER_MAX_BLOCKS;
+    //
+    // Nothing at all on a card-lost wipe: a lifted card makes blocks that never answered look like
+    // refusals, and the poller documents those counters as the caller's to discard on that exit.
+    // Zero suppresses the list and has_block_list together, since both go through list_upto.
+    const uint16_t list_upto = card_lost ? 0 :
+                               instance->iso15693_result.pass_truncated ?
+                                           instance->iso15693_result.cut_block :
+                                           (uint16_t)ISO15693_POLLER_MAX_BLOCKS;
     // A partial can reach this screen with NO failed blocks -- when its only problem is the gen1 UID
     // clobber, a rejected AFI/DSFID, or a cut that happened before anything was refused. Titling an
     // empty list "Blocks not written" would be wrong, so name the screen for what it actually shows.
@@ -128,23 +134,21 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
     }
     if(wipe_mode && !instance->iso15693_result.uid_verified) {
         // Six wipe reason codes are reachable and this route covers the ones that need it: WipeComplete
-        // states it inline, WipeStopped always has Details, a wipe Partial has Details via
-        // failed_count > 0, and WipeUidChanged cannot apply -- observing a change requires the check to
-        // have answered. CardLost has no Details, but the card left, so it is moot.
+        // states it inline. NothingWiped is the one wipe reason with no route here, and there
+        // uid_verified is false BY CONSTRUCTION -- see the wiped == 0 short-circuit in write_step,
+        // which owns why that is a hazard and why it is left alone.
         //
-        // NothingWiped is the one with no route, and there uid_verified is false BY CONSTRUCTION: the
-        // wiped == 0 short-circuit skips the power-cycle and the verify entirely. Why that is a hazard
-        // rather than a safe inference, and why it is left alone, belongs to the control flow that does
-        // it -- see the wiped == 0 short-circuit in write_step.
-        //
-        // What is this screen's own: on an armed gen1 card the UID registers are overwritten long
-        // before any plausible cut, since the sweep reaches 56/57 at index 56/57. So "Wipe stopped" can
-        // offer Retry without ever saying the identity check did not reach an answer.
+        // The wording is chosen by route. A CardLost wipe never entered the verify state, so "did not
+        // answer after the field reset" would name a reset that never happened; the other reasons got
+        // there and were met with silence. VerifyWipe does not downgrade to CardLost on that silence,
+        // it logs and falls through, which is why the second wording belongs to them.
         if(furi_string_size(message) > 0) furi_string_push_back(message, '\n');
         furi_string_cat_str(
             message,
-            "UID not re-checked: the card did not answer after the field reset, so whether the wipe "
-            "moved its UID is unknown.");
+            card_lost ? "UID not re-checked: the card stopped answering before the identity check "
+                        "could finish, so whether the wipe moved its UID is unknown." :
+                        "UID not re-checked: the card did not answer after the field reset, so "
+                        "whether the wipe moved its UID is unknown.");
     }
     if(instance->iso15693_result.used_gen1) {
         // Unconditional: those four blocks differ from the source whatever the write results above say.
