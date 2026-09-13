@@ -11,9 +11,10 @@ typedef struct Iso15693Poller Iso15693Poller;
 
 // Size (bytes) of the per-block failure bitmap; covers up to 256 blocks (the ISO15693 max).
 #define ISO15693_POLLER_BLOCK_BITMAP_SIZE (32U)
-// The block range that bitmap can address, which is also the ISO15693 block-number space. Every block
-// bound in this feature is this number, so it is named once here rather than spelled BITMAP_SIZE * 8
-// at each site. ISO15693_POLLER_WIPE_MAX_BLOCKS in the .c is the same value and carries the hardware
+// The block range that bitmap can address, which is also the ISO15693 block-number space. Every
+// FIXED block ceiling in this feature is this number -- the card-derived bounds, source_count and
+// advertised, are not -- so it is named once here rather than spelled BITMAP_SIZE * 8 at each
+// site. ISO15693_POLLER_WIPE_MAX_BLOCKS in the .c is the same value and carries the hardware
 // argument for using it as the sweep's ceiling.
 #define ISO15693_POLLER_MAX_BLOCKS        (ISO15693_POLLER_BLOCK_BITMAP_SIZE * 8U)
 
@@ -37,7 +38,10 @@ typedef enum {
     Iso15693PollerEventPartial, // the operation mostly worked but isn't a clean result: a clone lost
         // some data blocks, fell back to gen1, or had its AFI/DSFID write rejected; or a wipe couldn't
         // clear every block, or moved the card's UID. ALSO either mode cut short by the wall-clock
-        // bound -- the run's own job is left undone whatever the counts say. Which of those it was is
+        // bound, PROVIDED something was written -- the run's own job is left undone whatever the counts
+        // say. A wipe cut short having cleared NOTHING reports Fail instead: the wiped == 0
+        // short-circuit runs first, which is the card this bound was written for (refuses every write,
+        // answers every read). Which of those it was is
         // in Iso15693PollerResult, and its flags are not interchangeable: pass_truncated in particular
         // is a qualifier no block figure can show.
     Iso15693PollerEventFail, // the operation didn't take: the backdoor write was rejected (not a
@@ -98,7 +102,8 @@ void iso15693_poller_start_write_uid(
 // blocks of user data. A Write-UID has no payload to follow, so a verified UID is a clean Success.
 // Emits CardDetected, then Success, Fail (the gen1 UID didn't take) or CardLost. The sequence goes out
 // before anything is verified, so a Fail still carries gen1_attempted -- see that field for what the
-// caller then owes the user. NOTE: gen1 is NOT hardware-validated.
+// caller then owes the user. Hardware-validated across three chips -- ISO15693_MAGIC_BLK_UNLOCK in
+// the .c says what that does and does not cover.
 void iso15693_poller_start_write_uid_gen1(
     Iso15693Poller* instance,
     const uint8_t* uid,
@@ -150,8 +155,8 @@ typedef struct {
     uint16_t blocks_advertised;
     // The run stopped on its wall-clock bound (ISO15693_POLLER_PASS_MAX_MS) rather than at its natural
     // end, so its range is a cut and no report may pass that range off as a finding about the card.
-    // BOTH modes carry the same bound. What the flag SAVES differs by mode, and only the clone has the
-    // problem it was added for: its back-fill records every block above the cut as a failure --
+    // BOTH modes carry the same bound. What the flag SAVES differs by mode, and only the clone has
+    // the problem: its back-fill records every block above the cut as a failure --
     // otherwise the "written" figure, derived by subtraction, would claim they all landed -- so without
     // the flag a reader cannot tell a block the card REFUSED from one nothing was ever sent to, and
     // every screen downstream states the stronger claim. A cut WIPE has no back-fill: the sweep breaks
@@ -208,35 +213,48 @@ typedef struct {
     bool used_gen1;
     // The failures are a persistent, contiguous run at the very top of the card, i.e. the source is
     // genuinely larger than the card's physical capacity. False for a scattered or anomalous failure,
-    // which is reported generically with no capacity claim.
+    // which is reported generically with no capacity claim -- and false for ANY cut run, however
+    // tail-shaped its failures look, since a cut cannot establish that memory stops rather than that
+    // time did. That costs a real "Card too small" on a card so much smaller than its source that the
+    // failure run alone spends the budget; the .c argues the trade at failures_are_top_tail.
     bool capacity_confirmed;
     // The source reported an AFI / DSFID, but after the write GET SYSTEM INFO did not read that field
     // back with the source's value, so the copy does not carry it. Verified by read-back, not inferred
     // from the write's return. -> Partial.
     bool identity_failed;
     // Running position of the block pass, for the live progress popup. Meaningful from the first
-    // WriteProgress event. Converges on blocks_total for a clone; for a wipe the two need not end up
-    // equal, for the reason blocks_total gives.
+    // WriteProgress event. Converges on blocks_total for a clone that RUNS TO THE END; a cut clone
+    // deliberately stops short and the last frame does not jump to 100%, which the .c argues at the
+    // point it declines to. For a wipe the two need not end up equal either, for the reason
+    // blocks_total gives.
     uint16_t blocks_done;
     // Fail: the gen2 backdoor moved the UID to neither the original nor the target. That PROVES the
     // card is magic -- an inert tag cannot change its UID -- so it is not "not a magic tag".
     // uid_readback holds what the card answered with, which is the only way back to it.
     bool uid_unexpected;
     uint8_t uid_readback[ISO15693_3_UID_SIZE];
-    // This run SENT the destructive gen1 UID sequence, so the gen1 registers have had UID/unlock/commit
-    // bytes written at them whatever the outcome. Whether the tag took them is not known -- the frames'
-    // return values are discarded, as they must be on a card that may not answer -- but any writable tag
-    // accepts an ordinary WRITE BLOCK, so on a Fail the honest report is that those four blocks may have
-    // been overwritten on what is most likely an ordinary tag. Set at start, before any frame goes out.
+    // This run SENT the destructive gen1 UID sequence, so the gen1 registers have had
+    // UID/unlock/commit bytes written at them whatever the outcome. Whether the tag took them is
+    // not known -- the frames' return values are discarded, because a refusal does not mean the
+    // write did not land. And any writable tag accepts an ordinary WRITE BLOCK, so on a Fail the
+    // honest report is that those four blocks may have been overwritten on what is most likely an
+    // ordinary tag. Set at start, before any frame goes out.
     bool gen1_attempted;
     // Fail, Write UID only: the requested UID is the one the card already has, so nothing was written.
     // A read-back against a UID the card already carries is passed by any tag, magic or not, so a
     // Success there would be unearned -- the run stops instead of claiming one.
     bool uid_unverifiable;
-    // Partial, wipe only: the UID read back after the wipe is not the one the card presented before it,
-    // so the wipe moved the card's identity. uid_readback holds the UID it now answers to. Only ever set
-    // from a positive observation of a different UID -- an inventory that fails outright is logged and
-    // ignored, since it cannot be told from the card being lifted the moment the wipe finished.
+    // Partial, wipe only: the UID read back after the wipe is not the one the card presented
+    // before it, so the wipe moved the card's identity. uid_readback holds the UID it now answers
+    // to. Only ever set from a positive observation of a different UID -- an inventory that fails
+    // outright is logged and ignored, since it cannot be told from the card being lifted the
+    // moment the wipe finished.
+    //
+    // "Moved" is the generous reading. Observed on an armed LRi2K: the UID went to ALL ZEROS, and
+    // an ISO15693 UID must begin with 0xE0, so the card was left with no valid identity rather
+    // than a different one. It still answered inventory, and gen1's frames carry no UID, so it
+    // stayed reachable -- which is the whole argument for printing uid_readback. Recovery was
+    // byte-identical, and only possible because the original had been recorded.
     bool uid_changed;
 } Iso15693PollerResult;
 
@@ -245,7 +263,8 @@ typedef struct {
 void iso15693_poller_get_result(Iso15693Poller* instance, Iso15693PollerResult* result);
 
 // True if the source stores real data in one of the gen1 registers, which a gen1 fallback would
-// overwrite -- so the write flow can warn before a possible gen1 clone. Source inspection only.
+// overwrite -- so the write flow can warn before a gen1 clone. Inspects the source image only; it
+// touches no hardware and says nothing about whether the target is magic.
 bool iso15693_poller_source_uses_gen1_blocks(const Iso15693_3Data* source);
 
 // Wipe: write zeros to every data block the card PHYSICALLY holds -- which is exactly what proxmark's
@@ -259,9 +278,9 @@ bool iso15693_poller_source_uses_gen1_blocks(const Iso15693_3Data* source);
 // the card's own claim is evidence those blocks exist.
 // The gen1 registers are cleared too. On gen2 they are ordinary user data, and the wipe performs no
 // magic detection, so it cannot spare them on the chance the card is gen1 -- meaning it cannot
-// guarantee a gen1 UID survives. It re-reads the UID afterwards, behind the same field power-cycle the
-// UID writes use since a gen1 card latches a written UID on the next power-up, and then reports rather
-// than promises: uid_changed and uid_verified carry the answer. See the open question in
+// guarantee a gen1 UID survives. It re-reads the UID afterwards, behind the same field power-cycle
+// the UID writes use, and then reports rather than promises: uid_changed and uid_verified carry
+// the answer. See the open question in
 // iso15693_poller_wipe_blocks.
 // Emits CardDetected, then Success / Partial / Fail (nothing could be wiped) / CardLost. Per-block
 // detail is in iso15693_poller_get_result(), whose blocks_total spans up to the highest block the card
