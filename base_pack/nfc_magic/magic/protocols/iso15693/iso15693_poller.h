@@ -74,9 +74,11 @@ void iso15693_poller_start(
     void* context);
 
 // Magic UID write (gen2 attempt). `uid` is ISO15693_3_UID_SIZE bytes, MSB-first (uid[0] must be 0xE0).
-// Writes ONLY the gen2 backdoor sequence -- a harmless custom command on a non-magic tag. Before the
-// read-back it power-cycles the field (like proxmark's switch_off + getUID) so a card that only
-// latches the new UID after a reset is not misreported as a failure.
+// Writes ONLY the gen2 backdoor sequence -- a harmless custom command on a non-magic tag. Before
+// the read-back it power-cycles the field, like proxmark's switch_off + getUID. There is no
+// power-up latch on gen1 silicon (see ISO15693_MAGIC_BLK_UNLOCK in the .c); the power-cycle is kept
+// because it costs nothing, it re-activates the card for a clean read, and a gen2 UID lives in a
+// register space this has never been tested against.
 // Emits CardDetected, then Success (the read-back inventory returns the requested UID), Fail,
 // CardLost, or NotGen2 -- the last offering the destructive gen1 retry via
 // iso15693_poller_start_write_uid_gen1(). Two distinct Fails, both flagged in the result:
@@ -121,8 +123,7 @@ void iso15693_poller_start_clone(
 // gen1 clone that took still reports Partial and never a clean Success, and why a card that cannot do
 // gen1 loses at most those four blocks. Emits CardDetected, then Partial, Fail (the gen1 UID didn't
 // take, the source had no data blocks, or every data block was rejected -- gen1_attempted separates
-// the first, since those four blocks are gone either way) or CardLost.
-// NOTE: gen1 is NOT hardware-validated.
+// the first, since those four blocks are gone either way) or CardLost. Hardware-validated as above.
 void iso15693_poller_start_clone_gen1(
     Iso15693Poller* instance,
     const Iso15693_3Data* source,

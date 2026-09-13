@@ -33,9 +33,20 @@
 // gen1: WRITE BLOCK (0x21) to backdoor blocks; 4 data bytes each. The UID blocks are named by the
 // UID bytes they carry (uid[0] is the MSB, so uid[7..4] is the numerically low half of the UID).
 #define ISO15693_MAGIC_CMD_WRITE    (0x21U) // ISO15693 WRITE BLOCK
-// The unlock/commit reading is OUR INFERENCE from proxmark's send order, not a documented contract:
-// SetTag15693Uid sends 0x3E, 0x3F then the UID blocks with no explanatory comment, and doc/
-// magic_cards_notes.md's ISO15693-magic section is a TODO. Nothing states what the registers do.
+// WHAT IS MEASURED on gen1 silicon, and what is still inference.
+//
+// MEASURED on five cards across three chips: the sequence sets the UID, it reads back, and the
+// original restores byte-identically. On the one tested while ARMED, an ST LRi2K: the UID changes
+// IMMEDIATELY -- an inventory in the SAME field session as the write already returns the new one --
+// so there is no power-up latch on that chip; and writes to 62/63 are REFUSED (error 0x10, block
+// not available) while 56/57 are accepted, so the UID moves on 56/57 alone and the refusals do not
+// stop it.
+//
+// STILL INFERENCE: what 0x3E and 0x3F actually do. proxmark sends them first and names neither,
+// and doc/magic_cards_notes.md's ISO15693-magic section is a TODO, so "unlock" and "arms" are our
+// reading. Neither register has been observed to ACCEPT a write -- the card was armed before that
+// could be tested, and no write tried since has cleared the arm, the wipe's own zero write to 63
+// included.
 #define ISO15693_MAGIC_BLK_UNLOCK   (0x3EU) // written as 0; inferred: unlock
 #define ISO15693_MAGIC_BLK_COMMIT   (0x3FU) // written as 0x6996; inferred: arms the UID change
 #define ISO15693_MAGIC_BLK_UID_7654 (0x38U) // uid[7..4]
@@ -43,8 +54,9 @@
 
 // The same four as one list, because four places ask "is this a backdoor block?": the clone loop skips
 // them, its back-fill skips them again, the reported total deducts them, and the source inspection
-// reads them. Each used to spell the set out, so the set existed four times and could disagree with
-// itself in four ways. Membership only -- the gen1 write SEQUENCE is ordered and stays written out at
+// reads them. One list, four callers: spelled out per caller the set would exist four times and could
+// disagree with itself in four ways. Membership only -- the gen1 write SEQUENCE is ordered and stays
+// written out at
 // its call site, where the order is the point.
 // COUNT_OF rather than sizeof at the three loops below: sizeof is right only while the element type is
 // uint8_t, and this file already contemplates block indices above 255 elsewhere. Widen it to uint16_t
@@ -1374,23 +1386,26 @@ static NfcCommand
 
     case Iso15693WriteStateVerifyWipe: {
         // Did the wipe move the card's UID? On gen2 it cannot -- the wipe sends no UID command and the
-        // gen2 UID lives in a separate register space -- so on the only hardware this PR has, this is a
-        // regression test that should never fire. On gen1 it is the point: blocks 56/57 ARE the UID
-        // registers, the gen1 arm sequence leaves commit = 0x6996 and nothing ever clears it, so an
-        // already-armed card can have its UID rewritten by a wipe zeroing those blocks. See the OPEN
-        // QUESTION in iso15693_poller_wipe_blocks: reordering blind writes cannot fix that, but
-        // reporting it can, and the screens no longer promise the UID is left alone.
+        // gen2 UID lives in a separate register space -- so on a gen2 card this is a regression test
+        // that should never fire. On gen1 it is the point: blocks 56/57 ARE the UID
+        // registers, and an arm left by an earlier gen1 UID write survives into this one, so a
+        // wipe zeroing those blocks can rewrite the UID. The OPEN QUESTION in
+        // iso15693_poller_wipe_blocks has the mechanism, including why this sweep reaching commit
+        // does not help: reordering blind writes cannot fix it, but reporting it can, and the
+        // screens no longer promise the UID is left alone.
         //
-        // This is a state of its own, entered after NfcCommandReset, for the reason iso15693_poller.h
-        // gives for the gen2 and gen1 UID verifies: a card that only latches a written UID on the next
-        // power-up answers the OLD one until then. Read inline at the end of the sweep, the check would
-        // pass having observed nothing -- on precisely the card it exists for, since zeroing 56/57 on an
-        // armed gen1 card IS a gen1 UID write.
+        // This is a state of its own, entered after NfcCommandReset, for the reason
+        // iso15693_poller.h gives for the gen2 and gen1 UID verifies. It is a separate state
+        // rather than an inline read because the sweep has just written to 56/57, and on an armed
+        // gen1 card that IS a gen1 UID write -- so this is precisely the card the check exists
+        // for, and it should read from a cleanly re-activated tag rather than mid-sequence.
         //
-        // uid_changed is set only from a positive observation, and the cost of that rule is here rather
-        // than in its doc: a card bricked so thoroughly that it no longer inventories at all goes
-        // unreported. Taking silence as failure instead would turn "user lifted the card the instant the
-        // wipe finished" into an error on every gen2 wipe, for the sake of a gen1 case nobody can test.
+        // uid_changed is set only from a positive observation, and the cost of that rule is here
+        // rather than in its doc: a card bricked so thoroughly that it no longer inventories at
+        // all goes unreported. The asymmetry is not about how common gen1 cards are -- it is that
+        // lifting the card the instant a wipe finishes is something users do on every card and
+        // every protocol, so taking silence as failure would raise a false error there to catch a
+        // card that is already unreachable by any means.
         // A card that never comes back from the reset is the same case; see the activation-error path in
         // iso15693_poller_nfc_callback.
         if(iso15693_poller_verify_inventory(iso_poller, readback) != Iso15693_3ErrorNone) {
