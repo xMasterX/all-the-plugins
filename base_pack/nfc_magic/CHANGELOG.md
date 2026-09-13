@@ -1,5 +1,183 @@
 # Changelog
 
+## 2.3
+
+Adds magic **ISO15693 / NfcV** support. Detect an ISO15693 tag, show its Info, and
+**clone / wipe** a magic ISO15693 card the same way the app handles its other magic types.
+
+The magic write frames follow proxmark3's `SetTag15693Uid` (gen1) and `SetTag15693Uid_v2` (gen2):
+gen1 is a verbatim port, and so is gen2's command structure — except that in clone mode the gen2 CFG
+frame substitutes the source card's geometry and IC ref (in place of proxmark's fixed `3f 03 8b`), so
+the copy advertises the same chip identity.
+
+### Added
+- **Detection** — any ISO15693 tag that activates is treated as a magic candidate and routed to a
+  dedicated menu (Write / Wipe / Write UID / Info), mirroring the other magic types.
+- **Info** — UID, manufacturer, chip type, GET SYSTEM INFO (memory / DSFID / AFI / IC ref), and the
+  full block data (scrollable, `*` marks a locked block). Chip decode tells NXP **SLI / SLIX / SLIX2**
+  (and the -S / -L variants) apart via the UID type-indicator bits.
+- **Clone from a saved `.nfc`** — writes the UID (magic backdoor), all data blocks, and the source's
+  identity (IC ref / block geometry / AFI / DSFID) so the copy advertises the same chip. gen2 sets
+  UID + geometry via the `0xE0` magic command; if the card turns out not to be gen2, gen1 is offered
+  as an explicit opt-in (see below).
+- **Wipe** — zero every data block the card physically holds, including 56/57/62/63. On a gen2 card
+  those are ordinary user data, so sparing them would leave real data behind on the card people
+  actually have. On a **gen1** card they are the UID / unlock / commit registers, so a wipe cannot
+  promise to leave the UID intact — instead it **re-reads the UID afterwards, where it can, and reports
+  a change** rather than claiming one. Like proxmark's `hf 15 wipe`, no attempt is made to disarm the
+  card first.
+- **The wipe is bounded by the card, not by what the card claims.** A magic card's advertised block
+  count is programmable — cloning a 28-block source onto a 64-block card makes it advertise 28 — while
+  the blocks above that count stay readable and writable. A wipe that trusted the count would therefore
+  clear 28 of 64 and report success, leaving the previous card's data reachable. Instead the wipe sweeps
+  upward past the advertised count until a run of blocks answers neither a write nor a read, and never
+  stops early on a dead stretch inside the range the card claims. Two limits do end it: the 256-block
+  ceiling, and a time limit for a card that answers reads at every address and so never accumulates a
+  run. A wipe stopped by that limit is reported as **partial** if at least one block was cleared — it
+  names where it stopped and offers a retry, because blocks above the cut may still hold data. One that
+  cleared nothing is a failure, and offers no retry.
+- **A wipe reports the range it covered** — "Cleared *N* blocks. Card claims *M*." Both figures, no
+  verdict where the difference is benign: the advertised count is programmable, so a card cloned from a
+  smaller source, or one with fake flash, will show a mismatch without anything being wrong. A sweep the
+  clock cut short is reported as such whenever the run reaches its own result screen — a card removed at
+  the moment of the cut reports as removed instead, which is accurate and retryable. A dead stretch
+  inside the claimed range is reported when the app can tell it apart from memory that never existed,
+  which is not always — see the limit below.
+- **Blocks the card claims are not written off without evidence.** A block that answers neither a write
+  nor a read may be memory that does not exist, or memory that has stopped responding while still
+  holding data. The wipe distinguishes them where it can: a block that read back **non-zero content**
+  when the card was first activated provably exists and provably held data, so it is reported as
+  uncleared rather than dropped as absent. Only that direction proves anything — a block reading all
+  zeros is indistinguishable from one that was never read.
+  **Limit:** the read taken at activation stops at the first block that does not answer, so nothing
+  above that point can be proven either way. A stretch that was already dead when the card was
+  presented therefore reads exactly like memory the card does not have, and is dropped rather than
+  reported. Only an interior dead stretch — one with a block above it that still answers — is caught.
+- **Live "Writing X / N" progress** during a clone or wipe, as the USCUID-UL clone already had.
+- **Write UID** — manual magic backdoor UID write. Tries gen2 first and, only if that leaves the UID
+  unchanged, offers the same opt-in gen1 attempt the clone does.
+
+### Behaviour
+- **The clone attempts every source block and reports only real data loss.** WRITE BLOCK on these cards
+  is gated by physical memory rather than by the advertised block count, so every block is attempted. A
+  non-empty block that won't write is reported as **Partial**, naming the blocks. An empty block past
+  the card's real capacity loses nothing, so the clone is a **Success** carrying a note that the card
+  advertises more blocks than it physically holds — reading one of those blocks gives an error rather
+  than the zeros the source had there, and real data can't be stored in them. A card whose advertised
+  geometry exceeds its physical memory (fake-flash) clones faithfully for the blocks that fit.
+- **No data is written until the card takes the magic UID.** The write sends the gen2 backdoor UID
+  first; data blocks and identity fields follow once that UID reads back as the target. A card that
+  doesn't take it is left untouched, so cloning has no up-front confirmation prompt — matching Gen2,
+  which also writes without one when its pre-write checks find nothing to report. (Classic always
+  prompts: its check marks the UID locked unconditionally, so there is always at least one problem to
+  press through.) The destructive gen1 attempt carries its own consent screen instead. A wipe does
+  prompt, since destruction is a wipe's only product, whereas a clone leaves the card holding the image
+  the user picked.
+- **The gen1 fallback is opt-in.** It is offered only when the gen2 write leaves the UID unchanged, and
+  only after the user accepts a screen stating what gen1 writes and what it costs on a tag that turns
+  out not to be gen1. gen1 writes the UID registers first and the data blocks only if that UID took, so a
+  tag that turns out not to be gen1 loses at most those four blocks. Write UID uses the same flow.
+- **gen1 fidelity is surfaced.** The gen1 backdoor stores the UID in data blocks 56/57 plus
+  unlock/commit in 62/63, so a gen1 clone can't reproduce a source that keeps data there. The opt-in
+  screen says so before anything is written, and a clone that used gen1 reports Partial and flags those
+  blocks.
+- **Writes are verified by read-back.** The UID is re-read after an RF field power-cycle
+  (`NfcCommandReset`), which re-activates the card so the check reads a freshly selected tag. The source's
+  AFI / DSFID are re-read with GET SYSTEM INFO and compared; a field the copy doesn't carry is reported
+  as Partial with a note. Block contents are not compared — a data block counts as written when the
+  card acknowledges it.
+- **A wipe counts a block as unwiped unless it can show the block is clear**, by reading it back after a
+  failed write. A block that answers a read but still holds data is a real failure and is named. A block
+  that answers nothing is provisional: if anything above it answers, it is an interior fault and counted;
+  if the run continues to the end of the sweep it is treated as the space above the card's real top —
+  but only above the count the card claims, and only where the block was not read at activation. Before
+  concluding any of it, the run is re-probed, so a momentary dropout is not mistaken for the end of the
+  card.
+- **A wipe re-reads the UID when it finishes**, behind an RF field power-cycle. The wipe sends no
+  UID command, but on a gen1 card blocks 56/57 *are* the UID registers. If the UID read back differs
+  from the one the card presented, the result is reported as partial on a **"UID changed"** screen
+  that prints the UID the card now answers to — without which the card would be unreachable.
+  Observed on a gen1 card left armed by an earlier UID write: the UID went to **all zeros**, which
+  is not a valid ISO15693 identity at all, so the card answers to nothing recognisable until the
+  original is written back. If the card never comes back from the power-cycle, or no longer answers
+  at all, the check has reached no answer: the wipe says "UID not re-checked" rather than implying
+  the identity was confirmed. That includes a wipe that lost the card mid-sweep, which returns before
+  the check is reached at all; it carries the same note under **Details**, without the block list,
+  whose counts a card leaving the field makes unreliable.
+  **Limit:** a wipe that clears *nothing* — no usable geometry, or every block write-protected — reports
+  "Wipe failed" and does not attempt the check at all, so it does not say the check was skipped either.
+  That is the one gap in this reporting, and where the sweep reaches blocks 56/57 it is not benign:
+  the writes go out there, and a tag can apply a write without answering, so an armed gen1 card can
+  have its UID moved. Whether it reaches them is a property of the card — the sweep continues past
+  the advertised count until eight blocks in a row answer nothing, so it touches 56/57 only from a
+  claim of 49 or more. Tracked with the other gen1 register hazards in #255.
+- **A card lifted mid-write says so.** Losing the card partway through makes every
+  remaining block fail, which looks the same as reaching the card's physical capacity, so when a block
+  fails the write re-checks that the card is still present before reporting a capacity verdict. Both the
+  wipe and the clone's data pass are bounded by a time limit as well, so a card that leaves mid-write is
+  reported rather than leaving the screen held for the length of the whole block range.
+- **Partial and over-capacity results are a summary plus a Details screen**, matching the Gen2 /
+  USCUID-UL partial screens. The summary carries the counts and the most significant caveat, and
+  **Details** lists the blocks involved plus any further caveats — the gen1 56/57/62/63 overwrite, or
+  an AFI/DSFID the card wouldn't take. A clean clone is a plain success screen, a clean wipe reports its
+  block range, and the outright failures are a single message.
+- Each outcome has its own message: a card removed mid-write, **"Nothing to clone"** for a source with
+  no data blocks, a wipe failure saying no block accepted the zero-write, and a clone failure
+  for the case where the UID was written but not one data block would take — the card would otherwise
+  look right to a UID-only reader while holding none of the data. Detect and write popups time out
+  after a few seconds with no card.
+- **A UID that moves somewhere unasked-for is reported as magic, not as a dud.** If the gen2 backdoor
+  changes the UID to neither the original nor the one requested, that is the one result that *proves*
+  the card is magic — an inert tag can't change its UID — so the screen says so and prints the UID the
+  card now answers to, rather than reporting "not a magic tag".
+- **A failed gen1 attempt names the blocks it spent.** The gen1 UID sequence goes out as four ordinary
+  writes before anything can be verified, so if the UID doesn't take, blocks 56/57/62/63 have already
+  been overwritten on what is most likely an ordinary tag. The failure screen says which blocks, so
+  they can be restored from a backup.
+- **Back is ignored during an ISO15693 write**, from the moment a card is found until the write reports
+  an outcome. It cannot abort a write in any case — leaving the screen waits for the write to finish and
+  then discards its report — and on a clone, pressing it between the UID write and the data pass could
+  leave the card carrying a new UID with none of the source's data. Other magic protocols are unchanged.
+- **Write UID refuses to "verify" a UID the card already has.** The editor pre-fills with the UID from
+  the last Info read, so writing it straight back is two taps away — and a read-back against a UID the
+  card already carries is passed by any tag at all, magic or not. That would have reported Success
+  having proved nothing, so the write is refused up front with an explanation instead.
+
+### Validation
+- The **gen1** path was validated on hardware, across three chips: ST LRi2K (56 blocks), NXP SLIX (28)
+  and NXP SLIX-S (40). On every one the four-frame UID sequence sets the UID, it reads back, and the
+  original restores byte-identically. The armed-card hazard above was reproduced on the LRi2K. Two
+  things came out of it. A written UID takes effect **immediately**, not on the next power-up. The four
+  backdoor addresses are not memory: they answer no read at any point, so a card's advertised block count
+  is its capacity and 56/57/62/63 are write-only registers sitting outside it.
+- The **gen2** path was validated end-to-end on hardware for this release: byte-identical clones
+  across 28 / 56 / 64 / 70-block geometries, plus wipe and the over-capacity reporting.
+- **gen3 is not supported.** A third magic generation exists — proxmark's `hf 15 csetuid --v3` — which
+  keeps its UID in blocks 0x10/0x11 with a configuration signature in 0x14/0x15, and is rewritable until
+  `hf 15 cfinalize` locks it. A gen3 card ignores the gen2 backdoor, so the UID reads back unchanged and
+  a clone or Write UID lands on the **"Not gen2 magic card"** opt-in screen rather than reporting "not a
+  magic tag" — which means **accepting that opt-in sends four ordinary WRITE BLOCKs into 56/57/62/63, so
+  the clone path can damage a gen3 card too, not only the wipe**. **A wipe does not
+  check at all** — it sweeps any ISO15693 tag presented to it — so on an un-finalized gen3 card a wipe
+  zeroes the UID registers and the configuration signature along with everything else. **The cost is the
+  card, not just its identity:** @0x6r1an0y, who wrote proxmark's ISO15693 V3 magic support, reports that
+  zeroing those blocks bricks an un-finalized V3 card permanently. Stated on his authority rather than
+  ours — no gen3 card exists on either side of this PR, so nothing here has been observed. The wipe's
+  post-write UID re-check surfaces the identity change as it would on any card; nothing speaks for the
+  signature. Tracked as #255, with the armed-gen1 case beside it.
+- **Every ISO15693 write reaches every tag in the field, not just the selected one** — any
+  generation, magic or not, on a wipe and on a clone alike. No frame this app builds carries an
+  address or a UID, so a second tag in range takes all of it with nothing on screen saying it was
+  there. What that costs the bystander, worst first: a wipe zeroes its data blocks; **WRITE AFI and
+  WRITE DSFID** from a clone are *standard* ISO15693 commands, so they land on a tag of any size,
+  and a changed AFI can drop it out of a selective inventory; the gen1 backdoor writes four blocks
+  of ordinary user data at 56/57/62/63; the gen2 backdoor is proprietary and a conforming tag should
+  refuse it. The post-wipe UID re-read is exposed the same way: the inventory is single-slot, so
+  with two tags present it returns whichever wins the slot rather than reporting a collision, and
+  the "UID changed" screen can then print the bystander's UID as though it were the card's. Needs
+  two ISO15693 tags inside the field at once, which a badge holder or a wallet does. Tracked as
+  #251, raised in review of this feature and split out for follow-up.
+
 ## 2.2
 
 ### Changed

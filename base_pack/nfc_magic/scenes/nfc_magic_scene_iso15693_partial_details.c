@@ -1,0 +1,183 @@
+#include "../nfc_magic_app_i.h"
+#include "nfc_magic_scene_partial_details_common.h"
+
+// The per-block "which blocks didn't write/clear" list for an ISO15693 partial clone/wipe, reached
+// via "Details" on the partial summary -- mirrors the Gen2 / USCUID-UL partial-details screens.
+void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
+    NfcMagicApp* instance = context;
+    Widget* widget = instance->widget;
+
+    // Reached from the write-fail summary (still on the stack): its reason picks the title. For an
+    // over-capacity success these are the empty blocks the card can't physically hold (not a failure),
+    // so soften the wording; for a partial they're the blocks that wouldn't write / clear.
+    const uint32_t reason =
+        scene_manager_get_scene_state(instance->scene_manager, NfcMagicSceneIso15693WriteFail);
+    const bool over_capacity = (reason == NfcMagicIso15693WriteFailReasonOverCapacity);
+    const bool card_lost = (reason == NfcMagicIso15693WriteFailReasonCardLost);
+    const bool wipe_mode = (instance->iso15693_mode == NfcMagicIso15693ModeWipe);
+    // Bound the list at the cut, for the reason pass_truncated gives: on a clone the bitmap holds two
+    // different things at two different addresses, and only the group below the cut is a fact about the
+    // card. Listing them together names the back-filled group as refusals, which is the whole
+    // complaint. A cut wipe records nothing above its cut, so the bound is inert there and the note
+    // below is the only thing that mentions those blocks -- but it is applied in both modes anyway,
+    // because a rule that holds in one and is inert in the other beats a mode test.
+    //
+    // Nothing at all on a card-lost wipe: a lifted card makes blocks that never answered look like
+    // refusals, and the poller documents those counters as the caller's to discard on that exit.
+    // Zero suppresses the list and has_block_list together, since both go through list_upto.
+    const uint16_t list_upto = card_lost ? 0 :
+                               instance->iso15693_result.pass_truncated ?
+                                           instance->iso15693_result.cut_block :
+                                           (uint16_t)ISO15693_POLLER_MAX_BLOCKS;
+    // A partial can reach this screen with NO failed blocks -- when its only problem is the gen1 UID
+    // clobber, a rejected AFI/DSFID, or a cut that happened before anything was refused. Titling an
+    // empty list "Blocks not written" would be wrong, so name the screen for what it actually shows.
+    //
+    // Asked over the SAME range that will be printed, which is now structural rather than a promise in a
+    // comment: both go through list_upto. Not from failed_count, which on a cut run includes every
+    // unattempted block above the cut.
+    //
+    // No `+ over_capacity` term: it was dead. over_capacity survives non-zero only down the
+    // failures_are_top_tail branch, which requires an uncut pass, which forces list_upto to the full
+    // range -- and every one of those blocks already has its bit set. So over_capacity > 0 implies the
+    // bitmap is non-empty, and the sum read as though the two were complementary when one contains the
+    // other.
+    const bool has_block_list =
+        nfc_magic_partial_details_any_index(instance->iso15693_result.failed_bitmap, list_upto);
+    // Whether the listed blocks are merely EMPTY ones past the card's physical capacity (nothing lost)
+    // has to be decided from the capacity facts, not from the reason code: a Partial can consist purely
+    // of an empty capacity tail plus a gen1 / AFI-DSFID caveat, and in that state over_capacity
+    // only survived because the failures were a confirmed contiguous top tail. Calling those blocks
+    // "not written" with no softening would overstate the damage on a clone that lost nothing.
+    const bool only_empty_tail = (instance->iso15693_result.failed_count == 0) &&
+                                 (instance->iso15693_result.over_capacity > 0);
+    const bool empty_blocks = over_capacity || only_empty_tail;
+    const char* title;
+    if(empty_blocks) {
+        title = "Empty top blocks";
+    } else if(has_block_list) {
+        title = wipe_mode ? "Blocks not cleared" : "Blocks not written";
+    } else {
+        title = wipe_mode ? "Wipe notes" : "Clone notes";
+    }
+    widget_add_string_element(widget, 0, 0, AlignLeft, AlignTop, FontPrimary, title);
+
+    FuriString* message = furi_string_alloc();
+    if(empty_blocks) {
+        // These empty blocks are past the card's physical capacity -- no data was lost, but say why
+        // they weren't written. ("Card too small" is reserved for the partial screen, where real data
+        // IS lost; this clone's data all fit.)
+        furi_string_cat_str(message, "Didn't fit on the card:\n");
+    }
+    // The bound is list_upto, never blocks_total: the wipe and gen1 paths reduce blocks_total to a
+    // logical count that excludes the skipped backdoor blocks (56/57/62/63), yet failures are recorded
+    // at their TRUE block index, which can exceed that reduced total. Unused bits are 0, so on an
+    // uncut run scanning the whole bitmap prints only real failures, each at its true index.
+    nfc_magic_partial_details_append_indices(
+        message, instance->iso15693_result.failed_bitmap, list_upto, 0);
+    // Separate the caveats from whatever precedes them, but don't open with a blank line when there is
+    // no block list above (the notes-only case).
+    if(instance->iso15693_result.pass_truncated) {
+        // The blocks above the cut are the ones the list above deliberately excludes, which is exactly
+        // why they need saying here. This is also the only route to that fact on the UID-changed
+        // screen, whose reason code pre-empts the partial one, and the only place either summary's
+        // count can be qualified.
+        if(furi_string_size(message) > 0) furi_string_push_back(message, '\n');
+        // The cut index, never blocks_total: this is a claim about which blocks were TRIED, and
+        // blocks_total is a COUNT, one past the highest block that answered. Below the cut it
+        // under-reports (the trailing run
+        // the tail-drop discards was attempted -- three writes and a read each -- yet would be excluded
+        // by the sentence); above it, a card claiming 200 while holding 10 read "time limit at block
+        // 10" about 170 blocks that were attempted and answered nothing.
+        if(wipe_mode) {
+            // Which side of the claim the cut lands on changes what is true, so it changes the
+            // sentence. The sweep runs past the advertised count deliberately, so "of the N this card
+            // claims" is only a frame when the cut is actually inside it.
+            // STRICT <, and the boundary is why: blocks_advertised is a COUNT and cut_block is an INDEX,
+            // so at equality the claimed blocks are 0..N-1 and the cut sits at index N -- the first block
+            // PAST the claim. "at block N of the N this card claims" would name an index that is not one
+            // of the N, and read as a completed fraction on the one boundary where the sweep really was
+            // cut. Both of us have had this backwards once, which is why the derivation is written out
+            // rather than left as a bare operator.
+            if(instance->iso15693_result.cut_block < instance->iso15693_result.blocks_advertised) {
+                furi_string_cat_printf(
+                    message,
+                    "Sweep hit its time limit at block %u of the %u this card claims. Blocks above "
+                    "that were never attempted and may still hold data.",
+                    instance->iso15693_result.cut_block,
+                    instance->iso15693_result.blocks_advertised);
+            } else {
+                furi_string_cat_printf(
+                    message,
+                    "Sweep hit its time limit at block %u, past the %u this card claims. Every "
+                    "claimed block was attempted; anything above the cut was not.",
+                    instance->iso15693_result.cut_block,
+                    instance->iso15693_result.blocks_advertised);
+            }
+        } else {
+            // A clone has no advertised count to measure against -- its denominator is the source -- so
+            // it states the cut alone. What re-running can do is the shared clause below; it is the same
+            // answer in both modes and was wrong to phrase as a clone-specific promise.
+            furi_string_cat_printf(
+                message,
+                "Clone hit its time limit at block %u. Blocks from there up were never sent to the "
+                "card -- they are counted as not written, but the card did not refuse them.",
+                instance->iso15693_result.cut_block);
+        }
+        // What Retry can and cannot do, said once for both modes -- see pass_truncated for why a re-run
+        // is not a promise. The wording therefore may not claim a retry succeeds: the Retry button
+        // already implies it, and this is the only place that can qualify it.
+        furi_string_cat_str(
+            message,
+            "\nRetrying may get further, but the limit is a time budget rather than a position: if it "
+            "stops at the same block, the card is too slow to finish in one pass rather than refusing.");
+    }
+    if(wipe_mode && !instance->iso15693_result.uid_verified) {
+        // Six wipe reason codes are reachable and this route covers the ones that need it: WipeComplete
+        // states it inline. NothingWiped is the one wipe reason with no route here, and there
+        // uid_verified is false BY CONSTRUCTION -- see the wiped == 0 short-circuit in write_step,
+        // which owns why that is a hazard and why it is left alone.
+        //
+        // The wording is chosen by route. A CardLost wipe never entered the verify state, so "did not
+        // answer after the field reset" would name a reset that never happened; the other reasons got
+        // there and were met with silence. VerifyWipe does not downgrade to CardLost on that silence,
+        // it logs and falls through, which is why the second wording belongs to them.
+        if(furi_string_size(message) > 0) furi_string_push_back(message, '\n');
+        furi_string_cat_str(
+            message,
+            card_lost ? "UID not re-checked: the card stopped answering before the identity check "
+                        "could finish, so whether the wipe changed the card's UID is unknown." :
+                        "UID not re-checked: the card did not answer after the field reset, so "
+                        "whether the wipe changed the card's UID is unknown.");
+    }
+    if(instance->iso15693_result.used_gen1) {
+        // Unconditional: those four blocks differ from the source whatever the write results above say.
+        if(furi_string_size(message) > 0) furi_string_push_back(message, '\n');
+        furi_string_cat_str(message, "gen1: 56/57/62/63 hold UID + unlock/commit, not file data.");
+    }
+    if(instance->iso15693_result.identity_failed) {
+        // The card rejected the standard WRITE AFI / WRITE DSFID, so those identity fields may not
+        // match the source.
+        if(furi_string_size(message) > 0) furi_string_push_back(message, '\n');
+        furi_string_cat_str(message, "AFI/DSFID: card rejected the write.");
+    }
+    widget_add_text_scroll_element(widget, 0, 13, 128, 51, furi_string_get_cstr(message));
+    furi_string_free(message);
+
+    view_dispatcher_switch_to_view(instance->view_dispatcher, NfcMagicAppViewWidget);
+}
+
+bool nfc_magic_scene_iso15693_partial_details_on_event(void* context, SceneManagerEvent event) {
+    NfcMagicApp* instance = context;
+    bool consumed = false;
+
+    if(event.type == SceneManagerEventTypeBack) {
+        consumed = scene_manager_previous_scene(instance->scene_manager);
+    }
+    return consumed;
+}
+
+void nfc_magic_scene_iso15693_partial_details_on_exit(void* context) {
+    NfcMagicApp* instance = context;
+    widget_reset(instance->widget);
+}
