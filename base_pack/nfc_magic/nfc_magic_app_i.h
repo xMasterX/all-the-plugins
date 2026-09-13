@@ -186,8 +186,8 @@ struct NfcMagicApp {
     uint8_t card_uid[ISO14443_3A_MAX_UID_SIZE]; // scanned card's UID; names its key cache entry
     uint8_t card_uid_len; // 0 when the card never activated (backdoor-only)
     UscuidUlData uscuid_ul_data;
-    uint16_t write_progress_current; // USCUID-UL: pages written so far (live progress)
-    uint16_t write_progress_total; // USCUID-UL: total pages to write
+    uint16_t write_progress_current; // USCUID-UL & ISO15693: units written so far
+    uint16_t write_progress_total; // USCUID-UL & ISO15693: total units to write
     uint16_t write_failed_count; // USCUID-UL: pages that didn't take (partial clone)
     uint8_t write_failed_bitmap[USCUID_UL_FAILED_BITMAP_SIZE]; // bit N set = page N failed
     uint8_t uscuid_ul_password[USCUID_UL_PWD_SIZE]; // PWD-AUTH password (direct/ATS tags)

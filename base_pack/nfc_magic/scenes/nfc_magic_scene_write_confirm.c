@@ -21,13 +21,12 @@ void nfc_magic_scene_write_confirm_on_enter(void* context) {
     const bool iso15693_wipe = iso15693 && instance->iso15693_mode == NfcMagicIso15693ModeWipe;
     const bool iso15693_write_uid = iso15693 &&
                                     instance->iso15693_mode == NfcMagicIso15693ModeWriteUid;
-    const bool is_wipe = instance->uscuid_ul_is_wipe_mode || iso15693_wipe;
 
     // Write UID is the one variant whose body is computed rather than constant. The widget takes a copy
     // of the string it is given, so this is freed before the view switch.
     FuriString* uid_str = furi_string_alloc();
 
-    const char* title = is_wipe ? "Wipe card?" : "Risky operation";
+    const char* title = instance->uscuid_ul_is_wipe_mode ? "Wipe card?" : "Risky operation";
     const char* confirm_label = "Continue";
     uint8_t text_height = 54;
 
@@ -77,8 +76,8 @@ void nfc_magic_scene_write_confirm_on_enter(void* context) {
         // text_height is 38 for the same reason: at the default 54 the box runs to y=67, past the
         // screen, so an over-long string would draw UNDER the button instead of clipping.
         //
-        // The title is set HERE and not from is_wipe, which also covers the USCUID-UL wipe: that card
-        // is neither gen1 nor gen2, and in this app those words name the MIFARE Classic protocols.
+        // Set HERE, not from is_wipe: a USCUID-UL wipe is an Ultralight operation, so an ISO15693
+        // generation qualifier says nothing about the card in hand.
         title = "Wipe? (gen1/gen2 only)";
         text_height = 38;
         text =

@@ -365,7 +365,8 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
             }
             consumed = true;
         } else if(event.event == NfcMagicCustomEventWorkerProgress) {
-            // Live "Writing X/N" while the USCUID-UL poller advances page by page.
+            // Live "Writing X/N" or "Wiping X/N" as the poller advances: USCUID-UL per page,
+            // ISO15693 per block. Both feed the same fields and the same event.
             snprintf(
                 instance->text_store,
                 sizeof(instance->text_store),
