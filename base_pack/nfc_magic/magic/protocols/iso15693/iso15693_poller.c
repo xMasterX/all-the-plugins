@@ -20,9 +20,9 @@
 // non-magic tag -- only as an explicit user opt-in after gen2 leaves the UID unchanged.
 #define ISO15693_MAGIC_FLAGS (0x02U) // high data rate, unaddressed (ISO15_REQ_DATARATE_HIGH)
 
-// UNADDRESSED IS THE WHOLE OF #251, AND IT COVERS EVERY WRITE THIS APP SENDS, not just data blocks:
-// no frame from this file carries the ADDRESSED flag or a UID, so a second tag in the field takes all
-// of it, with nothing on screen saying it was there. By blast radius:
+// UNADDRESSED IS THE WHOLE OF #251, AND IT COVERS EVERY ISO15693 WRITE THIS APP SENDS, not just
+// data blocks: no WRITE frame from this file carries the ADDRESSED flag or a UID, so a second tag
+// in the field takes all of it, with nothing on screen saying it was there. By blast radius:
 //   - data blocks. The SDK's write_block builds its own frame (SUBCARRIER_1 | DATA_RATE_HI), so it is
 //     unaddressed on its own account rather than via this define. A wipe zeroes the bystander too.
 //   - WRITE AFI / WRITE DSFID, from the clone's identity pass. STANDARD commands, so they reach a
@@ -130,7 +130,9 @@ static bool iso15693_poller_is_backdoor_block(uint16_t block) {
 // otherwise look like one.
 #define ISO15693_POLLER_WRITE_ATTEMPTS (3U)
 
-// How many progress updates a block pass may emit, in total.
+// How many 1/N progress bands a block pass is divided into. A pass emits at most N+1 events, not N:
+// `step` takes every value in [0, N] as `done` runs from 0 to `total`, and the seed is UINT8_MAX so
+// the first one always fires. The derivation is at iso15693_poller_report_progress.
 //
 // This is a hard safety bound, not a tuning knob. The block loops below run to completion inside a
 // single poller callback on the Nfc worker thread, and a progress event ends up in
@@ -146,7 +148,8 @@ static bool iso15693_poller_is_backdoor_block(uint16_t block) {
 // lib/nfc/protocols/iso15693_3/), which the app builds against but does not ship. Stated so that
 // finding nothing is not mistaken for the argument being stale: the bound is load-bearing.
 //
-// Staying well under 16 keeps that impossible. Emitting per block does NOT -- if you want that, the
+// Staying well under 16 keeps that impossible. At 8 the whole worst case is 11: CardDetected, then
+// 8 + 1 progress events, then one terminal event. Emitting per block does NOT -- if you want that, the
 // loop has to yield to the Nfc worker between blocks (return NfcCommandContinue and resume from a
 // cursor) the way uscuid_ul_poller.c does, and only then is per-block safe.
 #define ISO15693_POLLER_PROGRESS_STEPS (8U)
@@ -168,10 +171,11 @@ static bool iso15693_poller_is_backdoor_block(uint16_t block) {
 // precedent. It is a ceiling, not a cost: the sweep stops at the card's real top plus
 // ISO15693_POLLER_WIPE_ABSENT_RUN probes and one re-probe of the run.
 //
-// Writing above physical capacity is inert on this silicon rather than destructive: the probe suite's
-// `edgepages` test found phantom writes rejected, phantom reads failing, and block 0 unchanged
-// (`aliased: false`) across four runs. A card that DID alias would only receive the zeros a wipe is
-// writing anyway.
+// Writing above physical capacity is inert on this silicon rather than destructive: measured on both
+// the gen2 test card and a plain NXP SLI, phantom writes are rejected, phantom reads fail outright,
+// and block 0 was unchanged across four runs. A card that DID alias would only receive the zeros a
+// wipe is writing anyway. (The probe that measured it lives in the dev repo, not in this tree, so the
+// observation is stated rather than cited -- a bare tool name would resolve to nothing here.)
 #define ISO15693_POLLER_WIPE_MAX_BLOCKS ISO15693_POLLER_MAX_BLOCKS
 
 // Wall-clock bound on the sweep, because the block ceiling above is not a tight one.
@@ -209,8 +213,10 @@ static bool iso15693_poller_is_backdoor_block(uint16_t block) {
 //     only on the read-failure path, and the inventory is gated on !claimed_range_attempted as well, so
 //     it runs only BELOW the advertised count. So on the very card this bound exists for -- refuses
 //     every write, answers a read at every address -- it accumulates ZERO absences, pays no inventory,
-//     has no run to re-probe, and the two passes cost the same. What runs after the loop is the
-//     tail-drop, which reads the activation cache and costs no airtime.
+//     has no run to re-probe, and the two passes cost the same. After the loop the tail-drop reads the
+//     activation cache and costs no airtime -- but the card-present check beside it is an inventory,
+//     and on this card it DOES run, since it is gated on failed_count > 0 and every block here fails.
+//     One inventory against 256 writes does not change the conclusion; it is just not free.
 //   the CLONE pays more only when the source's block size exceeds the target's, and then by the FRAME
 //     ratio, not the payload ratio: 4 -> 32 bytes of payload is roughly 2.5-4x the frame once flags,
 //     command, block number and CRC are counted, and about 15ms of the 40-70ms per refused block is
@@ -358,8 +364,10 @@ static void iso15693_poller_build_gen2_frame(
     bit_buffer_append_byte(tx, d3);
 }
 
-// Magic cards may not answer these writes, so per-frame transceive results are intentionally
-// ignored. (The UID read-back is the real check.)
+// Per-frame transceive results are intentionally ignored, and the reason is measured rather than
+// assumed: on an armed card the 62/63 writes come back REFUSED (error 0x10) and the UID moves
+// anyway. Acting on these returns would abort a run that worked. The UID read-back is the only
+// honest check.
 static void
     iso15693_poller_send_backdoor_uid_gen1(Iso15693_3Poller* iso_poller, const uint8_t* uid) {
     BitBuffer* tx = bit_buffer_alloc(ISO15693_POLLER_BUF_SIZE);
@@ -491,7 +499,7 @@ static void iso15693_poller_report(Iso15693Poller* instance, Iso15693PollerEvent
     }
 }
 
-// Publish how far the block pass has got, at most ISO15693_POLLER_PROGRESS_STEPS times per pass.
+// Publish how far the block pass has got, at most ISO15693_POLLER_PROGRESS_STEPS + 1 times per pass.
 // The bound is what keeps a Back press from deadlocking the app -- read the comment on that macro
 // before changing anything here.
 static void
@@ -513,8 +521,10 @@ static void
 // Retries only ever run on a failure, so a card that takes its writes pays nothing for them. There is
 // deliberately no break before the last delay, which is where the per-refused-block figure comes from.
 //
-// Every DATA-block write in this file funnels through here -- the backdoor and identity writes do
-// not. All of them are unaddressed; ISO15693_MAGIC_FLAGS carries the full #251 scope.
+// Every DATA-block write in this file funnels through here; the gen1 and gen2 backdoor SEQUENCES
+// and the identity pass build their own frames and do not. Note that is about the senders, not the
+// addresses -- the wipe's sweep zeroes 56/57/62/63 through this function like any other block. All
+// of them are unaddressed: see the #251 note at ISO15693_MAGIC_FLAGS.
 static Iso15693_3Error iso15693_poller_write_block_retried(
     Iso15693_3Poller* iso_poller,
     const uint8_t* data,
@@ -537,8 +547,8 @@ static Iso15693_3Error iso15693_poller_write_block_retried(
 // CONTENT, whose other arm counts the block as a real failure and leaves its provisional bit standing --
 // so a slip at either is `mark_failed` where `unmark_failed` belongs: one word wrong, setting a bit that
 // should be cleared, in a branch that reads correct. `|=` against `&= ~` differs by two characters and
-// gives no such signal. A named call makes the direction visible at a glance, which is the whole reason
-// this was on the list.
+// gives no such signal. A named call makes the direction visible at a glance, which is what these two
+// helpers are for.
 static void iso15693_poller_mark_failed(Iso15693Poller* instance, uint16_t block) {
     instance->clone_failed_bitmap[block / 8] |= (uint8_t)(1u << (block % 8));
 }
@@ -554,6 +564,9 @@ static bool iso15693_poller_block_is_empty(const uint8_t* block, uint8_t size) {
     return true;
 }
 
+// Defined below, next to the inventory helper it wraps.
+static bool iso15693_poller_card_still_present(Iso15693_3Poller* iso_poller);
+
 // Clone mode: write every data block from the source image with the standard ISO15693 WRITE BLOCK.
 // Real write errors are counted into the failure bitmap for Partial reporting. Runs synchronously on
 // the Nfc worker thread. When `skip_backdoor` is set (the gen1 path), blocks 56/57/62/63 are left
@@ -561,8 +574,6 @@ static bool iso15693_poller_block_is_empty(const uint8_t* block, uint8_t size) {
 // the UID -- and they are excluded from the reported total, so "Cloned X/Y" counts only the blocks
 // gen1 can carry. (gen2 passes false: its UID lives in a separate register space, so 56/57/62/63 are
 // ordinary data blocks there.)
-// Defined below, next to the inventory helper it wraps.
-static bool iso15693_poller_card_still_present(Iso15693_3Poller* iso_poller);
 
 // Returns false if the card left the field during the loop (the caller reports CardLost instead of a
 // write result); true otherwise, with the counters/bitmap describing what happened.
@@ -590,6 +601,11 @@ static bool iso15693_poller_write_source_blocks(
     // Clamped ONCE, here, and never reassigned -- which is what lets both loops below bound themselves
     // on source_count alone. Re-testing the bitmap size in their headers restated this in two more
     // places without adding a guarantee.
+    //
+    // The clamp covers runs that REACH this pass. A clone that fails before it -- uid_unexpected, say --
+    // reports clone_blocks_total straight from iso15693_3_get_block_count(), unclamped, at the
+    // NotGen2/Fail assignment. Nothing indexes an array with it there, so it is a reporting figure
+    // only; it is named because "clamped once" reads as a whole-run guarantee and is not one.
     if(source_count > ISO15693_POLLER_MAX_BLOCKS) {
         source_count = ISO15693_POLLER_MAX_BLOCKS;
     }
@@ -629,7 +645,9 @@ static bool iso15693_poller_write_source_blocks(
     bool wrote_above_failure = false; // a block wrote ABOVE one that failed -> not a capacity tail
     bool any_failure_answered =
         false; // a failed block answered a read -> it exists, so no capacity edge
-    uint16_t done = 0; // blocks attempted, the denominator the progress popup shows
+    uint16_t done =
+        0; // blocks attempted -- the NUMERATOR the progress popup shows; `total` above is
+    // its denominator, and report_progress takes them in that order
     // Same wall-clock bound the wipe sweep carries, for the same reason and now a sharper one: Back is
     // swallowed for the whole ISO15693 write, so this loop is time the user cannot escape. It is
     // bounded only by the source's block count, and its card-present check is after the loop rather
@@ -718,8 +736,10 @@ static bool iso15693_poller_write_source_blocks(
     // would be counted as written -- the partial screen derives its "cloned" figure by subtracting the
     // failures from the total -- so a clone stopped at block 10 of 256 would claim all 256 landed.
     // Record them as failures, which is what they are, and the bitmap then names them in Details.
-    // Only reachable when the card is still present; a cut caused by the card leaving is reported as
-    // CardLost below and these counters are discarded.
+    // Only MEANINGFUL when the card is still present -- not only reachable. This back-fill runs after
+    // every break, the card-present check is below it, and a cut caused by the card leaving is
+    // reported as CardLost, whose counters the caller discards. So the work is done either way and is
+    // simply thrown away on that path.
     for(; block < source_count; block++) {
         if(skip_backdoor && iso15693_poller_is_backdoor_block(block)) {
             continue;
@@ -1183,8 +1203,11 @@ static Iso15693PollerEvent iso15693_poller_success_or_partial(Iso15693Poller* in
     }
     // A wipe that cleared its blocks but moved the card's UID is not a clean success, whatever the
     // block counts say -- the card's identity changed under an operation that doesn't claim to touch it.
-    // Nor is one the clock cut short: blocks the card claims were never attempted, so the operation's
-    // own job is left undone, which is what Partial means. The UID check failing to reach an answer is
+    // Nor is one the clock cut short: its range is a cut rather than a finding about the card, so no
+    // report may pass it off as one -- which is what blocks_total's doc means by a cut run's figures
+    // being unusable as a claim. Stated that way rather than as "blocks the card claims were never
+    // attempted", which is false when the cut lands ABOVE the advertised count: there every claimed
+    // block WAS attempted, and the run is still Partial. The UID check failing to reach an answer is
     // deliberately NOT in this list -- that check is best-effort, the wipe itself finished, and making
     // it Partial would downgrade every wipe where the user lifts the card as it completes.
     if(instance->clone_failed_count > 0 || gen1_clone || identity_failed ||
@@ -1398,8 +1421,8 @@ static NfcCommand
             // the card is untouched. Stop here and let the scene offer the opt-in gen1 retry. This
             // applies to a bare Write-UID as well as a clone: gen1 sets the UID with ordinary WRITE
             // BLOCK into blocks 56/57/62/63, which ANY writable tag accepts, so on a non-magic tag it
-            // destroys four blocks of user data. That is destructive and not hardware-tested, so it
-            // needs the same explicit consent in both flows.
+            // destroys four blocks of user data. That is destructive, so it needs the same explicit
+            // consent in both flows.
             iso15693_poller_report(instance, Iso15693PollerEventNotGen2);
             return NfcCommandStop;
         }
@@ -1466,8 +1489,8 @@ static NfcCommand
             iso15693_poller_report(instance, Iso15693PollerEventFail);
             return NfcCommandStop;
         }
-        // gen1 set the UID (NOTE: gen1 path is not hardware-validated). Record it so a clone reports
-        // Partial and flags that blocks 56/57/62/63 now hold UID/commit bytes, not the source's data.
+        // gen1 set the UID. Record it so a clone reports Partial and flags that blocks 56/57/62/63
+        // now hold UID/commit bytes, not the source's data.
         instance->clone_used_gen1 = true;
         // UID took -> now write the payload. For a clone: AFI/DSFID + every data block EXCEPT the gen1
         // backdoor registers 56/57/62/63 (writing those would clobber the UID we just set). A bare
@@ -1546,8 +1569,8 @@ Iso15693Poller* iso15693_poller_alloc(Nfc* nfc) {
     // Only what must hold BEFORE a start. Everything else is set by start_internal, which is the
     // authoritative reset list -- no public entry point reaches the struct without going through
     // it, and it asserts !running. Zeroing a subset here too would read as a second reset list
-    // while being sixteen fields short of the real one, so someone adding a field would find two
-    // and have to work out which is binding.
+    // while covering only part of the real one, so someone adding a field would find two and have
+    // to work out which is binding.
     //
     // A NEW FIELD BELONGS IN start_internal unless it is one of the four it deliberately leaves
     // alone: `poller` and `clone_source` are owned allocations, and `target_uid` / `original_uid`
