@@ -163,8 +163,9 @@ static const ChipInfo chip_id_mapping[] = {
     {0x02, 0x1C, 0xFC, "SRI4K"},
     {0x02, 0x30, 0xFC, "SRT512"},
 
-    // 0x02 = ST - ST25TV product-authentication series (IC id from proxmark uidmapping). The 0x08/
-    // 0x23-C variants are omitted: their IC ids collide with LRI2K / other ST parts.
+    // 0x02 = ST - ST25TV product-authentication series (IC id from proxmark uidmapping). The -C
+    // variants (ST25TV02KC / ST25TV512C) are omitted: proxmark puts both at IC id 0x08, which is
+    // already LRI2K above, and nothing in the UID separates them.
     {0x02, 0x23, 0xFF, "ST25TV02K / ST25TV512"},
     {0x02, 0x35, 0xFF, "ST25TV04K-P"},
     {0x02, 0x48, 0xFF, "ST25TV16K / ST25TV64K"},
@@ -233,7 +234,12 @@ static const char* iso15693_info_get_chip_info(uint8_t vendor_id, uint8_t chip_i
     while(chip_id_mapping[i].mask > 0) {
         if(vendor_id == chip_id_mapping[i].manufacturer &&
            (chip_id & chip_id_mapping[i].mask) == chip_id_mapping[i].chip_id) {
-            // Keep the most specific match: a wider mask pins more chip-id bits.
+            // Keep the most specific match. The test is NUMERIC, and that only coincides with "pins
+            // more bits" because every mask in this table is a contiguous run of high bits
+            // (0xFF > 0xFE > 0xFC > 0xF8 > 0xF0). A sparse mask would break the equivalence -- and
+            // this file already uses one, the 0x18 type-indicator below -- so if a sparse mask is
+            // ever added HERE, this has to count bits instead. proxmark's own loop compares the same
+            // way, for the same reason.
             if(best == -1 || chip_id_mapping[i].mask > chip_id_mapping[best].mask) best = i;
         }
         i++;
@@ -251,7 +257,8 @@ static const char* iso15693_info_get_chip_info(uint8_t vendor_id, uint8_t chip_i
 
 // NXP I-Code refinement. uid[2] is the IC family; uid[3] carries a 2-bit type indicator at bits 3-4
 // (mask 0x18): 0x10 => SLIX, 0x08 => SLIX2, 0x18 => ICODE DNA / NTAG 5, 0x00 => plain SLI.
-// Provenance: proxmark3 cmdhf15.c getTagInfo_15 (masked UID table). The SDK decodes the same bits in
+// Provenance: proxmark3 cmdhf15.c printTagInfo_15, over its `uidmapping` masked-UID table. The SDK
+// decodes the same bits in
 // slix.c (file-local SlixUidLayout.type_indicator; see the exported slix_get_type()).
 const char* iso15693_info_get_chip_info_ex(const uint8_t* uid) {
     const uint8_t vendor_id = uid[1];
