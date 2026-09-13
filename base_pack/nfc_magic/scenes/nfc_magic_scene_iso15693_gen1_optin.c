@@ -2,7 +2,7 @@
 #include "../magic/protocols/iso15693/iso15693_poller.h"
 
 // Shown mid-write when the gen2 backdoor left the UID unchanged (not a gen2 magic card, or not magic
-// at all). Offers the destructive, NOT-hardware-tested gen1 fallback as an explicit opt-in. Nothing
+// at all). Offers the destructive gen1 fallback as an explicit opt-in. Nothing
 // has been written to the card yet, so declining leaves it untouched; accepting re-runs the write in
 // gen1 mode (NfcMagicSceneWrite reads iso15693_force_gen1 and iso15693_mode on enter).
 //
@@ -39,14 +39,13 @@ void nfc_magic_scene_iso15693_gen1_optin_on_enter(void* context) {
             body,
             "Might be gen1, or not magic at all. Gen1 sets the UID by writing blocks 56/57/62/63 "
             "with an ordinary write, which any writable tag accepts -- so on a tag that isn't magic "
-            "this overwrites whatever those 4 blocks hold. Nothing else is written. "
-            "Gen1 is not hardware-tested.");
+            "this overwrites whatever those 4 blocks hold. Nothing else is written.");
     } else {
         furi_string_cat_str(
             body,
             "Might be gen1, or not magic at all. Gen1 writes the UID to blocks 56/57/62/63 first, "
             "then the rest of the data only if that UID takes. A non-magic tag loses at most those 4 "
-            "blocks. Gen1 is not hardware-tested.");
+            "blocks.");
         // If the source itself stores data in those backdoor blocks, gen1 can't reproduce it -- warn
         // at the decision point (the source-side pre-check that used to sit on the up-front confirm).
         // Clone only: a Write-UID has no source file.
