@@ -263,6 +263,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | ESP32 Hotspot Arcade | ![GPIO Badge] | [by tarikbc](https://github.com/tarikbc/hotspot-arcade) |  | [![Author Badge]](https://lab.flipper.net/apps/hotspot_arcade) |
 | Fake Chip Detector | ![GPIO Badge] | [by hleserg](https://github.com/hleserg/flipper-fake-chip-detector) | Reads an I2C sensor's factory ID register to tell whether it really is the chip it was sold as | ![None Badge] |
 | I2C BMS Reader | ![GPIO Badge] | [by gazirov](https://github.com/gazirov/battery_reader) | SBS battery reader/service tool for TI BQ30/BQ40 controllers (via I2C) | ![None Badge] |
+| YRM100X PRO UHF RFID | ![GPIO Badge] | [by AlexeySmirnov74](https://github.com/AlexeySmirnov74/YRM100X_PRO) | UHF RFID read, write, clone, lock and kill toolkit for the YRM100X module | [![Author Badge]](https://lab.flipper.net/apps/yrm100x_pro) |
 | IR Remote | ![IR Badge] | [by Hong5489](https://github.com/Hong5489/ir_remote) | improvements [by friebel](https://github.com/RogueMaster/flipperzero-firmware-wPlugins/pull/535) - Hold Option, RAW support [by d4ve10](https://github.com/d4ve10/ir_remote/tree/infrared_hold_option) | ![None Badge] |
 | IR Intervalometer | ![IR Badge] | [by Nitepone](https://github.com/Nitepone/flipper-intervalometer) |  | [![UFW Badge]](https://lab.flipper.net/apps/sony_intervalometer) |
 | IR Xbox Controller | ![IR Badge] | [by gebeto](https://github.com/gebeto/flipper-xbox-controller) |  | [![Author Badge]](https://lab.flipper.net/apps/xbox_controller) |
