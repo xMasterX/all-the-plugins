@@ -6,7 +6,6 @@ App(
     cdefines=["APP_XBOX_CONTROLLER"],
     requires=["gui", "dialogs", "infrared"],
     stack_size=1 * 1024,
-    order=1,
     fap_icon="xbox_controller.png",
     fap_category="Infrared",
     fap_icon_assets="assets",

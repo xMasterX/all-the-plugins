@@ -6,7 +6,6 @@ App(
     cdefines=["APP_LOGIC_ANALYZER"],
     requires=["gui", "storage", "dialogs"],
     stack_size=2 * 1024,
-    order=10,
     fap_icon="icons/app.png",
     fap_category="GPIO",
     fap_icon_assets="icons",

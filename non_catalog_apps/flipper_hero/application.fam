@@ -8,7 +8,6 @@ App(
         "gui",
     ],
     stack_size=1 * 1024,
-    order=10,
     fap_version="1.4",
     fap_icon="icons/hex_10px.png",
     fap_icon_assets="icons",

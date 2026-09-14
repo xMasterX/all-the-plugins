@@ -8,7 +8,6 @@ App(
     requires=[
         "gui",
     ],
-    order=10,
     fap_icon="pomodoro_timer.png",
     fap_category="Tools",
     fap_icon_assets="icons",

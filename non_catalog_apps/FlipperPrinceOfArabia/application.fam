@@ -15,7 +15,6 @@ App(
     fap_category="Games",
     fap_icon="icon.png",
     fap_file_assets="assets",
-    order=36,
     fap_author="@apfxtech",
     fap_weburl="https://github.com/apfxtech/FlipperPrinceOfArabia.git",
     fap_version="1.0",

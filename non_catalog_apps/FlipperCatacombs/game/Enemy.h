@@ -37,31 +37,31 @@ struct EnemyArchetype {
     AnchorType spriteAnchor;
 
     const uint16_t* GetSpriteData() const {
-        return static_cast<const uint16_t*>(pgm_read_ptr_safe(&spriteData));
+        return spriteData;
     }
     uint8_t GetHP() const {
-        return pgm_read_byte(&hp);
+        return hp;
     }
     uint8_t GetMovementSpeed() const {
-        return pgm_read_byte(&movementSpeed);
+        return movementSpeed;
     }
     uint8_t GetAttackStrength() const {
-        return pgm_read_byte(&attackStrength);
+        return attackStrength;
     }
     uint8_t GetAttackDuration() const {
-        return pgm_read_byte(&attackDuration);
+        return attackDuration;
     }
     uint8_t GetStunDuration() const {
-        return pgm_read_byte(&stunDuration);
+        return stunDuration;
     }
     bool GetIsRanged() const {
-        return pgm_read_byte(&isRanged) != 0;
+        return isRanged != 0;
     }
     uint8_t GetSpriteScale() const {
-        return pgm_read_byte(&spriteScale);
+        return spriteScale;
     }
     AnchorType GetSpriteAnchor() const {
-        return (AnchorType)pgm_read_byte(&spriteAnchor);
+        return (AnchorType)spriteAnchor;
     }
 };
 

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 ApertureFox Technology. MIT License.
 //
 // World generator .fal plugin: a thin furi/storage wrapper around gen_core.h.
 // Mapped into RAM by the host only while a world is being generated.
@@ -16,17 +17,18 @@ static bool storageWriteAt(void* ctx, uint32_t offset, const void* data, size_t 
 
 static bool flipcraft_worldgen_generate(
     const char* path,
-    uint8_t chunks,
-    uint32_t seed,
+    const FlipcraftWorldParams* params,
     FlipcraftGenProgress progress,
     void* progress_ctx) {
+    if(!params) return false;
     Storage* storage = reinterpret_cast<Storage*>(furi_record_open(RECORD_STORAGE));
     File* file = storage_file_alloc(storage);
 
     bool ok = storage_file_open(file, path, FSAM_WRITE, FSOM_CREATE_ALWAYS);
     if(ok) {
         fcgen::Writer out = {storageWriteAt, file};
-        ok = fcgen::generate(chunks, seed, out, progress, progress_ctx);
+        ok = fcgen::generate(
+            params->chunks, params->seed, params->flags, params->type, out, progress, progress_ctx);
         storage_file_close(file);
         if(!ok) storage_simply_remove(storage, path); // no truncated saves
     }

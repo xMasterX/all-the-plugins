@@ -7,7 +7,7 @@
 #include "Draw.h"
 
 // Font Definition
-const uint8_t font4x6[96][2] PROGMEM = {
+const uint8_t font4x6[96][2] = {
     {0x00, 0x00}, /*SPACE*/
     {0x49, 0x08}, /*'!'*/
     {0xb4, 0x00}, /*'"'*/
@@ -110,19 +110,18 @@ const uint8_t font4x6[96][2] PROGMEM = {
 unsigned char getFontLine(unsigned char data, int line_num) {
     const uint8_t index = (data - 32);
     unsigned char pixel = 0;
-    if((pgm_read_byte(&font4x6[index][1]) & 1) == 1) line_num -= 1;
+    if((font4x6[index][1] & 1) == 1) line_num -= 1;
     if(line_num == 0) {
-        pixel = (pgm_read_byte(&font4x6[index][0])) >> 4;
+        pixel = (font4x6[index][0]) >> 4;
     } else if(line_num == 1) {
-        pixel = (pgm_read_byte(&font4x6[index][0])) >> 1;
+        pixel = (font4x6[index][0]) >> 1;
     } else if(line_num == 2) {
         // Split over 2 bytes
-        return (((pgm_read_byte(&font4x6[index][0])) & 0x03) << 2) |
-               (((pgm_read_byte(&font4x6[index][1])) & 0x02));
+        return (((font4x6[index][0]) & 0x03) << 2) | (((font4x6[index][1]) & 0x02));
     } else if(line_num == 3) {
-        pixel = (pgm_read_byte(&font4x6[index][1])) >> 4;
+        pixel = (font4x6[index][1]) >> 4;
     } else if(line_num == 4) {
-        pixel = (pgm_read_byte(&font4x6[index][1])) >> 1;
+        pixel = (font4x6[index][1]) >> 1;
     }
     return pixel & 0xE;
 }
@@ -131,8 +130,8 @@ static uint8_t PrintX, PrintY;
 
 void DrawChar(char c) {
     const uint8_t index = ((unsigned char)(c)) - 32;
-    uint8_t data1 = pgm_read_byte(&font4x6[index][0]);
-    uint8_t data2 = pgm_read_byte(&font4x6[index][1]);
+    uint8_t data1 = font4x6[index][0];
+    uint8_t data2 = font4x6[index][1];
     uint8_t y = PrintY;
 
     if(data2 & 1) // Descender e.g. j, g
@@ -228,7 +227,7 @@ void DrawString(const char* str, uint8_t x, uint8_t y) {
     PrintY = y;
 
     for(;;) {
-        char c = pgm_read_byte(str++);
+        char c = *(str++);
         if(!c) break;
 
         DrawChar(c);

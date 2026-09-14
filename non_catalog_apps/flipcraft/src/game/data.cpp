@@ -1,3 +1,4 @@
+// Copyright (c) 2026 ApertureFox Technology. MIT License.
 #include "../flipcraft.h"
 #include <initializer_list>
 
@@ -71,8 +72,12 @@ static MeshEntry makeCube(
     return e;
 }
 
-static MeshEntry g_blockMesh[32];
-static MeshEntry g_itemMesh[32];
+// Ids past the last defined mesh read as empty, exactly as their zero rows did.
+constexpr int MESH_IDS = 18;
+static_assert(BLOCK_DYNAMITE < MESH_IDS && ENTITY_GUNPOWDER < MESH_IDS, "mesh table too small");
+static MeshEntry g_blockMesh[MESH_IDS];
+static MeshEntry g_itemMesh[MESH_IDS];
+static MeshEntry g_waterMesh; // one entry for all four water ids
 static const MeshEntry g_emptyMesh{};
 static bool g_meshReady = false;
 
@@ -171,8 +176,9 @@ static void initMesh() {
         makeCube(TEX_DIRT, 0b1010, TEX_DIRT, 0b1010, TEX_DIRT, 0b1010, true, TEX_DIRT, 0b1010);
     g_itemMesh[BLOCK_SAND] = g_blockMesh[BLOCK_SAND];
 
+    // frame inverts what is behind it (TS_OVERLAY) instead of painting ink
     g_blockMesh[BLOCK_GLASS] =
-        makeCube(TEX_GLASS, 0b1100, TEX_GLASS, 0b1100, TEX_GLASS, 0b1100, false);
+        makeCube(TEX_GLASS, 0b1101, TEX_GLASS, 0b1101, TEX_GLASS, 0b1101, false);
 
     {
         MeshEntry e;
@@ -240,6 +246,7 @@ static void initMesh() {
         TEX_DYNAMITE,
         0b1000);
     g_itemMesh[ENTITY_DYNAMITE] = g_blockMesh[BLOCK_DYNAMITE];
+    g_waterMesh = makeCube(TEX_WATER, 0b1000, TEX_WATER, 0b1000, TEX_WATER, 0b1000, false);
 
     {
         MeshEntry e;
@@ -261,11 +268,12 @@ static void initMesh() {
 
 const MeshEntry& meshBlock(uint8_t id) {
     initMesh();
-    return (id < 32) ? g_blockMesh[id] : g_emptyMesh;
+    if(blockIsWater(id)) return g_waterMesh;
+    return (id < MESH_IDS) ? g_blockMesh[id] : g_emptyMesh;
 }
 const MeshEntry& meshItem(uint8_t hi) {
     initMesh();
-    return (hi < 32) ? g_itemMesh[hi] : g_emptyMesh;
+    return (hi < MESH_IDS) ? g_itemMesh[hi] : g_emptyMesh;
 }
 
 static constexpr MobSpec MOB_SPECS[MOB_SPECIES] = {

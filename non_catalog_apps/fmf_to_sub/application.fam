@@ -7,7 +7,6 @@ App(
     requires=[
         "gui",
     ],
-    order=10,
     fap_version="1.2",
     fap_icon="fmf.png",
     fap_category="Sub-GHz",

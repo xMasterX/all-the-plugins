@@ -10,7 +10,6 @@ App(
     cdefines=["APP_DCF77"],
     requires=["gui"],
     stack_size=8 * 1024,
-    order=10,
     fap_icon="icons/app.png",
     fap_icon_assets="icons",
     fap_category="Tools",

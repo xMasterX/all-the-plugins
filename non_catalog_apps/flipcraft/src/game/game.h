@@ -1,3 +1,4 @@
+// Copyright (c) 2026 ApertureFox Technology. MIT License.
 #pragma once
 #include "../flipcraft.h"
 #include "render.h"
@@ -12,6 +13,7 @@ enum ScreenId {
     SCR_CRAFTING,
     SCR_FURNACE,
     SCR_CHEST,
+    SCR_PICKER,
     SCR_GAMEOVER
 };
 
@@ -31,7 +33,8 @@ struct Input {
 // All persistent player-visible state. Tools occupy the 0xF0..0xFF type range
 // and never stack (count is always 1).
 struct PlayerState {
-    ItemCell inventory[15];
+    ItemCell inventory[15]; // survival only; creative has no stacks at all
+    uint8_t sel = 0; // creative: index into BLOCK_PALETTE
     uint8_t invSlot = 0; // selected hotbar slot, 0..4
     ItemCell craftGrid[9];
     ItemCell craftOutput;
@@ -47,6 +50,7 @@ struct ItemEnt {
     int vy = 0;
     int fuse = 0;
     bool active = false;
+    int8_t vx = 0, vz = 0;
 };
 
 // One creature. Behaviour is a 2-bit mode; everything species-specific comes
@@ -98,6 +102,9 @@ public:
     int velYsub = 0, posYsub = 0;
 
     ScreenId screenId = SCR_PLAY;
+    // Hardmode death: the session ends and the host is asked to remove the
+    // save. Only the host can, the world file is still open in here.
+    bool exitDelete = false;
     std::vector<ItemEnt> items;
     Mob mobs[MAX_MOBS];
     std::vector<BlockEnt> tiles;
@@ -115,6 +122,13 @@ public:
     void simulate(const Input& in);
     bool render();
     ItemCell guiCursorItem(int* sx, int* sy);
+    uint8_t pickerCursorBlock(int* sx, int* sy);
+    bool creative() const {
+        return world.creative();
+    }
+    bool hardcore() const {
+        return world.hardcore();
+    }
 
 private:
     uint8_t rng();
@@ -141,6 +155,10 @@ private:
     void explodeMob(Mob& m);
     void explodeAt(int cx, int cy, int cz);
     void igniteDynamite(int bx, int by, int bz, int fuse);
+    bool swimming = false;
+    uint8_t waterTick = 0;
+    bool inWaterAt(int x, int y, int z); // player box at (x,y,z): feet+SWIM_DEPTH in water
+    void flowWater(); // scans World::slotWet chunks, spreads water one cell
     bool mobBlocksPlayer(int ox, int oz, int nx, int ny, int nz);
     void updateAllFurnaces();
     void simulateFurnaces(); // load/tick/flush furnaces inside the active window
@@ -148,6 +166,7 @@ private:
     void respawn();
     void renderWorld();
     void finishRender();
+    void drawCrosshair();
     void drawHotbar();
     int findBlockEntity(int x, int y, int z);
 
@@ -187,6 +206,15 @@ private:
     void guiFrame(const Input& in);
     void drawGui();
     void tryCraft();
+
+    // Creative block picker, as in FlipcraftRTX: the palette laid out
+    // PICKER_COLS wide, picking one just moves pl.sel. It replaces the
+    // inventory screen while creative is on -- there is no inventory.
+    static constexpr int PICKER_COLS = 5;
+    static constexpr int PICKER_CELL = 10;
+    void pickerCell(int index, int& sx, int& sy) const;
+    void pickerFrame(const Input& in);
+    void drawPicker();
     int cursor = 0;
     int selSlot = -1;
     bool gameOverPending = false;

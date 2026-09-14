@@ -9,7 +9,6 @@ App(
         "storage",
     ],
     stack_size=4 * 1024,
-    order=90,
     fap_version=(1, 0),
     fap_author="mrc19056",
     fap_description="3-lane racing game with power-ups, combos, and night mode",

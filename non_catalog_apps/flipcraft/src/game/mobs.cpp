@@ -1,3 +1,4 @@
+// Copyright (c) 2026 ApertureFox Technology. MIT License.
 #include "game.h"
 #include <algorithm>
 
@@ -143,13 +144,17 @@ void Game::hurtMobFrom(int index, int dmg, int srcX, int srcZ, uint8_t attacker)
 }
 
 void Game::explodeAt(int cx, int cy, int cz) {
+    int ex = cx * 16 + 8, ey = cy * 16 + 8, ez = cz * 16 + 8;
     for(int by = cy - 1; by <= cy + 1; by++)
         for(int bz = cz - 1; bz <= cz + 1; bz++)
             for(int bx = cx - 1; bx <= cx + 1; bx++) {
-                if(world.getBlock(bx, by, bz) == BLOCK_DYNAMITE) {
-                    igniteDynamite(bx, by, bz, 3 + (rng() & 3));
+                const uint8_t hit = world.getBlock(bx, by, bz);
+                if(hit == BLOCK_DYNAMITE) {
+                    igniteDynamite(
+                        bx, by, bz, DYNAMITE_CHAIN_FUSE + ((rng() * DYNAMITE_CHAIN_RND) >> 8));
                     continue;
                 }
+                if(blockIsWater(hit)) continue; // a blast never takes water out, as in Minecraft
                 int be = findBlockEntity(bx, by, bz);
                 if(be >= 0) {
                     if(tiles[be].storage >= 0) freeStorageSlot(tiles[be].storage);
@@ -175,15 +180,34 @@ void Game::explodeAt(int cx, int cy, int cz) {
                     break;
             }
         }
-    int ex = cx * 16 + 8, ey = cy * 16 + 8, ez = cz * 16 + 8;
+    // after the crater loop: dynamite it just primed is thrown by this blast too
+    for(auto& e : items) {
+        if(e.id != ENTITY_LITDYNAMITE) continue;
+        int dx = e.x - ex, dy = e.y + 8 - ey, dz = e.z - ez;
+        int ax = std::abs(dx), az = std::abs(dz), l = std::max(std::max(ax, az), std::abs(dy));
+        if(l >= MOB_BLAST_RANGE) continue;
+        int s = DYNAMITE_KNOCK * (MOB_BLAST_RANGE - l) / MOB_BLAST_RANGE;
+        int len = std::max(ax, az) +
+                  (std::min(ax, az) >> 1); // octagonal |(dx,dz)|, within 12% of Euclidean
+        if(len) {
+            e.vx =
+                (int8_t)std::clamp(e.vx + dx * s / len, -2 * DYNAMITE_KNOCK, 2 * DYNAMITE_KNOCK);
+            e.vz =
+                (int8_t)std::clamp(e.vz + dz * s / len, -2 * DYNAMITE_KNOCK, 2 * DYNAMITE_KNOCK);
+        }
+        int up = DYNAMITE_KNOCK_UP + (dy > 0 ? dy * s / (2 * l) : 0);
+        if(e.vy < up) e.vy = up;
+    }
     if(std::abs(playerX + PLAYERHALFWIDTH - ex) < MOB_BLAST_RANGE &&
        std::abs(playerZ + PLAYERHALFWIDTH - ez) < MOB_BLAST_RANGE &&
        std::abs(playerY + PLAYERHEIGHT / 2 - ey) < MOB_BLAST_RANGE) {
-        int hp = (int)pl.health - MOB_BLAST_DMG;
-        if(hp <= 0)
-            gameOverPending = true;
-        else
-            pl.health = u8(hp);
+        if(!world.creative()) {
+            int hp = (int)pl.health - MOB_BLAST_DMG;
+            if(hp <= 0)
+                gameOverPending = true;
+            else
+                pl.health = u8(hp);
+        }
     }
     for(int i = 0; i < MAX_MOBS; i++) {
         Mob& o = mobs[i];
@@ -293,6 +317,10 @@ void Game::updateAllMobs() {
         // wander at half speed, chase/flee at full: v carries one extra
         // fractional bit, consumed by the walk accumulator below
         int v = m.mode ? (int)(s.geom & 0x0F) << (m.mode >> 1) : 0;
+        const bool wet =
+            !(s.info & 8) &&
+            blockIsWater(world.getBlock((m.x + 7) >> 4, (m.y + SWIM_DEPTH) >> 4, (m.z + 7) >> 4));
+        if(wet) v >>= 1;
         bool walk = m.mode != MOB_IDLE;
         if(m.mode >= MOB_CHASE) {
             // lazy re-aim: the goal moves only when the target left the dead
@@ -360,14 +388,18 @@ void Game::updateAllMobs() {
             m.x = nx;
         else if(fly)
             bumped = true;
-        else if(grounded && m.vy == 0 && !boxCollides(nx, stepY, m.z, MOBWIDTH, hgt))
+        else if(
+            ((grounded && m.vy == 0) || (wet && m.vy <= MOB_SWIM_VY)) &&
+            !boxCollides(nx, stepY, m.z, MOBWIDTH, hgt))
             m.vy = 9;
         if(overPlayer(m.x, m.y, nz) && !wasP) nz = m.z;
         if(!boxCollides(m.x, m.y, nz, MOBWIDTH, hgt))
             m.z = nz;
         else if(fly)
             bumped = true;
-        else if(grounded && m.vy == 0 && !boxCollides(m.x, stepY, nz, MOBWIDTH, hgt))
+        else if(
+            ((grounded && m.vy == 0) || (wet && m.vy <= MOB_SWIM_VY)) &&
+            !boxCollides(m.x, stepY, nz, MOBWIDTH, hgt))
             m.vy = 9;
 
         if(fly) {
@@ -381,6 +413,8 @@ void Game::updateAllMobs() {
                 wantY = (gby << 4) + m.alt;
             }
             m.vy = bumped ? 4 : std::clamp(wantY - m.y, -4, 4);
+        } else if(wet) { // buoyant, as if jump were held; a bank hop decays back to it
+            m.vy = m.vy > MOB_SWIM_VY ? m.vy - 2 : std::min(m.vy + 2, MOB_SWIM_VY);
         } else {
             m.vy -= 2;
             if(m.vy < -8) m.vy = -8;
@@ -401,11 +435,13 @@ void Game::updateAllMobs() {
            adz < 18 && m.y < ty + 24 && m.y + hgt > ty) {
             m.cool = MOB_ATTACK_COOL;
             if(m.target == 0xFF) {
-                int hp = (int)pl.health - dmgN;
-                if(hp <= 0)
-                    gameOverPending = true;
-                else
-                    pl.health = u8(hp);
+                if(!world.creative()) {
+                    int hp = (int)pl.health - dmgN;
+                    if(hp <= 0)
+                        gameOverPending = true;
+                    else
+                        pl.health = u8(hp);
+                }
             } else {
                 bool boomPrey = (mobSpec(mobs[m.target].species).info & 1) != 0;
                 hurtMobFrom(m.target, dmgN, m.x + 7, m.z + 7, (uint8_t)mi);

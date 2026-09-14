@@ -6,7 +6,6 @@ App(
     entry_point="t5577_multiwriter_app",
     icon="A_125khz_14",
     stack_size=2 * 1024,
-    order=20,
     fap_description="Application for writing several keys to one t5577",
     fap_version="0.2",
     fap_author="@Leptopt1los",

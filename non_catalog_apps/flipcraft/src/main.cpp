@@ -1,3 +1,4 @@
+// Copyright (c) 2026 ApertureFox Technology. MIT License.
 //
 // Host bridge: the only permanently resident piece of the app. Alternates
 // between the menu plugin and the game plugin, so at any moment RAM holds the
@@ -105,7 +106,11 @@ void genOnProgress(void* ctx, uint8_t percent) {
     view_port_update(p->view_port);
 }
 
-bool generateWorld(Gui* gui, Storage* storage, const char* path, uint8_t chunks, uint32_t seed) {
+bool generateWorld(
+    Gui* gui,
+    Storage* storage,
+    const char* path,
+    const FlipcraftWorldParams& params) {
     FlipperApplication* plugin = nullptr;
     const FlipcraftWorldgenApi* gen = reinterpret_cast<const FlipcraftWorldgenApi*>(pluginLoad(
         storage,
@@ -120,7 +125,7 @@ bool generateWorld(Gui* gui, Storage* storage, const char* path, uint8_t chunks,
     view_port_draw_callback_set(progress.view_port, genDraw, &progress);
     gui_add_view_port(gui, progress.view_port, GuiLayerFullscreen);
 
-    bool ok = gen->generate(path, chunks, seed, genOnProgress, &progress);
+    bool ok = gen->generate(path, &params, genOnProgress, &progress);
 
     view_port_enabled_set(progress.view_port, false);
     gui_remove_view_port(gui, progress.view_port);
@@ -159,16 +164,15 @@ extern "C" int32_t flipcraft_app(void* p) {
             result = -1;
             break;
         }
-        uint8_t chunks = 16;
-        uint32_t seed = 0;
-        FlipcraftMenuAction action = menu->run(world_path, sizeof(world_path), &chunks, &seed);
+        FlipcraftWorldParams params = {0, 16, 0, 0};
+        FlipcraftMenuAction action = menu->run(world_path, sizeof(world_path), &params);
         splashSet(&splash, "Loading world...");
         flipper_application_free(plugin); // menu code leaves RAM here
         if(action == FlipcraftMenuActionQuit) break;
 
         if(action == FlipcraftMenuActionGenerate) {
             // On failure the save was already removed; fall back to the menu.
-            if(!generateWorld(gui, storage, world_path, chunks, seed)) continue;
+            if(!generateWorld(gui, storage, world_path, params)) continue;
         }
 
         const FlipcraftGameApi* game = reinterpret_cast<const FlipcraftGameApi*>(pluginLoad(
@@ -181,8 +185,11 @@ extern "C" int32_t flipcraft_app(void* p) {
             result = -1;
             break;
         }
-        game->run(world_path);
+        // Hardmode death: the session asks for its own save to be removed, and
+        // only the host can do it -- the world file is closed by then.
+        const int32_t outcome = game->run(world_path);
         flipper_application_free(plugin); // game code leaves RAM here
+        if(outcome == FlipcraftGameResultDelete) storage_simply_remove(storage, world_path);
     }
 
     view_port_enabled_set(splash.view_port, false);

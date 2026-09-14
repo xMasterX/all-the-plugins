@@ -5,7 +5,6 @@ App(
     entry_point="xremote_main",
     requires=["gui", "dialogs", "infrared"],
     stack_size=3 * 1024,
-    order=1,
     fap_version="1.4",
     fap_category="Infrared",
     fap_icon_assets="assets",

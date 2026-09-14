@@ -1,11 +1,3 @@
-# Flipcraft is split into three pieces so only what is needed sits in RAM
-# (FAP code is executed from RAM on this platform):
-#   flipcraft          -- tiny resident host bridge, swaps the plugins below
-#   flipcraft_menu     -- world selector UI, mapped only while the menu is open
-#   flipcraft_game     -- game logic + renderer, mapped only during a session
-#   flipcraft_worldgen -- terrain generator, mapped only while creating a world
-# The plugins are embedded into the FAP and unpacked to
-# /ext/apps_assets/flipcraft/plugins/ on first launch.
 App(
     appid="flipcraft",
     name="Flipcraft",
@@ -18,7 +10,7 @@ App(
     fap_file_assets="assets/worlds",
     fap_icon="assets/icon.png",
     fap_author="@apfxtech",
-    fap_version="2.2",
+    fap_version="2.8",
     fap_weburl="https://github.com/apfxtech/Flipcraft.git",
 )
 
