@@ -34,7 +34,7 @@ void config_plugin_unload(ProtoPirateApp* app) {
 bool config_plugin_load(ProtoPirateApp* app) {
     furi_check(app);
 
-    if(app->emulate_plugin) return true;
+    if(app->config_plugin) return true;
 
     if(app->plugin_manager || app->plugin_resolver) {
         config_plugin_unload(app);
