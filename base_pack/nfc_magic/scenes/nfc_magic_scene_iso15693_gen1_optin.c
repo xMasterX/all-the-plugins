@@ -32,6 +32,12 @@ void nfc_magic_scene_iso15693_gen1_optin_on_enter(void* context) {
         NfcMagicIso15693Gen1OptinFromWriteUid;
 
     FuriString* body = furi_string_alloc();
+    // NEITHER body says how well gen1 is validated, and that is deliberate -- do not add it back.
+    // Both once ended "Gen1 is not hardware-tested", which stopped being true the moment gen1 was
+    // tested, and a corrected version would be no better: what the user consents to here is the
+    // write and its blast radius, which both bodies state. How well the path is validated is not
+    // something they can act on at this moment, and on a consent screen the one thing a
+    // reassurance can change is whether they say yes.
     if(from_write_uid) {
         // A bare Write-UID has no source data to write, so gen1 touches only the four registers --
         // but on a plain tag those are ordinary data blocks, which is the whole risk here.
