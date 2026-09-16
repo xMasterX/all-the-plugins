@@ -17,10 +17,9 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
     const bool wipe_mode = (instance->iso15693_mode == NfcMagicIso15693ModeWipe);
     // Bound the list at the cut, for the reason pass_truncated gives: on a clone the bitmap holds two
     // different things at two different addresses, and only the group below the cut is a fact about the
-    // card. Listing them together names the back-filled group as refusals, which is the whole
-    // complaint. A cut wipe records nothing above its cut, so the bound is inert there and the note
-    // below is the only thing that mentions those blocks -- but it is applied in both modes anyway,
-    // because a rule that holds in one and is inert in the other beats a mode test.
+    // card. Listing them together would name the back-filled group as refusals. A cut wipe records
+    // nothing above its cut, so the bound is inert there -- applied in both modes anyway, because a
+    // rule that holds in one and is inert in the other beats a mode test.
     //
     // Nothing at all on a card-lost wipe: a lifted card makes blocks that never answered look like
     // refusals, and the poller documents those counters as the caller's to discard on that exit.
@@ -37,11 +36,10 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
     // comment: both go through list_upto. Not from failed_count, which on a cut run includes every
     // unattempted block above the cut.
     //
-    // No `+ over_capacity` term: it was dead. over_capacity survives non-zero only down the
-    // failures_are_top_tail branch, which requires an uncut pass, which forces list_upto to the full
-    // range -- and every one of those blocks already has its bit set. So over_capacity > 0 implies the
-    // bitmap is non-empty, and the sum read as though the two were complementary when one contains the
-    // other.
+    // No `+ over_capacity` term: over_capacity survives non-zero only down the failures_are_top_tail
+    // branch, which requires an uncut pass and so forces list_upto to the full range, where every one
+    // of those blocks already has its bit set. The sum would read as though the two were complementary
+    // when one contains the other.
     const bool has_block_list =
         nfc_magic_partial_details_any_index(instance->iso15693_result.failed_bitmap, list_upto);
     // Whether the listed blocks are merely EMPTY ones past the card's physical capacity (nothing lost)

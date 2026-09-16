@@ -422,11 +422,9 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
                 // most needs told.
                 // The order is also what decides Retry, which is worth saying here because the
                 // predicate that grants it cannot: a wipe that was BOTH cut and moved the UID takes the
-                // UID branch, and WipeUidChanged is not retryable. That is deliberate. Re-running a wipe
-                // against a card whose identity has already moved does not obviously help, and on gen1
-                // it is another pass over 56/57 -- the very blocks that moved it. The truncation note
-                // still reaches Details on that screen, so the cut is stated; only the button is
-                // withheld.
+                // UID branch, and WipeUidChanged is deliberately not retryable -- on gen1 a re-run is
+                // another pass over 56/57, the very blocks that moved it. The truncation note still
+                // reaches Details there, so the cut is stated; only the button is withheld.
                 NfcMagicIso15693WriteFailReason partial_reason;
                 if(instance->iso15693_result.uid_changed) {
                     partial_reason = NfcMagicIso15693WriteFailReasonWipeUidChanged;
@@ -458,12 +456,10 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
                 // rejected. Order matters throughout -- an empty source would satisfy the all-rejected
                 // test trivially, and the three UID/gen1 outcomes cut across every mode.
                 //
-                // NotMagic is now only the defensive fallback. A card that simply isn't magic leaves
-                // the UID unchanged, which is NotGen2, not Fail -- it reaches the gen1 opt-in screen,
-                // and declining there returns to the menu. So nothing routed here is known to be an
-                // ordinary tag. Before the branches above existed, the two routes that DID reach
-                // "Not a magic tag" were the unexpected-UID case -- the one outcome that proves the
-                // opposite -- and a failed opt-in gen1 verify, which had already spent four blocks.
+                // NotMagic is only the defensive fallback. A card that simply isn't magic leaves the
+                // UID unchanged, which is NotGen2 rather than Fail -- it reaches the gen1 opt-in
+                // screen, and declining there returns to the menu. So nothing routed here is known to
+                // be an ordinary tag.
                 NfcMagicIso15693WriteFailReason reason;
                 if(instance->iso15693_result.uid_unverifiable) {
                     // Write UID asked for the UID the card already has, so nothing was sent. Checked
@@ -543,21 +539,15 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
         // ISO15693_POLLER_WIPE_VERIFY_ACTIVATIONS while a wipe's UID check is outstanding -- the first
         // reports CardLost, the second reports the wipe's own result. Either way an outcome arrives.
         //
-        // Two others are safe for a different reason and are excluded only for want of testing: gen1a
-        // and the USCUID-UL backdoor engine run on raw nfc_start, where PollerReady is a poll-cycle
-        // tick rather than an activation, so their handlers keep running with no card and reach Fail or
-        // Partial on their own.
+        // gen1a and the USCUID-UL backdoor engine would also be safe -- they run on raw nfc_start, so
+        // PollerReady is a poll-cycle tick and their handlers reach Fail or Partial with no card -- and
+        // are excluded only for want of testing.
         //
-        // The genuinely unsafe ones are gen2/Classic (one poller, not two -- the Classic branch starts
-        // the gen2 one), USCUID-direct, and gen4. All are driven by an activation-Ready event and all
-        // stop advancing once the card is gone: gen2 halts after every block and USCUID-direct returns
-        // NfcCommandReset on a failed page to revive a tag that NAKed a locked one, so both need a
-        // RE-ACTIVATION partway through a write; gen4 has no activation-error budget at all and
-        // advances one block per Iso14443_3aPollerEventTypeReady (gen4_poller.c:281/:358/:460),
-        // returning NfcCommandContinue for every other event. In each case the poller reports the lost
-        // card as an Error event which those callbacks discard, and the state machine is never called
-        // again. Measured: 88 seconds with no state-machine activity at all (#252). Back is the user's
-        // only way off that popup, so swallowing it there needs a reboot to recover (#253).
+        // The genuinely unsafe ones are gen2/Classic, USCUID-direct and gen4: all are driven by an
+        // activation-Ready event and stop advancing once the card is gone, discarding the poller's
+        // Error event so the state machine is never called again. Measured at 88 seconds with no
+        // state-machine activity (#252), where Back is the only way off the popup, so swallowing it
+        // there needs a reboot to recover (#253).
         //
         // The card-search phase is untouched: nothing has been written there, so Back still leaves. Any
         // terminal outcome releases the button.

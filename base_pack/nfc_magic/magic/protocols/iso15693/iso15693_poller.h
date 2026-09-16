@@ -79,10 +79,9 @@ void iso15693_poller_start(
 
 // Magic UID write (gen2 attempt). `uid` is ISO15693_3_UID_SIZE bytes, MSB-first (uid[0] must be 0xE0).
 // Writes ONLY the gen2 backdoor sequence -- a harmless custom command on a non-magic tag. Before
-// the read-back it power-cycles the field, like proxmark's switch_off + getUID. There is no
-// power-up latch on gen1 silicon (see ISO15693_MAGIC_BLK_UNLOCK in the .c); the power-cycle is kept
-// because it costs nothing, it re-activates the card for a clean read, and a gen2 UID lives in a
-// register space this has never been tested against.
+// the read-back it power-cycles the field, like proxmark's switch_off + getUID. There is no power-up
+// latch on gen1 silicon (see ISO15693_MAGIC_BLK_UNLOCK in the .c); the power-cycle is kept because it
+// re-activates the card for a clean read, and a gen2 UID lives in a register space never tested here.
 // Emits CardDetected, then Success (the read-back inventory returns the requested UID), Fail,
 // CardLost, or NotGen2 -- the last offering the destructive gen1 retry via
 // iso15693_poller_start_write_uid_gen1(). Two distinct Fails, both flagged in the result:
@@ -151,18 +150,17 @@ typedef struct {
     // Wipe only: the block count the card ADVERTISED, so a report can put the measured figure beside
     // the claim. The gen2 CFG frame programs this number, which is why the two differing is
     // information rather than an error: a card cloned from a smaller source advertises less than it
-    // still holds and serves reads for, and a card with fake flash advertises more. 0 for a clone.
+    // still holds and serves reads for, and a card that over-claims -- from the factory, or cloned from
+    // a larger source -- advertises more. 0 for a clone.
     uint16_t blocks_advertised;
     // The run stopped on its wall-clock bound (ISO15693_POLLER_PASS_MAX_MS) rather than at its natural
     // end, so its range is a cut and no report may pass that range off as a finding about the card.
-    // BOTH modes carry the same bound. What the flag SAVES differs by mode, and only the clone has
-    // the problem: its back-fill records every block above the cut as a failure --
-    // otherwise the "written" figure, derived by subtraction, would claim they all landed -- so without
-    // the flag a reader cannot tell a block the card REFUSED from one nothing was ever sent to, and
-    // every screen downstream states the stronger claim. A cut WIPE has no back-fill: the sweep breaks
-    // out of the loop and both of its bit-setting sites are inside the body the deadline gates, so the
-    // unreached blocks are outside the denominator rather than inside the numerator -- which leaves this
-    // flag as the only thing that mentions those blocks at all.
+    // BOTH modes carry the same bound, but what the flag SAVES differs. The clone's back-fill records
+    // every block above the cut as a failure, so without the flag a reader cannot tell a block the card
+    // REFUSED from one nothing was sent to, and every screen downstream states the stronger claim. A
+    // cut WIPE has no back-fill -- both of its bit-setting sites are inside the body the deadline
+    // gates, so its unreached blocks fall outside the denominator rather than inside the numerator --
+    // so there the flag is the only thing that mentions them at all.
     //
     // What a re-run can do about it, since two screens have to answer that: the bound is a WALL CLOCK,
     // not a position, so a card that is consistently this slow is cut in the same place every time and
@@ -174,22 +172,13 @@ typedef struct {
     // sits at or below the cut -- structurally, so no card can put blocks_total above it. What two
     // cards DO differ in is which side of the ADVERTISED COUNT the cut lands on, and only one of them
     // opens a gap between the cut and the total:
-    //   past the claim -- a card that refuses every write but answers a read everywhere never
-    //     accumulates an absent run, so the sweep walks beyond the advertised count and the cut lands
-    //     above it. But every one of those reads calls wipe_note_present, so blocks_total == cut_block
-    //     exactly, so there is no gap at all on this card. Where a gap does open HERE it is
-    //     bounded by ISO15693_POLLER_WIPE_ABSENT_RUN - 1, so cut_block - blocks_total <= 7. What
-    //     bounds it is the tripped-run handling: above the claim a run that reaches the threshold
-    //     is either re-probed back under it or ends the sweep, so no iteration starts with more
-    //     than 7 absences open. NOT the deadline's position, which only fixes block as the
-    //     exclusive end of the attempted range, and NOT "you cannot reach the claim after that
-    //     many absences".
-    //   below the claim -- a card claiming 200 while holding 10. THE BOUND ABOVE DOES NOT HOLD
-    //     HERE: the trip falls through to continue WITHOUT clearing absent_run, which is the
-    //     advertised-count floor doing its job, so the run grows unchecked while the sweep grinds
-    //     on to the clock. Claiming 200, holding 10, clock at block 150: absent_run 140, the
-    //     tail-drop clears 10..149, blocks_total stuck at 10, cut_block 150 -- a gap of 140. THIS
-    //     is where the gap gets large. One later block that answers zeroes the run.
+    //   past the claim -- the gap is bounded by ISO15693_POLLER_WIPE_ABSENT_RUN - 1, so
+    //     cut_block - blocks_total <= 7, because above the claim a tripped run is either re-probed
+    //     back under the threshold or ends the sweep.
+    //   below the claim -- THAT BOUND DOES NOT HOLD. The trip falls through without clearing
+    //     absent_run, which is the advertised-count floor doing its job, so the run grows unchecked.
+    //     Claiming 200, holding 10, clock at block 150: the tail-drop clears 10..149, blocks_total
+    //     stuck at 10, cut_block 150 -- a gap of 140.
     // Either way, any string naming where the run stopped has to read this, not blocks_total.
     uint16_t cut_block;
     // Wipe only: the post-power-cycle UID check reached an answer. When false it did not run -- the card
@@ -250,11 +239,10 @@ typedef struct {
     // outright is logged and ignored, since it cannot be told from the card being lifted the
     // moment the wipe finished.
     //
-    // "Moved" is the generous reading. Observed on an armed LRi2K: the UID went to ALL ZEROS, and
-    // an ISO15693 UID must begin with 0xE0, so the card was left with no valid identity rather
-    // than a different one. It still answered inventory, and gen1's frames carry no UID, so it
-    // stayed reachable -- which is the whole argument for printing uid_readback. Recovery was
-    // byte-identical, and only possible because the original had been recorded.
+    // "Moved" is the generous reading. Observed on an armed LRi2K: the UID went to ALL ZEROS, and an
+    // ISO15693 UID must begin 0xE0, so the card was left with no valid identity rather than a different
+    // one. It still answered inventory and gen1's frames carry no UID, so it stayed reachable -- which
+    // is why uid_readback is printed. Recovery was byte-identical, and needed the original recorded.
     bool uid_changed;
 } Iso15693PollerResult;
 
@@ -267,21 +255,18 @@ void iso15693_poller_get_result(Iso15693Poller* instance, Iso15693PollerResult* 
 // touches no hardware and says nothing about whether the target is magic.
 bool iso15693_poller_source_uses_gen1_blocks(const Iso15693_3Data* source);
 
-// Wipe: write zeros to every data block the card PHYSICALLY holds -- which is exactly what proxmark's
-// 'hf 15 wipe' does NOT do: its loop carries a 0..0xFF bound but breaks at the first refused write, so
-// on a 64-block card it examines 65.
+// Wipe: write zeros to every data block the card PHYSICALLY holds. (proxmark's `hf 15 wipe` does not:
+// its 0..0xFF loop breaks at the first refused write.)
 // It does NOT stop at the card's advertised block count, because that number is programmable (see
 // blocks_advertised) and a card still serves reads above it. The sweep runs upward until a run of
 // ISO15693_POLLER_WIPE_ABSENT_RUN blocks answers neither a write nor a read, or it hits the 256-block
 // ceiling, or the clock cuts it -- see ISO15693_POLLER_WIPE_MAX_BLOCKS in the .c for the hardware
 // measurement behind the first of those. BELOW the advertised count it never stops on absence alone:
 // the card's own claim is evidence those blocks exist.
-// The gen1 registers are cleared too. On gen2 they are ordinary user data, and the wipe performs no
+// The gen1 registers are cleared too: on gen2 they are ordinary user data and the wipe performs no
 // magic detection, so it cannot spare them on the chance the card is gen1 -- meaning it cannot
-// guarantee a gen1 UID survives. It re-reads the UID afterwards, behind the same field power-cycle
-// the UID writes use, and then reports rather than promises: uid_changed and uid_verified carry
-// the answer. See the open question in
-// iso15693_poller_wipe_blocks.
+// guarantee a gen1 UID survives. It re-reads the UID afterwards and reports rather than promises;
+// uid_changed and uid_verified carry the answer. See the open question in iso15693_poller_wipe_blocks.
 // Emits CardDetected, then Success / Partial / Fail (nothing could be wiped) / CardLost. Per-block
 // detail is in iso15693_poller_get_result(), whose blocks_total spans up to the highest block the card
 // proved it holds, so blocks that do not exist are never reported as blocks that wouldn't clear.
