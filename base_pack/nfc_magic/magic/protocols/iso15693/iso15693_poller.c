@@ -1243,16 +1243,19 @@ static NfcCommand
             // safe. "No write landed, so the UID cannot have moved" is the one inference this file
             // declines to draw anywhere else: on a card the sweep reached index 56/57 on, three
             // WRITE BLOCKs each went out there before it gave up, and a tag can apply a write without
-            // answering. Only two things stop the sweep short of 56/57: the card answers nothing
+            // answering. Only three things stop the sweep short of 56/57: the card answers nothing
             // above its claim AND claims fewer than 49 blocks -- a card that refuses every write
             // but still serves a read never accumulates a run, so it walks past 56/57 whatever it
-            // claims -- or the geometry guard above returned before the first write, which also
-            // lands here, since it returns 0.
+            // claims -- or the clock cuts the sweep below 56 (see the backstop note at
+            // ISO15693_POLLER_PASS_MAX_MS), or the geometry guard above returned before the first
+            // write, which also lands here, since it returns 0.
             //
             // 49 is not a threshold about the claim CONTAINING 56. The sweep runs past the advertised
             // count until ISO15693_POLLER_WIPE_ABSENT_RUN blocks answer nothing, so a card silent from
-            // block A is attempted through A+7, and a write that lands resets the run -- which is why
-            // 57 goes with 56 rather than one claim later.
+            // block A is attempted through A+7: block 56 is reached from A >= 49, block 57 only from
+            // A >= 50. The two ride together only when a write LANDS and resets the run, which is
+            // exactly what cannot have happened in this branch -- so at A == 49 the writes reach 56
+            // and stop there.
             //
             // So on an ARMED gen1 card this path can move the UID, report "Wipe failed", never run the
             // check and never say the check did not run -- the one path where the mitigation #255
