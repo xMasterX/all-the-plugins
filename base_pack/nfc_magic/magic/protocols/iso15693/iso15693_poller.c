@@ -34,10 +34,13 @@
 // UID bytes they carry (uid[0] is the MSB, so uid[7..4] is the numerically low half of the UID).
 #define ISO15693_MAGIC_CMD_WRITE    (0x21U) // ISO15693 WRITE BLOCK
 // MEASURED on five cards across three chips: the sequence sets the UID, it reads back, and the
-// original restores byte-identically. On the one tested while ARMED, an ST LRi2K: the UID changes
-// IMMEDIATELY -- an inventory in the SAME field session as the write already returns the new one --
-// so there is no power-up latch on that chip; and writes to 62/63 are REFUSED (error 0x10, block not
-// available) while 56/57 are accepted, so the UID moves on 56/57 alone and the refusals do not stop it.
+// original restores byte-identically. On one card of each chip, tested while ARMED: the UID
+// changes IMMEDIATELY -- an inventory in the SAME field session as the write already returns the
+// new one -- so there is no power-up latch on any chip tested; and writes to 62/63 are REFUSED
+// while 56/57 are accepted, so the UID moves on 56/57 alone and the refusals do not stop it. On
+// the ST LRi2K that refusal is IN BAND (error 0x10, block not available); on the other two the
+// client reported a failure that does not separate an error frame from silence, so "the registers
+// answer" is one chip.
 //
 // STILL INFERENCE: what 0x3E and 0x3F actually do. proxmark sends them first and names neither, and
 // doc/magic_cards_notes.md's ISO15693-magic section is a TODO, so "unlock" and "arms" are our reading.

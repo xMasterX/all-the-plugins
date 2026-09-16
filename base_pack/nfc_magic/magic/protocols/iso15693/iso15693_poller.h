@@ -79,9 +79,10 @@ void iso15693_poller_start(
 
 // Magic UID write (gen2 attempt). `uid` is ISO15693_3_UID_SIZE bytes, MSB-first (uid[0] must be 0xE0).
 // Writes ONLY the gen2 backdoor sequence -- a harmless custom command on a non-magic tag. Before
-// the read-back it power-cycles the field, like proxmark's switch_off + getUID. There is no power-up
-// latch on gen1 silicon (see ISO15693_MAGIC_BLK_UNLOCK in the .c); the power-cycle is kept because it
-// re-activates the card for a clean read, and a gen2 UID lives in a register space never tested here.
+// the read-back it power-cycles the field, like proxmark's switch_off + getUID. There is no
+// power-up latch on the gen1 chips tested (see ISO15693_MAGIC_BLK_UNLOCK in the .c); it is kept
+// anyway because it re-activates the card for a clean read, and a gen2 UID lives in a register
+// space never tested here.
 // Emits CardDetected, then Success (the read-back inventory returns the requested UID), Fail,
 // CardLost, or NotGen2 -- the last offering the destructive gen1 retry via
 // iso15693_poller_start_write_uid_gen1(). Two distinct Fails, both flagged in the result:
