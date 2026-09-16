@@ -41,9 +41,9 @@ typedef enum {
         // bound, PROVIDED something was written -- the run's own job is left undone whatever the counts
         // say. A wipe cut short having cleared NOTHING reports Fail instead: the wiped == 0
         // short-circuit runs first, which is the card this bound was written for (refuses every write,
-        // answers every read). Which of those it was is
-        // in Iso15693PollerResult, and its flags are not interchangeable: pass_truncated in particular
-        // is a qualifier no block figure can show.
+        // answers every read). Which of those it was is in Iso15693PollerResult, and its flags are
+        // not interchangeable: pass_truncated in particular is a qualifier no block figure can
+        // show.
     Iso15693PollerEventFail, // the operation didn't take: the backdoor write was rejected (not a
         // magic tag), the gen2 write changed the UID to neither the original nor the target, an opt-in
         // gen1 UID didn't take, the clone source had no data blocks, a wipe cleared nothing, or a

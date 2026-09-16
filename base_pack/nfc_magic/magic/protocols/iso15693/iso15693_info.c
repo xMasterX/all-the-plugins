@@ -258,8 +258,8 @@ static const char* iso15693_info_get_chip_info(uint8_t vendor_id, uint8_t chip_i
 // NXP I-Code refinement. uid[2] is the IC family; uid[3] carries a 2-bit type indicator at bits 3-4
 // (mask 0x18): 0x10 => SLIX, 0x08 => SLIX2, 0x18 => ICODE DNA / NTAG 5, 0x00 => plain SLI.
 // Provenance: proxmark3 cmdhf15.c printTagInfo_15, over its `uidmapping` masked-UID table. The SDK
-// decodes the same bits in
-// slix.c (file-local SlixUidLayout.type_indicator; see the exported slix_get_type()).
+// decodes the same bits in slix.c (file-local SlixUidLayout.type_indicator; see the exported
+// slix_get_type()).
 const char* iso15693_info_get_chip_info_ex(const uint8_t* uid) {
     const uint8_t vendor_id = uid[1];
     const uint8_t chip_id = uid[2];

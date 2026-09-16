@@ -350,7 +350,7 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
             consumed = true;
         } else if(event.event == NfcMagicCustomEventCardLost) {
             if(instance->protocol == NfcMagicProtocolIso15693) {
-                // ISO15693 clone treats card-lost as terminal (not a resumable search).
+                // ISO15693 treats card-lost as terminal (not a resumable search).
                 scene_manager_set_scene_state(
                     instance->scene_manager,
                     NfcMagicSceneIso15693WriteFail,
