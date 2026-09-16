@@ -65,7 +65,12 @@ static bool
     case NfcMagicIso15693WriteFailReasonCardLost:
         // Wipe only, and only where the identity check never answered: the run returns before
         // Iso15693WriteStateVerifyWipe is entered, and Details is the only route to the note saying
-        // so. A clone has no identity check to skip, hence the mode test.
+        // so. A clone has no identity check to skip, hence the mode test. The uid_verified term is
+        // DEFENSIVE, not load-bearing: the flag is set only inside Iso15693WriteStateVerifyWipe,
+        // whose one exit is success_or_partial, so a CardLost result always carries it false and the
+        // term cannot currently bite. It is kept because this scene cannot enforce that invariant --
+        // it reads a result struct it did not fill -- and a poller that grew a CardLost exit from
+        // that state would need it.
         return instance->iso15693_mode == NfcMagicIso15693ModeWipe && !result->uid_verified;
     default:
         return false;
