@@ -16,7 +16,7 @@
 static const char* const sens_labels[SPECTER_SENS_COUNT] = {"High", "Medium", "Low", "Custom"};
 static const uint8_t sens_thresh[SPECTER_SENS_COUNT] = {0, 8, 20, 0}; // Custom uses its own
 
-static const char* const survey_labels[SPECTER_SURVEY_COUNT] = {"30 s", "60 s", "2 min"};
+static const char* const survey_labels[SPECTER_SURVEY_COUNT] = {"30s", "60s", "2min"};
 static const uint32_t survey_seconds[SPECTER_SURVEY_COUNT] = {30, 60, 120};
 
 void specter_settings_set_defaults(SpecterSettings* s) {
@@ -32,6 +32,11 @@ void specter_settings_set_defaults(SpecterSettings* s) {
     s->meter_raw = false; // full-scale meter by default; see field_scale.h
 }
 
+const char* specter_settings_meter_tag(const SpecterSettings* s) {
+    furi_assert(s);
+    return s->meter_raw ? "raw" : "boost";
+}
+
 uint8_t specter_settings_full_scale(const SpecterSettings* s) {
     furi_assert(s);
     return s->meter_raw ? SPECTER_SCALE_RAW : SPECTER_FULL_SCALE_DUTY;
@@ -43,6 +48,18 @@ static void specter_settings_sanitise(SpecterSettings* s) {
     if(s->sensitivity_index >= SPECTER_SENS_COUNT) s->sensitivity_index = 1;
     if(s->survey_index >= SPECTER_SURVEY_COUNT) s->survey_index = 1;
     if(s->custom_threshold > 90) s->custom_threshold = 90;
+
+    /* saved_struct checks a magic, a version and a size - it does not and
+     * cannot check that the bytes make sense. A _Bool holding anything other
+     * than 0 or 1 is undefined behaviour the moment it is read, so a hand-edited
+     * or corrupted file could put the app somewhere the language has no answer
+     * for. Force them back to a real boolean. */
+    s->sound = !!s->sound;
+    s->vibro = !!s->vibro;
+    s->led = !!s->led;
+    s->stealth = !!s->stealth;
+    s->logging = !!s->logging;
+    s->meter_raw = !!s->meter_raw;
 }
 
 void specter_settings_load(SpecterSettings* s) {

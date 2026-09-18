@@ -19,6 +19,7 @@ void specter_scene_fingerprint_on_enter(void* context) {
     SpecterApp* app = context;
 
     specter_apply_threshold(app);
+    fingerprint_view_reset(app->fingerprint_view); // never show the last run's call
     fingerprint_view_set_save_callback(app->fingerprint_view, specter_fingerprint_save_cb, app);
     fingerprint_view_set_reset_callback(app->fingerprint_view, specter_fingerprint_reset_cb, app);
 
@@ -67,6 +68,8 @@ static void specter_fingerprint_save(SpecterApp* app) {
     if(ok) {
         fingerprint_view_flash(app->fingerprint_view, "LOGGED");
         specter_notify_saved(app);
+    } else if(specter_log_is_full()) {
+        fingerprint_view_flash(app->fingerprint_view, "LOG FULL");
     } else {
         fingerprint_view_flash(app->fingerprint_view, "LOG FAIL");
     }
