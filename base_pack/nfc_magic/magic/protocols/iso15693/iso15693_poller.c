@@ -1248,19 +1248,29 @@ static NfcCommand
             // safe. "No write landed, so the UID cannot have moved" is the one inference this file
             // declines to draw anywhere else: on a card the sweep reached index 56/57 on, three
             // WRITE BLOCKs each went out there before it gave up, and a tag can apply a write without
-            // answering. Only three things stop the sweep short of 56/57: the card answers nothing
-            // above its claim AND claims fewer than 49 blocks -- a card that refuses every write
-            // but still serves a read never accumulates a run, so it walks past 56/57 whatever it
-            // claims -- or the clock cuts the sweep below 56 (see the backstop note at
+            // answering. Only three things stop the sweep short of 56/57: the reach rule below leaves
+            // it short, or the clock cuts the sweep below 56 (see the backstop note at
             // ISO15693_POLLER_PASS_MAX_MS), or the geometry guard above returned before the first
             // write, which also lands here, since it returns 0.
             //
-            // 49 is not a threshold about the claim CONTAINING 56. The sweep runs past the advertised
-            // count until ISO15693_POLLER_WIPE_ABSENT_RUN blocks answer nothing, so a card silent from
-            // block A is attempted through A+7: block 56 is reached from A >= 49, block 57 only from
-            // A >= 50. The two ride together only when a write LANDS and resets the run, which is
-            // exactly what cannot have happened in this branch -- so at A == 49 the writes reach 56
-            // and stop there.
+            // THE REACH RULE, and 49 is not a threshold about the claim CONTAINING 56. TWO gates must
+            // both pass before the sweep can stop, so the last block attempted is the later of them:
+            //   - ISO15693_POLLER_WIPE_ABSENT_RUN blocks in a row answer nothing. ANSWER, not take the
+            //     write: a read is enough, and wipe_note_present zeroes the run from the read path and
+            //     from the re-probe as well as from a landed write. A card silent from block A is
+            //     therefore attempted through A+7.
+            //   - the claimed range has been attempted, block + 1 >= advertised. Below the claim the
+            //     trip falls through to `continue`, because the card says those blocks exist.
+            // So with A the first block that answers nothing and `claim` the advertised count, the
+            // last block attempted is
+            //
+            //     L = max(A + 7, claim - 1)  =>  56 is reached from A >= 49 OR claim >= 57
+            //                                    57 is reached from A >= 50 OR claim >= 58
+            //
+            // Either disjunct is enough on its own. A card that answers no read at all still has 56
+            // attempted once it advertises 57 or more; a card that refuses every write while serving a
+            // read never accumulates a run, so it walks past 56/57 whatever it claims. Staying short
+            // of 56 takes A < 49 AND claim < 57 together.
             //
             // So on an ARMED gen1 card this path can move the UID, report "Wipe failed", never run the
             // check and never say the check did not run -- the one path where the mitigation #255
