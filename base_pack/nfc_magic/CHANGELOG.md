@@ -101,12 +101,13 @@ Adds magic **ISO15693 / NfcV** support. Detect an ISO15693 tag, show its Info, a
   plus wipe and the over-capacity reporting.
 - **gen3 is not supported, and a wipe can destroy one.** A gen3 card ignores the gen2 backdoor, so a
   clone or Write UID lands on the **"Not gen2 magic card"** opt-in, and accepting that sends four
-  ordinary writes into 56/57/62/63. **A wipe does not check at all** — it sweeps any ISO15693 tag
-  presented to it, zeroing an un-finalized gen3 card's UID registers and configuration signature. Per
-  0x6r1an0y, who wrote proxmark's ISO15693 V3 magic support, that **bricks the card permanently**: the
-  cost is the card, not just its identity — and the opt-in writes above reach the same blocks. Stated on
-  their authority rather than ours: no gen3 card exists on either side of this PR, so nothing here has
-  been observed. Tracked as #255.
+  ordinary writes into 56/57/62/63 — user data on a gen3 card, so what that costs is those four
+  blocks. **A wipe does not check at all** — it sweeps any ISO15693 tag presented to it, and a gen3
+  card keeps its UID in blocks 0x10/0x11 with a configuration signature in 0x14/0x15, well inside any
+  claim, so the sweep zeroes both. Per 0x6r1an0y, who wrote proxmark's ISO15693 V3 magic support,
+  zeroing those on an un-finalized card **bricks it permanently**: the cost is the card, not just its
+  identity. Stated on their authority rather than ours: no gen3 card exists on either side of this PR,
+  so nothing here has been observed. Tracked as #255.
 - **Every ISO15693 write reaches every tag in the field, not just the selected one** — any generation,
   magic or not, on a wipe and a clone alike. No frame this app builds carries an address, so a second
   tag in range takes all of it with nothing on screen saying it was there: a wipe zeros its data
