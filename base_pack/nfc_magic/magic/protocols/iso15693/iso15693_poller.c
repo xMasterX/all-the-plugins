@@ -103,7 +103,15 @@ static bool iso15693_poller_is_backdoor_block(uint16_t block) {
 #define ISO15693_MAGIC_V2_CFG_BLOCKSIZE (0x03U)
 #define ISO15693_MAGIC_V2_CFG_IC_REF    (0x8BU)
 
-#define ISO15693_POLLER_BUF_SIZE (32U)
+// Sized to the SDK's own ISO15693_3_POLLER_MAX_BUFFER_SIZE, not to the 1-4 bytes a conforming tag
+// answers these frames with. iso15693_3_poller_send_frame ends in
+// bit_buffer_copy(caller_rx, instance->rx_buffer), and bit_buffer_copy enforces capacity with a
+// furi_check -- a halt, not an error return. Every in-firmware caller passes instance->rx_buffer
+// as the destination as well, so copy's `buf == other` short-circuit fires first and that check
+// is dead for them; the raw-frame senders below are the first callers to hand it a foreign
+// buffer, which makes it live. At 32 a CRC-valid 33-62 byte answer would halt the Flipper, and
+// non-conforming tags are what this app exists to talk to.
+#define ISO15693_POLLER_BUF_SIZE (64U)
 
 // ISO15693 Get System Info stores (block size - 1) in a 5-bit field, so a block is at most 32 bytes.
 #define ISO15693_MAX_BLOCK_SIZE (32U)
