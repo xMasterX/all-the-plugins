@@ -290,11 +290,16 @@ struct Iso15693Poller {
     uint8_t progress_step;
     bool uid_unexpected;
     uint8_t uid_readback[ISO15693_3_UID_SIZE];
-    // Equal to attempt_gen1, kept as its own field so the scene needn't know when the gen1 frames go
-    // out. "Unconditionally" would be too strong: on a gen1 run two paths return from Start before the
-    // send -- a Write-UID asking for the card's own UID, and an empty clone source -- leaving this
-    // true with nothing transmitted. Neither is reachable from the opt-in screen today, but
-    // start_clone_gen1 and start_write_uid_gen1 are public entry points.
+    // Kept as its own field, separate from attempt_gen1, so the scene needn't know when the gen1
+    // frames go out -- and set immediately before that send, so it means they DID. It was previously
+    // set in start_internal beside attempt_gen1, which made it true for any run that merely ASKED for
+    // gen1. That included a run whose card never activated, where write_step is never entered and
+    // nothing is transmitted, and that one was reachable straight from the opt-in screen: the field
+    // is off while the user reads the consent text, and the budget to re-present the card is then
+    // ISO15693_POLLER_MAX_ACTIVATION_ERRORS x ~100 ms, about four seconds. The scene reports spent
+    // gen1 registers on card-lost, so the flag was asserting destroyed blocks on the likeliest
+    // outcome of that screen. The two paths that return from Start before the send -- a Write-UID
+    // asking for the card's own UID, and an empty clone source -- are covered by the same move.
     bool gen1_attempted;
     bool uid_unverifiable;
     bool uid_changed; // set only from a positive observation -- see Iso15693WriteStateVerifyWipe
@@ -1333,6 +1338,11 @@ static NfcCommand
             // ONLY the gen1 UID sequence now, verify it in VerifyGen1, and write the data blocks there
             // only if the UID took -- so a non-magic tag that can't do gen1 loses at most the four
             // backdoor registers, not all its data.
+            // Set on the line before the send rather than in start_internal, because the flag's
+            // whole meaning is that these frames went out. A run whose card never activates never
+            // reaches this line: write_step is entered only from the Ready event, so at start the
+            // flag claimed spent gen1 registers for a card the field never saw.
+            instance->gen1_attempted = true;
             iso15693_poller_send_backdoor_uid_gen1(iso_poller, instance->target_uid);
             instance->write_state = Iso15693WriteStateVerifyGen1;
             return NfcCommandReset;
@@ -1582,7 +1592,7 @@ static void iso15693_poller_start_internal(
     instance->clone_afi_failed = false;
     instance->clone_dsfid_failed = false;
     instance->uid_unexpected = false;
-    instance->gen1_attempted = gen1;
+    instance->gen1_attempted = false; // set at the send site in write_step, not here
     instance->uid_unverifiable = false;
     instance->uid_changed = false;
     memset(instance->uid_readback, 0, sizeof(instance->uid_readback));

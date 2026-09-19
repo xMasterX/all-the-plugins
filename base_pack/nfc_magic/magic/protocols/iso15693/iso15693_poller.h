@@ -228,7 +228,8 @@ typedef struct {
     // not known -- the frames' return values are discarded, because a refusal does not mean the
     // write did not land. And any writable tag accepts an ordinary WRITE BLOCK, so on a Fail the
     // honest report is that those four blocks may have been overwritten on what is most likely an
-    // ordinary tag. Set at start, before any frame goes out.
+    // ordinary tag. Set immediately before those frames go out, so a run that never activated a
+    // card cannot claim them.
     bool gen1_attempted;
     // Fail, Write UID only: the requested UID is the one the card already has, so nothing was written.
     // A read-back against a UID the card already carries is passed by any tag, magic or not, so a
