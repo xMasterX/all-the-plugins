@@ -42,6 +42,11 @@
 // client reported a failure that does not separate an error frame from silence, so "the registers
 // answer" is one chip.
 //
+// ALSO MEASURED: the four addresses are not memory. They answer no read at any point, so a card's
+// advertised block count is its CAPACITY and 56/57/62/63 are write-only registers sitting OUTSIDE
+// it. That is what makes "how far past the claim does the sweep run" a question at all -- see the
+// reach rule at the wiped == 0 branch -- and it is why a 56-block LRi2K can report 58 cleared.
+//
 // STILL INFERENCE: what 0x3E and 0x3F actually do. proxmark sends them first and names neither, and
 // doc/magic_cards_notes.md's ISO15693-magic section is a TODO, so "unlock" and "arms" are our reading.
 // Neither register has been observed to ACCEPT a write -- the card was armed before that could be
