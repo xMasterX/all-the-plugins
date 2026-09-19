@@ -42,10 +42,14 @@
 // client reported a failure that does not separate an error frame from silence, so "the registers
 // answer" is one chip.
 //
-// ALSO MEASURED: the four addresses are not memory. They answer no read at any point, so a card's
-// advertised block count is its CAPACITY and 56/57/62/63 are write-only registers sitting OUTSIDE
-// it. That is what makes "how far past the claim does the sweep run" a question at all -- see the
-// reach rule at the wiped == 0 branch -- and it is why a 56-block LRi2K can report 58 cleared.
+// ALSO MEASURED, on the three gen1 chips: the four addresses are not memory. They answer no read at
+// any point. On those chips the advertised count is fixed silicon rather than the gen2 CFG frame, so
+// it enumerates memory only and 56/57/62/63 sit OUTSIDE it -- which is why a 56-block LRi2K can
+// report 58 cleared. Do NOT read that as a general rule: on gen2 the claim is PROGRAMMED and a card
+// serves reads above it, which is the whole reason the wipe sweeps past the claim (see
+// blocks_advertised, and the sweep's own note at the wipe entry point). It is that gap, not the
+// registers, that makes "how far past the claim does the sweep run" a question -- see the reach rule
+// at the wiped == 0 branch.
 //
 // STILL INFERENCE: what 0x3E and 0x3F actually do. proxmark sends them first and names neither, and
 // doc/magic_cards_notes.md's ISO15693-magic section is a TODO, so "unlock" and "arms" are our reading.
