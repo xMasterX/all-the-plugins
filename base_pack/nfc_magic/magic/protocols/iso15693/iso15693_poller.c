@@ -1457,8 +1457,7 @@ static NfcCommand
         return NfcCommandStop;
     }
 
-    case Iso15693WriteStateVerifyGen1:
-    default: {
+    case Iso15693WriteStateVerifyGen1: {
         if(iso15693_poller_verify_inventory(iso_poller, readback) != Iso15693_3ErrorNone) {
             iso15693_poller_report(instance, Iso15693PollerEventCardLost);
             return NfcCommandStop;
@@ -1481,6 +1480,10 @@ static NfcCommand
         return iso15693_poller_finish_write(instance, iso_poller, true);
     }
     }
+    // No default above, so -Wswitch (in -Wall, with -Werror) makes a forgotten state a build error
+    // rather than a silent fall-through. It used to fall through to VerifyGen1, which is the worst of
+    // the four arms to land in by accident: it sets clone_used_gen1 and writes the clone payload.
+    furi_crash("iso15693: unreachable write state");
 }
 
 // Runs on the Nfc worker thread. Returns NfcCommand to control the poller.
