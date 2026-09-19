@@ -563,8 +563,11 @@ static bool iso15693_poller_write_source_blocks(
     const Iso15693_3Data* source = instance->clone_source;
     uint16_t source_count = iso15693_3_get_block_count(source);
     // Straight out of a loaded .nfc, so hand-editable and unbounded by anything this app controls,
-    // while the read-probe below fills a fixed 32-byte stack buffer. The wipe clamps the same value for
-    // the same reason. Note this is the SOURCE's geometry: on gen2 the CFG frame makes the target match
+    // while the read-probe below fills a fixed 32-byte stack buffer. The gen2 CFG derivation clamps
+    // these same two values, for the stronger reason that it writes them into the card. (The wipe
+    // clamps the TARGET's block size into its zero buffer, which its own note there calls
+    // belt-and-braces, since a card's 5-bit field cannot over-report.) Note this is the SOURCE's
+    // geometry: on gen2 the CFG frame makes the target match
     // it, but a gen1 target keeps its own block size, so a mismatch there makes every empty failure read
     // as absent and fabricates an over-capacity "Holds X/Y".
     const uint8_t source_block_size = iso15693_3_get_block_size(source);
@@ -1359,8 +1362,20 @@ static NfcCommand
         if(instance->mode == Iso15693PollerModeClone) {
             const Iso15693_3SystemInfo* sys = &instance->clone_source->system_info;
             if(sys->flags & ISO15693_3_SYSINFO_FLAG_MEMORY) {
-                if(sys->block_count > 0) cfg_maxblock = (uint8_t)(sys->block_count - 1);
-                if(sys->block_size > 0) cfg_blocksize = (uint8_t)(sys->block_size - 1);
+                // Clamped for the same reason the clone pass clamps them: straight out of a
+                // loaded .nfc, so hand-editable and unbounded by anything this app controls. This is
+                // the site where it matters most -- the other two clamps guard a stack buffer and a
+                // screen, while these two bytes are PROGRAMMED INTO THE CARD and outlive the run.
+                // Unclamped, a source claiming 257 blocks wrapped the cast to 0 and left the card
+                // permanently advertising a single block while the pass wrote 256.
+                const uint16_t cfg_count = sys->block_count > ISO15693_POLLER_MAX_BLOCKS ?
+                                               (uint16_t)ISO15693_POLLER_MAX_BLOCKS :
+                                               sys->block_count;
+                const uint8_t cfg_size = sys->block_size > ISO15693_MAX_BLOCK_SIZE ?
+                                             (uint8_t)ISO15693_MAX_BLOCK_SIZE :
+                                             sys->block_size;
+                if(cfg_count > 0) cfg_maxblock = (uint8_t)(cfg_count - 1);
+                if(cfg_size > 0) cfg_blocksize = (uint8_t)(cfg_size - 1);
             }
             if(sys->flags & ISO15693_3_SYSINFO_FLAG_IC_REF) cfg_icref = sys->ic_ref;
         }
