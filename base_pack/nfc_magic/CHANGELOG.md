@@ -36,7 +36,9 @@ Adds magic **ISO15693 / NfcV** support. Detect an ISO15693 tag, show its Info, a
   from a smaller source advertises less than it holds, and a card that over-claims — from the factory,
   or cloned from a larger source — advertises more.
   A sweep cut short by its time limit is **partial** if anything was cleared, names where it stopped
-  and offers a retry; one that cleared nothing is a failure and offers none.
+  and offers a retry; one that cleared nothing is a failure and offers none. A cut sweep that also
+  moved the UID reports the UID instead, which takes priority and is deliberately not retryable —
+  the cut is still named in Details.
 - **The clone attempts every source block and reports only real data loss.** A non-empty block that
   won't write is **Partial**, naming the blocks. An empty block past the card's real capacity loses
   nothing, so the clone is a **Success** carrying a note that the card advertises more blocks than it

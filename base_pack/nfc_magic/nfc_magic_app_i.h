@@ -139,10 +139,12 @@ typedef enum {
         // says so on the third line: the wipe finished, only the identity check did not run.
     NfcMagicIso15693WriteFailReasonWipeStopped, // wipe: the sweep hit its time limit. Nothing ties the
         // cut to the advertised count -- the check is a wall-clock test at the top of every iteration,
-        // so a card that accepts some writes and then answers reads at every address is cut with every
-        // claimed block already attempted and the cut index above that count. (NOT the refuses-every-
-        // write card: that one clears nothing, so the wipe short-circuits to NothingWiped before the
-        // WipeStopped truncation reporting -- it is NothingWiped's screen that states the cut.) A
+        // so a card that accepts some writes and then answers reads at every address CAN be cut with
+        // every claimed block already attempted and the cut index above that count. A high claim is
+        // cut below it instead -- both sides are live, which is why the details screen branches on
+        // them. (NOT the refuses-every-write card: that one clears nothing, so the wipe short-circuits
+        // to NothingWiped before the WipeStopped truncation reporting -- it is NothingWiped's screen
+        // that states the cut.) A
         // partial outcome, not a qualified success -- the poller reports Partial for it -- so it
         // carries the error tone and offers Retry, since re-running is the correct action when
         // data may sit above the cut.
@@ -217,10 +219,10 @@ struct NfcMagicApp {
     NfcMagicIso15693Mode iso15693_mode; // which ISO15693 operation the shared write scene is running
     bool iso15693_force_gen1; // ISO15693 clone / Write-UID: run the opt-in gen1 attempt (set by the
         // gen1 opt-in scene, cleared when a fresh clone or Write-UID is started from the menu)
-    // Outcome of the last ISO15693 clone or wipe, fetched once per terminal event. See
+    // Outcome of the last ISO15693 clone or wipe, fetched on every WriteProgress event and once per
+    // terminal event -- mid-run it carries the live progress figures, see blocks_total. See
     // Iso15693PollerResult in iso15693_poller.h for the per-field meaning and its mode dependence.
     Iso15693PollerResult iso15693_result;
-    // AFI/DSFID -- decided by GET SYSTEM INFO read-back, not by the write's return value
 
     Gen4* gen4_data;
 

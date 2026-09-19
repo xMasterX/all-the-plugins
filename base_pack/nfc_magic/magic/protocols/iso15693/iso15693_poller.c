@@ -15,8 +15,10 @@
 
 // Magic ISO15693 ("Chinese magic") backdoor UID write, ported from proxmark3 (GPLv3)
 // SetTag15693Uid / SetTag15693Uid_v2 (armsrc/iso15693.c). Unaddressed frames are sent to
-// hidden backdoor blocks; the CRC is appended by iso15693_3_poller_send_frame. Two card
-// generations exist: the write always tries gen2 first, and offers gen1 -- which is destructive on a
+// hidden backdoor blocks; the CRC is appended by iso15693_3_poller_send_frame. Two card generations
+// are handled here -- a third, gen3, is neither detected nor supported, and a wipe can destroy one
+// (see the hazard note in nfc_magic_scene_write_confirm.c). The write always tries gen2 first, and
+// offers gen1 -- which is destructive on a
 // non-magic tag -- only as an explicit user opt-in after gen2 leaves the UID unchanged.
 #define ISO15693_MAGIC_FLAGS (0x02U) // high data rate, unaddressed (ISO15_REQ_DATARATE_HIGH)
 
@@ -596,8 +598,10 @@ static bool iso15693_poller_write_source_blocks(
         source_count = ISO15693_POLLER_MAX_BLOCKS;
     }
 
-    // Report the count of blocks we actually attempt: for gen1, exclude the 4 backdoor registers we
-    // skip below so the "Cloned X/Y" total isn't inflated by blocks that only ever hold the UID.
+    // Report the count of blocks we actually attempt: for gen1, exclude whichever of the 4 backdoor
+    // registers fall below source_count, so the "Cloned X/Y" total isn't inflated by blocks that only
+    // ever hold the UID. On a source under 57 blocks none of them do, so nothing is deducted -- two of
+    // the three chips this was validated on (SLIX 28, SLIX-S 40) are in that case.
     uint16_t total = source_count;
     if(skip_backdoor) {
         for(size_t i = 0; i < COUNT_OF(iso15693_poller_backdoor_blocks); i++) {

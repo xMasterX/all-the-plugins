@@ -38,14 +38,17 @@ typedef enum {
     Iso15693PollerEventPartial, // the operation mostly worked but isn't a clean result: a clone lost
         // some data blocks, fell back to gen1, or had its AFI/DSFID write rejected; or a wipe couldn't
         // clear every block, or moved the card's UID. ALSO either mode cut short by the wall-clock
-        // bound, PROVIDED something was written -- the run's own job is left undone whatever the counts
-        // say. A wipe cut short having cleared NOTHING reports Fail instead: the wiped == 0
+        // bound -- the run's own job is left undone whatever the counts say. A cut CLONE is Partial
+        // even if no block took, because its counts cannot separate a refusal from a block that was
+        // never sent; the Fail guard excludes cut runs for exactly that reason. A wipe cut short
+        // having cleared NOTHING reports Fail instead: the wiped == 0
         // short-circuit runs first, which is the card this bound was written for (refuses every write,
         // answers every read). Which of those it was is in Iso15693PollerResult, and its flags are
         // not interchangeable: pass_truncated in particular is a qualifier no block figure can
         // show.
-    Iso15693PollerEventFail, // the operation didn't take: the backdoor write was rejected (not a
-        // magic tag), the gen2 write changed the UID to neither the original nor the target, an opt-in
+    Iso15693PollerEventFail, // the operation didn't take: the gen2 write changed the UID to neither
+        // the original nor the target (a card that simply isn't magic leaves it UNCHANGED, which is
+        // NotGen2 and lands on the opt-in screen, not here), an opt-in
         // gen1 UID didn't take, the clone source had no data blocks, a wipe cleared nothing, or a
         // Write UID asked for the UID the card already has. Those are NOT the same thing to a user --
         // read Iso15693PollerResult (uid_unexpected / gen1_attempted / uid_unverifiable) to tell them
@@ -55,7 +58,8 @@ typedef enum {
         // indistinguishable from the card's capacity ending there: both loops re-check that the card
         // is present before making any capacity claim, and report this instead of a write result.
     Iso15693PollerEventCardDetected, // first activation of any write mode -- clone, wipe AND Write
-        // UID. Flips the shared write popup off "apply the card" onto "Writing". Not sent in Info mode.
+        // UID. Flips the shared write popup off "apply the card" onto "Writing" -- or "Wiping", which
+        // is the same popup picking its verb. Not sent in Info mode.
     Iso15693PollerEventWriteProgress, // some blocks done; read the result for the running counts.
         // Emitted a bounded number of times per pass, NOT per block -- see
         // ISO15693_POLLER_PROGRESS_STEPS in the .c for why that bound is a correctness constraint
@@ -139,7 +143,8 @@ void iso15693_poller_start_clone_gen1(
 // retry (a transient glitch that later succeeded is not a failure).
 typedef struct {
     // The blocks this run attempted and reports against, which is mode-dependent: the source block
-    // count for a gen2 clone, that count MINUS the 4 skipped gen1 registers for a gen1 clone, or, for a
+    // count for a gen2 clone, that count minus whichever of the 4 gen1 registers fall BELOW it for
+    // a gen1 clone (on a source smaller than 57 blocks that is none of them), or, for a
     // wipe, the advertised count WHILE the sweep runs (the progress popup needs a denominator
     // before the sweep's true length is known) and then highest_present + 1. That last one is a
     // RANGE SIZE, not a tally: it spans up to the highest block the card proved it holds, and
