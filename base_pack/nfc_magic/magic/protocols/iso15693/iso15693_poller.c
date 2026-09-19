@@ -341,8 +341,9 @@ static void iso15693_poller_build_gen2_frame(
 }
 
 // Per-frame transceive results are intentionally ignored, and the reason is measured rather than
-// assumed: on an armed card the 62/63 writes come back REFUSED (error 0x10) and the UID moves
-// anyway. Acting on these returns would abort a run that worked. The UID read-back is the only
+// assumed: on an armed card the 62/63 writes come back REFUSED -- in band, error 0x10, on the LRi2K;
+// see ISO15693_MAGIC_BLK_UNLOCK for what the other two chips could and could not show -- and the UID
+// moves anyway. Acting on these returns would abort a run that worked. The UID read-back is the only
 // honest check.
 static void
     iso15693_poller_send_backdoor_uid_gen1(Iso15693_3Poller* iso_poller, const uint8_t* uid) {
@@ -856,9 +857,11 @@ static uint16_t iso15693_poller_wipe_blocks(
 
     // OPEN QUESTION, gen1 only. The full argument, the gen3 case beside it and what would settle either
     // are in #255. In brief: this loop zeroes the gen1 UID registers (56/57); the arm sequence is
-    // unlock=0 then commit=0x6996 then the UID blocks; and an ARMED card refuses writes to 62/63
-    // with error 0x10, so the sweep reaches commit and is turned away rather than clearing it. A
-    // card left armed by an earlier gen1 UID write therefore stays armed while its UID moves.
+    // unlock=0 then commit=0x6996 then the UID blocks; and an ARMED card refuses writes to 62/63, so
+    // the sweep reaches commit and is turned away rather than clearing it. That the refusal is IN
+    // BAND -- error 0x10, the card answering rather than staying silent -- is measured on the LRi2K
+    // and on the LRi2K alone; see ISO15693_MAGIC_BLK_UNLOCK. A card left armed by an earlier gen1 UID
+    // write therefore stays armed while its UID moves.
     // Reproduced end-to-end on an armed LRi2K: it reported "Wiped 58/58", the UID changed
     // immediately, the re-read below caught it as Partial, and the card was still armed
     // afterwards.
