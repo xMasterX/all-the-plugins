@@ -40,6 +40,13 @@ void nfc_magic_scene_iso15693_on_enter(void* context) {
 
     submenu_set_header(submenu, "ISO15693 / NfcV");
 
+    // Restore the cursor, as every other menu in the app does. This scene is the return target for
+    // the whole feature -- Info, the write-fail screens and the gen1 opt-in all come back here --
+    // and on_exit's submenu_reset drops the cursor to index 0, which is Write. Without this, reading
+    // a card's Info and pressing Back leaves the selection on the destructive item.
+    submenu_set_selected_item(
+        submenu, scene_manager_get_scene_state(app->scene_manager, NfcMagicSceneIso15693));
+
     view_dispatcher_switch_to_view(app->view_dispatcher, NfcMagicAppViewMenu);
 }
 
@@ -48,6 +55,7 @@ bool nfc_magic_scene_iso15693_on_event(void* context, SceneManagerEvent event) {
     bool consumed = false;
 
     if(event.type == SceneManagerEventTypeCustom) {
+        scene_manager_set_scene_state(app->scene_manager, NfcMagicSceneIso15693, event.event);
         if(event.event == SubmenuIndexIso15693Write) {
             // Clone a saved ISO15693 .nfc onto the magic card, via the shared file-select + write
             // flow (same as Gen1/Gen2/USCUID-UL).
