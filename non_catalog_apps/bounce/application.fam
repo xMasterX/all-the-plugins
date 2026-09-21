@@ -1,0 +1,13 @@
+App(
+    appid="bounce",
+    name="Bounce",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="bounce_app",
+    requires=["gui", "storage", "notification"],
+    stack_size=4 * 1024,
+    fap_category="Games",
+    fap_icon="bounce_10px.png",
+    fap_version="1.0",
+    fap_author="Tom Varghese",
+    fap_description="Nokia-style Bounce: roll, jump, collect every ring and reach the exit.",
+)

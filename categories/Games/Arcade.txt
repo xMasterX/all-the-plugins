@@ -7,6 +7,7 @@ arduventure
 arkanoid
 asteroids
 bomberduck
+bounce
 catacombs
 citybloxx
 doom
@@ -34,6 +35,7 @@ reaction
 scorched_tanks
 snake20
 spaceimpactii985e
+stack_attack
 t_rex_runner
 tanks
 wave
