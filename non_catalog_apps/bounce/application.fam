@@ -9,5 +9,6 @@ App(
     fap_icon="bounce_10px.png",
     fap_version="1.0",
     fap_author="Tom Varghese",
+    fap_weburl="https://github.com/tomxposed/flipper-bounce",
     fap_description="Nokia-style Bounce: roll, jump, collect every ring and reach the exit.",
 )
