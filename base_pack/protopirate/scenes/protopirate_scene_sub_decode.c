@@ -81,6 +81,8 @@ static const ProtoPirateToolSceneHostApi* g_tool_scene_host_api = NULL;
     g_tool_scene_host_api->receiver_sync_menu_from_history(receiver, history)
 #define protopirate_psa_bf_plugin_ensure_loaded(app) \
     g_tool_scene_host_api->psa_bf_plugin_ensure_loaded(app)
+#define protopirate_psa_bf_plugin_unload_if_idle(app) \
+    g_tool_scene_host_api->psa_bf_plugin_ensure_loaded(app)
 #define protopirate_psa_bf_context_release(app) g_tool_scene_host_api->psa_bf_context_release(app)
 
 #define SUBGHZ_APP_FOLDER EXT_PATH("subghz")
@@ -1329,6 +1331,7 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                             needs_bf = app->psa_bf_plugin->needs_bruteforce(
                                 app, ProtoPiratePsaBfContextSubDecode);
                         }
+                        protopirate_psa_bf_plugin_unload_if_idle(app);
                         if(needs_bf) {
                             widget_add_button_element(
                                 app->widget,

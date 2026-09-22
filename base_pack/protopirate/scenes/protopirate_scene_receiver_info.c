@@ -133,6 +133,7 @@ static void protopirate_receiver_info_build_normal_widget(ProtoPirateApp* app) {
         needs_bf = app->psa_bf_plugin->widget_left_should_bruteforce(
             app, ProtoPiratePsaBfContextReceiverInfo);
     }
+    protopirate_psa_bf_plugin_unload_if_idle(app);
     if(needs_bf) {
         widget_add_button_element(
             app->widget,
