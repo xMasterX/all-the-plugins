@@ -22,6 +22,7 @@ typedef struct {
     bool delete_old_signals;
     uint32_t gps_protocol; // SubGhzGpsProtocol
     uint32_t gps_baudrate;
+    uint32_t gps_pins; // SubGhzGpsPins
     bool remove_duplicates;
     uint32_t repeater_state;
     bool enable_sound;

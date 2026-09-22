@@ -15,6 +15,13 @@ typedef enum {
     SubGhzGpsProtocolUbox,
 } SubGhzGpsProtocol;
 
+// UART pins the GPS module is wired to. Order matches the config menu.
+typedef enum {
+    SubGhzGpsPinsUsart, // 13/14 (TX/RX)
+    SubGhzGpsPinsLpuart, // 15/16 (TX/RX), e.g. boards with an ESP32 on 13/14
+    SubGhzGpsPinsCount,
+} SubGhzGpsPins;
+
 typedef struct SubGhzGPS SubGhzGPS;
 
 struct SubGhzGPS {
@@ -25,6 +32,7 @@ struct SubGhzGPS {
     FuriHalSerialHandle* serial_handle;
     SubGhzGpsProtocol protocol;
     uint32_t baudrate;
+    SubGhzGpsPins pins;
     UboxRx ubox;
     FuriTimer* timer;
 
@@ -55,7 +63,10 @@ void subghz_gps_cat_realtime(
  *
  * @return SubGhzGPS* object, or NULL on load failure
 */
-SubGhzGPS* subghz_gps_plugin_init(SubGhzGpsProtocol protocol, uint32_t baudrate);
+SubGhzGPS* subghz_gps_plugin_init(
+    SubGhzGpsProtocol protocol,
+    uint32_t baudrate,
+    SubGhzGpsPins pins);
 
 /**
  * Unload the UART GPS plugin.
@@ -82,13 +93,17 @@ void subghz_gps_stop(SubGhzGPS* subghz_gps);
 /**
  * Reconcile the active GPS source with the current settings.
  *
- * Loads, reloads (on protocol or baudrate change) or unloads the source so it
- * matches @p protocol / @p baudrate. A no-op when the running source already
- * matches, so it is cheap to call before every Read. Call as:
- *     subghz->gps = subghz_gps_apply(subghz->gps, protocol, baudrate);
+ * Loads, reloads (on protocol, baudrate or pins change) or unloads the source
+ * so it matches @p protocol / @p baudrate / @p pins. A no-op when the running
+ * source already matches, so it is cheap to call before every Read. Call as:
+ *     subghz->gps = subghz_gps_apply(subghz->gps, protocol, baudrate, pins);
  *
  * @param current  currently active source, or NULL if none
  * @return the source that now matches the settings, or NULL if protocol is off
  *         (or a UART plugin failed to load)
 */
-SubGhzGPS* subghz_gps_apply(SubGhzGPS* current, SubGhzGpsProtocol protocol, uint32_t baudrate);
+SubGhzGPS* subghz_gps_apply(
+    SubGhzGPS* current,
+    SubGhzGpsProtocol protocol,
+    uint32_t baudrate,
+    SubGhzGpsPins pins);

@@ -2,8 +2,6 @@
 #include "minmea.h"
 #include "ubox.h"
 
-#define UART_CH (FuriHalSerialIdUsart)
-
 typedef enum {
     WorkerEvtStop = (1 << 0),
     WorkerEvtRxDone = (1 << 1),
@@ -158,7 +156,11 @@ static void subghz_gps_deinit(SubGhzGPS* subghz_gps) {
     furi_stream_buffer_free(subghz_gps->rx_stream);
 }
 
-static void subghz_gps_init(SubGhzGPS* subghz_gps, SubGhzGpsProtocol protocol, uint32_t baudrate) {
+static void subghz_gps_init(
+    SubGhzGPS* subghz_gps,
+    SubGhzGpsProtocol protocol,
+    uint32_t baudrate,
+    SubGhzGpsPins pins) {
     subghz_gps->latitude = NAN;
     subghz_gps->longitude = NAN;
     subghz_gps->satellites = 0;
@@ -167,6 +169,7 @@ static void subghz_gps_init(SubGhzGPS* subghz_gps, SubGhzGpsProtocol protocol, u
     subghz_gps->fix_second = 0;
 
     subghz_gps->protocol = protocol;
+    subghz_gps->pins = pins;
     ubox_rx_init(&subghz_gps->ubox);
 
     subghz_gps->rx_stream = furi_stream_buffer_alloc(RX_BUF_SIZE, 1);
@@ -175,7 +178,8 @@ static void subghz_gps_init(SubGhzGPS* subghz_gps, SubGhzGpsProtocol protocol, u
         furi_thread_alloc_ex("SubGhzGPSWorker", 1024, subghz_gps_uart_worker, subghz_gps);
     furi_thread_start(subghz_gps->thread);
 
-    subghz_gps->serial_handle = furi_hal_serial_control_acquire(UART_CH);
+    subghz_gps->serial_handle = furi_hal_serial_control_acquire(
+        pins == SubGhzGpsPinsLpuart ? FuriHalSerialIdLpuart : FuriHalSerialIdUsart);
     furi_check(subghz_gps->serial_handle);
     furi_hal_serial_init(subghz_gps->serial_handle, baudrate);
 
@@ -187,7 +191,7 @@ static void subghz_gps_init(SubGhzGPS* subghz_gps, SubGhzGpsProtocol protocol, u
 
 static const FlipperAppPluginDescriptor plugin_descriptor = {
     .appid = "subghz_plugin_gps",
-    .ep_api_version = 2,
+    .ep_api_version = 3,
     .entry_point = &subghz_gps_init,
 };
 

@@ -47,6 +47,12 @@ const uint32_t gps_baudrate_value[GPS_BAUDRATE_COUNT] = {
     115200,
 };
 
+// index == SubGhzGpsPins
+const char* const gps_pins_text[SubGhzGpsPinsCount] = {
+    "13,14",
+    "15,16",
+};
+
 #define DEBUG_COUNTER_COUNT 17
 const char* const debug_counter_text[DEBUG_COUNTER_COUNT] = {
     "+1",
@@ -90,6 +96,7 @@ const int32_t debug_counter_val[DEBUG_COUNTER_COUNT] = {
 #define GPS_BAUDRATE_LOCKED_MSG "Not used in\nthis source"
 
 static VariableItem* gps_baudrate_item = NULL;
+static VariableItem* gps_pins_item = NULL;
 
 //TX Power
 #define TX_POWER_COUNT 9
@@ -152,6 +159,10 @@ static void subghz_scene_receiver_config_set_gps_protocol(VariableItem* item) {
         variable_item_set_locked(
             gps_baudrate_item, index < SubGhzGpsProtocolNmea, GPS_BAUDRATE_LOCKED_MSG);
     }
+    if(gps_pins_item) {
+        variable_item_set_locked(
+            gps_pins_item, index < SubGhzGpsProtocolNmea, GPS_BAUDRATE_LOCKED_MSG);
+    }
 }
 
 static void subghz_scene_receiver_config_set_gps_baudrate(VariableItem* item) {
@@ -160,6 +171,15 @@ static void subghz_scene_receiver_config_set_gps_baudrate(VariableItem* item) {
 
     variable_item_set_current_value_text(item, gps_baudrate_text[index]);
     subghz->last_settings->gps_baudrate = gps_baudrate_value[index];
+    subghz_wardriving_last_settings_save(subghz->last_settings);
+}
+
+static void subghz_scene_receiver_config_set_gps_pins(VariableItem* item) {
+    SubGhz* subghz = variable_item_get_context(item);
+    uint8_t index = variable_item_get_current_value_index(item);
+
+    variable_item_set_current_value_text(item, gps_pins_text[index]);
+    subghz->last_settings->gps_pins = index;
     subghz_wardriving_last_settings_save(subghz->last_settings);
 }
 
@@ -239,6 +259,22 @@ void subghz_scene_radio_settings_on_enter(void* context) {
 
     item = variable_item_list_add(
         variable_item_list,
+        "GPS Pins",
+        SubGhzGpsPinsCount,
+        subghz_scene_receiver_config_set_gps_pins,
+        subghz);
+    value_index = subghz->last_settings->gps_pins;
+    if(value_index >= SubGhzGpsPinsCount) value_index = SubGhzGpsPinsUsart;
+    variable_item_set_current_value_index(item, value_index);
+    variable_item_set_current_value_text(item, gps_pins_text[value_index]);
+    gps_pins_item = item;
+    variable_item_set_locked(
+        item,
+        subghz->last_settings->gps_protocol < SubGhzGpsProtocolNmea,
+        GPS_BAUDRATE_LOCKED_MSG);
+
+    item = variable_item_list_add(
+        variable_item_list,
         "Protocol Names",
         ON_OFF_COUNT,
         subghz_scene_receiver_config_set_protocol_file_names,
@@ -276,6 +312,7 @@ bool subghz_scene_radio_settings_on_event(void* context, SceneManagerEvent event
 void subghz_scene_radio_settings_on_exit(void* context) {
     SubGhz* subghz = context;
     gps_baudrate_item = NULL;
+    gps_pins_item = NULL;
     variable_item_list_set_selected_item(subghz->variable_item_list, 0);
     variable_item_list_reset(subghz->variable_item_list);
 }
