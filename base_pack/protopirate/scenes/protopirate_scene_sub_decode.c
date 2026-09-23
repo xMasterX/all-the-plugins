@@ -373,11 +373,16 @@ static void protopirate_scene_sub_decode_widget_callback(
             view_dispatcher_send_custom_event(
                 app->view_dispatcher, ProtoPirateCustomEventSubDecodeSave);
         } else if(result == GuiButtonTypeLeft) {
+
+#ifdef ENABLE_EMULATE_FEATURE
             const uint32_t left_event =
                 (scene_manager_get_scene_state(app->scene_manager, ProtoPirateSceneSubDecode) ==
                  STATE_BF) ?
                     ProtoPirateCustomEventBruteforceStart :
                     ProtoPirateCustomEventSubDecodeEmulate;
+#else
+            const uint32_t left_event = ProtoPirateCustomEventBruteforceStart;
+#endif
             view_dispatcher_send_custom_event(app->view_dispatcher, left_event);
         }
     }
@@ -1302,9 +1307,7 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                     protopirate_scene_sub_decode_widget_callback,
                     app);
 
-#ifdef ENABLE_EMULATE_FEATURE
                 bool left_button_bf = false;
-#endif
                 app->emulate_disabled_for_loaded = true;
 
                 // Store reference to history item's flipper format for saving
@@ -1342,10 +1345,7 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                                 "BF",
                                 protopirate_scene_sub_decode_widget_callback,
                                 app);
-#ifdef ENABLE_EMULATE_FEATURE
-
                             left_button_bf = true;
-#endif
                         }
                     }
                 }
