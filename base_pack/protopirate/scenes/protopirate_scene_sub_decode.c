@@ -2,6 +2,9 @@
 #include "../protopirate_app_i.h"
 #ifdef ENABLE_SUB_DECODE_SCENE
 
+#define STATE_EMULATE 0
+#define STATE_BF      1
+
 #ifndef PROTOPIRATE_SUB_DECODE_PLUGIN_BUILD
 
 void protopirate_scene_sub_decode_on_enter(void* context) {
@@ -134,7 +137,6 @@ typedef struct {
     uint16_t signal_count;
     uint16_t selected_history_index;
     bool showing_signal_info;
-    bool signal_info_left_is_emulate;
     bool previous_preset_saved;
     char previous_preset_name[SUB_DECODE_PRESET_NAME_MAX];
     uint32_t previous_frequency;
@@ -371,10 +373,11 @@ static void protopirate_scene_sub_decode_widget_callback(
             view_dispatcher_send_custom_event(
                 app->view_dispatcher, ProtoPirateCustomEventSubDecodeSave);
         } else if(result == GuiButtonTypeLeft) {
-            SubDecodeContext* ctx = g_decode_ctx;
-            const uint32_t left_event = (ctx && ctx->signal_info_left_is_emulate) ?
-                                            ProtoPirateCustomEventSubDecodeEmulate :
-                                            ProtoPirateCustomEventSubDecodeBruteforceStart;
+            const uint32_t left_event =
+                (scene_manager_get_scene_state(app->scene_manager, ProtoPirateSceneSubDecode) ==
+                 STATE_BF) ?
+                    ProtoPirateCustomEventBruteforceStart :
+                    ProtoPirateCustomEventSubDecodeEmulate;
             view_dispatcher_send_custom_event(app->view_dispatcher, left_event);
         }
     }
@@ -475,7 +478,6 @@ static void protopirate_scene_sub_decode_reset_for_file(SubDecodeContext* ctx) {
     ctx->signal_count = 0;
     ctx->selected_history_index = 0;
     ctx->showing_signal_info = false;
-    ctx->signal_info_left_is_emulate = false;
     ctx->worker_startup_delay = 0;
     ctx->decode_elapsed_us = 0;
 }
@@ -771,7 +773,7 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
             consumed = true;
         }
 #endif
-        else if(event.event == ProtoPirateCustomEventSubDecodeBruteforceStart) {
+        else if(event.event == ProtoPirateCustomEventBruteforceStart) {
             app->txrx->idx_menu_chosen = ctx->selected_history_index;
             if(protopirate_psa_bf_plugin_ensure_loaded(app) && app->psa_bf_plugin &&
                app->psa_bf_plugin->on_scene_event(app, ProtoPiratePsaBfContextSubDecode, event)) {
@@ -781,7 +783,7 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
             }
             consumed = true;
             return consumed;
-        } else if(event.event == ProtoPirateCustomEventPsaBruteforceComplete) {
+        } else if(event.event == ProtoPirateCustomEventBruteforceComplete) {
             app->txrx->idx_menu_chosen = ctx->selected_history_index;
             if(app->psa_bf_plugin) {
                 app->psa_bf_plugin->on_scene_event(app, ProtoPiratePsaBfContextSubDecode, event);
@@ -1300,9 +1302,8 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                     protopirate_scene_sub_decode_widget_callback,
                     app);
 
-                ctx->signal_info_left_is_emulate = false;
 #ifdef ENABLE_EMULATE_FEATURE
-                bool left_button_used = false;
+                bool left_button_bf = false;
 #endif
                 app->emulate_disabled_for_loaded = true;
 
@@ -1328,11 +1329,13 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                         app->txrx->idx_menu_chosen = ctx->selected_history_index;
                         bool needs_bf = false;
                         if(protopirate_psa_bf_plugin_ensure_loaded(app) && app->psa_bf_plugin) {
-                            needs_bf = app->psa_bf_plugin->needs_bruteforce(
-                                app, ProtoPiratePsaBfContextSubDecode);
+                            needs_bf = app->psa_bf_plugin->needs_bruteforce(ff);
                         }
                         protopirate_psa_bf_plugin_unload_if_idle(app);
                         if(needs_bf) {
+                            scene_manager_set_scene_state(
+                                app->scene_manager, ProtoPirateSceneSubDecode, STATE_BF);
+
                             widget_add_button_element(
                                 app->widget,
                                 GuiButtonTypeLeft,
@@ -1340,14 +1343,15 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                                 protopirate_scene_sub_decode_widget_callback,
                                 app);
 #ifdef ENABLE_EMULATE_FEATURE
-                            left_button_used = true;
+
+                            left_button_bf = true;
 #endif
                         }
                     }
                 }
 
 #ifdef ENABLE_EMULATE_FEATURE
-                if(!left_button_used && app->emulate_feature_enabled &&
+                if(!left_button_bf && app->emulate_feature_enabled &&
                    !app->emulate_disabled_for_loaded) {
                     widget_add_button_element(
                         app->widget,
@@ -1355,11 +1359,13 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                         "Emulate",
                         protopirate_scene_sub_decode_widget_callback,
                         app);
-                    ctx->signal_info_left_is_emulate = true;
-                    left_button_used = true;
                 }
 #endif
 
+                scene_manager_set_scene_state(
+                    app->scene_manager,
+                    ProtoPirateSceneSubDecode,
+                    left_button_bf ? STATE_BF : STATE_EMULATE);
                 furi_string_free(text);
             }
 
