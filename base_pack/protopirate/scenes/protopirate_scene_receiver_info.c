@@ -118,7 +118,7 @@ static void protopirate_receiver_info_build_normal_widget(ProtoPirateApp* app) {
     }
     protopirate_psa_bf_plugin_unload_if_idle(app);
     if(needs_bf) {
-        scene_manager_set_scene_state(app->scene_manager, ProtoPirateSceneSavedInfo, STATE_BF);
+        scene_manager_set_scene_state(app->scene_manager, ProtoPirateSceneReceiverInfo, STATE_BF);
         widget_add_button_element(
             app->widget,
             GuiButtonTypeLeft,
@@ -127,7 +127,7 @@ static void protopirate_receiver_info_build_normal_widget(ProtoPirateApp* app) {
             app);
     } else
         scene_manager_set_scene_state(
-            app->scene_manager, ProtoPirateSceneSavedInfo, STATE_EMULATE);
+            app->scene_manager, ProtoPirateSceneReceiverInfo, STATE_EMULATE);
 
 #ifdef ENABLE_EMULATE_FEATURE
     if(app->emulate_feature_enabled && !app->emulate_disabled_for_loaded) {
@@ -174,7 +174,7 @@ static void protopirate_scene_receiver_info_widget_callback(
                 has_match ? ProtoPirateCustomEventReceiverInfoUpdate :
                             ProtoPirateCustomEventReceiverInfoSave);
         } else if(result == GuiButtonTypeLeft) {
-            if(scene_manager_get_scene_state(app->scene_manager, ProtoPirateSceneSubDecode) ==
+            if(scene_manager_get_scene_state(app->scene_manager, ProtoPirateSceneReceiverInfo) ==
                STATE_BF) {
                 view_dispatcher_send_custom_event(
                     app->view_dispatcher, ProtoPirateCustomEventBruteforceStart);
