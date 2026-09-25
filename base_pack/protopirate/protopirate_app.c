@@ -427,13 +427,18 @@ int32_t protopirate_app(char* p) {
     bool load_saved = (p && strlen(p));
     if(load_saved) protopirate_app->loaded_file_path = furi_string_alloc_set(p);
 
-    //We now jump straight to emulate scene from Browser.
+//We now jump straight to emulate scene from Browser.
+#ifdef ENABLE_EMULATE_FEATURE
     scene_manager_next_scene(
         protopirate_app->scene_manager,
         (load_saved) ? ((protopirate_app->emulate_feature_enabled) ? ProtoPirateSceneEmulate :
                                                                      ProtoPirateSceneSavedInfo) :
                        ProtoPirateSceneStart);
-
+#else
+    scene_manager_next_scene(
+        protopirate_app->scene_manager,
+        (load_saved) ? ProtoPirateSceneSavedInfo : ProtoPirateSceneStart);
+#endif
     //Pop up the beep if we are startng emulate.
     if(load_saved && protopirate_app->emulate_feature_enabled) {
         notification_message(protopirate_app->notifications, &sequence_success);
