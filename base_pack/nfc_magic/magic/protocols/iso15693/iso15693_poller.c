@@ -1324,11 +1324,21 @@ static NfcCommand
             //     therefore attempted through A+7.
             //   - the claimed range has been attempted, block + 1 >= advertised. Below the claim the
             //     trip falls through to `continue`, because the card says those blocks exist.
-            // So with A the first block that answers nothing and `claim` the advertised count, the
-            // last block attempted is
+            //   - the run SURVIVES the re-probe that follows the trip. That third gate is what makes
+            //     A terminal, and it is why A is the run the sweep ENDS on rather than the first
+            //     silence anywhere: a run that recovers is zeroed and sets no floor at all.
+            // So with A the first block of the FINAL unbroken run of non-answering blocks and `claim`
+            // the advertised count, the last block attempted is
             //
-            //     L = max(A + 7, claim - 1)  =>  56 is reached from A >= 49 OR claim >= 57
-            //                                    57 is reached from A >= 50 OR claim >= 58
+            //     L = min(max(A + 7, claim - 1), ISO15693_POLLER_WIPE_MAX_BLOCKS - 1)
+            //         =>  56 is reached from A >= 49 OR claim >= 57
+            //             57 is reached from A >= 50 OR claim >= 58
+            //
+            // The ceiling binds the A term alone; claim - 1 cannot exceed it, since the wire caps a
+            // block count at 256. Taking A as the first silence instead understates the reach: a card
+            // ADVERTISING 56 that reads 0-4, is silent at 5, reads 6-59 and is silent from 60 reaches
+            // 56 and 57, while A = 5 with claim = 56 makes both disjuncts false. The claim has to be
+            // named for that example to bite -- at a higher claim the claim term carries it anyway.
             //
             // Either disjunct is enough on its own. A card that answers no read at all still has 56
             // attempted once it advertises 57 or more; a card that refuses every write while serving a
