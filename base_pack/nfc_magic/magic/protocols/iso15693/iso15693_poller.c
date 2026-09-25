@@ -557,6 +557,29 @@ static bool iso15693_poller_block_is_empty(const uint8_t* block, uint8_t size) {
     return true;
 }
 
+// If this pass has spent its wall-clock budget, CUT IT: record the cut and return true. Both the
+// clone's write loop and the wipe's sweep ask, and must answer identically.
+//
+// pass_cut_block is the EXCLUSIVE END of the range the caller attempted, not a count: the clone
+// `continue`s over the four backdoor blocks on a gen1 run, so its cursor runs ahead of what it
+// tried, and `done` is its count. A caller passing anything but its own block cursor -- the re-probe
+// is the tempting one -- records an index the screens will state as fact.
+//
+// Call it BEFORE the block is attempted. Elapsed-against-budget, never an absolute deadline, which
+// would not survive a tick wraparound. The budget is a parameter so the clone's can be raised on
+// its own, which is the trade the KNOWN OVERLAP note at failures_are_top_tail weighs. Logging stays
+// at the call sites, the one thing that differs.
+static bool iso15693_poller_cut_pass_if_expired(
+    Iso15693Poller* instance,
+    uint32_t pass_start,
+    uint32_t pass_budget,
+    uint16_t block) {
+    if(furi_get_tick() - pass_start <= pass_budget) return false;
+    instance->pass_truncated = true;
+    instance->pass_cut_block = block;
+    return true;
+}
+
 // Defined below, next to the inventory helper it wraps.
 static bool iso15693_poller_card_still_present(Iso15693_3Poller* iso_poller);
 
@@ -657,14 +680,8 @@ static bool iso15693_poller_write_source_blocks(
     const uint32_t pass_budget = furi_ms_to_ticks(ISO15693_POLLER_PASS_MAX_MS);
     uint16_t block = 0;
     for(; block < source_count; block++) {
-        if(furi_get_tick() - pass_start > pass_budget) {
+        if(iso15693_poller_cut_pass_if_expired(instance, pass_start, pass_budget, block)) {
             FURI_LOG_W(TAG, "clone: time limit reached at block %u of %u", block, source_count);
-            // On the instance, not a local: the report needs this as much as the capacity test below
-            // does. Kept local, it made the clone claim the card had REFUSED every block above the cut
-            // -- named, counted and offered no Retry -- which is the same fabrication the capacity
-            // guard exists to stop, one layer further out.
-            instance->pass_truncated = true;
-            instance->pass_cut_block = block;
             break;
         }
         if(skip_backdoor && iso15693_poller_is_backdoor_block(block)) {
@@ -912,15 +929,9 @@ static uint16_t iso15693_poller_wipe_blocks(
     const uint32_t sweep_start = furi_get_tick();
     const uint32_t sweep_budget = furi_ms_to_ticks(ISO15693_POLLER_PASS_MAX_MS);
     for(; block < ISO15693_POLLER_WIPE_MAX_BLOCKS; block++) {
-        // Time bound, checked before the block is attempted so `block` stays the exclusive end of the
-        // attempted range for the tail arithmetic below. Compared as elapsed-against-budget rather
-        // than against an absolute deadline, which would not survive a tick wraparound. See
-        // ISO15693_POLLER_PASS_MAX_MS.
-        if(furi_get_tick() - sweep_start > sweep_budget) {
+        if(iso15693_poller_cut_pass_if_expired(instance, sweep_start, sweep_budget, block)) {
             FURI_LOG_W(
                 TAG, "wipe: time limit reached at block %u (advertised %u)", block, advertised);
-            instance->pass_truncated = true;
-            instance->pass_cut_block = block;
             break;
         }
 
