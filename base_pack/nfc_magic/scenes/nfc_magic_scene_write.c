@@ -206,9 +206,8 @@ static void
 }
 
 // "Wiping" vs "Writing": the USCUID-UL and ISO15693 wipes each set their own flag. Resolved here
-// once, because the header and the live progress line below both need it and previously disagreed --
-// the progress line tested only the USCUID-UL flag, which was harmless while ISO15693 emitted no
-// progress and wrong the moment it did.
+// once, because the header and the live progress line below both need it and must not diverge --
+// a progress line testing only the USCUID-UL flag would call an ISO15693 wipe "Writing".
 static bool nfc_magic_scene_write_is_wiping(NfcMagicApp* instance) {
     return instance->uscuid_ul_is_wipe_mode ||
            (instance->protocol == NfcMagicProtocolIso15693 &&

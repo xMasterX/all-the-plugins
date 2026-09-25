@@ -53,7 +53,7 @@ void nfc_magic_scene_iso15693_gen1_optin_on_enter(void* context) {
             "then the rest of the data only if that UID takes. A non-magic tag loses at most those 4 "
             "blocks.");
         // If the source itself stores data in those backdoor blocks, gen1 can't reproduce it -- warn
-        // at the decision point (the source-side pre-check that used to sit on the up-front confirm).
+        // at the decision point rather than on the up-front confirm, which a clone never reaches.
         // Clone only: a Write-UID has no source file.
         const Iso15693_3Data* source =
             nfc_device_get_data(instance->source_dev, NfcProtocolIso15693_3);

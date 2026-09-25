@@ -305,15 +305,15 @@ struct Iso15693Poller {
     bool uid_unexpected;
     uint8_t uid_readback[ISO15693_3_UID_SIZE];
     // Kept as its own field, separate from attempt_gen1, so the scene needn't know when the gen1
-    // frames go out -- and set immediately before that send, so it means they DID. It was previously
-    // set in start_internal beside attempt_gen1, which made it true for any run that merely ASKED for
-    // gen1. That included a run whose card never activated, where write_step is never entered and
-    // nothing is transmitted, and that one was reachable straight from the opt-in screen: the field
+    // frames go out -- and set immediately before that send, so it means they DID. Set any earlier,
+    // in start_internal beside attempt_gen1 say, it would be true for a run that merely ASKED for
+    // gen1. That includes a run whose card never activates, where write_step is never entered and
+    // nothing is transmitted, and that one is reachable straight from the opt-in screen: the field
     // is off while the user reads the consent text, and the budget to re-present the card is then
     // ISO15693_POLLER_MAX_ACTIVATION_ERRORS x ~100 ms, about four seconds. The scene reports spent
-    // gen1 registers on card-lost, so the flag was asserting destroyed blocks on the likeliest
-    // outcome of that screen. The two paths that return from Start before the send -- a Write-UID
-    // asking for the card's own UID, and an empty clone source -- are covered by the same move.
+    // gen1 registers on card-lost, so an early flag would assert destroyed blocks on the likeliest
+    // outcome of that screen. Setting it at the send also covers the two paths that return from
+    // Start before it -- a Write-UID asking for the card's own UID, and an empty clone source.
     bool gen1_attempted;
     bool uid_unverifiable;
     bool uid_changed; // set only from a positive observation -- see Iso15693WriteStateVerifyWipe
@@ -1530,9 +1530,9 @@ static NfcCommand
         return iso15693_poller_finish_write(instance, iso_poller, true);
     }
     }
-    // No default above, so -Wswitch (in -Wall, with -Werror) makes a forgotten state a build error
-    // rather than a silent fall-through. It used to fall through to VerifyGen1, which is the worst of
-    // the four arms to land in by accident: it sets clone_used_gen1 and writes the clone payload.
+    // No default above, so -Wswitch (in -Wall, with -Werror) makes a forgotten state a build error.
+    // A default sharing an arm would run that arm silently instead, and the worst of the four to
+    // land in by accident is VerifyGen1: it sets clone_used_gen1 and writes the clone payload.
     furi_crash("iso15693: unreachable write state");
 }
 
