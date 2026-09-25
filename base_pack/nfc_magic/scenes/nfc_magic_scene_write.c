@@ -288,10 +288,25 @@ void nfc_magic_scene_write_on_enter(void* context) {
             instance->uscuid_ul_poller, nfc_magic_scene_write_uscuid_ul_poller_callback, instance);
     } else if(instance->protocol == NfcMagicProtocolIso15693) {
         instance->iso15693_poller = iso15693_poller_alloc(instance->nfc);
+        // CONSUME the opt-in's grant here: it is for THIS run, not for the mode. The flag is set in
+        // exactly one place, the gen1 opt-in, and was cleared in exactly one place, the ISO15693 menu
+        // -- so every route back into this scene that bypasses the menu used to repeat the destructive
+        // gen1 write with no consent screen. Retry is such a route: it is scene_manager_previous_scene
+        // straight back to here.
+        //
+        // That is worse than a missing prompt, because Retry does not re-identify the card and the
+        // case Retry exists for is CardLost. The card on the coil for the retry need not be the card
+        // the user consented for, and that one would take four ordinary WRITE BLOCKs into
+        // 56/57/62/63 having never been offered the screen.
+        //
+        // Clearing it here and not at the branches below is deliberate: the wipe arm never reads it,
+        // so a wipe reached from a stale grant would otherwise leave it set for whatever came next.
+        const bool force_gen1 = instance->iso15693_force_gen1;
+        instance->iso15693_force_gen1 = false;
         if(instance->iso15693_mode == NfcMagicIso15693ModeWriteUid) {
             // Write a hand-entered UID, no source image. gen2 first; the opt-in gen1 retry re-enters
-            // this scene with iso15693_force_gen1 set, exactly as the clone does.
-            if(instance->iso15693_force_gen1) {
+            // this scene with the grant set, exactly as the clone does.
+            if(force_gen1) {
                 iso15693_poller_start_write_uid_gen1(
                     instance->iso15693_poller,
                     instance->iso15693_target_uid,
@@ -316,7 +331,7 @@ void nfc_magic_scene_write_on_enter(void* context) {
             // (iso15693_force_gen1), run that instead.
             const Iso15693_3Data* source =
                 nfc_device_get_data(instance->source_dev, NfcProtocolIso15693_3);
-            if(instance->iso15693_force_gen1) {
+            if(force_gen1) {
                 iso15693_poller_start_clone_gen1(
                     instance->iso15693_poller,
                     source,
