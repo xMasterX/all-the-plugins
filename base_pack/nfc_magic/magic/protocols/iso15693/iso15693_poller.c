@@ -941,6 +941,15 @@ static uint16_t iso15693_poller_wipe_blocks(
     // resolves every absence below it and zeroes the counter, so unresolved absences are always
     // exactly the current run.
     uint16_t absent_run = 0;
+    // INVARIANT, and every piece of arithmetic after this loop depends on it: when the loop ends,
+    // `block` is the NUMBER OF BLOCKS ATTEMPTED. This sweep attempts every index it reaches -- unlike
+    // the clone, which skips the four backdoor registers on a gen1 run and so has a cursor that runs
+    // ahead of its count -- so here the two are the same number and the tail arithmetic can read it
+    // either way. Each break that has already attempted its block increments before leaving, and the
+    // three below say only "attempted; see the invariant at the loop head".
+    //
+    // The deadline check is the one break that does NOT increment, because it runs BEFORE its block is
+    // attempted. That asymmetry is the whole reason this needs stating once rather than per exit.
     uint16_t block = 0;
     const uint32_t sweep_start = furi_get_tick();
     const uint32_t sweep_budget = furi_ms_to_ticks(ISO15693_POLLER_PASS_MAX_MS);
@@ -1023,8 +1032,8 @@ static uint16_t iso15693_poller_wipe_blocks(
             if(absent_run % ISO15693_POLLER_WIPE_ABSENT_RUN == 0 &&
                !iso15693_poller_card_still_present(iso_poller)) {
                 *card_lost = true;
-                block++; // this block was attempted; keep `block` the attempted count, as every
-                break; // other exit does
+                block++; // attempted; see the invariant at the loop head
+                break;
             }
             continue;
         }
@@ -1034,7 +1043,7 @@ static uint16_t iso15693_poller_wipe_blocks(
         // like. Ask before concluding anything.
         if(!iso15693_poller_card_still_present(iso_poller)) {
             *card_lost = true;
-            block++; // attempted, so it counts -- see the note at the other card-lost exit
+            block++; // attempted; see the invariant at the loop head
             break;
         }
 
@@ -1086,7 +1095,7 @@ static uint16_t iso15693_poller_wipe_blocks(
 
         FURI_LOG_I(
             TAG, "wipe: card ends at block %u (advertised %u)", highest_present, advertised);
-        block++; // count this block into the tail arithmetic below
+        block++; // attempted; see the invariant at the loop head
         break;
     }
 
