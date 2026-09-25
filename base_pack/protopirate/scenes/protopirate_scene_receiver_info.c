@@ -125,20 +125,21 @@ static void protopirate_receiver_info_build_normal_widget(ProtoPirateApp* app) {
             "BF",
             protopirate_scene_receiver_info_widget_callback,
             app);
-    } else
+    } else {
         scene_manager_set_scene_state(
             app->scene_manager, ProtoPirateSceneReceiverInfo, STATE_EMULATE);
 
 #ifdef ENABLE_EMULATE_FEATURE
-    if(app->emulate_feature_enabled && !app->emulate_disabled_for_loaded) {
-        widget_add_button_element(
-            app->widget,
-            GuiButtonTypeLeft,
-            "Emulate",
-            protopirate_scene_receiver_info_widget_callback,
-            app);
-    }
+        if(app->emulate_feature_enabled && !app->emulate_disabled_for_loaded) {
+            widget_add_button_element(
+                app->widget,
+                GuiButtonTypeLeft,
+                "Emulate",
+                protopirate_scene_receiver_info_widget_callback,
+                app);
+        }
 #endif
+    }
 
     widget_add_button_element(
         app->widget,
@@ -228,7 +229,6 @@ bool protopirate_scene_receiver_info_on_event(void* context, SceneManagerEvent e
 
     if(app->psa_bf_plugin) {
         if(app->psa_bf_plugin->is_running(app) ||
-           event.event == ProtoPirateCustomEventBruteforceComplete ||
            event.event == ProtoPirateCustomEventBruteforceStart) {
             consumed = app->psa_bf_plugin->on_scene_event(
                 app, ProtoPiratePsaBfContextReceiverInfo, event);
@@ -401,6 +401,10 @@ bool protopirate_scene_receiver_info_on_event(void* context, SceneManagerEvent e
                 FURI_LOG_E(TAG, "No capture path for index %d", app->txrx->idx_menu_chosen);
                 notification_message(app->notifications, &sequence_error);
             }
+            consumed = true;
+        }
+        if(event.event == ProtoPirateCustomEventBruteforceComplete) {
+            protopirate_scene_receiver_info_on_enter(app);
             consumed = true;
         }
 #endif

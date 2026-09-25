@@ -24,6 +24,8 @@ _MAIN_APP_SOURCES = [
     "!protocols",
     "!protopirate_emulate_plugin.c",
     "!protopirate_psa_bf_plugin.c",
+    "!protopirate_saved_info_plugin.c",
+    "!protopirate_config_plugin.c",
     "protocols/protocol_items.c",
     "protocols/protocols_common.c",
     "!raw_file_reader.c",
@@ -432,6 +434,20 @@ App(
         "helpers/protopirate_models.c",
         "helpers/variable_item_list.c",
         "scenes/plugins/protopirate_config_plugin.c",
+    ],
+    fap_icon_assets="images",
+    fal_embedded=True,
+)
+
+App(
+    appid="protopirate_saved_info_plugin",
+    apptype=FlipperAppType.PLUGIN,
+    entry_point="protopirate_saved_info_plugin_ep",
+    requires=["proto_pirate"],
+    cdefines=["PROTOPIRATE_SAVED_INFO_PLUGIN_BUILD"],
+    sources=[
+        "scenes/plugins/protopirate_saved_info_plugin.c",
+        "protocols/protocols_common.c",
     ],
     fap_icon_assets="images",
     fal_embedded=True,

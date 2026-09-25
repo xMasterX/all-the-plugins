@@ -15,10 +15,13 @@
 // -----------------------------------------------------------------------------
 // Plugin load / unload
 // -----------------------------------------------------------------------------
-void config_plugin_unload(ProtoPirateApp* app) {
+void config_or_saved_plugin_unload(ProtoPirateApp* app, bool unload_config) {
     furi_check(app);
 
-    app->config_plugin = NULL;
+    if(unload_config)
+        app->config_plugin = NULL;
+    else
+        app->saved_info_plugin = NULL;
 
     if(app->plugin_manager) {
         plugin_manager_free(app->plugin_manager);
@@ -31,15 +34,17 @@ void config_plugin_unload(ProtoPirateApp* app) {
     }
 }
 
-bool config_plugin_load(
-    ProtoPirateApp* app,
-    const ProtoPirateConfigSceneHostApi* protopirate_config_scene_host_api) {
+bool config_or_saved_plugin_load(ProtoPirateApp* app, bool load_config) {
     furi_check(app);
 
-    if(app->config_plugin) return true;
+    if(load_config) {
+        if(app->config_plugin) return true;
+    } else {
+        if(app->saved_info_plugin) return true;
+    }
 
     if(app->plugin_manager || app->plugin_resolver) {
-        config_plugin_unload(app);
+        config_or_saved_plugin_unload(app, load_config);
     }
 
     CompositeApiResolver* resolver = composite_api_resolver_alloc();
@@ -50,16 +55,18 @@ bool config_plugin_load(
     composite_api_resolver_add(resolver, firmware_api_interface);
 
     PluginManager* manager = plugin_manager_alloc(
-        PROTOPIRATE_CONFIG_PLUGIN_APP_ID,
-        PROTOPIRATE_CONFIG_PLUGIN_API_VERSION,
+        (load_config) ? PROTOPIRATE_CONFIG_PLUGIN_APP_ID : PROTOPIRATE_SAVED_INFO_PLUGIN_APP_ID,
+        (load_config) ? PROTOPIRATE_CONFIG_PLUGIN_API_VERSION :
+                        PROTOPIRATE_SAVED_INFO_PLUGIN_API_VERSION,
         composite_api_resolver_get(resolver));
     if(!manager) {
-        FURI_LOG_E(TAG, "Failed to allocate config plugin manager");
+        FURI_LOG_E(TAG, "Failed to allocate plugin manager");
         composite_api_resolver_free(resolver);
         return false;
     }
 
-    PluginManagerError error = plugin_manager_load_single(manager, CONFIG_PLUGIN_PATH);
+    PluginManagerError error = plugin_manager_load_single(
+        manager, (load_config) ? CONFIG_PLUGIN_PATH : SAVED_INFO_PLUGIN_PATH);
     if(error != PluginManagerErrorNone) {
         FURI_LOG_E(TAG, "Failed to load config plugin %s: %d", CONFIG_PLUGIN_PATH, (int)error);
         plugin_manager_free(manager);
@@ -67,18 +74,28 @@ bool config_plugin_load(
         return false;
     }
 
-    const ProtoPirateConfigPlugin* plugin = plugin_manager_get_ep(manager, 0U);
-    if(!plugin || !plugin->on_enter) {
-        FURI_LOG_E(TAG, "Config plugin entry point is invalid");
-        plugin_manager_free(manager);
-        composite_api_resolver_free(resolver);
-        return false;
-    }
+    if(load_config) {
+        const ProtoPirateConfigPlugin* plugin_config = plugin_manager_get_ep(manager, 0U);
+        if(!plugin_config || !plugin_config->on_enter) {
+            FURI_LOG_E(TAG, "Config plugin entry point is invalid");
+            plugin_manager_free(manager);
+            composite_api_resolver_free(resolver);
+            return false;
+        }
+        app->config_plugin = plugin_config;
+    } else {
+        const ProtoPirateSavedInfoPlugin* plugin_saved_info = plugin_manager_get_ep(manager, 0U);
+        if(!plugin_saved_info || !plugin_saved_info->on_enter) {
+            FURI_LOG_E(TAG, "Saved Info plugin entry point is invalid");
+            plugin_manager_free(manager);
+            composite_api_resolver_free(resolver);
+            return false;
+        }
+        app->saved_info_plugin = plugin_saved_info;
+    };
 
     app->plugin_resolver = resolver;
     app->plugin_manager = manager;
-    app->config_plugin = plugin;
-    plugin->set_host_api(protopirate_config_scene_host_api);
     return true;
 }
 
@@ -225,7 +242,7 @@ ProtoPirateApp* protopirate_app_alloc() {
         settings.auto_save,
         settings.hopping_enabled);
 
-    config_plugin_load(app, NULL);
+    config_or_saved_plugin_load(app, true);
     app->car_models_count = app->config_plugin->car_model_get_count();
     app->selected_model = malloc(sizeof(ProtoPirateCarModel));
     app->selected_model->name = furi_string_alloc();
@@ -251,7 +268,7 @@ ProtoPirateApp* protopirate_app_alloc() {
 
         protopirate_preset_init(app, preset_name, frequency, preset_data, preset_data_size);
     }
-    config_plugin_unload(app);
+    config_or_saved_plugin_unload(app, true);
 
     // Apply hopping state from settings
     app->txrx->hopper_state = settings.hopping_enabled ? ProtoPirateHopperStateRunning :
@@ -397,6 +414,7 @@ void protopirate_app_free(ProtoPirateApp* app) {
 }
 
 int32_t protopirate_app(char* p) {
+    //Stop charging while running the app.
     furi_hal_power_suppress_charge_enter();
 
     ProtoPirateApp* protopirate_app = protopirate_app_alloc();
@@ -408,31 +426,24 @@ int32_t protopirate_app(char* p) {
     // Handle Command line PSF that may have been passed to us
     bool load_saved = (p && strlen(p));
     if(load_saved) protopirate_app->loaded_file_path = furi_string_alloc_set(p);
+
+    //We now jump straight to emulate scene from Browser.
     scene_manager_next_scene(
         protopirate_app->scene_manager,
-        (load_saved) ? ProtoPirateSceneSavedInfo : ProtoPirateSceneStart);
+        (load_saved) ? ((protopirate_app->emulate_feature_enabled) ? ProtoPirateSceneEmulate :
+                                                                     ProtoPirateSceneSavedInfo) :
+                       ProtoPirateSceneStart);
 
-    //We now jump straight to emulate scene from Browser. If the user wanted the key to look at, just click back.
-    if(load_saved) {
-#ifdef ENABLE_EMULATE_FEATURE
-        if(protopirate_app->emulate_feature_enabled) {
-            view_dispatcher_send_custom_event(
-                protopirate_app->view_dispatcher, ProtoPirateCustomEventSavedInfoEmulate);
-            notification_message(protopirate_app->notifications, &sequence_success);
-        } else {
-#endif
-            view_dispatcher_send_custom_event(
-                protopirate_app->view_dispatcher, ProtoPirateCustomEventReceiverInfoSave);
-#ifdef ENABLE_EMULATE_FEATURE
-        }
-#endif
+    //Pop up the beep if we are startng emulate.
+    if(load_saved && protopirate_app->emulate_feature_enabled) {
+        notification_message(protopirate_app->notifications, &sequence_success);
     }
 
+    //Run the App
     view_dispatcher_run(protopirate_app->view_dispatcher);
 
+    //Free the App and allow chargin again.
     protopirate_app_free(protopirate_app);
-
     furi_hal_power_suppress_charge_exit();
-
     return 0;
 }

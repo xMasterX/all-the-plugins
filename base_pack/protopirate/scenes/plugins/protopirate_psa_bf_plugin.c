@@ -455,15 +455,9 @@ static bool
         }
         if(event.event == ProtoPirateCustomEventBruteforceComplete) {
             if(bf_status() == PSA_BF_STATUS_FOUND) {
-                g_host_api->receiver_info_rebuild_widget(app);
                 bf_free_states();
             } else if(bf_status() == PSA_BF_STATUS_RUNNING) {
                 bf_set_cancel();
-            } else {
-                if(g_bf_state || g_hitag2_state) {
-                    bf_finish_and_show_result(app, NULL);
-                }
-                g_host_api->scene_previous(app);
             }
             return true;
         }
@@ -481,10 +475,6 @@ static bool
                 bf_free_states();
             } else if(bf_status() == PSA_BF_STATUS_RUNNING) {
                 bf_set_cancel();
-            } else {
-                if(g_bf_state || g_hitag2_state) {
-                    bf_finish_and_show_result(app, NULL);
-                }
             }
             return true;
         }
@@ -501,10 +491,6 @@ static bool
             } else if(bf_status() == PSA_BF_STATUS_RUNNING) {
                 bf_set_cancel();
                 bf_close_files();
-            } else {
-                if(g_bf_state || g_hitag2_state) {
-                    bf_finish_and_show_result(app, NULL);
-                }
             }
             return true;
         }

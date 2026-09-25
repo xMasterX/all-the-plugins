@@ -31,11 +31,13 @@ typedef enum {
     ProtoPirateCustomEventReceiverInfoUpdate,
     ProtoPirateCustomEventReceiverInfoEmulate,
     ProtoPirateCustomEventSavedInfoDelete,
+    ProtoPirateCustomEventSavedInfoExit,
     //Bruteforcing PSA & Renault
     ProtoPirateCustomEventBruteforceStart,
     ProtoPirateCustomEventBruteforceComplete,
     // Emulator
     ProtoPirateCustomEventSavedInfoEmulate,
+    ProtoPirateCustomEventSavedInfoEmulateDelayedStart,
     ProtoPirateCustomEventEmulateTransmit,
     ProtoPirateCustomEventEmulateStop,
     ProtoPirateCustomEventEmulateExit,

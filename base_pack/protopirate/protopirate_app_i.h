@@ -33,6 +33,7 @@
 #include "scenes/plugins/protopirate_emulate_plugin.h"
 #endif
 #include "scenes/plugins/protopirate_config_plugin.h"
+#include "scenes/plugins/protopirate_saved_info_plugin.h"
 #include "scenes/plugins/protopirate_psa_bf_plugin.h"
 #include "scenes/plugins/protopirate_tool_scene_plugin.h"
 #include "helpers/protopirate_views.h"
@@ -43,7 +44,8 @@
 #include <loader/firmware_api/firmware_api.h>
 #include "helpers/protopirate_settings.h"
 
-#define CONFIG_PLUGIN_PATH APP_ASSETS_PATH("plugins/protopirate_config_plugin.fal")
+#define CONFIG_PLUGIN_PATH     APP_ASSETS_PATH("plugins/protopirate_config_plugin.fal")
+#define SAVED_INFO_PLUGIN_PATH APP_ASSETS_PATH("plugins/protopirate_saved_info_plugin.fal")
 
 #define PROTOPIRATE_KEYSTORE_DIR_NAME APP_ASSETS_PATH("encrypted")
 
@@ -111,6 +113,7 @@ struct ProtoPirateApp {
     uint8_t emulate_nav_pending;
 #endif
     const ProtoPirateConfigPlugin* config_plugin;
+    const ProtoPirateSavedInfoPlugin* saved_info_plugin;
     CompositeApiResolver* psa_bf_plugin_resolver;
     PluginManager* psa_bf_plugin_manager;
     const ProtoPiratePsaBfPlugin* psa_bf_plugin;
@@ -143,10 +146,8 @@ bool protopirate_tool_scene_on_event(void* app, SceneManagerEvent event);
 void protopirate_tool_scene_on_exit(void* app);
 void protopirate_tool_scene_plugin_release(ProtoPirateApp* app);
 
-bool config_plugin_load(
-    ProtoPirateApp* app,
-    const ProtoPirateConfigSceneHostApi* protopirate_config_scene_host_api);
-void config_plugin_unload(ProtoPirateApp* app);
+bool config_or_saved_plugin_load(ProtoPirateApp* app, bool load_config);
+void config_or_saved_plugin_unload(ProtoPirateApp* app, bool unload_config);
 
 void protopirate_app_free(ProtoPirateApp* app);
 
