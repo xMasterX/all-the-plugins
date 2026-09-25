@@ -20,6 +20,23 @@ void nfc_magic_scene_iso15693_write_fail_widget_callback(
     }
 }
 
+// How many blocks succeeded, saturating at zero. Three lines on this screen need that figure and all
+// three take it as a subtraction, so the reason it cannot be a bare one lives here.
+//
+// The total and the deduction are counted independently, whichever pair a caller passes.
+// blocks_total has three forms and its contract is in the header rather than restated here -- a
+// restatement of a three-way contract is exactly what drifts. The deduction varies too: the clone
+// passes failed_count plus over_capacity, not failed_count alone.
+//
+// So the two are not halves of one count, and they have disagreed. The tail-drop's keep branch can
+// count a proven-present block as failed while blocks_total stops at the highest block the card
+// proved, rendering "Wiped 0/20, not cleared: 44" -- the example that branch carries in its own
+// comment. That is guarded where it happens, in the sweep; this is a promise about what reaches the
+// user if it recurs. The counts are unsigned, so an inversion would otherwise print near 65535.
+static uint16_t nfc_magic_iso15693_blocks_ok(uint16_t total, uint16_t bad) {
+    return (total >= bad) ? (uint16_t)(total - bad) : 0;
+}
+
 // Is re-running the write the right next action? A run the clock cut may have left real data above the
 // cut -- on a wipe that is the privacy failure the sweep exists to remove, and on a clone it is simply
 // the rest of the image -- as good a claim on Retry as a card that left mid-write. Both the buttons in
@@ -206,7 +223,7 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         furi_string_printf(
             text,
             "Cleared %u blocks.\nTimed out at block %u.",
-            (reached >= failed) ? (uint16_t)(reached - failed) : 0,
+            nfc_magic_iso15693_blocks_ok(reached, failed),
             instance->iso15693_result.cut_block);
         if(failed > 0) furi_string_cat_printf(text, "\nNot cleared: %u", failed);
         widget_add_string_multiline_element(
@@ -239,7 +256,7 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         // Everything that didn't write: real-data losses plus any empty blocks past capacity.
         const uint16_t not_written =
             instance->iso15693_result.failed_count + instance->iso15693_result.over_capacity;
-        const uint16_t ok = (total >= not_written) ? (uint16_t)(total - not_written) : 0;
+        const uint16_t ok = nfc_magic_iso15693_blocks_ok(total, not_written);
         FuriString* text = furi_string_alloc();
         furi_string_printf(
             text,
@@ -328,7 +345,7 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         furi_string_printf(
             text,
             "Wiped %u/%u. The card's\nUID moved. Now reads:\n",
-            (wiped_total >= wiped_bad) ? (uint16_t)(wiped_total - wiped_bad) : 0,
+            nfc_magic_iso15693_blocks_ok(wiped_total, wiped_bad),
             wiped_total);
         iso15693_info_cat_uid(
             text, instance->iso15693_result.uid_readback, Iso15693UidFormatGrouped);
