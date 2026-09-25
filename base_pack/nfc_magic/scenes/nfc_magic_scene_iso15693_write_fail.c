@@ -6,6 +6,13 @@
 // come out at THREE:
 //   y=13 -- tops at 13/24/35, and a fourth at 46 puts its lower rows inside the box.
 //   y=20 -- tops at 20/31/42, and a fourth at 53 sits inside the box entirely.
+//
+// The x that rides with each: 0 with y=13, 4 with y=20. The two bodies at (4, 20) are not an
+// inconsistency to tidy away -- that pair appears in exactly three files in the repo, the other two
+// being nfc_magic_scene_gen2_wipe_partial.c and nfc_magic_scene_uscuid_ul_partial.c, and the two
+// branches here that use it are the ones that mirror those screens. Making all twelve agree would
+// break that match. This is also the answer to whether the twelve calls want a wrapper: the
+// duplication is in describing the layout, not in the calls.
 // Where the body carries a UID that budget decides the prose, because a clipped hex digit is a
 // mis-readable UID.
 
