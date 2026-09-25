@@ -288,10 +288,16 @@ void nfc_magic_scene_write_on_enter(void* context) {
             instance->uscuid_ul_poller, nfc_magic_scene_write_uscuid_ul_poller_callback, instance);
     } else if(instance->protocol == NfcMagicProtocolIso15693) {
         instance->iso15693_poller = iso15693_poller_alloc(instance->nfc);
+        // CONSUME the grant: it is for THIS run, not for the mode. Retry re-enters this scene
+        // directly, so a grant left standing writes 56/57/62/63 on whatever card is then on the coil
+        // -- and Retry does not re-identify the card. Clear it above the branches, not in them: the
+        // wipe arm never reads it and would otherwise pass it on.
+        const bool force_gen1 = instance->iso15693_force_gen1;
+        instance->iso15693_force_gen1 = false;
         if(instance->iso15693_mode == NfcMagicIso15693ModeWriteUid) {
             // Write a hand-entered UID, no source image. gen2 first; the opt-in gen1 retry re-enters
-            // this scene with iso15693_force_gen1 set, exactly as the clone does.
-            if(instance->iso15693_force_gen1) {
+            // this scene with the grant set, exactly as the clone does.
+            if(force_gen1) {
                 iso15693_poller_start_write_uid_gen1(
                     instance->iso15693_poller,
                     instance->iso15693_target_uid,
@@ -316,7 +322,7 @@ void nfc_magic_scene_write_on_enter(void* context) {
             // (iso15693_force_gen1), run that instead.
             const Iso15693_3Data* source =
                 nfc_device_get_data(instance->source_dev, NfcProtocolIso15693_3);
-            if(instance->iso15693_force_gen1) {
+            if(force_gen1) {
                 iso15693_poller_start_clone_gen1(
                     instance->iso15693_poller,
                     source,
