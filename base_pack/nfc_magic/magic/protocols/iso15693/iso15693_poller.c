@@ -557,6 +557,21 @@ static bool iso15693_poller_block_is_empty(const uint8_t* block, uint8_t size) {
     return true;
 }
 
+// Clamp a block size to what a fixed ISO15693_MAX_BLOCK_SIZE buffer -- or a five-bit CFG field --
+// can hold. Against the MACRO, never sizeof a particular buffer, which ties the bound to one
+// declaration. Three callers, and they are not one case:
+//
+//   - the CLONE's comes from a loaded .nfc. The SDK's loader gates allocation on block_size > 0 but
+//     loads either way, so 0..255 arrives and this is the only bound before a 32-byte stack buffer.
+//   - the gen2 CFG derivation reads the same field and matters most: its two bytes are PROGRAMMED
+//     INTO THE CARD and outlive the run.
+//   - the WIPE's comes off the wire as (size - 1) in five bits, so it is at most 32 and cannot fire.
+//
+// Do not drop the one that looks redundant; it is not the one that is.
+static uint8_t iso15693_poller_clamp_block_size(uint8_t block_size) {
+    return block_size > ISO15693_MAX_BLOCK_SIZE ? (uint8_t)ISO15693_MAX_BLOCK_SIZE : block_size;
+}
+
 // If this pass has spent its wall-clock budget, CUT IT: record the cut and return true. Both the
 // clone's write loop and the wipe's sweep ask, and must answer identically.
 //
@@ -599,18 +614,10 @@ static bool iso15693_poller_write_source_blocks(
     bool skip_backdoor) {
     const Iso15693_3Data* source = instance->clone_source;
     uint16_t source_count = iso15693_3_get_block_count(source);
-    // Straight out of a loaded .nfc, so hand-editable and unbounded by anything this app controls,
-    // while the read-probe below fills a fixed 32-byte stack buffer. The gen2 CFG derivation clamps
-    // these same two values, for the stronger reason that it writes them into the card. (The wipe
-    // clamps the TARGET's block size into its zero buffer, which its own note there calls
-    // belt-and-braces, since a card's 5-bit field cannot over-report.) Note this is the SOURCE's
-    // geometry: on gen2 the CFG frame makes the target match
-    // it, but a gen1 target keeps its own block size, so a mismatch there makes every empty failure read
-    // as absent and fabricates an over-capacity "Holds X/Y".
-    const uint8_t source_block_size = iso15693_3_get_block_size(source);
-    const uint8_t block_size = source_block_size > ISO15693_MAX_BLOCK_SIZE ?
-                                   (uint8_t)ISO15693_MAX_BLOCK_SIZE :
-                                   source_block_size;
+    // Note this is the SOURCE's geometry: on gen2 the CFG frame makes the target match it, but a gen1
+    // target keeps its own block size, so a mismatch there makes every empty failure read as absent
+    // and fabricates an over-capacity "Holds X/Y". Why it needs clamping is at the helper.
+    const uint8_t block_size = iso15693_poller_clamp_block_size(iso15693_3_get_block_size(source));
 
     // A block number is a uint8_t on the wire and the failure bitmap holds this many bits, so only the
     // first 256 blocks can be attempted or accounted for. Real ISO15693 tags never exceed this; clamp
@@ -891,9 +898,8 @@ static uint16_t iso15693_poller_wipe_blocks(
     // doc forbids.
     instance->clone_blocks_total = advertised;
 
-    // 32-byte zero buffer covers every valid geometry; the clamp is belt-and-braces.
     uint8_t zeros[ISO15693_MAX_BLOCK_SIZE] = {0};
-    const uint8_t size = block_size > sizeof(zeros) ? (uint8_t)sizeof(zeros) : block_size;
+    const uint8_t size = iso15693_poller_clamp_block_size(block_size);
     uint16_t wiped = 0;
 
     // OPEN QUESTION, gen1 only. The full argument, the gen3 case beside it and what would settle either
@@ -1398,9 +1404,7 @@ static NfcCommand
                 const uint16_t cfg_count = sys->block_count > ISO15693_POLLER_MAX_BLOCKS ?
                                                (uint16_t)ISO15693_POLLER_MAX_BLOCKS :
                                                sys->block_count;
-                const uint8_t cfg_size = sys->block_size > ISO15693_MAX_BLOCK_SIZE ?
-                                             (uint8_t)ISO15693_MAX_BLOCK_SIZE :
-                                             sys->block_size;
+                const uint8_t cfg_size = iso15693_poller_clamp_block_size(sys->block_size);
                 if(cfg_count > 0) cfg_maxblock = (uint8_t)(cfg_count - 1);
                 if(cfg_size > 0) cfg_blocksize = (uint8_t)(cfg_size - 1);
             }
