@@ -1,5 +1,4 @@
 #include "protopirate_config_plugin.h"
-#include "../../protopirate_app_i.h"
 #include "../../helpers/protopirate_models.h"
 
 static const ProtoPirateConfigSceneHostApi* g_config_scene_host_api = NULL;
@@ -337,6 +336,8 @@ static void
     furi_check(context);
     ProtoPirateApp* app = context;
 
+    FURI_LOG_D("TEST", "Index= %lu", index);
+
     switch(index) {
     case ProtoPirateSettingIndexCarModel: {
         //Reset the Models Menu
@@ -439,6 +440,7 @@ static void plugin_on_enter(void* context) {
     variable_item_set_current_value_index(item, app->tx_power);
     variable_item_set_current_value_text(item, tx_power_text[app->tx_power]);
 #endif
+
     // Auto-save option
     item = variable_item_list_add(
         app->variable_item_list,
@@ -490,7 +492,7 @@ void config_plugin_set_host_api(const ProtoPirateConfigSceneHostApi* host_api) {
 }
 
 static const ProtoPirateConfigPlugin protopirate_config_plugin = {
-    .plugin_name = "ProtoPirate Config",
+    .plugin_name = "Config",
     .car_model_get_by_index = car_model_get_by_index,
     .car_model_get_count = car_model_get_count,
     .on_enter = plugin_on_enter,

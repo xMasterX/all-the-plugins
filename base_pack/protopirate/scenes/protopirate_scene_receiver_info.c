@@ -6,7 +6,7 @@
 #include "proto_pirate_icons.h"
 #include <storage/storage.h>
 
-#define TAG "ProtoPirateReceiverInfo"
+#define TAG "PPReceiverInfo"
 
 #define STATE_EMULATE 0
 #define STATE_BF      1
@@ -315,13 +315,16 @@ bool protopirate_scene_receiver_info_on_event(void* context, SceneManagerEvent e
                     size_t name_len = strlen(name_start);
                     const char* dot = strrchr(name_start, '.');
                     if(dot) name_len = dot - name_start;
-                    if(name_len >= sizeof(app->save_filename))
-                        name_len = sizeof(app->save_filename) - 1;
+                    if(name_len >= 64) name_len = 64;
 
+                    if(app->save_filename) free(app->save_filename);
+                    app->save_filename = malloc(name_len + 1);
                     memcpy(app->save_filename, name_start, name_len);
-                    app->save_filename[name_len] = '\0';
                 } else {
-                    snprintf(app->save_filename, sizeof(app->save_filename), "capture");
+                    if(app->save_filename) free(app->save_filename);
+                    uint8_t len = 8;
+                    app->save_filename = malloc(len);
+                    snprintf(app->save_filename, len, "capture");
                 }
                 furi_string_free(auto_path);
 
@@ -329,7 +332,6 @@ bool protopirate_scene_receiver_info_on_event(void* context, SceneManagerEvent e
                 if(app->save_protocol) furi_string_free(app->save_protocol);
                 app->save_protocol = protocol; // transfer ownership
                 app->save_history_idx = app->txrx->idx_menu_chosen;
-                app->save_from_saved_info = false;
 
                 // Configure and show text input
                 text_input_reset(app->text_input);
@@ -339,7 +341,7 @@ bool protopirate_scene_receiver_info_on_event(void* context, SceneManagerEvent e
                     protopirate_scene_receiver_info_text_input_callback,
                     app,
                     app->save_filename,
-                    sizeof(app->save_filename),
+                    strlen(app->save_filename),
                     false); // don't clear default text
 
                 view_dispatcher_switch_to_view(app->view_dispatcher, ProtoPirateViewTextInput);
@@ -378,6 +380,19 @@ bool protopirate_scene_receiver_info_on_event(void* context, SceneManagerEvent e
 
             // Return to the receiver info widget
             view_dispatcher_switch_to_view(app->view_dispatcher, ProtoPirateViewWidget);
+
+            //Kill the text_input view.
+            if(app->text_input) {
+                FURI_LOG_D(TAG, "Removing text_input view");
+                view_dispatcher_remove_view(app->view_dispatcher, ProtoPirateViewTextInput);
+                text_input_free(app->text_input);
+                app->text_input = NULL;
+            }
+
+            if(app->save_filename) {
+                free(app->save_filename);
+                app->save_filename = NULL;
+            }
             consumed = true;
         }
 

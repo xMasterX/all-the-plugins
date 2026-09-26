@@ -5,11 +5,11 @@
 #include <loader/firmware_api/firmware_api.h>
 #include <notification/notification_messages.h>
 
-#define TAG "ProtoPirateToolScene"
+#define TAG "PPToolScene"
 
-#define SUB_DECODE_PLUGIN_PATH APP_ASSETS_PATH("plugins/protopirate_sub_decode_plugin.fal")
+#define SUB_DECODE_PLUGIN_PATH APP_ASSETS_PATH("plugins/pp_sub_decode.fal")
 #ifdef ENABLE_TIMING_TUNER_SCENE
-#define TIMING_TUNER_PLUGIN_PATH APP_ASSETS_PATH("plugins/protopirate_timing_tuner_plugin.fal")
+#define TIMING_TUNER_PLUGIN_PATH APP_ASSETS_PATH("plugins/pp_timing_tuner.fal")
 #endif
 
 static const char* protopirate_tool_scene_plugin_path(ProtoPirateToolScenePluginKind kind) {
@@ -140,11 +140,6 @@ static void protopirate_tool_scene_plugin_unload(ProtoPirateApp* app) {
         plugin_manager_free(app->tool_scene_plugin_manager);
         app->tool_scene_plugin_manager = NULL;
     }
-
-    if(app->tool_scene_plugin_resolver) {
-        composite_api_resolver_free(app->tool_scene_plugin_resolver);
-        app->tool_scene_plugin_resolver = NULL;
-    }
 }
 
 static bool protopirate_tool_scene_plugin_ensure_loaded(
@@ -203,7 +198,7 @@ static bool protopirate_tool_scene_plugin_ensure_loaded(
         return false;
     }
 
-    app->tool_scene_plugin_resolver = resolver;
+    composite_api_resolver_free(resolver);
     app->tool_scene_plugin_manager = manager;
     app->tool_scene_plugin = plugin;
     app->tool_scene_plugin_kind = kind;

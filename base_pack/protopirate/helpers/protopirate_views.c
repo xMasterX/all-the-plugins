@@ -3,7 +3,7 @@
 
 #include <furi.h>
 
-#define TAG "ProtoPirateViews"
+#define TAG "PPViews"
 
 bool protopirate_ensure_widget(ProtoPirateApp* app) {
     furi_check(app);

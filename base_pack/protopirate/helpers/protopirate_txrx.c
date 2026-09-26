@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 
-#define TAG "ProtoPirateTxRx"
+#define TAG "PPTxRx"
 
 void protopirate_rx_stack_teardown_for_registry_switch(ProtoPirateApp* app) {
     furi_check(app);

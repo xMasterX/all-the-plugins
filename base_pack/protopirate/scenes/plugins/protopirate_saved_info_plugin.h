@@ -1,7 +1,7 @@
 #pragma once
 #include <gui/scene_manager.h>
 
-#define PROTOPIRATE_SAVED_INFO_PLUGIN_APP_ID      "protopirate_saved_info_plugin"
+#define PROTOPIRATE_SAVED_INFO_PLUGIN_APP_ID      "pp_saved_info"
 #define PROTOPIRATE_SAVED_INFO_PLUGIN_API_VERSION 1U
 
 typedef struct ProtoPirateApp ProtoPirateApp;

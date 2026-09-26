@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include "proto_pirate_icons.h"
 
-#define TAG "ProtoPirateSceneRx"
+#define TAG "PPSceneRx"
 
 #define DEFERRED_STORAGE_TIME 1000
 

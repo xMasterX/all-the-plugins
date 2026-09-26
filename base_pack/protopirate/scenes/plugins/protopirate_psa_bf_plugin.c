@@ -9,7 +9,7 @@
 #include <gui/modules/widget.h>
 #include <gui/modules/widget_elements/widget_element.h>
 #ifdef PROTOPIRATE_PSA_BF_PLUGIN_BUILD
-#include "protopirate_psa_bf_plugin_icons.h"
+#include "pp_bf_icons.h"
 #else
 #include "proto_pirate_icons.h"
 #endif
@@ -521,7 +521,7 @@ static void plugin_set_host_api(const ProtoPiratePsaBfHostApi* api) {
 }
 
 static const ProtoPiratePsaBfPlugin protopirate_psa_bf_plugin = {
-    .plugin_name = "ProtoPirate PSA BF",
+    .plugin_name = "BF",
     .set_host_api = plugin_set_host_api,
     .needs_bruteforce = plugin_needs_bruteforce,
     .is_running = plugin_is_running,

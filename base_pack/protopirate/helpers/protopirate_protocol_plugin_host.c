@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define TAG "ProtoPirateProtocolPlugin"
+#define TAG "PPProtocolPlugin"
 #ifdef ENABLE_EMULATE_FEATURE
 #define PROTOPIRATE_TX_PLUGIN_PATH_MAX 160U
 #endif
@@ -14,16 +14,16 @@
 static const char* protopirate_get_registry_plugin_path(ProtoPirateProtocolRegistryRoute route) {
     switch(route) {
     case ProtoPirateProtocolRegistryRouteAMVag:
-        return APP_ASSETS_PATH("plugins/protopirate_am_vag_plugin.fal");
+        return APP_ASSETS_PATH("plugins/pp_am_vag.fal");
     case ProtoPirateProtocolRegistryRouteFMDefault:
-        return APP_ASSETS_PATH("plugins/protopirate_fm_plugin.fal");
+        return APP_ASSETS_PATH("plugins/pp_fm.fal");
     case ProtoPirateProtocolRegistryRouteFMF4:
-        return APP_ASSETS_PATH("plugins/protopirate_fm_f4_plugin.fal");
+        return APP_ASSETS_PATH("plugins/pp_fm_f4.fal");
     case ProtoPirateProtocolRegistryRouteFMHonda1:
-        return APP_ASSETS_PATH("plugins/protopirate_fm_honda1_plugin.fal");
+        return APP_ASSETS_PATH("plugins/pp_fm_honda1.fal");
     case ProtoPirateProtocolRegistryRouteAMDefault:
     default:
-        return APP_ASSETS_PATH("plugins/protopirate_am_plugin.fal");
+        return APP_ASSETS_PATH("plugins/pp_am.fal");
     }
 }
 
@@ -36,11 +36,8 @@ static bool protopirate_build_tx_protocol_plugin_path(
         return false;
     }
 
-    int written = snprintf(
-        plugin_path,
-        plugin_path_size,
-        APP_ASSETS_PATH("plugins/protopirate_tx_%s_plugin.fal"),
-        tx_key);
+    int written =
+        snprintf(plugin_path, plugin_path_size, APP_ASSETS_PATH("plugins/pp_tx_%s.fal"), tx_key);
     return (written > 0) && ((size_t)written < plugin_path_size);
 }
 #endif
@@ -69,11 +66,6 @@ void protopirate_unload_protocol_plugin(ProtoPirateTxRx* txrx) {
         plugin_manager_free(txrx->protocol_plugin_manager);
         txrx->protocol_plugin_manager = NULL;
     }
-
-    if(txrx->plugin_resolver) {
-        composite_api_resolver_free(txrx->plugin_resolver);
-        txrx->plugin_resolver = NULL;
-    }
 }
 
 static bool protopirate_ensure_protocol_registry_plugin(
@@ -98,8 +90,7 @@ static bool protopirate_ensure_protocol_registry_plugin(
         return true;
     }
 
-    if(app->txrx->protocol_plugin || app->txrx->protocol_plugin_manager ||
-       app->txrx->plugin_resolver) {
+    if(app->txrx->protocol_plugin || app->txrx->protocol_plugin_manager) {
         protopirate_unload_protocol_plugin(app->txrx);
     }
 
@@ -157,11 +148,10 @@ static bool protopirate_ensure_protocol_registry_plugin(
             plugin->release();
         }
         plugin_manager_free(manager);
-        composite_api_resolver_free(resolver);
         return false;
     }
 
-    app->txrx->plugin_resolver = resolver;
+    composite_api_resolver_free(resolver);
     app->txrx->protocol_plugin_manager = manager;
     app->txrx->protocol_plugin = plugin;
     app->txrx->protocol_registry_route = route;
@@ -208,8 +198,7 @@ static bool protopirate_ensure_tx_protocol_plugin(
         return true;
     }
 
-    if(app->txrx->protocol_plugin || app->txrx->protocol_plugin_manager ||
-       app->txrx->plugin_resolver) {
+    if(app->txrx->protocol_plugin || app->txrx->protocol_plugin_manager) {
         protopirate_unload_protocol_plugin(app->txrx);
     }
 
@@ -263,7 +252,7 @@ static bool protopirate_ensure_tx_protocol_plugin(
         return false;
     }
 
-    app->txrx->plugin_resolver = resolver;
+    composite_api_resolver_free(resolver);
     app->txrx->protocol_plugin_manager = manager;
     app->txrx->protocol_plugin = plugin;
     *registry = plugin->registry;

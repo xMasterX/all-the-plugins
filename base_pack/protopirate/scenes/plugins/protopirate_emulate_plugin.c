@@ -31,7 +31,7 @@
 #include <furi.h>
 #include <string.h>
 
-#define TAG "ProtoPirateEmulatePlugin"
+#define TAG "PPEmulatePlugin"
 
 #define MIN_TX_TIME              666U
 #define MIN_TX_TIME_KIA_V3_V4    1600U
@@ -1571,7 +1571,7 @@ static void plugin_set_host_api(const ProtoPirateEmulateHostApi* host_api) {
 }
 
 static const ProtoPirateEmulatePlugin protopirate_emulate_plugin = {
-    .plugin_name = "ProtoPirate Emulate",
+    .plugin_name = "Emulate",
     .set_host_api = plugin_set_host_api,
     .on_enter = plugin_on_enter,
     .on_event = plugin_on_event,

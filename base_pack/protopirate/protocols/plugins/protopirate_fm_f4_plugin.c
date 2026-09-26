@@ -19,7 +19,7 @@ static const SubGhzProtocolRegistry protopirate_protocol_registry_fm_f4 = {
 };
 
 static const ProtoPirateProtocolPlugin protopirate_fm_f4_plugin = {
-    .plugin_name = "ProtoPirate FM F4 Registry",
+    .plugin_name = "FM F4 Registry",
     .kind = ProtoPirateProtocolPluginKindRx,
     .route = ProtoPirateProtocolRegistryRouteFMF4,
     .registry = &protopirate_protocol_registry_fm_f4,

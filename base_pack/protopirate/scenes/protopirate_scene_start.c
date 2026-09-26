@@ -4,7 +4,7 @@
 
 #include "proto_pirate_icons.h"
 
-#define TAG "ProtoPirateSceneStart"
+#define TAG "PPSceneStart"
 
 typedef enum {
     SubmenuIndexProtoPirateReceiver,

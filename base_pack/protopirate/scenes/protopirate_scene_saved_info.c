@@ -16,7 +16,7 @@ static const ProtoPirateSavedInfoSceneHostApi protopirate_saved_info_scene_host_
 void protopirate_scene_saved_info_on_enter(void* context) {
     ProtoPirateApp* app = context;
 
-    if(!config_or_saved_plugin_load(app, false)) {
+    if(!shared_plugin_load(app, ProtoPirateSharedPluginsSavedInfo)) {
         notification_message(app->notifications, &sequence_error);
         scene_manager_previous_scene(app->scene_manager);
         return;
@@ -27,13 +27,14 @@ void protopirate_scene_saved_info_on_enter(void* context) {
 }
 
 bool protopirate_scene_saved_info_on_event(void* context, SceneManagerEvent event) {
+    ProtoPirateApp* app = ((ProtoPirateApp*)context);
+
     //I can't set the next scene from inside the plugin, or it causes crazy crashes.
     if(event.type == SceneManagerEventTypeCustom) {
         if(event.event == ProtoPirateCustomEventSavedInfoEmulateDelayedStart) {
 //Start Emulate Scene.
 #ifdef ENABLE_EMULATE_FEATURE
-            scene_manager_next_scene(
-                ((ProtoPirateApp*)context)->scene_manager, ProtoPirateSceneEmulate);
+            scene_manager_next_scene(app->scene_manager, ProtoPirateSceneEmulate);
             return true;
 #endif
         } else if(event.event == ProtoPirateCustomEventSavedInfoExit) {
@@ -43,12 +44,11 @@ bool protopirate_scene_saved_info_on_event(void* context, SceneManagerEvent even
     }
 
     //Handle Saved Info event in plugin.
-    return ((ProtoPirateApp*)context)->saved_info_plugin->on_event(context, event);
+    return app->saved_info_plugin->on_event(app, event);
 }
 
 void protopirate_scene_saved_info_on_exit(void* context) {
     ProtoPirateApp* app = context;
-    UNUSED(app);
 
-    config_or_saved_plugin_unload(app, false);
+    shared_plugin_unload(app, ProtoPirateSharedPluginsSavedInfo);
 }

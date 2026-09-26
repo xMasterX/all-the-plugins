@@ -1,6 +1,6 @@
 #include "protopirate_models.h"
 
-#define TAG "ProtoPirateModels"
+#define TAG "PPModels"
 
 #define PROTOPIRATE_MODELS_FILE APP_ASSETS_PATH("models.txt")
 
@@ -73,7 +73,7 @@ bool car_model_get_by_index(
 
         //Read the Model Name.
         if(!flipper_format_read_string(ff, model_name_index, model_name)) {
-            FURI_LOG_E("ProtoPirate", "Failed to read %s", model_name_index);
+            FURI_LOG_E(TAG, "Failed to read %s", model_name_index);
             break;
         }
 
@@ -168,7 +168,7 @@ bool car_model_get_by_index(
                preset_data_size > 0) {
                 if(preset_data_size >= 1024) {
                     FURI_LOG_E(
-                        "ProtoPirate",
+                        TAG,
                         "%s too large: %lu",
                         preset_data_index,
                         (unsigned long)preset_data_size);
@@ -178,7 +178,7 @@ bool car_model_get_by_index(
                 preset_data = malloc(preset_data_size);
                 if(!preset_data) {
                     FURI_LOG_E(
-                        "ProtoPirate",
+                        TAG,
                         "Malloc failed: %s (%lu bytes)",
                         preset_data_index,
                         (unsigned long)preset_data_size);

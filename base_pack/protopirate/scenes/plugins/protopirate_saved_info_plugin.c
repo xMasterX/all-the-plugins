@@ -3,11 +3,11 @@
 #include "../../helpers/protopirate_storage.h"
 #include "../../protocols/protocols_common.h"
 #include "../../protocols/protocol_items.h"
-#include "protopirate_saved_info_plugin_icons.h"
+#include "pp_saved_info_icons.h"
 
 static const ProtoPirateSavedInfoSceneHostApi* g_saved_info_scene_host_api = NULL;
 
-#define TAG "ProtoPirateSavedInfoPlugin"
+#define TAG "PPSavedInfoPlugin"
 
 #define STATE_EMULATE 0
 #define STATE_BF      1
@@ -359,7 +359,7 @@ void saved_info_plugin_set_host_api(const ProtoPirateSavedInfoSceneHostApi* host
 }
 
 static const ProtoPirateSavedInfoPlugin protopirate_saved_info_plugin = {
-    .plugin_name = "ProtoPirate Saved Info",
+    .plugin_name = "Saved",
     .on_enter = plugin_protopirate_scene_saved_info_on_enter,
     .on_event = plugin_protopirate_scene_saved_info_on_event,
     .on_exit = plugin_protopirate_scene_saved_info_on_exit,

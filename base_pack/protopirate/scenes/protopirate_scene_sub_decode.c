@@ -36,12 +36,12 @@ void protopirate_scene_sub_decode_on_exit(void* context) {
 #include <lib/subghz/types.h>
 
 #ifdef PROTOPIRATE_SUB_DECODE_PLUGIN_BUILD
-#include "protopirate_sub_decode_plugin_icons.h"
+#include "pp_sub_decode_icons.h"
 #else
 #include "proto_pirate_icons.h"
 #endif
 
-#define TAG "ProtoPirateSubDecode"
+#define TAG "PPSubDecode"
 
 static const ProtoPirateToolSceneHostApi* g_tool_scene_host_api = NULL;
 
@@ -677,19 +677,21 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                     size_t name_len = strlen(name_start);
                     const char* dot = strrchr(name_start, '.');
                     if(dot) name_len = dot - name_start;
-                    if(name_len >= sizeof(app->save_filename))
-                        name_len = sizeof(app->save_filename) - 1;
+                    if(name_len > 64) name_len = 64;
 
+                    if(app->save_filename) free(app->save_filename);
+                    app->save_filename = malloc(name_len + 1);
                     memcpy(app->save_filename, name_start, name_len);
-                    app->save_filename[name_len] = '\0';
                 } else {
-                    snprintf(app->save_filename, sizeof(app->save_filename), "capture");
+                    if(app->save_filename) free(app->save_filename);
+                    uint8_t len = 8;
+                    app->save_filename = malloc(len);
+                    snprintf(app->save_filename, len, "capture");
                 }
                 furi_string_free(auto_path);
 
                 // Store context for when text input confirms
                 app->save_history_idx = app->txrx->idx_menu_chosen;
-                app->save_from_saved_info = false;
 
                 //Make sure we have a text input window.
                 app->text_input = text_input_alloc();
@@ -706,7 +708,7 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                     protopirate_scene_sub_decode_text_input_callback,
                     app,
                     app->save_filename,
-                    sizeof(app->save_filename),
+                    strlen(app->save_filename),
                     false); // don't clear default text
 
                 view_dispatcher_switch_to_view(app->view_dispatcher, ProtoPirateViewTextInput);
@@ -750,6 +752,11 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
                 view_dispatcher_remove_view(app->view_dispatcher, ProtoPirateViewTextInput);
                 text_input_free(app->text_input);
                 app->text_input = NULL;
+            }
+
+            if(app->save_filename) {
+                free(app->save_filename);
+                app->save_filename = NULL;
             }
             consumed = true;
 
@@ -1394,7 +1401,10 @@ bool protopirate_scene_sub_decode_on_event(void* context, SceneManagerEvent even
         if(ctx->showing_signal_info) {
             // In signal info - go back to history
             ctx->showing_signal_info = false;
-            //ctx->selected_history_index = 0;
+            if(app->save_filename) {
+                free(app->save_filename);
+                app->save_filename = NULL;
+            };
             ctx->state = DecodeStateShowHistory;
             view_dispatcher_send_custom_event(
                 app->view_dispatcher, ProtoPirateCustomEventSubDecodeUpdate);
@@ -1468,7 +1478,7 @@ static void sub_decode_plugin_set_host_api(const ProtoPirateToolSceneHostApi* ho
 }
 
 static const ProtoPirateToolScenePlugin protopirate_sub_decode_plugin = {
-    .plugin_name = "ProtoPirate Sub Decode",
+    .plugin_name = "Sub Decode",
     .kind = ProtoPirateToolScenePluginKindSubDecode,
     .set_host_api = sub_decode_plugin_set_host_api,
     .on_enter = protopirate_scene_sub_decode_on_enter,

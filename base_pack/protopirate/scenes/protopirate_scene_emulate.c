@@ -11,9 +11,9 @@
 #include <lib/flipper_application/plugins/plugin_manager.h>
 #include <lib/flipper_application/plugins/composite_resolver.h>
 
-#define TAG "ProtoPirateSceneEmulate"
+#define TAG "PPSceneEmulate"
 
-#define EMULATE_PLUGIN_PATH APP_ASSETS_PATH("plugins/protopirate_emulate_plugin.fal")
+#define EMULATE_PLUGIN_PATH APP_ASSETS_PATH("plugins/pp_emulate.fal")
 
 static bool host_radio_init(void* app) {
     return protopirate_radio_init((ProtoPirateApp*)app);
@@ -98,11 +98,6 @@ static void emulate_plugin_unload(ProtoPirateApp* app) {
         plugin_manager_free(app->plugin_manager);
         app->plugin_manager = NULL;
     }
-
-    if(app->plugin_resolver) {
-        composite_api_resolver_free(app->plugin_resolver);
-        app->plugin_resolver = NULL;
-    }
 }
 
 static bool emulate_plugin_load(ProtoPirateApp* app) {
@@ -110,7 +105,7 @@ static bool emulate_plugin_load(ProtoPirateApp* app) {
 
     if(app->emulate_plugin) return true;
 
-    if(app->plugin_manager || app->plugin_resolver) {
+    if(app->plugin_manager) {
         emulate_plugin_unload(app);
     }
 
@@ -148,7 +143,7 @@ static bool emulate_plugin_load(ProtoPirateApp* app) {
         return false;
     }
 
-    app->plugin_resolver = resolver;
+    composite_api_resolver_free(resolver);
     app->plugin_manager = manager;
     app->emulate_plugin = plugin;
 

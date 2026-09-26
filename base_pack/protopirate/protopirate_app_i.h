@@ -34,6 +34,7 @@
 #endif
 #include "scenes/plugins/protopirate_config_plugin.h"
 #include "scenes/plugins/protopirate_saved_info_plugin.h"
+#include "scenes/plugins/protopirate_about_plugin.h"
 #include "scenes/plugins/protopirate_psa_bf_plugin.h"
 #include "scenes/plugins/protopirate_tool_scene_plugin.h"
 #include "helpers/protopirate_views.h"
@@ -44,8 +45,9 @@
 #include <loader/firmware_api/firmware_api.h>
 #include "helpers/protopirate_settings.h"
 
-#define CONFIG_PLUGIN_PATH     APP_ASSETS_PATH("plugins/protopirate_config_plugin.fal")
-#define SAVED_INFO_PLUGIN_PATH APP_ASSETS_PATH("plugins/protopirate_saved_info_plugin.fal")
+#define CONFIG_PLUGIN_PATH     APP_ASSETS_PATH("plugins/pp_config.fal")
+#define SAVED_INFO_PLUGIN_PATH APP_ASSETS_PATH("plugins/pp_saved_info.fal")
+#define ABOUT_PLUGIN_PATH      APP_ASSETS_PATH("plugins/pp_about.fal")
 
 #define PROTOPIRATE_KEYSTORE_DIR_NAME APP_ASSETS_PATH("encrypted")
 
@@ -57,7 +59,6 @@ typedef struct ProtoPirateTxRx {
     SubGhzReceiver* receiver;
     SubGhzRadioPreset* preset;
     const SubGhzProtocolRegistry* protocol_registry;
-    CompositeApiResolver* plugin_resolver;
     PluginManager* protocol_plugin_manager;
     const ProtoPirateProtocolPlugin* protocol_plugin;
     ProtoPirateProtocolRegistryRoute protocol_registry_route;
@@ -71,6 +72,7 @@ typedef struct ProtoPirateTxRx {
     uint16_t idx_menu_chosen;
 } ProtoPirateTxRx;
 
+typedef struct ProtoPirateConfigPlugin ProtoPirateConfigPlugin;
 struct ProtoPirateApp {
     Gui* gui;
     ViewDispatcher* view_dispatcher;
@@ -89,21 +91,19 @@ struct ProtoPirateApp {
     SubGhzSetting* setting;
     ProtoPirateLock lock;
     FuriString* loaded_file_path;
-    bool deferred_storage_in_progress;
-    bool auto_save;
-    bool check_saved;
-    bool sound;
-    bool datetime_filenames;
-    bool radio_initialized;
+    uint8_t deferred_storage_in_progress : 1;
+    uint8_t auto_save                    : 1;
+    uint8_t check_saved                  : 1;
+    uint8_t sound                        : 1;
+    uint8_t datetime_filenames           : 1;
+    uint8_t radio_initialized            : 1;
+    uint8_t emulate_disabled_for_loaded  : 1;
+    uint8_t emulate_feature_enabled      : 1;
     uint32_t start_tx_time;
     uint8_t tx_power;
-    char save_filename[64];
+    char* save_filename;
     FuriString* save_protocol;
     uint16_t save_history_idx;
-    bool save_from_saved_info;
-    bool emulate_disabled_for_loaded;
-    bool emulate_feature_enabled;
-    CompositeApiResolver* plugin_resolver;
     PluginManager* plugin_manager;
 #ifdef ENABLE_EMULATE_FEATURE
 #define EMULATE_NAV_NONE     0U
@@ -114,10 +114,9 @@ struct ProtoPirateApp {
 #endif
     const ProtoPirateConfigPlugin* config_plugin;
     const ProtoPirateSavedInfoPlugin* saved_info_plugin;
-    CompositeApiResolver* psa_bf_plugin_resolver;
+    const ProtoPirateAboutPlugin* about_plugin;
     PluginManager* psa_bf_plugin_manager;
     const ProtoPiratePsaBfPlugin* psa_bf_plugin;
-    CompositeApiResolver* tool_scene_plugin_resolver;
     PluginManager* tool_scene_plugin_manager;
     const ProtoPirateToolScenePlugin* tool_scene_plugin;
     ProtoPirateToolScenePluginKind tool_scene_plugin_kind;
@@ -129,7 +128,7 @@ struct ProtoPirateApp {
     uint32_t tool_scene_nav_target;
 
     ProtoPirateCarModel* selected_model;
-    uint32_t car_models_count;
+    uint16_t car_models_count;
 };
 
 #ifdef ENABLE_EMULATE_FEATURE
@@ -146,8 +145,14 @@ bool protopirate_tool_scene_on_event(void* app, SceneManagerEvent event);
 void protopirate_tool_scene_on_exit(void* app);
 void protopirate_tool_scene_plugin_release(ProtoPirateApp* app);
 
-bool config_or_saved_plugin_load(ProtoPirateApp* app, bool load_config);
-void config_or_saved_plugin_unload(ProtoPirateApp* app, bool unload_config);
+typedef enum ProtoPirateSharedPlugin {
+    ProtoPirateSharedPluginsConfig,
+    ProtoPirateSharedPluginsSavedInfo,
+    ProtoPirateSharedPluginsAbout,
+} ProtoPirateSharedPlugin;
+
+bool shared_plugin_load(ProtoPirateApp* app, ProtoPirateSharedPlugin plugin_type);
+void shared_plugin_unload(ProtoPirateApp* app, ProtoPirateSharedPlugin plugin_type);
 
 void protopirate_app_free(ProtoPirateApp* app);
 

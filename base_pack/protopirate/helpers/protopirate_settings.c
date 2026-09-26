@@ -7,7 +7,7 @@
 #include "../defines.h"
 #include "../protocols/protocols_common.h"
 
-#define TAG "ProtoPirateSettings"
+#define TAG "PPSettings"
 
 #define SETTINGS_FILE_HEADER  "ProtoPirate Settings"
 #define SETTINGS_FILE_VERSION 1

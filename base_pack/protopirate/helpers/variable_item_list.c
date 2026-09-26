@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #ifdef PROTOPIRATE_CONFIG_PLUGIN_BUILD
-#include "protopirate_config_plugin_icons.h"
+#include "pp_config_icons.h"
 #else
 #include "proto_pirate_icons.h"
 #endif

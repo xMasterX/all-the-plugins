@@ -23,7 +23,7 @@ void protopirate_scene_timing_tuner_on_exit(void* context) {
 #include <gui/elements.h>
 #include <math.h>
 
-#define TAG "ProtoPirateTimingTuner"
+#define TAG "PPTimingTuner"
 
 static const ProtoPirateToolSceneHostApi* g_tool_scene_host_api = NULL;
 
@@ -808,7 +808,7 @@ static void timing_tuner_plugin_set_host_api(const ProtoPirateToolSceneHostApi* 
 }
 
 static const ProtoPirateToolScenePlugin protopirate_timing_tuner_plugin = {
-    .plugin_name = "ProtoPirate Timing Tuner",
+    .plugin_name = "Timing Tuner",
     .kind = ProtoPirateToolScenePluginKindTimingTuner,
     .set_host_api = timing_tuner_plugin_set_host_api,
     .on_enter = protopirate_scene_timing_tuner_on_enter,
