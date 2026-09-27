@@ -355,7 +355,7 @@ static void
     }
 }
 
-static void plugin_on_enter(void* context) {
+static void plugin_on_enter(void* context, bool show_lock_keyboard) {
     ProtoPirateApp* app = context;
     VariableItem* item;
     uint8_t value_index;
@@ -480,10 +480,12 @@ static void plugin_on_enter(void* context) {
     variable_item_set_current_value_index(item, app->sound);
     variable_item_set_current_value_text(item, on_off_text[app->sound ? 1 : 0]);
 
-    variable_item_list_add(app->variable_item_list, "Lock Keyboard", 1, NULL, NULL);
+    //Only show the Lock Keyboard Option in Receiver. Timing Tuner Doesnt respect it, and its wierd in Configuration from the Main Menu.
     variable_item_list_set_enter_callback(
         app->variable_item_list, protopirate_scene_receiver_config_var_list_enter_callback, app);
-
+    if(show_lock_keyboard) {
+        variable_item_list_add(app->variable_item_list, "Lock Keyboard", 1, NULL, NULL);
+    }
     view_dispatcher_switch_to_view(app->view_dispatcher, ProtoPirateViewVariableItemList);
 }
 

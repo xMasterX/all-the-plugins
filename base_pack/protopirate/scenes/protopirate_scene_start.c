@@ -82,6 +82,7 @@ void protopirate_scene_start_on_enter(void* context) {
 
     //Kill Config if it exists now to save memory.
     protopirate_variable_item_list_free(app);
+    protopirate_widget_free(app);
 }
 
 bool protopirate_scene_start_on_event(void* context, SceneManagerEvent event) {
@@ -102,6 +103,8 @@ bool protopirate_scene_start_on_event(void* context, SceneManagerEvent event) {
             scene_manager_next_scene(app->scene_manager, ProtoPirateSceneSaved);
             consumed = true;
         } else if(event.event == SubmenuIndexProtoPirateReceiverConfig) {
+            //Hide the lock keyboard option.
+            scene_manager_set_scene_state(app->scene_manager, ProtoPirateSceneReceiverConfig, 0);
             scene_manager_next_scene(app->scene_manager, ProtoPirateSceneReceiverConfig);
             consumed = true;
         }
@@ -113,6 +116,8 @@ bool protopirate_scene_start_on_event(void* context, SceneManagerEvent event) {
 #endif
 #ifdef ENABLE_TIMING_TUNER_SCENE
         else if(event.event == SubmenuIndexProtoPirateTimingTuner) {
+            //Hide the lock keyboard option.
+            scene_manager_set_scene_state(app->scene_manager, ProtoPirateSceneReceiverConfig, 0);
             scene_manager_next_scene(app->scene_manager, ProtoPirateSceneTimingTuner);
             consumed = true;
         }

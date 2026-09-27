@@ -90,7 +90,7 @@ static void protopirate_radio_init_cleanup(ProtoPirateApp* app, bool devices_ini
     protopirate_radio_free_receiver(app);
     protopirate_radio_end_device(app, false);
     protopirate_radio_free_environment(app);
-    protopirate_unload_protocol_plugin(app->txrx);
+    protopirate_unload_protocol_plugin(app);
 
     if(devices_initialized) {
         subghz_devices_deinit();
@@ -203,7 +203,7 @@ void protopirate_radio_deinit(ProtoPirateApp* app) {
     bool has_radio_resources = app->radio_initialized || app->txrx->worker ||
                                app->txrx->environment || app->txrx->receiver ||
                                app->txrx->history || app->txrx->radio_device ||
-                               app->txrx->protocol_plugin_manager || app->txrx->protocol_plugin;
+                               app->txrx->protocol_plugin;
     if(!has_radio_resources) {
 #ifndef REMOVE_LOGS
         FURI_LOG_D(TAG, "Radio resources were not initialized, returning");
@@ -234,7 +234,7 @@ void protopirate_radio_deinit(ProtoPirateApp* app) {
 
     protopirate_radio_free_receiver(app);
     protopirate_radio_free_environment(app);
-    protopirate_unload_protocol_plugin(app->txrx);
+    protopirate_unload_protocol_plugin(app);
 
     if(app->txrx->history) {
 #ifndef REMOVE_LOGS

@@ -8,12 +8,8 @@
 #include "../protopirate_history.h"
 
 #include <loader/firmware_api/firmware_api.h>
-#include <lib/flipper_application/plugins/plugin_manager.h>
-#include <lib/flipper_application/plugins/composite_resolver.h>
 
 #define TAG "PPSceneEmulate"
-
-#define EMULATE_PLUGIN_PATH APP_ASSETS_PATH("plugins/pp_emulate.fal")
 
 static bool host_radio_init(void* app) {
     return protopirate_radio_init((ProtoPirateApp*)app);
@@ -86,77 +82,11 @@ static const ProtoPirateEmulateHostApi protopirate_emulate_host_api = {
     .storage_delete_temp = host_storage_delete_temp,
 };
 
-// -----------------------------------------------------------------------------
-// Plugin load / unload
-// -----------------------------------------------------------------------------
-static void emulate_plugin_unload(ProtoPirateApp* app) {
-    furi_check(app);
-
-    app->emulate_plugin = NULL;
-
-    if(app->plugin_manager) {
-        plugin_manager_free(app->plugin_manager);
-        app->plugin_manager = NULL;
-    }
-}
-
-static bool emulate_plugin_load(ProtoPirateApp* app) {
-    furi_check(app);
-
-    if(app->emulate_plugin) return true;
-
-    if(app->plugin_manager) {
-        emulate_plugin_unload(app);
-    }
-
-    CompositeApiResolver* resolver = composite_api_resolver_alloc();
-    if(!resolver) {
-        FURI_LOG_E(TAG, "Failed to allocate emulate plugin resolver");
-        return false;
-    }
-    composite_api_resolver_add(resolver, firmware_api_interface);
-
-    PluginManager* manager = plugin_manager_alloc(
-        PROTOPIRATE_EMULATE_PLUGIN_APP_ID,
-        PROTOPIRATE_EMULATE_PLUGIN_API_VERSION,
-        composite_api_resolver_get(resolver));
-    if(!manager) {
-        FURI_LOG_E(TAG, "Failed to allocate emulate plugin manager");
-        composite_api_resolver_free(resolver);
-        return false;
-    }
-
-    PluginManagerError error = plugin_manager_load_single(manager, EMULATE_PLUGIN_PATH);
-    if(error != PluginManagerErrorNone) {
-        FURI_LOG_E(TAG, "Failed to load emulate plugin %s: %d", EMULATE_PLUGIN_PATH, (int)error);
-        plugin_manager_free(manager);
-        composite_api_resolver_free(resolver);
-        return false;
-    }
-
-    const ProtoPirateEmulatePlugin* plugin = plugin_manager_get_ep(manager, 0U);
-    if(!plugin || !plugin->on_enter || !plugin->on_event || !plugin->on_exit ||
-       !plugin->set_host_api) {
-        FURI_LOG_E(TAG, "Emulate plugin entry point is invalid");
-        plugin_manager_free(manager);
-        composite_api_resolver_free(resolver);
-        return false;
-    }
-
-    composite_api_resolver_free(resolver);
-    app->plugin_manager = manager;
-    app->emulate_plugin = plugin;
-
-    plugin->set_host_api(&protopirate_emulate_host_api);
-    return true;
-}
-
 void protopirate_emulate_context_release(ProtoPirateApp* app) {
-    if(!app) return;
     if(app->emulate_plugin && app->emulate_plugin->context_release) {
         app->emulate_plugin->context_release(app);
     }
-    emulate_plugin_unload(app);
+    shared_plugin_unload(app, ProtoPirateSharedPluginsEmulate);
 }
 
 void protopirate_scene_emulate_on_enter(void* context) {
@@ -164,10 +94,12 @@ void protopirate_scene_emulate_on_enter(void* context) {
 
     app->emulate_nav_pending = EMULATE_NAV_NONE;
 
-    if(!emulate_plugin_load(app)) {
+    if(!shared_plugin_load(app, ProtoPirateSharedPluginsEmulate, NULL)) {
         notification_message(app->notifications, &sequence_error);
         scene_manager_previous_scene(app->scene_manager);
         return;
+    } else {
+        app->emulate_plugin->set_host_api(&protopirate_emulate_host_api);
     }
 
     app->emulate_plugin->on_enter(app);
@@ -192,7 +124,7 @@ void protopirate_scene_emulate_on_exit(void* context) {
     if(app->emulate_plugin && app->emulate_plugin->on_exit) {
         app->emulate_plugin->on_exit(app);
     }
-    emulate_plugin_unload(app);
+    protopirate_emulate_context_release(app);
 }
 
 #endif // ENABLE_EMULATE_FEATURE

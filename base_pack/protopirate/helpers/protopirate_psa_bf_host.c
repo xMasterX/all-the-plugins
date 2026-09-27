@@ -5,12 +5,9 @@
 #include "../scenes/plugins/protopirate_psa_bf_plugin.h"
 
 #include <loader/firmware_api/firmware_api.h>
-#include <lib/flipper_application/plugins/plugin_manager.h>
-#include <lib/flipper_application/plugins/composite_resolver.h>
 #include <notification/notification_messages.h>
 
-#define TAG                "PPPsaBfHost"
-#define PSA_BF_PLUGIN_PATH APP_ASSETS_PATH("plugins/pp_bf.fal")
+#define TAG "PPPsaBfHost"
 
 static bool host_ensure_widget(void* app) {
     return protopirate_ensure_widget((ProtoPirateApp*)app);
@@ -116,72 +113,21 @@ static const ProtoPiratePsaBfHostApi protopirate_psa_bf_host_api = {
     .get_loaded_file_path = host_get_loaded_file_path,
 };
 
-static void psa_bf_plugin_unload(ProtoPirateApp* app) {
-    furi_check(app);
-    app->psa_bf_plugin = NULL;
-
-    if(app->psa_bf_plugin_manager) {
-        plugin_manager_free(app->psa_bf_plugin_manager);
-        app->psa_bf_plugin_manager = NULL;
-    }
-}
-
 bool protopirate_psa_bf_plugin_ensure_loaded(ProtoPirateApp* app) {
-    furi_check(app);
-
-    if(app->psa_bf_plugin) return true;
-
-    if(app->psa_bf_plugin_manager) {
-        psa_bf_plugin_unload(app);
-    }
-
-    CompositeApiResolver* resolver = composite_api_resolver_alloc();
-    if(!resolver) {
-        FURI_LOG_E(TAG, "Failed to allocate PSA BF plugin resolver");
+    if(shared_plugin_load(app, ProtoPirateSharedPluginsPSABruteforce, NULL)) {
+        app->psa_bf_plugin->set_host_api(&protopirate_psa_bf_host_api);
+        return true;
+    } else {
         return false;
     }
-    composite_api_resolver_add(resolver, firmware_api_interface);
-
-    PluginManager* manager = plugin_manager_alloc(
-        PROTOPIRATE_PSA_BF_PLUGIN_APP_ID,
-        PROTOPIRATE_PSA_BF_PLUGIN_API_VERSION,
-        composite_api_resolver_get(resolver));
-    if(!manager) {
-        FURI_LOG_E(TAG, "Failed to allocate PSA BF plugin manager");
-        composite_api_resolver_free(resolver);
-        return false;
-    }
-
-    PluginManagerError error = plugin_manager_load_single(manager, PSA_BF_PLUGIN_PATH);
-    if(error != PluginManagerErrorNone) {
-        FURI_LOG_E(TAG, "Failed to load PSA BF plugin %s: %d", PSA_BF_PLUGIN_PATH, (int)error);
-        plugin_manager_free(manager);
-        composite_api_resolver_free(resolver);
-        return false;
-    }
-
-    const ProtoPiratePsaBfPlugin* plugin = plugin_manager_get_ep(manager, 0U);
-    if(!plugin || !plugin->set_host_api || !plugin->needs_bruteforce || !plugin->on_scene_event) {
-        FURI_LOG_E(TAG, "PSA BF plugin entry point is invalid");
-        plugin_manager_free(manager);
-        composite_api_resolver_free(resolver);
-        return false;
-    }
-
-    composite_api_resolver_free(resolver);
-    app->psa_bf_plugin_manager = manager;
-    app->psa_bf_plugin = plugin;
-    plugin->set_host_api(&protopirate_psa_bf_host_api);
-    return true;
 }
-
 void protopirate_psa_bf_plugin_unload_if_idle(ProtoPirateApp* app) {
     if(!app) return;
     if(app->psa_bf_plugin && app->psa_bf_plugin->is_running &&
        app->psa_bf_plugin->is_running(app)) {
         return;
     }
-    psa_bf_plugin_unload(app);
+    shared_plugin_unload(app, ProtoPirateSharedPluginsPSABruteforce);
 }
 
 void protopirate_psa_bf_context_release(ProtoPirateApp* app) {
@@ -189,5 +135,5 @@ void protopirate_psa_bf_context_release(ProtoPirateApp* app) {
     if(app->psa_bf_plugin && app->psa_bf_plugin->context_release) {
         app->psa_bf_plugin->context_release(app);
     }
-    psa_bf_plugin_unload(app);
+    shared_plugin_unload(app, ProtoPirateSharedPluginsPSABruteforce);
 }

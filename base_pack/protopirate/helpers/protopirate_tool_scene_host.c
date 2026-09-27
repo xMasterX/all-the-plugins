@@ -7,24 +7,6 @@
 
 #define TAG "PPToolScene"
 
-#define SUB_DECODE_PLUGIN_PATH APP_ASSETS_PATH("plugins/pp_sub_decode.fal")
-#ifdef ENABLE_TIMING_TUNER_SCENE
-#define TIMING_TUNER_PLUGIN_PATH APP_ASSETS_PATH("plugins/pp_timing_tuner.fal")
-#endif
-
-static const char* protopirate_tool_scene_plugin_path(ProtoPirateToolScenePluginKind kind) {
-    switch(kind) {
-    case ProtoPirateToolScenePluginKindSubDecode:
-        return SUB_DECODE_PLUGIN_PATH;
-#ifdef ENABLE_TIMING_TUNER_SCENE
-    case ProtoPirateToolScenePluginKindTimingTuner:
-        return TIMING_TUNER_PLUGIN_PATH;
-#endif
-    default:
-        return NULL;
-    }
-}
-
 static bool host_ensure_receiver_view(void* app) {
     return protopirate_ensure_receiver_view((ProtoPirateApp*)app);
 }
@@ -131,17 +113,6 @@ static const ProtoPirateToolSceneHostApi protopirate_tool_scene_host_api = {
     .psa_bf_context_release = host_psa_bf_context_release,
 };
 
-static void protopirate_tool_scene_plugin_unload(ProtoPirateApp* app) {
-    furi_check(app);
-
-    app->tool_scene_plugin = NULL;
-
-    if(app->tool_scene_plugin_manager) {
-        plugin_manager_free(app->tool_scene_plugin_manager);
-        app->tool_scene_plugin_manager = NULL;
-    }
-}
-
 static bool protopirate_tool_scene_plugin_ensure_loaded(
     ProtoPirateApp* app,
     ProtoPirateToolScenePluginKind kind) {
@@ -155,54 +126,18 @@ static bool protopirate_tool_scene_plugin_ensure_loaded(
         if(app->tool_scene_plugin->release) {
             app->tool_scene_plugin->release(app);
         }
-        protopirate_tool_scene_plugin_unload(app);
+        shared_plugin_unload(app, ProtoPirateSharedPluginsToolScene);
     }
 
-    const char* plugin_path = protopirate_tool_scene_plugin_path(kind);
-    if(!plugin_path) {
-        FURI_LOG_E(TAG, "No tool scene plugin path for kind %d", (int)kind);
-        return false;
-    }
+    if(kind == ProtoPirateToolScenePluginKindSubDecode)
+        shared_plugin_load(app, ProtoPirateSharedPluginsSubDecode, NULL);
+#ifdef ENABLE_TIMING_TUNER_SCENE
+    else if(kind == ProtoPirateToolScenePluginKindTimingTuner)
+        shared_plugin_load(app, ProtoPirateSharedPluginsTimingTuner, NULL);
+#endif
 
-    CompositeApiResolver* resolver = composite_api_resolver_alloc();
-    if(!resolver) {
-        FURI_LOG_E(TAG, "Failed to allocate tool scene resolver");
-        return false;
-    }
-    composite_api_resolver_add(resolver, firmware_api_interface);
-
-    PluginManager* manager = plugin_manager_alloc(
-        PROTOPIRATE_TOOL_SCENE_PLUGIN_APP_ID,
-        PROTOPIRATE_TOOL_SCENE_PLUGIN_API_VERSION,
-        composite_api_resolver_get(resolver));
-    if(!manager) {
-        FURI_LOG_E(TAG, "Failed to allocate tool scene plugin manager");
-        composite_api_resolver_free(resolver);
-        return false;
-    }
-
-    PluginManagerError error = plugin_manager_load_single(manager, plugin_path);
-    if(error != PluginManagerErrorNone) {
-        FURI_LOG_E(TAG, "Failed to load tool scene plugin %s: %d", plugin_path, (int)error);
-        plugin_manager_free(manager);
-        composite_api_resolver_free(resolver);
-        return false;
-    }
-
-    const ProtoPirateToolScenePlugin* plugin = plugin_manager_get_ep(manager, 0U);
-    if(!plugin || plugin->kind != kind || !plugin->set_host_api || !plugin->on_enter ||
-       !plugin->on_event || !plugin->on_exit) {
-        FURI_LOG_E(TAG, "Tool scene plugin entry point is invalid for kind %d", (int)kind);
-        plugin_manager_free(manager);
-        composite_api_resolver_free(resolver);
-        return false;
-    }
-
-    composite_api_resolver_free(resolver);
-    app->tool_scene_plugin_manager = manager;
-    app->tool_scene_plugin = plugin;
     app->tool_scene_plugin_kind = kind;
-    plugin->set_host_api(&protopirate_tool_scene_host_api);
+    app->tool_scene_plugin->set_host_api(&protopirate_tool_scene_host_api);
     return true;
 }
 
@@ -275,7 +210,7 @@ void protopirate_tool_scene_on_exit(void* context) {
         }
     }
 
-    protopirate_tool_scene_plugin_unload(app);
+    shared_plugin_unload(app, ProtoPirateSharedPluginsToolScene);
 }
 
 void protopirate_tool_scene_plugin_release(ProtoPirateApp* app) {
@@ -284,5 +219,5 @@ void protopirate_tool_scene_plugin_release(ProtoPirateApp* app) {
     if(app->tool_scene_plugin && app->tool_scene_plugin->release) {
         app->tool_scene_plugin->release(app);
     }
-    protopirate_tool_scene_plugin_unload(app);
+    shared_plugin_unload(app, ProtoPirateSharedPluginsToolScene);
 }

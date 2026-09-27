@@ -122,3 +122,11 @@ void protopirate_variable_item_list_free(ProtoPirateApp* app) {
         app->variable_item_list = NULL;
     }
 }
+
+void protopirate_widget_free(ProtoPirateApp* app) {
+    if(app->widget) {
+        view_dispatcher_remove_view(app->view_dispatcher, ProtoPirateViewWidget);
+        widget_free(app->widget);
+        app->widget = NULL;
+    }
+}

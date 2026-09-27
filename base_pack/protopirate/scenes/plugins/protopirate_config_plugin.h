@@ -41,6 +41,6 @@ typedef struct ProtoPirateConfigPlugin {
         uint16_t model_count,
         SubGhzSetting* app_settings);
     uint16_t (*car_model_get_count)(void);
-    void (*on_enter)(void* app);
+    void (*on_enter)(void* app, bool show_lock_keyboard);
     void (*set_host_api)(const ProtoPirateConfigSceneHostApi* host_api);
 } ProtoPirateConfigPlugin;

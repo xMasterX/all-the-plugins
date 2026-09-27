@@ -1464,10 +1464,6 @@ void protopirate_scene_sub_decode_on_exit(void* context) {
         app->txrx->history = NULL;
     }
 
-    if(app && app->widget) {
-        widget_reset(app->widget);
-    }
-
     if(app && app->protopirate_receiver) {
         protopirate_view_receiver_reset_menu(app->protopirate_receiver);
     }

@@ -347,13 +347,6 @@ bool plugin_protopirate_scene_saved_info_on_event(void* context, SceneManagerEve
     return consumed;
 }
 
-void plugin_protopirate_scene_saved_info_on_exit(void* context) {
-    ProtoPirateApp* app = context;
-    UNUSED(app);
-    FURI_LOG_I(TAG, "Exiting SavedInfo scene");
-    widget_reset(app->widget);
-}
-
 void saved_info_plugin_set_host_api(const ProtoPirateSavedInfoSceneHostApi* host_api) {
     g_saved_info_scene_host_api = host_api;
 }
@@ -362,7 +355,6 @@ static const ProtoPirateSavedInfoPlugin protopirate_saved_info_plugin = {
     .plugin_name = "Saved",
     .on_enter = plugin_protopirate_scene_saved_info_on_enter,
     .on_event = plugin_protopirate_scene_saved_info_on_event,
-    .on_exit = plugin_protopirate_scene_saved_info_on_exit,
     .set_host_api = saved_info_plugin_set_host_api,
 };
 

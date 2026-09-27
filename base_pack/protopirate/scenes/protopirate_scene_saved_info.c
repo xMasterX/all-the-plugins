@@ -16,7 +16,7 @@ static const ProtoPirateSavedInfoSceneHostApi protopirate_saved_info_scene_host_
 void protopirate_scene_saved_info_on_enter(void* context) {
     ProtoPirateApp* app = context;
 
-    if(!shared_plugin_load(app, ProtoPirateSharedPluginsSavedInfo)) {
+    if(!shared_plugin_load(app, ProtoPirateSharedPluginsSavedInfo, NULL)) {
         notification_message(app->notifications, &sequence_error);
         scene_manager_previous_scene(app->scene_manager);
         return;
@@ -49,6 +49,6 @@ bool protopirate_scene_saved_info_on_event(void* context, SceneManagerEvent even
 
 void protopirate_scene_saved_info_on_exit(void* context) {
     ProtoPirateApp* app = context;
-
+    widget_reset(app->widget);
     shared_plugin_unload(app, ProtoPirateSharedPluginsSavedInfo);
 }

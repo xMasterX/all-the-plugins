@@ -359,8 +359,9 @@ void protopirate_scene_receiver_on_enter(void* context) {
     view_dispatcher_send_custom_event(
         app->view_dispatcher, ProtoPirateCustomEventReceiverDeferredRxStart);
 
-    //Kill Config if it exists now to save memory.
+    //Kill Variable Item Lists and Widgets if it exists now to save memory.
     protopirate_variable_item_list_free(app);
+    protopirate_widget_free(app);
 }
 
 static void protopirate_scene_receiver_handle_back(ProtoPirateApp* app) {
@@ -435,7 +436,13 @@ bool protopirate_scene_receiver_on_event(void* context, SceneManagerEvent event)
         }
 
         case ProtoPirateCustomEventViewReceiverConfig:
+            //Leaving for Subscene
             scene_manager_set_scene_state(app->scene_manager, ProtoPirateSceneReceiver, 1);
+
+            //Show the lock keyboard option.
+            scene_manager_set_scene_state(app->scene_manager, ProtoPirateSceneReceiverConfig, 1);
+
+            //Start receiver Config.
             scene_manager_next_scene(app->scene_manager, ProtoPirateSceneReceiverConfig);
             consumed = true;
             break;

@@ -17,7 +17,6 @@ typedef struct ProtoPirateSavedInfoSceneHostApi {
 typedef struct ProtoPirateSavedInfoPlugin {
     const char* plugin_name;
     void (*on_enter)(void* app);
-    void (*on_exit)(void* app);
     bool (*on_event)(void* app, SceneManagerEvent event);
     void (*set_host_api)(const ProtoPirateSavedInfoSceneHostApi* host_api);
 } ProtoPirateSavedInfoPlugin;

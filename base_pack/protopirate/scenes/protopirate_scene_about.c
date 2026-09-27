@@ -12,7 +12,7 @@ static const ProtoPirateAboutSceneHostApi protopirate_about_scene_host_api = {
 void protopirate_scene_about_on_enter(void* context) {
     ProtoPirateApp* app = context;
 
-    if(!shared_plugin_load(app, ProtoPirateSharedPluginsAbout)) {
+    if(!shared_plugin_load(app, ProtoPirateSharedPluginsAbout, NULL)) {
         notification_message(app->notifications, &sequence_error);
         scene_manager_previous_scene(app->scene_manager);
         return;
