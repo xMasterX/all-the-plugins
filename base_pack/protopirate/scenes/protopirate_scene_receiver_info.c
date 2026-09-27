@@ -403,13 +403,12 @@ bool protopirate_scene_receiver_info_on_event(void* context, SceneManagerEvent e
             if(protopirate_history_get_capture_path(
                    app->txrx->history, app->txrx->idx_menu_chosen, hist_path)) {
                 protopirate_history_release_scratch(app->txrx->history);
-                if(app->loaded_file_path) furi_string_free(app->loaded_file_path);
-                app->loaded_file_path = furi_string_alloc_set(hist_path);
+                size_t len = furi_string_utf8_length(hist_path) + 1;
+                if(app->loaded_file_path) free(app->loaded_file_path);
+                app->loaded_file_path = malloc(len);
+                snprintf(app->loaded_file_path, len, furi_string_get_cstr(hist_path));
                 furi_string_free(hist_path);
-                FURI_LOG_I(
-                    TAG,
-                    "Emulate from history file: %s",
-                    furi_string_get_cstr(app->loaded_file_path));
+                FURI_LOG_I(TAG, "Emulate from history file: %s", app->loaded_file_path);
                 scene_manager_next_scene(app->scene_manager, ProtoPirateSceneEmulate);
             } else {
                 furi_string_free(hist_path);

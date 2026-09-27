@@ -3,6 +3,7 @@
 #include "protopirate_emulate_plugin.h"
 
 #include "../../protopirate_app_i.h"
+#include "../../helpers/protopirate_storage.h"
 
 #ifdef ENABLE_EMULATE_FEATURE
 
@@ -1155,9 +1156,8 @@ static void plugin_on_enter(void* context) {
         return;
     }
 
-    if(!flipper_format_file_open_existing(
-           ctx->flipper_format, furi_string_get_cstr(app->loaded_file_path))) {
-        FURI_LOG_E(TAG, "Failed to open file: %s", furi_string_get_cstr(app->loaded_file_path));
+    if(!flipper_format_file_open_existing(ctx->flipper_format, app->loaded_file_path)) {
+        FURI_LOG_E(TAG, "Failed to open file: %s", app->loaded_file_path);
         emulate_context_free();
         notification_message(app->notifications, &sequence_error);
         emulate_request_nav_pop(app);

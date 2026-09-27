@@ -411,10 +411,9 @@ bool protopirate_scene_receiver_on_event(void* context, SceneManagerEvent event)
         case ProtoPirateCustomEventViewReceiverDeleteItem: {
             uint16_t idx = protopirate_view_receiver_get_idx_menu(app->protopirate_receiver);
             if(idx < protopirate_history_get_item(app->txrx->history)) {
-                if(app->loaded_file_path &&
-                   protopirate_history_capture_path_equals(
-                       app->txrx->history, idx, furi_string_get_cstr(app->loaded_file_path))) {
-                    furi_string_free(app->loaded_file_path);
+                if(app->loaded_file_path && protopirate_history_capture_path_equals(
+                                                app->txrx->history, idx, app->loaded_file_path)) {
+                    free(app->loaded_file_path);
                     app->loaded_file_path = NULL;
                 }
                 protopirate_history_delete_item(app->txrx->history, idx);

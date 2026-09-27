@@ -91,7 +91,7 @@ static void host_scene_previous(void* app) {
 }
 
 static const char* host_get_loaded_file_path(void* app) {
-    return furi_string_get_cstr(((ProtoPirateApp*)app)->loaded_file_path);
+    return ((ProtoPirateApp*)app)->loaded_file_path;
 }
 
 static const ProtoPiratePsaBfHostApi protopirate_psa_bf_host_api = {

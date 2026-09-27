@@ -6,7 +6,7 @@
 
 typedef struct ProtoPirateCarModel {
     uint16_t index;
-    FuriString* name;
+    char* name;
     SubGhzRadioPreset* preset;
     int16_t last_preset_index;
 } ProtoPirateCarModel;

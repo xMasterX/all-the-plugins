@@ -174,7 +174,7 @@ static void protopirate_scene_receiver_config_set_model(VariableItem* item) {
         app->setting);
 
     //Add he car model the list, with the correct selection and text.
-    variable_item_set_item_label(item, furi_string_get_cstr(app->selected_model->name));
+    variable_item_set_item_label(item, app->selected_model->name);
     variable_item_set_current_value_text(item, "");
     variable_item_set_current_value_index(item, 0);
 
@@ -369,7 +369,7 @@ static void plugin_on_enter(void* context, bool show_lock_keyboard) {
     //Add he car model the list, with the correct selection and text.
     item = variable_item_list_add(
         app->variable_item_list,
-        furi_string_get_cstr(app->selected_model->name),
+        app->selected_model->name,
         0, //Plus NONE
         protopirate_scene_receiver_config_set_model,
         app);

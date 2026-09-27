@@ -56,14 +56,14 @@ void plugin_protopirate_scene_saved_info_on_enter(void* context) {
     widget_reset(app->widget);
 
     // Validate file path
-    if(!app->loaded_file_path || furi_string_empty(app->loaded_file_path)) {
+    if(!app->loaded_file_path || (strlen(app->loaded_file_path) == 0)) {
         FURI_LOG_E(TAG, "No file path");
         widget_add_string_element(
             app->widget, 64, 32, AlignCenter, AlignCenter, FontPrimary, "No file selected");
         goto switch_view;
     }
 
-    FURI_LOG_I(TAG, "Path: %s", furi_string_get_cstr(app->loaded_file_path));
+    FURI_LOG_I(TAG, "Path: %s", app->loaded_file_path);
 
     // Allocate strings first (no I/O)
     info_str = furi_string_alloc();
@@ -103,7 +103,7 @@ void plugin_protopirate_scene_saved_info_on_enter(void* context) {
 
     // Open file
     FURI_LOG_I(TAG, "Opening file...");
-    if(!flipper_format_file_open_existing(ff, furi_string_get_cstr(app->loaded_file_path))) {
+    if(!flipper_format_file_open_existing(ff, app->loaded_file_path)) {
         FURI_LOG_E(TAG, "File open failed");
         widget_add_string_element(
             app->widget, 64, 32, AlignCenter, AlignCenter, FontPrimary, "File open failed");
@@ -291,7 +291,7 @@ bool plugin_protopirate_scene_saved_info_on_event(void* context, SceneManagerEve
     } else if(event.type == SceneManagerEventTypeCustom) {
         if(event.event == ProtoPirateCustomEventSavedInfoDelete) {
             FURI_LOG_I(TAG, "Delete requested");
-            if(app->loaded_file_path && !furi_string_empty(app->loaded_file_path)) {
+            if(app->loaded_file_path && (strlen(app->loaded_file_path) > 0)) {
                 DialogMessage* message = dialog_message_alloc();
                 dialog_message_set_buttons(message, "Delete", NULL, "Keep");
                 dialog_message_set_icon(message, &I_WarningDolphin_45x42, 0, 12);
@@ -309,9 +309,8 @@ bool plugin_protopirate_scene_saved_info_on_event(void* context, SceneManagerEve
 
                 //Delete if the user said yes.
                 if(dialog_result == DialogMessageButtonLeft) {
+                    g_saved_info_scene_host_api->storage_delete_file(app->loaded_file_path);
                     notification_message(app->notifications, &sequence_semi_success);
-                    g_saved_info_scene_host_api->storage_delete_file(
-                        furi_string_get_cstr(app->loaded_file_path));
 
                     view_dispatcher_send_custom_event(
                         app->view_dispatcher, ProtoPirateCustomEventSavedInfoExit);

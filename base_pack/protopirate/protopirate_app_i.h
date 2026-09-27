@@ -88,13 +88,13 @@ struct ProtoPirateApp {
     Widget* widget;
     TextInput* text_input;
     View* view_about;
-    FuriString* file_path;
+    char* file_path;
     ProtoPirateReceiver* protopirate_receiver;
     FuriTimer* deferred_storage_timer;
     ProtoPirateTxRx* txrx;
     SubGhzSetting* setting;
     ProtoPirateLock lock;
-    FuriString* loaded_file_path;
+    char* loaded_file_path;
     uint8_t deferred_storage_in_progress : 1;
     uint8_t auto_save                    : 1;
     uint8_t check_saved                  : 1;
