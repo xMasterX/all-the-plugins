@@ -47,8 +47,12 @@ static bool nfc_magic_scene_file_select_is_file_suitable(NfcMagicApp* instance) 
             suitable = true;
         }
     } else if(instance->protocol == NfcMagicProtocolIso15693) {
-        // Any ISO15693-3 dump is a valid clone source for a magic ISO15693 target.
-        if(protocol == NfcProtocolIso15693_3) {
+        // Any ISO15693-3 dump is a valid clone source for a magic ISO15693 target, and so is one saved
+        // under a protocol built on ISO15693-3: the stock NFC app saves an NXP SLIX tag as SLIX. What
+        // a clone writes is the ISO15693-3 data underneath, which nfc_device_get_data hands over when
+        // asked for the parent protocol, so the SLIX-only settings are not copied.
+        if(protocol == NfcProtocolIso15693_3 ||
+           nfc_protocol_has_parent(protocol, NfcProtocolIso15693_3)) {
             suitable = true;
         }
     } else if(
