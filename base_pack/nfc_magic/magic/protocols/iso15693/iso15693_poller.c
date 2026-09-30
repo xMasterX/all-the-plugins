@@ -22,15 +22,20 @@
 // non-magic tag -- only as an explicit user opt-in after gen2 leaves the UID unchanged.
 #define ISO15693_MAGIC_FLAGS (0x02U) // high data rate, unaddressed (ISO15_REQ_DATARATE_HIGH)
 
-// UNADDRESSED IS THE WHOLE OF #251, AND IT COVERS EVERY ISO15693 WRITE THIS APP SENDS, not just
-// data blocks: no WRITE frame from this file carries the ADDRESSED flag or a UID, so a second tag
-// in the field takes all of it, with nothing on screen saying it was there. By blast radius:
-//   - data blocks. The SDK's write_block builds its own frame (SUBCARRIER_1 | DATA_RATE_HI), so it is
-//     unaddressed on its own account rather than via this define. A wipe zeroes the bystander too.
-//   - WRITE AFI / WRITE DSFID, from the clone's identity pass. STANDARD commands, so they reach a
-//     bystander of ANY size, and a changed AFI can drop a tag out of selective inventory.
-//   - the gen1 backdoor: plain 0x21 at 56/57/62/63, ordinary user data on a tag that big.
-//   - the gen2 backdoor: 0xE0, proprietary, so a conforming tag should reject it.
+// Data blocks are written ADDRESSED: the card's UID travels in the frame and only that card answers.
+// That is what #251 asks for. Measured on seven CARDS over four identified chips -- TI Tag-it HF-I
+// Plus (by its behaviour, not its UID), NXP ICODE SLIX, NXP ICODE SLIX-S, ST LRi2K -- and two whose
+// own silicon was never captured, because each has only ever worn a written UID: the type a reader
+// prints for them is decoded from the UID they wear. Every one accepts an addressed WRITE BLOCK,
+// and on every one a write to a UID one byte wrong leaves its block unchanged -- read back, not
+// inferred from the silence.
+//
+// The SDK cannot send it: iso15693_3_poller_write_block hardcodes SUBCARRIER_1 | DATA_RATE_HI with no
+// flags parameter and no UID, and iso15693_3_write_block_response_parse is internal to lib/nfc. So the
+// frame and its response check are both built here.
+#define ISO15693_POLLER_WRITE_FLAGS                                        \
+    (ISO15693_3_REQ_FLAG_SUBCARRIER_1 | ISO15693_3_REQ_FLAG_DATA_RATE_HI | \
+     ISO15693_3_REQ_FLAG_T4_ADDRESSED)
 
 // gen1: WRITE BLOCK (0x21) to backdoor blocks; 4 data bytes each. The UID blocks are named by the
 // UID bytes they carry (uid[0] is the MSB, so uid[7..4] is the numerically low half of the UID).
@@ -83,6 +88,12 @@ static bool iso15693_poller_is_backdoor_block(uint16_t block) {
         if(block == iso15693_poller_backdoor_blocks[i]) return true;
     }
     return false;
+}
+
+// The two of those four that CARRY the UID, which is a narrower question than being a backdoor
+// block: writing 62/63 changes no identity, so an address taken before them is still good.
+static bool iso15693_poller_is_uid_block(uint16_t block) {
+    return block == ISO15693_MAGIC_BLK_UID_7654 || block == ISO15693_MAGIC_BLK_UID_3210;
 }
 
 // Standard ISO15693 identity writes -- see iso15693_poller_write_identity for what they are for.
@@ -268,6 +279,14 @@ struct Iso15693Poller {
     Iso15693PollerMode mode;
     uint8_t target_uid[ISO15693_3_UID_SIZE];
     uint8_t original_uid[ISO15693_3_UID_SIZE]; // UID before the write, to gate the gen1 fallback
+    // The UID every data-block write is addressed to. A field of its own rather than a reuse of
+    // original_uid, because a wipe zeroes blocks 56/57 -- which on a gen1 card ARE the UID -- so this
+    // one has to move mid-pass while original_uid stays put for VerifyWipe to compare against.
+    uint8_t address_uid[ISO15693_3_UID_SIZE];
+    // The addressed WRITE BLOCK frame and the response it gets. Owned for the poller's whole life
+    // rather than allocated per block: the clone pass sends up to 256 of these in one loop.
+    BitBuffer* frame_tx;
+    BitBuffer* frame_rx;
     Iso15693WriteState write_state;
     // This run is the opt-in gen1 attempt, entered from the "not gen2 magic" screen: Start sends the
     // gen1 sequence instead of the gen2 one, and VerifyGen1 rather than VerifyGen2 does the checking.
@@ -418,6 +437,16 @@ static void iso15693_poller_send_backdoor_uid_gen2(
     bit_buffer_free(rx);
 }
 
+// The UID goes out LEAST SIGNIFICANT BYTE FIRST -- the reverse of the order every screen, every .nfc
+// file and `hf 15 reader` print it in. uid[0] is the 0xE0, so it is the LAST byte on the wire. The
+// wrong order does not fail loudly: it addresses a card that is not in the field, so every write is
+// met with silence and the card reads as one that refuses everything.
+static void iso15693_poller_append_address(BitBuffer* tx, const uint8_t* uid) {
+    for(uint8_t i = ISO15693_3_UID_SIZE; i > 0; i--) {
+        bit_buffer_append_byte(tx, uid[i - 1]);
+    }
+}
+
 // Make the clone match the source's AFI / DSFID via the standard ISO15693 WRITE AFI / WRITE DSFID
 // commands (only for fields the source actually reported). Frames: 02 27 <afi> and 02 29 <dsfid>
 // (+CRC). Each field is then READ BACK with GET SYSTEM INFO and compared; a field that doesn't match
@@ -513,24 +542,180 @@ static void
     iso15693_poller_report(instance, Iso15693PollerEventWriteProgress);
 }
 
+// Both defined below, at the inventory helper the first of them wraps.
+static bool iso15693_poller_card_still_present(Iso15693_3Poller* iso_poller);
+static Iso15693_3Error
+    iso15693_poller_verify_inventory(Iso15693_3Poller* iso_poller, uint8_t* uid);
+
+// Addressed WRITE BLOCK: 22 21 <uid, LSB first> <block> <data...>, with the CRC appended by
+// iso15693_3_poller_send_frame. The address byte order is at iso15693_poller_append_address.
+static void iso15693_poller_build_write_frame(
+    BitBuffer* tx,
+    uint8_t flags,
+    const uint8_t* uid,
+    uint8_t block,
+    const uint8_t* data,
+    uint8_t size) {
+    bit_buffer_reset(tx);
+    bit_buffer_append_byte(tx, flags);
+    bit_buffer_append_byte(tx, ISO15693_3_CMD_WRITE_BLOCK);
+    iso15693_poller_append_address(tx, uid);
+    bit_buffer_append_byte(tx, block);
+    bit_buffer_append_bytes(tx, data, size);
+}
+
+// What iso15693_3_write_block_response_parse would return, written out here because that function is
+// internal to lib/nfc and this file builds its own frame.
+//
+// The case it exists for: a tag that REFUSES in band answers with a well-formed, CRC-valid error
+// frame, so send_frame reports success and the refusal is invisible without this. A write that took
+// answers with a lone zero flags byte. The error mapping is the SDK's, so the same tag response means
+// the same thing on both paths -- nothing downstream reads more than "is this None", but a log line
+// naming a different error from the rest of the app would send a bench session after the wrong thing.
+static Iso15693_3Error iso15693_poller_parse_write_response(const BitBuffer* rx) {
+    const size_t len = bit_buffer_get_size_bytes(rx);
+    if(len == 0) return Iso15693_3ErrorBufferEmpty;
+
+    if((bit_buffer_get_byte(rx, 0) & ISO15693_3_RESP_FLAG_ERROR) == 0) {
+        return len == 1 ? Iso15693_3ErrorNone : Iso15693_3ErrorUnexpectedResponse;
+    }
+    if(len < 2) return Iso15693_3ErrorUnexpectedResponse; // error flag set, no code to read
+    const uint8_t code = bit_buffer_get_byte(rx, 1);
+    if(code >= ISO15693_3_RESP_ERROR_CUSTOM_START && code <= ISO15693_3_RESP_ERROR_CUSTOM_END) {
+        return Iso15693_3ErrorCustom;
+    }
+    switch(code) {
+    case ISO15693_3_RESP_ERROR_NOT_SUPPORTED:
+    case ISO15693_3_RESP_ERROR_OPTION:
+        return Iso15693_3ErrorNotSupported;
+    case ISO15693_3_RESP_ERROR_FORMAT:
+        return Iso15693_3ErrorFormat;
+    case ISO15693_3_RESP_ERROR_BLOCK_UNAVAILABLE:
+    case ISO15693_3_RESP_ERROR_BLOCK_ALREADY_LOCKED:
+    case ISO15693_3_RESP_ERROR_BLOCK_LOCKED:
+    case ISO15693_3_RESP_ERROR_BLOCK_WRITE:
+    case ISO15693_3_RESP_ERROR_BLOCK_LOCK:
+        return Iso15693_3ErrorInternal;
+    default:
+        return Iso15693_3ErrorUnknown;
+    }
+}
+
+static Iso15693_3Error iso15693_poller_write_block_addressed(
+    Iso15693Poller* instance,
+    Iso15693_3Poller* iso_poller,
+    const uint8_t* data,
+    uint8_t block,
+    uint8_t size) {
+    iso15693_poller_build_write_frame(
+        instance->frame_tx, ISO15693_POLLER_WRITE_FLAGS, instance->address_uid, block, data, size);
+    const Iso15693_3Error error = iso15693_3_poller_send_frame(
+        iso_poller, instance->frame_tx, instance->frame_rx, ISO15693_3_FDT_WRITE_POLL_FC);
+    if(error != Iso15693_3ErrorNone) return error;
+    return iso15693_poller_parse_write_response(instance->frame_rx);
+}
+
+// What the UID BECOMES if this write lands on gen1 silicon. The mapping is fixed: block 56 carries
+// uid[7..4] and block 57 uid[3..0], each byte in frame order. Computable because we know what we sent.
+static void iso15693_poller_predict_uid(
+    const uint8_t* current,
+    uint8_t block,
+    const uint8_t* data,
+    uint8_t* predicted) {
+    memcpy(predicted, current, ISO15693_3_UID_SIZE);
+    if(block == ISO15693_MAGIC_BLK_UID_7654) {
+        predicted[7] = data[0];
+        predicted[6] = data[1];
+        predicted[5] = data[2];
+        predicted[4] = data[3];
+    } else {
+        predicted[3] = data[0];
+        predicted[2] = data[1];
+        predicted[1] = data[2];
+        predicted[0] = data[3];
+    }
+}
+
+// Take the address again after a write that may have moved it -- but only to one of the two values
+// that write could legitimately have produced.
+//
+// There are exactly two honest outcomes. The UID is UNCHANGED: the write did not move it -- those
+// addresses are ordinary memory (gen2 or a plain tag), or the write did not land -- and the address
+// stands. Or it is EXACTLY what the write implies, which means they are registers: gen1, and the
+// address must follow. Anything else did not come from our write. The inventory is the SDK's 1-slot
+// one, so with a second tag in the field it can answer for the bystander (#251) -- and
+// re-addressing to a stranger would point every later frame at the wrong card. Keep the address we
+// have and say so.
+//
+// The prediction does not replace the inventory: it holds only if the card is gen1, which is what is
+// being tested. It lets the answer be checked rather than believed. Not airtight: a bystander holding
+// the predicted UID would still pass, and nothing can fix that -- magic cards make UIDs non-unique by
+// construction and a 1-slot inventory cannot tell two cards apart.
+static void iso15693_poller_readdress(
+    Iso15693Poller* instance,
+    Iso15693_3Poller* iso_poller,
+    const uint8_t* predicted) {
+    uint8_t uid[ISO15693_3_UID_SIZE] = {0};
+    if(iso15693_poller_verify_inventory(iso_poller, uid) != Iso15693_3ErrorNone) {
+        // Nothing answered, so there is no new address to take and the old one stays. Do NOT fall
+        // back to an unaddressed write: that puts the frames back on every tag in the field, at the
+        // one moment this card's own identity is in doubt. Whether the run continues is for the
+        // sweep's card-present check to decide, on the same inventory this just failed.
+        FURI_LOG_W(TAG, "no inventory answer after a UID register write; address unchanged");
+        return;
+    }
+    if(memcmp(instance->address_uid, uid, ISO15693_3_UID_SIZE) == 0) return;
+
+    if(memcmp(uid, predicted, ISO15693_3_UID_SIZE) != 0) {
+        FURI_LOG_W(
+            TAG, "a UID answered that our own write does not account for; address unchanged");
+        return;
+    }
+    FURI_LOG_W(TAG, "the card's UID moved to what the write implies; re-addressing");
+    memcpy(instance->address_uid, uid, ISO15693_3_UID_SIZE);
+}
+
 // The one write both block passes make; ISO15693_POLLER_WRITE_ATTEMPTS says why it retries at all.
 // Retries only ever run on a failure, so a card that takes its writes pays nothing for them. There is
 // deliberately no break before the last delay, which is where the per-refused-block figure comes from.
 //
-// Every DATA-block write in this file funnels through here; the gen1 and gen2 backdoor SEQUENCES
-// and the identity pass build their own frames and do not. Note that is about the senders, not the
-// addresses -- the wipe's sweep zeroes 56/57/62/63 through this function like any other block. All
-// of them are unaddressed: see the #251 note at ISO15693_MAGIC_FLAGS.
+// Every DATA-block write in this file funnels through here, addressed to instance->address_uid. Note
+// that is about the SENDERS, not the blocks -- the wipe's sweep zeroes 56/57/62/63 through this
+// function like any other block.
 static Iso15693_3Error iso15693_poller_write_block_retried(
+    Iso15693Poller* instance,
     Iso15693_3Poller* iso_poller,
     const uint8_t* data,
     uint8_t block,
     uint8_t size) {
     Iso15693_3Error error = Iso15693_3ErrorNone;
     for(uint32_t attempt = 0; attempt < ISO15693_POLLER_WRITE_ATTEMPTS; attempt++) {
-        error = iso15693_3_poller_write_block(iso_poller, data, block, size);
+        error = iso15693_poller_write_block_addressed(instance, iso_poller, data, block, size);
         if(error == Iso15693_3ErrorNone) break;
         furi_delay_ms(ISO15693_POLLER_VERIFY_RETRY_MS);
+    }
+
+    // Blocks 56 and 57 ARE the gen1 UID registers, so a write there can move the card's identity --
+    // immediately, with no power-cycle, measured on NXP ICODE SLIX, NXP ICODE SLIX-S and ST LRi2K by
+    // writing 56 and re-reading the UID in the same field session. Left alone, every later frame would
+    // carry an address the card no longer answers to: the wipe's absent run would trip, the tail-drop
+    // would discard everything above 56, and a gen1 card -- the one case this whole path exists for --
+    // would report a card shorter than the one in the field.
+    //
+    // Retaken on the ATTEMPT, not on a success: a tag can apply a write without answering, so no
+    // answer is not taken to mean no write. If the UID did not move, the inventory returns the same
+    // bytes and the cost is one frame. Twice per sweep at most.
+    //
+    // It lives with the write rather than in the sweep because the rule is about the write: a clone
+    // whose source reaches block 56 on a card that is gen1 magic underneath goes through the same
+    // line, without that loop having to know it might.
+    //
+    // Only a full-width write can carry a whole UID half, and the registers are four bytes. A narrower
+    // block size cannot produce a predictable move, so there is nothing to check against.
+    if(iso15693_poller_is_uid_block(block) && size >= 4) {
+        uint8_t predicted[ISO15693_3_UID_SIZE] = {0};
+        iso15693_poller_predict_uid(instance->address_uid, block, data, predicted);
+        iso15693_poller_readdress(instance, iso_poller, predicted);
     }
     return error;
 }
@@ -594,9 +779,6 @@ static bool iso15693_poller_cut_pass_if_expired(
     instance->pass_cut_block = block;
     return true;
 }
-
-// Defined below, next to the inventory helper it wraps.
-static bool iso15693_poller_card_still_present(Iso15693_3Poller* iso_poller);
 
 // Clone mode: write every data block from the source image with the standard ISO15693 WRITE BLOCK.
 // Real write errors are counted into the failure bitmap for Partial reporting. Runs synchronously on
@@ -699,7 +881,7 @@ static bool iso15693_poller_write_source_blocks(
         iso15693_poller_report_progress(instance, done++, total);
         const uint8_t* block_data = iso15693_3_get_block_data(source, block);
         const Iso15693_3Error error = iso15693_poller_write_block_retried(
-            iso_poller, block_data, (uint8_t)block, block_size);
+            instance, iso_poller, block_data, (uint8_t)block, block_size);
         if(error == Iso15693_3ErrorNone) {
             // A success ABOVE an earlier failure means the failures are not a run at the top, so
             // they cannot be the card's capacity edge.
@@ -959,7 +1141,7 @@ static uint16_t iso15693_poller_wipe_blocks(
         // Retried at every block, not only above the advertised count: a transient below it reports a
         // false "wouldn't clear" AND leaves a block unwiped that a second attempt would have cleared.
         const Iso15693_3Error error =
-            iso15693_poller_write_block_retried(iso_poller, zeros, (uint8_t)block, size);
+            iso15693_poller_write_block_retried(instance, iso_poller, zeros, (uint8_t)block, size);
 
         if(error == Iso15693_3ErrorNone) {
             // Took the zero-write, so it exists and is now clear. Anything absent below it therefore
@@ -1226,8 +1408,9 @@ static Iso15693PollerEvent iso15693_poller_success_or_partial(Iso15693Poller* in
 // whichever wins the slot instead of reporting a collision. After a wipe that is worse than it sounds:
 // the answer can come from the bystander, and the "UID changed" screen would print a UID belonging to
 // a different card as though it were this one -- strictly worse than printing nothing, since the whole
-// point of that screen is to be the route back to a card whose identity moved. Same root cause as the
-// unaddressed writes above; #251.
+// point of that screen is to be the route back to a card whose identity moved. Addressing cannot fix
+// it: this read exists to find out whether the UID changed, so it cannot be aimed at a UID already in
+// doubt. It needs the inventory widened or STAY QUIET, neither of which is done here; #251.
 static Iso15693_3Error
     iso15693_poller_verify_inventory(Iso15693_3Poller* iso_poller, uint8_t* uid) {
     Iso15693_3Error error = Iso15693_3ErrorNone;
@@ -1258,6 +1441,10 @@ static NfcCommand iso15693_poller_finish_write(
     Iso15693Poller* instance,
     Iso15693_3Poller* iso_poller,
     bool skip_backdoor) {
+    // Both callers reach here only after an inventory read the target UID back, so that is the card
+    // the data pass is talking to -- not the one Start addressed, which a gen2 or gen1 UID write has
+    // just replaced.
+    memcpy(instance->address_uid, instance->target_uid, ISO15693_3_UID_SIZE);
     if(instance->mode == Iso15693PollerModeClone) {
         iso15693_poller_write_identity(instance, iso_poller);
         if(!iso15693_poller_write_source_blocks(instance, iso_poller, skip_backdoor)) {
@@ -1278,15 +1465,18 @@ static NfcCommand
 
     switch(instance->write_state) {
     case Iso15693WriteStateStart: {
+        // Note the UID the card presented, which the poller read into its data during activation:
+        // the card's identity before anything here was sent, which the later checks compare
+        // against. (nfc_poller_get_data returns void*, so it has to land in a typed pointer before
+        // being dereferenced.) address_uid starts from the same bytes and diverges from here, since
+        // the writes readdress themselves off 56/57 while original_uid keeps that identity.
+        const Iso15693_3Data* presented = nfc_poller_get_data(instance->poller);
+        memcpy(instance->original_uid, presented->uid, ISO15693_3_UID_SIZE);
+        memcpy(instance->address_uid, presented->uid, ISO15693_3_UID_SIZE);
+
         // Wipe zeros the card's own blocks and sends no UID command, so it's a single pass with no
         // backdoor write or field reset.
         if(instance->mode == Iso15693PollerModeWipe) {
-            // Note the UID the card presented, to compare against in VerifyWipe. See that state for why
-            // a wipe needs the comparison at all. (nfc_poller_get_data returns void*, so it has to land
-            // in a typed pointer before being dereferenced.)
-            const Iso15693_3Data* wipe_target = nfc_poller_get_data(instance->poller);
-            memcpy(instance->original_uid, wipe_target->uid, ISO15693_3_UID_SIZE);
-
             bool card_lost = false;
             const uint16_t wiped = iso15693_poller_wipe_blocks(instance, iso_poller, &card_lost);
             if(card_lost) {
@@ -1348,11 +1538,6 @@ static NfcCommand
             instance->write_state = Iso15693WriteStateVerifyWipe;
             return NfcCommandReset;
         }
-        // Remember the current UID so we can tell whether the gen2 write changed anything. The poller
-        // read the UID into its data during activation.
-        const Iso15693_3Data* poller_data = nfc_poller_get_data(instance->poller);
-        memcpy(instance->original_uid, poller_data->uid, ISO15693_3_UID_SIZE);
-
         // A UID read-back only proves the card is magic when the UID it is compared against is one the
         // card did not already have. Write UID pre-seeds its editor with the UID a previous Info read
         // returned, so "Info -> Write UID -> Save" asks to write the card's own UID back onto it -- and
@@ -1602,16 +1787,18 @@ Iso15693Poller* iso15693_poller_alloc(Nfc* nfc) {
     instance->poller = nfc_poller_alloc(nfc, NfcProtocolIso15693_3);
     instance->data = iso15693_3_alloc();
     instance->clone_source = iso15693_3_alloc();
+    instance->frame_tx = bit_buffer_alloc(ISO15693_POLLER_BUF_SIZE);
+    instance->frame_rx = bit_buffer_alloc(ISO15693_POLLER_BUF_SIZE);
     // Only what must hold BEFORE a start. Everything else is set by start_internal, which is the
     // authoritative reset list -- no public entry point reaches the struct without going through
     // it, and it asserts !running. Zeroing a subset here too would read as a second reset list
     // while covering only part of the real one, so someone adding a field would find two and have
     // to work out which is binding.
     //
-    // A NEW FIELD BELONGS IN start_internal unless it is one of the four it deliberately leaves
-    // alone: `poller` and `clone_source` are owned allocations, and `target_uid` / `original_uid`
-    // are set by the caller and by write_step, so resetting them would discard the run's own
-    // inputs.
+    // A NEW FIELD BELONGS IN start_internal unless it is one of the six it deliberately leaves
+    // alone: `poller`, `clone_source`, `frame_tx` and `frame_rx` are owned allocations, and
+    // `target_uid` / `original_uid` are set by the caller and by write_step, so resetting them would
+    // discard the run's own inputs.
     instance->running = false;
     instance->callback = NULL;
     instance->context = NULL;
@@ -1626,6 +1813,8 @@ void iso15693_poller_free(Iso15693Poller* instance) {
     nfc_poller_free(instance->poller);
     iso15693_3_free(instance->data);
     iso15693_3_free(instance->clone_source);
+    bit_buffer_free(instance->frame_tx);
+    bit_buffer_free(instance->frame_rx);
     free(instance);
 }
 
@@ -1664,6 +1853,8 @@ static void iso15693_poller_start_internal(
     instance->uid_unverifiable = false;
     instance->uid_changed = false;
     memset(instance->uid_readback, 0, sizeof(instance->uid_readback));
+    // Set in write_step from the card's own answer, so it is reset here with the rest of the run state.
+    memset(instance->address_uid, 0, sizeof(instance->address_uid));
     memset(instance->clone_failed_bitmap, 0, sizeof(instance->clone_failed_bitmap));
     iso15693_3_reset(instance->data);
     instance->running = true;
