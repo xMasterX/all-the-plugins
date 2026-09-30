@@ -20,6 +20,10 @@
 // nfc_magic_scene_write_confirm.c). The write always tries gen2 first, and offers gen1 -- which is
 // destructive on a non-magic tag -- only as an explicit user opt-in after gen2 leaves the UID
 // unchanged.
+//
+// Used only by the gen2 sequence (see iso15693_poller_build_gen2_frame), and LITERALLY rather than
+// through iso15693_poller_write_flags(): with OPTION set a gen2 card applies the write and answers
+// nothing -- on all four cards measured, two of which do not want the flag for ordinary writes.
 #define ISO15693_MAGIC_FLAGS (0x02U) // high data rate, unaddressed (ISO15_REQ_DATARATE_HIGH)
 
 // Data blocks are written ADDRESSED: the card's UID travels in the frame and only that card answers.
@@ -428,6 +432,18 @@ struct Iso15693Poller {
 };
 
 // gen2 frame: 02 E0 09 <ref> d0 d1 d2 d3 (+CRC).
+//
+// UNADDRESSED, AND NOT BY CHOICE. MEASURED on all four gen2 cards tested: each takes this form and
+// refuses the addressed one, with the correct UID, with and without OPTION -- and the three asked
+// also refuse the address bit set with no UID in the frame. All four take an addressed standard
+// WRITE BLOCK and go silent on a wrong address, so the frames are well formed and it is the
+// backdoor that is unreachable that way. Adding an address here stops the sequence writing. gen1
+// can be addressed because it uses the STANDARD write command; see
+// iso15693_poller_send_backdoor_uid_gen1.
+//
+// SO A BYSTANDER THAT IS ITSELF A GEN2 MAGIC CARD TAKES THESE FRAMES and nothing here prevents it.
+// Narrower than an unaddressed standard write, which any writable tag in the field takes, and not
+// zero.
 static void iso15693_poller_build_gen2_frame(
     BitBuffer* tx,
     uint8_t ref,

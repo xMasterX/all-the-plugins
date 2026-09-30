@@ -54,8 +54,8 @@ void nfc_magic_scene_write_confirm_on_enter(void* context) {
         // only. The wipe performs NO magic detection -- menu, confirm, sweep -- so this cannot say
         // "your card is gen3", only what a gen3 card would cost, which per 0x6r1an0y (who wrote
         // proxmark's ISO15693 magic V3 support) is the card itself, permanently -- reported on
-        // their authority, not observed here. A pre-flight probe would go in #255; until then the
-        // static line is the whole mitigation.
+        // their authority, not tried in testing. A pre-flight probe would go in #255; until then
+        // the static line is the whole mitigation.
         //
         // FontSecondary is u8g2_font_haxrcorp4089_tr, and two things follow. No `m` in the suffix means
         // it is PROPORTIONAL (profont11_mr / FontKeyboard is the monospace one), so WHAT BINDS IS PIXEL
