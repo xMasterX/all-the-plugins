@@ -512,6 +512,9 @@ static uint8_t iso15693_poller_write_flags(const Iso15693Poller* instance) {
 // Sticky, and never cleared inside a run: the answer is about the silicon, and the silicon does not
 // change when the UID does. Clearing it would re-ask the question on a card whose identity this app
 // has just rewritten, which is the one moment the UID cannot be trusted to describe it.
+//
+// Which command drew the 0x03 does not matter -- the card is objecting to the flag, not to the
+// request -- so the identity pass and the block pass answer the same question and share the answer.
 static void iso15693_poller_note_option_wanted(Iso15693Poller* instance, const BitBuffer* rx) {
     if(instance->write_option || !iso15693_poller_response_wants_option(rx)) return;
     FURI_LOG_I(TAG, "the card wants the OPTION flag on writes; setting it for this run");
@@ -528,10 +531,36 @@ static void iso15693_poller_append_address(BitBuffer* tx, const uint8_t* uid) {
     }
 }
 
+// One identity write: 22 27|29 <uid, LSB first> <value>, or 62 with the OPTION flag.
+//
+// ADDRESSED, like the data blocks: WRITE AFI and WRITE DSFID are STANDARD commands, so a bystander of
+// any size takes them, and a changed AFI can drop a tag out of a selective inventory -- a card that
+// then looks absent to the reader that uses it. Measured accepted on TI Tag-it, the one chip tested that
+// wants the OPTION flag.
+//
+// The send's return is discarded on purpose -- see write_identity below for why it cannot settle
+// anything either way -- but the RESPONSE is still worth reading for that one thing.
+static void iso15693_poller_send_identity_frame(
+    Iso15693Poller* instance,
+    Iso15693_3Poller* iso_poller,
+    uint8_t command,
+    uint8_t value) {
+    bit_buffer_reset(instance->frame_tx);
+    bit_buffer_append_byte(instance->frame_tx, iso15693_poller_write_flags(instance));
+    bit_buffer_append_byte(instance->frame_tx, command);
+    iso15693_poller_append_address(instance->frame_tx, instance->address_uid);
+    bit_buffer_append_byte(instance->frame_tx, value);
+    if(iso15693_3_poller_send_frame(
+           iso_poller, instance->frame_tx, instance->frame_rx, ISO15693_3_FDT_WRITE_POLL_FC) ==
+       Iso15693_3ErrorNone) {
+        iso15693_poller_note_option_wanted(instance, instance->frame_rx);
+    }
+}
+
 // Make the clone match the source's AFI / DSFID via the standard ISO15693 WRITE AFI / WRITE DSFID
-// commands (only for fields the source actually reported). Frames: 02 27 <afi> and 02 29 <dsfid>
-// (+CRC). Each field is then READ BACK with GET SYSTEM INFO and compared; a field that doesn't match
-// is recorded (clone_afi_failed / clone_dsfid_failed), which downgrades the clone to Partial but never
+// commands (only for fields the source actually reported), sent by iso15693_poller_send_identity_frame.
+// Each field is then READ BACK with GET SYSTEM INFO and compared; a field that doesn't match is
+// recorded (clone_afi_failed / clone_dsfid_failed), which downgrades the clone to Partial but never
 // fails it, since these are identity extras, not the core UID/data payload.
 static void
     iso15693_poller_write_identity(Iso15693Poller* instance, Iso15693_3Poller* iso_poller) {
@@ -539,9 +568,6 @@ static void
     const bool want_dsfid = (sys->flags & ISO15693_3_SYSINFO_FLAG_DSFID) != 0;
     const bool want_afi = (sys->flags & ISO15693_3_SYSINFO_FLAG_AFI) != 0;
     if(!want_dsfid && !want_afi) return; // source reported neither field: nothing to reproduce
-
-    BitBuffer* tx = bit_buffer_alloc(ISO15693_POLLER_BUF_SIZE);
-    BitBuffer* rx = bit_buffer_alloc(ISO15693_POLLER_BUF_SIZE);
 
     // A field is only "written" once we have READ IT BACK and it matches, exactly like the UID. The
     // send return can't be trusted on its own: a tag refuses in-band, answering with the error flag set
@@ -559,18 +585,12 @@ static void
     for(uint32_t attempt = 0; attempt < ISO15693_POLLER_WRITE_ATTEMPTS && (!dsfid_ok || !afi_ok);
         attempt++) {
         if(!dsfid_ok) {
-            bit_buffer_reset(tx);
-            bit_buffer_append_byte(tx, ISO15693_MAGIC_FLAGS);
-            bit_buffer_append_byte(tx, ISO15693_MAGIC_CMD_WRITE_DSFID);
-            bit_buffer_append_byte(tx, sys->dsfid);
-            iso15693_3_poller_send_frame(iso_poller, tx, rx, ISO15693_3_FDT_WRITE_POLL_FC);
+            iso15693_poller_send_identity_frame(
+                instance, iso_poller, ISO15693_MAGIC_CMD_WRITE_DSFID, sys->dsfid);
         }
         if(!afi_ok) {
-            bit_buffer_reset(tx);
-            bit_buffer_append_byte(tx, ISO15693_MAGIC_FLAGS);
-            bit_buffer_append_byte(tx, ISO15693_MAGIC_CMD_WRITE_AFI);
-            bit_buffer_append_byte(tx, sys->afi);
-            iso15693_3_poller_send_frame(iso_poller, tx, rx, ISO15693_3_FDT_WRITE_POLL_FC);
+            iso15693_poller_send_identity_frame(
+                instance, iso_poller, ISO15693_MAGIC_CMD_WRITE_AFI, sys->afi);
         }
 
         Iso15693_3SystemInfo readback = {0};
@@ -594,9 +614,6 @@ static void
     if(!afi_ok) FURI_LOG_W(TAG, "AFI did not read back as written");
     instance->clone_dsfid_failed = !dsfid_ok;
     instance->clone_afi_failed = !afi_ok;
-
-    bit_buffer_free(tx);
-    bit_buffer_free(rx);
 }
 
 static void iso15693_poller_report(Iso15693Poller* instance, Iso15693PollerEvent event) {
