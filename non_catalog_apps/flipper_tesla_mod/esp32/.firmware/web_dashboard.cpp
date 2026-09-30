@@ -749,7 +749,7 @@ R"rawliteral(
   </div>
   <div id="otaRollbackInfo" class="ota-info">
     <b style="color:var(--blue)">Partition Safety</b><br>
-    OTA writes to the next app partition when available. Keep USB reflashing available as a recovery path.
+    OTA writes to the next app partition when available. The new image is kept only after 15 s of runtime; a crash or power cut before that restores the previous firmware. Keep USB reflashing available as a recovery path.
   </div>
 </div>
 

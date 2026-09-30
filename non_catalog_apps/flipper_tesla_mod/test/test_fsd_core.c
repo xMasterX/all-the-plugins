@@ -170,14 +170,14 @@ static void test_autopilot_hw4(void) {
     CHECK((f.buffer[7] & 0x10) != 0, "HW4 mux0 bit60 set");
     CHECK(s.fsd_enabled, "HW4 mux0 sets fsd_enabled");
 
-    // mux1 -> nag bit19 cleared, bit47 set
+    // mux1 -> nag bit19 cleared; bit47 left alone (summon_unlock off)
     zero(&f);
     f.data_lenght = 8;
     f.buffer[0] = 1;
     f.buffer[2] = 0x08; // pre-set bit19 so we prove it is cleared
     CHECK(fsd_handle_autopilot_frame(&s, &f, 0), "HW4 mux1 reports modified");
     CHECK((f.buffer[2] & 0x08) == 0, "HW4 mux1 bit19 cleared");
-    CHECK((f.buffer[5] & 0x80) != 0, "HW4 mux1 bit47 set");
+    CHECK((f.buffer[5] & 0x80) == 0, "HW4 mux1 bit47 not set without summon_unlock");
 
     // mux2 -> speed profile written to byte7 bits 6:4 (frame bits 60-62)
     zero(&f);
@@ -269,14 +269,8 @@ static void test_autopilot_hw3(void) {
 
 // ── Summon EU Unlock (0x3FD mux1 bit47) — opt-in, HW3 + HW4 ───────────────────
 // ev-open-can-tools summon-eu-unlock: clear bit19, set bit47 on mux1. This test
-// locks that summon_unlock gates bit47 on HW3 (which never set it before) and
-// that HW3 mux1 with the toggle OFF is byte-for-byte the prior behavior.
-//
-// NOTE on HW4: the Flipper HW4 mux1 path sets bit47 UNCONDITIONALLY (pre-existing
-// behavior, preserved). So on HW4 bit47 is set whether or not summon_unlock is on;
-// the summon toggle adds an explicit guarded path but does not change the emitted
-// HW4 frame. The ESP32 firmware is where the HW4 toggle actually gates bit47 —
-// that divergence is documented for reviewers.
+// locks that summon_unlock gates bit47 on both HW3 and HW4, and that mux1 with
+// the toggle OFF still clears bit19 and never touches bit47.
 static void test_summon_unlock(void) {
     CANFRAME f;
 
@@ -304,7 +298,7 @@ static void test_summon_unlock(void) {
     CHECK(fsd_handle_autopilot_frame(&h3, &f, 0), "HW3 mux1 summon-on reports modified");
     CHECK((f.buffer[5] & 0x80) != 0, "HW3 mux1 summon-on bit47 set");
 
-    // ── HW4: bit47 set on mux1 regardless of the toggle (pre-existing behavior) ──
+    // ── HW4: bit47 is gated by summon_unlock too ──
     FSDState h4;
     memset(&h4, 0, sizeof(h4));
     h4.hw_version = TeslaHW_HW4;
@@ -316,13 +310,16 @@ static void test_summon_unlock(void) {
     CHECK(fsd_handle_autopilot_frame(&h4, &f, 0), "HW4 mux1 summon-on reports modified");
     CHECK((f.buffer[5] & 0x80) != 0, "HW4 mux1 summon-on bit47 set");
 
-    // summon OFF: HW4 still sets bit47 unconditionally — frame unchanged from prior.
+    // summon OFF: mux1 still clears bit19 but leaves bit47 alone.
     h4.summon_unlock = false;
     zero(&f);
     f.data_lenght = 8;
     f.buffer[0] = 1;
+    f.buffer[2] = 0x08;
     CHECK(fsd_handle_autopilot_frame(&h4, &f, 0), "HW4 mux1 summon-off reports modified");
-    CHECK((f.buffer[5] & 0x80) != 0, "HW4 mux1 summon-off bit47 still set (prior behavior)");
+    CHECK((f.buffer[2] & 0x08) == 0, "HW4 mux1 summon-off bit19 cleared");
+    CHECK((f.buffer[5] & 0x80) == 0, "HW4 mux1 summon-off bit47 NOT set");
+    CHECK(h4.nag_suppressed, "HW4 mux1 summon-off still sets nag_suppressed");
 }
 
 // ── Continue on Green (0x3FD mux0 bit39) — opt-in, HW3 + HW4 ──────────────────
@@ -2870,12 +2867,6 @@ static void test_extras_and_builders(void) {
     CHECK(f.canId == CAN_ID_SCCM_RSTALK, "park id 0x229");
     CHECK(f.data_lenght == 3, "park dlc 3");
     CHECK(f.buffer[2] == 0x01, "park button pressed byte2");
-
-    // Steering tune frame builder (0x101).
-    zero(&f);
-    fsd_build_steering_tune_frame(&f, 3);
-    CHECK(f.canId == CAN_ID_GTW_EPAS_CTRL, "tune id 0x101");
-    CHECK(f.buffer[0] == (3 << 2), "tune byte0 got 0x%02X exp 0x0C", f.buffer[0]);
 
     // Precondition frame builder (0x082).
     zero(&f);

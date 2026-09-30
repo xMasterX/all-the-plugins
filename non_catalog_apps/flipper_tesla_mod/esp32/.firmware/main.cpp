@@ -1,5 +1,5 @@
 /*
- * main.cpp — Tesla FSD Unlock for ESP32
+ * main.cpp — Tesla Mod for ESP32
  *
  * Port of hypery11/flipper-tesla-fsd to M5Stack ATOM Lite + ATOMIC CAN Base.
  *
@@ -1520,7 +1520,7 @@ void setup() {
     delay(300);
 
     Serial.println("\n============================");
-    Serial.println(" Tesla FSD Unlock — ESP32   ");
+    Serial.println(" Tesla Mod — ESP32          ");
     Serial.println("============================");
     Serial.printf("[FSD] Build: %s %s\n", __DATE__, __TIME__);
 

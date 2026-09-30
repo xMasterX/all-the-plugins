@@ -290,7 +290,6 @@ typedef struct FSDState {
     bool extra_hazard_lights;
     bool extra_wiper_off;
     bool extra_park_inject; // inject a PARK stalk press
-    uint8_t extra_steering_mode; // 0=no change, 1=comfort 2=standard 3=sport (GTW_epasTuneRequest)
     bool extra_highbeam_strobe; // rapid PULL/IDLE toggle on SCCM_leftStalk
     bool extra_turn_left; // inject left turn signal
     bool extra_turn_right; // inject right turn signal
