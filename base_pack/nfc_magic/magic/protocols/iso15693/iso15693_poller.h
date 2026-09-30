@@ -223,6 +223,36 @@ typedef struct {
     // addresses make a clone Partial. A file that reaches them with nothing there loses nothing, and a
     // screen saying they "differ from the source" would be describing a loss that did not happen.
     bool gen1_data_lost;
+    // SURVEY RESULTS, not write results. How a clone reports them is at
+    // NfcMagicIso15693WriteFailReasonCloneComplete; why the survey reads rather than trusting the
+    // card's count, and why these are separate findings, is at iso15693_poller_survey_above_source.
+    //
+    // Readable blocks above the source that still hold data from before the clone. first/last bound
+    // the non-empty ones and are meaningless while residue_found is false.
+    bool residue_found;
+    uint16_t residue_first;
+    uint16_t residue_last;
+    // The card answered a read ABOVE the count it now reports, so it is bigger than it claims.
+    // survey_top is the highest block proven readable.
+    bool holds_more;
+    uint16_t survey_top;
+    // The card goes on reporting a different block count or IC reference from the source's -- see
+    // iso15693_poller_compare_reported_geometry in the .c. Two flags, because they move independently:
+    // a file and a card can agree on block count and disagree on IC reference, and a screen naming
+    // both would then describe a mismatch that is not there. Either, neither or both.
+    //
+    // card_blocks / card_ic_ref are what the CARD reported, and 0 when GET SYSTEM INFO did not answer
+    // or did not carry that field -- which a scene cannot tell apart, so each note that prints one is
+    // gated on a flag that needed a real value: memory_differs, ic_ref_differs, or holds_more for the
+    // size note, which reads card_blocks whether or not either flag here is set.
+    bool memory_differs;
+    bool ic_ref_differs;
+    uint16_t card_blocks;
+    uint8_t card_ic_ref;
+    // ...and what the FILE said, so the note can show both sides rather than leaving the reader to
+    // remember what they asked for.
+    uint16_t file_blocks;
+    uint8_t file_ic_ref;
     // The failures are a persistent, contiguous run at the very top of the card, i.e. the source is
     // genuinely larger than the card's physical capacity. False for a scattered or anomalous failure,
     // which is reported generically with no capacity claim -- and false for ANY cut run, however

@@ -7,11 +7,11 @@
 //   y=13 -- tops at 13/24/35, and a fourth at 46 puts its lower rows inside the box.
 //   y=20 -- tops at 20/31/42, and a fourth at 53 sits inside the box entirely.
 //
-// The x that rides with each: 0 with y=13, 4 with y=20. The two bodies at (4, 20) are not an
-// inconsistency to tidy away -- that pair appears in exactly three files in the repo, the other two
-// being nfc_magic_scene_gen2_wipe_partial.c and nfc_magic_scene_uscuid_ul_partial.c, and the two
-// branches here that use it are the ones that mirror those screens. Making all twelve agree would
-// break that match. This is also the answer to whether the twelve calls want a wrapper: the
+// The x that rides with each: 0 with y=13, 4 with y=20. The bodies at (4, 20) are not an inconsistency
+// to tidy away: that pair appears in exactly three files in the repo, the other two being
+// nfc_magic_scene_gen2_wipe_partial.c and nfc_magic_scene_uscuid_ul_partial.c. The partial and
+// over-capacity branches here mirror those screens, and clone-complete matches its two neighbours.
+// Making every body agree would break that match. It is also why the calls want no wrapper: the
 // duplication is in describing the layout, not in the calls.
 // Where the body carries a UID that budget decides the prose, because a clipped hex digit is a
 // mis-readable UID.
@@ -73,6 +73,7 @@ static bool
     const Iso15693PollerResult* result = &instance->iso15693_result;
     switch(reason) {
     case NfcMagicIso15693WriteFailReasonOverCapacity:
+    case NfcMagicIso15693WriteFailReasonCloneComplete:
         return true;
     case NfcMagicIso15693WriteFailReasonPartial:
         // pass_truncated on its own qualifies: on a cut clone the summary's "Not written" count mixes
@@ -105,15 +106,13 @@ static bool
     }
 }
 
-// The one thing every screen here has in common: exactly one centred FontPrimary title. That was twelve
-// identical widget_add_string_element calls differing only in the string, so the string is named here and
-// drawn once, below.
+// The one thing every screen here has in common: exactly one centred FontPrimary title, so it is named
+// here and drawn once, below.
 //
-// Deliberately NOT a {reason, title, body} table. Only four of the twelve bodies are static; seven are
-// built from result counts and several carry conditional extra lines, so a table covering a third of them
-// would split one screen across two mechanisms and turn "what does reason X render?" into a two-place
-// lookup -- worse than one chain. The title is the part that really is uniform, so it is the part that
-// gets the table.
+// Deliberately NOT a {reason, title, body} table. Most bodies are built from result counts and several
+// carry conditional extra lines, so a table holding only the static few would split one screen across
+// two mechanisms and turn "what does reason X render?" into a two-place lookup -- worse than one chain.
+// The title is the part that really is uniform, so it is the part that gets the table.
 static const char* nfc_magic_scene_iso15693_write_fail_title(uint32_t reason, bool wipe_mode) {
     switch(reason) {
     case NfcMagicIso15693WriteFailReasonWipeComplete:
@@ -121,6 +120,7 @@ static const char* nfc_magic_scene_iso15693_write_fail_title(uint32_t reason, bo
     case NfcMagicIso15693WriteFailReasonWipeStopped:
         return "Wipe stopped";
     case NfcMagicIso15693WriteFailReasonOverCapacity:
+    case NfcMagicIso15693WriteFailReasonCloneComplete:
         return "Clone finished";
     case NfcMagicIso15693WriteFailReasonPartial:
         // The only mode-dependent one, and the reason this is a function rather than an array.
@@ -154,6 +154,7 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
     const bool card_lost = (reason == NfcMagicIso15693WriteFailReasonCardLost);
     const bool partial = (reason == NfcMagicIso15693WriteFailReasonPartial);
     const bool over_capacity = (reason == NfcMagicIso15693WriteFailReasonOverCapacity);
+    const bool clone_complete = (reason == NfcMagicIso15693WriteFailReasonCloneComplete);
     const bool nothing_wiped = (reason == NfcMagicIso15693WriteFailReasonNothingWiped);
     const bool empty_source = (reason == NfcMagicIso15693WriteFailReasonEmptySource);
     const bool nothing_cloned = (reason == NfcMagicIso15693WriteFailReasonNothingCloned);
@@ -165,14 +166,15 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
     const bool wipe_mode = (instance->iso15693_mode == NfcMagicIso15693ModeWipe);
 
     const bool wipe_stopped = (reason == NfcMagicIso15693WriteFailReasonWipeStopped);
+    // Over-capacity, a clone that completed with notes, and a wipe that ran to the card's top are
+    // successes. Named once because two things follow from it, the tone below and the left button, and
+    // a success added to one and not the other would sound an error under "Finish".
+    const bool success = over_capacity || clone_complete || wipe_complete;
 
-    // Over-capacity and a wipe that ran to the card's top are clean successes -> success tone.
-    // Everything else did not deliver what was asked for -> error tone, the cut sweep included: the
-    // poller reports that as Partial, and the tone has to agree with the event rather than contradict
-    // it.
-    notification_message(
-        instance->notifications,
-        (over_capacity || wipe_complete) ? &sequence_success : &sequence_error);
+    // Successes -> success tone. Everything else did not deliver what was asked for -> error tone, the
+    // cut sweep included: the poller reports that as Partial, and the tone has to agree with the event
+    // rather than contradict it.
+    notification_message(instance->notifications, success ? &sequence_success : &sequence_error);
 
     // One title, drawn once, named by the lookup above. Every branch below adds only its body.
     widget_add_string_element(
@@ -238,6 +240,55 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
         if(failed > 0) furi_string_cat_printf(text, "\nNot cleared: %u", failed);
         widget_add_string_multiline_element(
             widget, 0, 13, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(text));
+        furi_string_free(text);
+    } else if(clone_complete) {
+        // Clean success with something the bare popup cannot hold. Three lines fit at y=20: the
+        // confirmation plus ONE note, chosen in priority order -- residue first because it is about
+        // the user's data, then size because it is about the card, then the block count or IC
+        // reference it reports, which is only how the copy presents, then a gen1 card's four register
+        // addresses, where the file had nothing to lose. Details carries every one.
+        FuriString* text = furi_string_alloc();
+        furi_string_cat_str(text, "All data written.");
+        if(instance->iso15693_result.residue_found) {
+            furi_string_cat_printf(
+                text,
+                "\nBlocks %u-%u hold\nolder data.",
+                instance->iso15693_result.residue_first,
+                instance->iso15693_result.residue_last);
+        } else if(instance->iso15693_result.holds_more) {
+            // What the card SAYS first, then what it is: the reported count is what a tool prints.
+            // Both are COUNTS, deliberately -- naming the reported count against a top BLOCK number
+            // mixes a count with an index and invites an off-by-one. Neither says who set that count;
+            // see the size note in nfc_magic_scene_iso15693_partial_details.c.
+            furi_string_cat_printf(
+                text,
+                "\nCard reports %u blocks,\nbut holds %u.",
+                instance->iso15693_result.card_blocks,
+                (uint16_t)(instance->iso15693_result.survey_top + 1));
+        } else if(
+            instance->iso15693_result.memory_differs || instance->iso15693_result.ic_ref_differs) {
+            // Neither the data nor the size: what is left is how the card describes itself. Name
+            // whichever of the two moved -- both fit on the remaining two lines when both did.
+            furi_string_cat_str(text, "\nCard still reports\n");
+            if(instance->iso15693_result.memory_differs) {
+                furi_string_cat_printf(text, "%u blocks", instance->iso15693_result.card_blocks);
+            }
+            if(instance->iso15693_result.memory_differs &&
+               instance->iso15693_result.ic_ref_differs) {
+                furi_string_cat_str(text, ", ");
+            }
+            if(instance->iso15693_result.ic_ref_differs) {
+                furi_string_cat_printf(text, "IC ref %02X", instance->iso15693_result.card_ic_ref);
+            }
+            furi_string_cat_str(text, ".");
+        } else {
+            // What is left is a gen1 clone whose file reached 56/57/62/63 with nothing stored there.
+            // Nothing was lost, but the copy differs from the file in one way a reader can see: those
+            // four are the card's registers, so asking for them returns no block where the file had one.
+            furi_string_cat_str(text, "\ngen1: 56/57/62/63 are\nregisters, not data.");
+        }
+        widget_add_string_multiline_element(
+            widget, 4, 20, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(text));
         furi_string_free(text);
     } else if(over_capacity) {
         // Clean success: every source block was written, the card just advertises more blocks than it
@@ -463,12 +514,12 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             nfc_magic_scene_iso15693_write_fail_widget_callback,
             instance);
     } else {
-        // over-capacity / partial / a completed wipe are (qualified) successes -> "Finish"; not-magic is
-        // a failure -> "Back". The primary exit sits on the left, like the Gen2/USCUID/gen4 screens.
+        // The successes and a partial are (qualified) successes -> "Finish"; not-magic is a failure ->
+        // "Back". The primary exit sits on the left, like the Gen2/USCUID/gen4 screens.
         widget_add_button_element(
             widget,
             GuiButtonTypeLeft,
-            (over_capacity || partial || wipe_complete) ? "Finish" : "Back",
+            (success || partial) ? "Finish" : "Back",
             nfc_magic_scene_iso15693_write_fail_widget_callback,
             instance);
         if(has_details) {
