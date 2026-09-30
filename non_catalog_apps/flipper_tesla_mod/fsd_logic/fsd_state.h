@@ -194,7 +194,8 @@ typedef struct FSDState {
     bool autopark_ready; // byte3 bit0 DAS_autoparkReady
     bool autopark_parked; // byte3 bit1 DAS_autoParked
     bool autopark_waiting_brake; // byte3 bit2 DAS_autoparkWaitingForBrake
-    uint32_t autopark_bit_last_ms; // ms clock any autopark bit was last seen set
+    uint32_t
+        autopark_maneuver_last_ms; // ms clock a maneuver bit (autoParked / waitingForBrake) was last seen set
     uint8_t autopark_prev_ap_state; // das_ap_state at the previous fsd_autopark_update
     bool autopark_episode; // inside a detected Autopark episode (state 6)
     bool autopark_tx_block; // episode AND not confirmed driving -> pause every TX
