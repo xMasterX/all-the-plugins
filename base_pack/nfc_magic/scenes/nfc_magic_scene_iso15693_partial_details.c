@@ -21,8 +21,9 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
     // nothing above its cut, so the bound is inert there -- applied in both modes anyway, because a
     // rule that holds in one and is inert in the other beats a mode test.
     //
-    // Nothing at all on a card-lost wipe: a lifted card makes blocks that never answered look like
-    // refusals, and the poller documents those counters as the caller's to discard on that exit.
+    // Nothing at all on a card-lost run, wipe or clone: a lifted card makes blocks that never answered
+    // look like refusals, and the poller documents those counters as the caller's to discard on that
+    // exit.
     // Zero suppresses the list and has_block_list together, since both go through list_upto.
     const uint16_t list_upto = card_lost ? 0 :
                                instance->iso15693_result.pass_truncated ?
@@ -75,11 +76,15 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
         message, instance->iso15693_result.failed_bitmap, list_upto, 0);
     // Separate the caveats from whatever precedes them, but don't open with a blank line when there is
     // no block list above (the notes-only case).
-    if(instance->iso15693_result.pass_truncated) {
+    if(instance->iso15693_result.pass_truncated && !card_lost) {
         // The blocks above the cut are the ones the list above deliberately excludes, which is exactly
         // why they need saying here. This is also the only route to that fact on the UID-changed
         // screen, whose reason code pre-empts the partial one, and the only place either summary's
         // count can be qualified.
+        //
+        // Not on a card-lost run, which gets no list either. A lifted card makes every block after it
+        // time out, so on a long enough file the clock cuts the pass before the card is found gone,
+        // and this note would put the lift down to the time budget and the card's speed.
         if(furi_string_size(message) > 0) furi_string_push_back(message, '\n');
         // The cut index, never blocks_total: this is a claim about which blocks were TRIED, and
         // blocks_total is a COUNT, one past the highest block that answered. Below the cut it
@@ -148,14 +153,26 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
                         "UID not re-checked: the card did not answer after the field reset, so "
                         "whether the wipe changed the card's UID is unknown.");
     }
+    if(!wipe_mode && card_lost && instance->iso15693_result.uid_recheck) {
+        // The clone's counterpart, on the one route that leaves its re-read unanswered -- has_details
+        // in the write-fail scene says why a CardLost with uid_recheck is that route. uid_recheck alone
+        // is not enough: it stays set on the Success, Partial and Fail that an answer produces.
+        if(furi_string_size(message) > 0) furi_string_push_back(message, '\n');
+        furi_string_cat_str(
+            message,
+            "UID not re-checked: the clone sent writes to blocks 56/57, which on a gen1 card are its "
+            "UID, and the card stopped answering before the UID was read back, so whether it still "
+            "answers to the file's UID is unknown.");
+    }
     if(instance->iso15693_result.used_gen1 && instance->iso15693_result.gen1_blocks_skipped) {
         // Only where the file reached those blocks; see gen1_blocks_skipped.
         if(furi_string_size(message) > 0) furi_string_push_back(message, '\n');
         furi_string_cat_str(message, "gen1: 56/57/62/63 hold UID + unlock/commit, not file data.");
     }
-    if(instance->iso15693_result.identity_failed) {
+    if(instance->iso15693_result.identity_failed && !card_lost) {
         // The card rejected the standard WRITE AFI / WRITE DSFID, so those identity fields may not
-        // match the source.
+        // match the source. Not on a card-lost run: a card lifted before the read-back fails it too,
+        // and "rejected" would be false.
         if(furi_string_size(message) > 0) furi_string_push_back(message, '\n');
         furi_string_cat_str(message, "AFI/DSFID: card rejected the write.");
     }

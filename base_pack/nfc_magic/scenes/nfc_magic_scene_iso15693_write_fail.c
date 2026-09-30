@@ -87,16 +87,19 @@ static bool
     case NfcMagicIso15693WriteFailReasonWipeUidChanged:
         return result->failed_count > 0 || result->pass_truncated;
     case NfcMagicIso15693WriteFailReasonCardLost:
-        // Wipe only, and only where the identity check never answered: the run returns before
-        // Iso15693WriteStateVerifyWipe is entered, and Details is the only route to the note saying
-        // so. A clone has no identity check to skip, hence the mode test. The uid_verified term is
-        // DEFENSIVE, not load-bearing: the flag is set only inside Iso15693WriteStateVerifyWipe, and
-        // both of that state's exits report success_or_partial (the case body, and the activation-
-        // error path that tests verifying_wipe), so a CardLost result always carries it false and the
-        // term cannot currently bite. It is kept because this scene cannot enforce that invariant --
-        // it reads a result struct it did not fill -- and a poller that grew a CardLost exit from
-        // that state would need it.
-        return instance->iso15693_mode == NfcMagicIso15693ModeWipe && !result->uid_verified;
+        // Only where an identity check never answered, and Details is the only route to the note
+        // saying so. A wipe's run returns before Iso15693WriteStateVerifyWipe is entered. A clone's
+        // re-read (Iso15693WriteStateVerifyClone) is due only once its pass has sent a frame to 56/57,
+        // and every answer it gets ends the run as something other than CardLost, so uid_recheck here
+        // means the card left mid-pass or at the re-read without its UID being read back. The
+        // uid_verified term is DEFENSIVE, not load-bearing: the flag is set only inside
+        // Iso15693WriteStateVerifyWipe, and both of that state's exits report success_or_partial (the
+        // case body, and the activation-error path that tests verifying_wipe), so a CardLost result
+        // always carries it false and the term cannot currently bite. It is kept because this scene
+        // cannot enforce that invariant -- it reads a result struct it did not fill -- and a poller
+        // that grew a CardLost exit from that state would need it.
+        return instance->iso15693_mode == NfcMagicIso15693ModeWipe ? !result->uid_verified :
+                                                                     result->uid_recheck;
     default:
         return false;
     }

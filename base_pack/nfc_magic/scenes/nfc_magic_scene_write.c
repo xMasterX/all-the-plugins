@@ -188,6 +188,8 @@ static void
         // sequence written at blocks 56/57/62/63, and the card-lost screen is the only report the user
         // gets. Without this, gen1_attempted is stale and that damage goes unmentioned -- the same gap
         // the gen1-failure screen exists to close, on the path where the card left instead of refusing.
+        // A clone lost after its pass reached 56/57 needs it too, for the note that its UID was never
+        // read back (uid_recheck).
         iso15693_poller_get_result(instance->iso15693_poller, &instance->iso15693_result);
         view_dispatcher_send_custom_event(instance->view_dispatcher, NfcMagicCustomEventCardLost);
     } else if(event == Iso15693PollerEventNotGen2) {

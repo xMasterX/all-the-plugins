@@ -108,15 +108,14 @@
 #define ISO15693_MAGIC_BLK_UID_7654 (0x38U) // uid[7..4]
 #define ISO15693_MAGIC_BLK_UID_3210 (0x39U) // uid[3..0]
 
-// The same four as one list, because four places ask "is this a backdoor block?": the clone loop skips
-// them, its back-fill skips them again, the reported total deducts them, and the source inspection
-// reads them. One list, four callers: spelled out per caller the set would exist four times and could
-// disagree with itself in four ways. Membership only -- the gen1 write SEQUENCE is ordered and stays
-// written out at its call site, where the order is the point.
-// COUNT_OF rather than sizeof at the three loops below: sizeof is right only while the element type is
-// uint8_t, and this file already contemplates block indices above 255 elsewhere. Widen it to uint16_t
-// and sizeof(array) goes 4 -> 8 while the element count stays 4, so a sizeof-bounded loop would run
-// EIGHT iterations over a four-element array, touching indices 4..7 -- FOUR elements past the end.
+// The same four as one list, because several places ask "is this a backdoor block?": the clone loop
+// skips them, its back-fill skips them again, the reported total deducts them, a converted clone takes
+// their failures back, and the source inspection reads them. Spelled out per caller, the set would
+// exist once for each and could disagree with itself. Membership only -- the gen1 write SEQUENCE is
+// ordered and stays written out at its call site, where the order is the point.
+// COUNT_OF rather than sizeof at every loop over this list: sizeof is right only while the element
+// type is uint8_t, and this file already contemplates block indices above 255 elsewhere. Widened to
+// uint16_t, a sizeof-bounded loop would run eight iterations over four elements.
 static const uint8_t iso15693_poller_backdoor_blocks[] = {
     ISO15693_MAGIC_BLK_UID_7654,
     ISO15693_MAGIC_BLK_UID_3210,
@@ -322,6 +321,7 @@ typedef enum {
         // report NotGen2 and STOP so the scene can offer the gen1 opt-in (it is not sent from here)
     Iso15693WriteStateVerifyGen1, // verify the opt-in gen1 UID; on a match write the payload
     Iso15693WriteStateVerifyWipe, // the sweep is done: check the wipe didn't move the card's UID
+    Iso15693WriteStateVerifyClone, // a gen2-path clone sent writes to 56/57: re-read the UID first
 } Iso15693WriteState;
 
 struct Iso15693Poller {
@@ -348,8 +348,8 @@ struct Iso15693Poller {
     uint32_t activation_errors; // consecutive activation failures (no card) -> timeout
     Iso15693_3Data* clone_source; // kept apart from `data` so start_internal's reset cannot wipe it
     // Everything from here down to `callback` is this run's reporting state, and get_result copies
-    // it into an Iso15693PollerResult one assignment per field -- with three exceptions, each
-    // noted at its own field. THAT function is the mapping, and iso15693_poller.h owns what each
+    // it into an Iso15693PollerResult one assignment per field -- except where a field notes that it
+    // does not. THAT function is the mapping, and iso15693_poller.h owns what each
     // field means, so this side comments only what the header cannot know. The `clone_` prefix is
     // historical: a wipe reuses the same fields, which is why clone_blocks_total ends up holding a
     // wipe's measured block count.
@@ -367,6 +367,13 @@ struct Iso15693Poller {
     bool clone_used_gen1;
     bool clone_gen1_blocks_skipped;
     bool clone_gen1_data_lost;
+    // A frame went to 56/57 on the gen2 path, so the identity is re-read before the run reports -- see
+    // Iso15693WriteStateVerifyClone.
+    bool clone_uid_recheck;
+    // A write to 56/57 moved the UID to exactly what that write implies, so those addresses are
+    // registers and this is gen1 silicon -- whichever path the run took to get here. Run control:
+    // get_result does not report it.
+    bool uid_moved_by_write;
     bool clone_capacity_confirmed;
     // Two flags, one result field: get_result ORs them behind a mode gate. Both are decided by a GET
     // SYSTEM INFO read-back rather than by the write's return value -- see write_identity for why the
@@ -778,6 +785,7 @@ static void iso15693_poller_readdress(
     }
     FURI_LOG_W(TAG, "the card's UID moved to what the write implies; re-addressing");
     memcpy(instance->address_uid, uid, ISO15693_3_UID_SIZE);
+    instance->uid_moved_by_write = true;
 }
 
 // Did the block end up holding what we sent? The only question left on a card whose acknowledgement
@@ -859,9 +867,9 @@ static Iso15693_3Error iso15693_poller_write_block_retried(
 // poller never asks whether a bit is set -- only the report does, in another translation unit, through
 // nfc_magic_partial_details_any_index.
 //
-// Named rather than inline bit ops because both clears are the else-arm of a two-way decision whose
-// other arm leaves the provisional bit standing: a slip is `mark_failed` where `unmark_failed` belongs,
-// in a branch that reads correct. `|=` against `&= ~` differs by two characters and gives no signal.
+// Named rather than inline bit ops because a slip -- `mark_failed` where `unmark_failed` belongs --
+// reads correct in any branch that takes a mark back: `|=` against `&= ~` differs by two characters
+// and gives no signal.
 static void iso15693_poller_mark_failed(Iso15693Poller* instance, uint16_t block) {
     instance->clone_failed_bitmap[block / 8] |= (uint8_t)(1u << (block % 8));
 }
@@ -913,6 +921,53 @@ static bool iso15693_poller_cut_pass_if_expired(
     instance->pass_truncated = true;
     instance->pass_cut_block = block;
     return true;
+}
+
+// The card turned out to be gen1 after the pass had already fed the file into its UID registers. Put
+// the identity back and make the accounting say what a gen1 clone's would have said.
+//
+// The repair writes the whole gen1 sequence, unlock and commit included -- and the gen1 opt-in
+// screen was never shown, because this run went down the gen2 path. That consent exists to warn that
+// gen1 writes destroy four blocks of user data on a tag that is not gen1. This card has just proved it
+// IS gen1, by moving its UID to the value our write implied, so 56/57 are registers -- and on every
+// gen1 chip measured 62/63 are too, refusing writes and answering no read -- rather than anyone's
+// data, and the warning's premise does not hold. Leaving the card answering to bytes lifted out of
+// the file would be the worse outcome by a distance.
+//
+// backdoor_failed and backdoor_over_capacity are the failures the pass recorded against the four
+// before the UID moved, split by the count it put each in. Both counts are needed, not one: a
+// register answers no read, so the pass files an empty one as past capacity rather than as a failure.
+static void iso15693_poller_finish_conversion(
+    Iso15693Poller* instance,
+    Iso15693_3Poller* iso_poller,
+    uint16_t source_count,
+    uint16_t backdoor_failed,
+    uint16_t backdoor_over_capacity) {
+    instance->clone_used_gen1 = true;
+
+    // The four are registers here, so the file's data at those addresses was never storable -- exactly
+    // as on the gen1 path, and reported the same way. Deduct them from the total and take back every
+    // failure recorded against them, from the count it went into, so the counts match what a gen1
+    // clone would have produced.
+    const uint16_t skipped = iso15693_poller_backdoor_blocks_below(source_count);
+    for(size_t i = 0; i < COUNT_OF(iso15693_poller_backdoor_blocks); i++) {
+        if(iso15693_poller_backdoor_blocks[i] < source_count) {
+            iso15693_poller_unmark_failed(instance, iso15693_poller_backdoor_blocks[i]);
+        }
+    }
+    instance->clone_failed_count = (uint16_t)(instance->clone_failed_count - backdoor_failed);
+    instance->clone_over_capacity =
+        (uint16_t)(instance->clone_over_capacity - backdoor_over_capacity);
+    instance->clone_gen1_blocks_skipped = skipped > 0;
+    instance->clone_gen1_data_lost =
+        skipped > 0 && iso15693_poller_source_uses_gen1_blocks(instance->clone_source);
+    instance->clone_blocks_total = (uint16_t)(instance->clone_blocks_total - skipped);
+
+    // Nothing on screen says the identity was disturbed and put back, deliberately. What the user
+    // needs is what the CARD is, and the run now reports exactly as a gen1 clone of this file would.
+    // The rest is how we got here.
+    iso15693_poller_send_backdoor_uid_gen1(iso_poller, instance->target_uid);
+    memcpy(instance->address_uid, instance->target_uid, ISO15693_3_UID_SIZE);
 }
 
 // Clone mode: write every data block from the source image with the standard ISO15693 WRITE BLOCK.
@@ -988,6 +1043,18 @@ static bool iso15693_poller_write_source_blocks(
     // Do NOT skip blocks locked in the SOURCE image: the source's lock bits describe the ORIGINAL
     // card, not the magic target (which is writable regardless), and locked blocks are exactly where
     // real tags keep provisioned data. Attempt every block.
+    //
+    // skip_backdoor is the CALLER's decision, made before the card had a chance to contradict it. A
+    // write landing in 56/57 and moving the UID contradicts it, so the run switches here and repairs
+    // the identity afterwards.
+    bool skipping = skip_backdoor;
+    bool converted = false;
+    bool counted_56 = false; // converted at 57, so `done` counted 56 too -- see the conversion
+    bool uid_block_sent = false; // a frame went to 56/57, which on gen1 silicon is the UID
+    // Failures recorded against the four before the UID moved, by the count each went into -- what a
+    // conversion has to take back. See finish_conversion for why both are needed.
+    uint16_t backdoor_failed = 0;
+    uint16_t backdoor_over_capacity = 0;
     bool wrote_any = false; // at least one block accepted a write
     bool wrote_above_failure = false; // a block wrote ABOVE one that failed -> not a capacity tail
     bool any_failure_answered =
@@ -1012,7 +1079,7 @@ static bool iso15693_poller_write_source_blocks(
             FURI_LOG_W(TAG, "clone: time limit reached at block %u of %u", block, source_count);
             break;
         }
-        if(skip_backdoor && iso15693_poller_is_backdoor_block(block)) {
+        if(skipping && iso15693_poller_is_backdoor_block(block)) {
             continue; // gen1 owns these; the gen1 UID sequence already wrote them
         }
         // Before the write, so a clean run reports progress too -- the success path below continues
@@ -1021,10 +1088,39 @@ static bool iso15693_poller_write_source_blocks(
         const uint8_t* block_data = iso15693_3_get_block_data(source, block);
         const Iso15693_3Error error = iso15693_poller_write_block_retried(
             instance, iso_poller, block_data, (uint8_t)block, block_size);
+        if(iso15693_poller_is_uid_block(block)) uid_block_sent = true;
+        // A write to 56/57 moved the UID to what that write implies, on a run that reached them
+        // because the gen2 verify passed. So this is gen1 silicon that the gen2 path was taken on --
+        // possible whenever the card already wore the target UID, since then the verify proves only
+        // that the UID matches, not that anything magic happened. From here the run is a gen1 clone:
+        // stop feeding the file into registers, and repair the identity after the pass. Decided
+        // before the result is read: the UID moving is what shows the write landed, answered or not.
+        const bool moved_uid = !skipping && instance->uid_moved_by_write;
+        if(moved_uid) {
+            FURI_LOG_W(TAG, "clone: 56/57 are UID registers here; continuing as a gen1 clone");
+            skipping = true;
+            converted = true;
+            // That write went to a register, not to memory, answered or not, so it is neither a block
+            // written nor a failure. Counted as a success it would suppress the capacity finding: a
+            // 28-block card fed a 64-block source is too small whether or not 56 happens to answer.
+            // Counted as a failure -- its acknowledgement lost, and the retries sent to the address the
+            // card has just left -- it would put an empty block in the over-capacity count and make
+            // every later success look like memory above a failure. Nor is it one of the blocks the
+            // total counts once finish_conversion deducts the four, so it comes off `done` too. At 57
+            // so does 56, counted as memory before the UID moved -- after the loop, though: the figure
+            // reported at 57 already includes it, and taking it back here would send the next one
+            // backwards.
+            done--;
+            counted_56 = (block == ISO15693_MAGIC_BLK_UID_3210);
+            continue;
+        }
         if(error == Iso15693_3ErrorNone) {
             // A success ABOVE an earlier failure means the failures are not a run at the top, so
-            // they cannot be the card's capacity edge.
-            if(instance->clone_failed_count + instance->clone_over_capacity > 0) {
+            // they cannot be the card's capacity edge. Not one recorded at the four before the UID
+            // moved, though: finish_conversion takes those back, since they were registers all along.
+            const uint16_t taken_back =
+                converted ? (uint16_t)(backdoor_failed + backdoor_over_capacity) : 0;
+            if(instance->clone_failed_count + instance->clone_over_capacity > taken_back) {
                 wrote_above_failure = true;
             }
             wrote_any = true;
@@ -1064,10 +1160,13 @@ static bool iso15693_poller_write_source_blocks(
             any_failure_answered = true;
         }
 
+        const bool backdoor = iso15693_poller_is_backdoor_block(block);
         if(non_empty || !block_absent) {
             instance->clone_failed_count++;
+            if(backdoor) backdoor_failed++;
         } else {
             instance->clone_over_capacity++;
+            if(backdoor) backdoor_over_capacity++;
         }
     }
     // Blocks the clock cut off were never attempted, so nothing has recorded them. Left alone they
@@ -1079,18 +1178,20 @@ static bool iso15693_poller_write_source_blocks(
     // reported as CardLost, whose counters the caller discards. So the work is done either way and is
     // simply thrown away on that path.
     for(; block < source_count; block++) {
-        if(skip_backdoor && iso15693_poller_is_backdoor_block(block)) {
+        if(skipping && iso15693_poller_is_backdoor_block(block)) {
             continue;
         }
         iso15693_poller_mark_failed(instance, block);
         instance->clone_failed_count++;
     }
 
-    // `done` counts blocks ATTEMPTED, so this lands on 100% for a pass that ran to the end and on
-    // wherever the clock stopped it for one that did not. Deliberate: the popup's last frame is the
-    // last honest thing it can say, and a cut pass jumping to 100% would contradict the screen that
-    // follows it.
-    iso15693_poller_report_progress(instance, done, total);
+    if(converted) {
+        iso15693_poller_finish_conversion(
+            instance, iso_poller, source_count, backdoor_failed, backdoor_over_capacity);
+    }
+    instance->clone_uid_recheck = uid_block_sent;
+    // The popup's last frame is not sent from here -- see iso15693_poller_finish_progress.
+    instance->clone_blocks_done = counted_56 ? (uint16_t)(done - 1) : done;
 
     // Second half of the capacity test, answering a different question from the first. The per-block
     // read-back above establishes each excused block is ABSENT; this establishes they form a contiguous
@@ -1572,6 +1673,20 @@ static bool iso15693_poller_card_still_present(Iso15693_3Poller* iso_poller) {
     return iso15693_poller_verify_inventory(iso_poller, uid) == Iso15693_3ErrorNone;
 }
 
+// A clone's last progress frame, sent only once the card work is over -- after
+// Iso15693WriteStateVerifyClone where that runs. Sent any earlier, the popup reads 100% while the card
+// is still being asked things, which is what invites the lift that loses the re-read.
+//
+// The numerator is the blocks ATTEMPTED only on a pass the clock cut: there the popup's last frame is
+// the last honest thing it can say, and a cut pass jumping to 100% would contradict the screen that
+// follows it. A pass that ran to the end attempted every block its total counts, so it shows the
+// total.
+static void iso15693_poller_finish_progress(Iso15693Poller* instance) {
+    const uint16_t total = instance->clone_blocks_total;
+    iso15693_poller_report_progress(
+        instance, instance->pass_truncated ? instance->clone_blocks_done : total, total);
+}
+
 // The tail both UID verifies share, once the UID has read back as the target. It exists because the two
 // were byte-identical apart from skip_backdoor, and the call sites sit ~80 lines apart -- so a change to
 // the gen2 arm could silently fail to reach the gen1 one. That seam is the reason, not the nine lines.
@@ -1592,6 +1707,11 @@ static NfcCommand iso15693_poller_finish_write(
             iso15693_poller_report(instance, Iso15693PollerEventCardLost);
             return NfcCommandStop;
         }
+        if(instance->clone_uid_recheck) {
+            instance->write_state = Iso15693WriteStateVerifyClone;
+            return NfcCommandReset;
+        }
+        iso15693_poller_finish_progress(instance);
     }
     iso15693_poller_report(instance, iso15693_poller_success_or_partial(instance));
     return NfcCommandStop;
@@ -1768,13 +1888,14 @@ static NfcCommand
             return NfcCommandStop;
         }
         if(memcmp(readback, instance->target_uid, ISO15693_3_UID_SIZE) == 0) {
-            // The UID now reads back as the target, so the card accepted a gen2 magic command: write
-            // the clone payload (AFI/DSFID + data blocks). The gen2 UID lives in a separate backdoor
-            // register space, so data-block writes can't disturb it. A bare Write-UID has no payload.
-            // Strictly this proves "the UID is now the target", not "the card is magic": if the tag
-            // presented already had that UID the comparison passes without the write having done
-            // anything. In practice that tag is the one the source was read from, so the payload it
-            // then receives is the data it already holds.
+            // The UID now reads back as the target, so the card accepted a gen2 magic command:
+            // write the clone payload (AFI/DSFID + data blocks). The gen2 UID lives in a separate
+            // backdoor register space, so data-block writes can't disturb it. A bare Write-UID has
+            // no payload. Strictly this proves "the UID is now the target", not "the card is
+            // magic": if the tag presented already had that UID the comparison passes without the
+            // write having done anything. That tag may be gen1 silicon, which the data pass detects
+            // at 56/57 and repairs (see iso15693_poller_write_source_blocks), or a card re-cloned
+            // from a different image with the same UID; either way the payload is the file.
             return iso15693_poller_finish_write(instance, iso_poller, false);
         }
         if(memcmp(readback, instance->original_uid, ISO15693_3_UID_SIZE) == 0) {
@@ -1855,10 +1976,36 @@ static NfcCommand
         // Write-UID has no payload.
         return iso15693_poller_finish_write(instance, iso_poller, true);
     }
+
+    case Iso15693WriteStateVerifyClone: {
+        // The data pass sent frames to 56/57 on the gen2 path. On gen2 silicon those are memory and
+        // the UID cannot have moved. On gen1 silicon they are the UID, and whether the run noticed
+        // rests on an inventory that can miss, or be answered by a second tag in the field (#251),
+        // and on a repair whose frames each go out once. So before anything is reported, the identity
+        // is read back from a cleanly re-activated card: the target is the only answer under which
+        // the run's own report is true.
+        if(iso15693_poller_verify_inventory(iso_poller, readback) != Iso15693_3ErrorNone) {
+            // Nothing confirmed, so nothing to report but the lost card. clone_uid_recheck still
+            // stands, and it is what tells that screen the UID was never read back.
+            iso15693_poller_report(instance, Iso15693PollerEventCardLost);
+            return NfcCommandStop;
+        }
+        if(memcmp(readback, instance->target_uid, ISO15693_3_UID_SIZE) != 0) {
+            // Answering to a UID nobody asked for -- most likely one made of the file's bytes. Printed
+            // for the reason VerifyGen2 prints one: it is how the user finds the card again.
+            instance->uid_unexpected = true;
+            memcpy(instance->uid_readback, readback, ISO15693_3_UID_SIZE);
+            iso15693_poller_report(instance, Iso15693PollerEventFail);
+            return NfcCommandStop;
+        }
+        iso15693_poller_finish_progress(instance);
+        iso15693_poller_report(instance, iso15693_poller_success_or_partial(instance));
+        return NfcCommandStop;
+    }
     }
     // No default above, so -Wswitch (in -Wall, with -Werror) makes a forgotten state a build error.
-    // A default sharing an arm would run that arm silently instead, and the worst of the four to
-    // land in by accident is VerifyGen1: it sets clone_used_gen1 and writes the clone payload.
+    // A default sharing an arm would run that arm silently instead, and the worst state to land in by
+    // accident is VerifyGen1: it sets clone_used_gen1 and writes the clone payload.
     furi_crash("iso15693: unreachable write state");
 }
 
@@ -1986,6 +2133,8 @@ static void iso15693_poller_start_internal(
     instance->clone_used_gen1 = false;
     instance->clone_gen1_blocks_skipped = false;
     instance->clone_gen1_data_lost = false;
+    instance->clone_uid_recheck = false;
+    instance->uid_moved_by_write = false;
     instance->clone_capacity_confirmed = false;
     instance->clone_blocks_done = 0;
     instance->progress_step = UINT8_MAX; // no band emitted yet, so the first call fires
@@ -2082,6 +2231,7 @@ void iso15693_poller_get_result(Iso15693Poller* instance, Iso15693PollerResult* 
     result->pass_truncated = instance->pass_truncated;
     result->cut_block = instance->pass_cut_block;
     result->uid_verified = instance->uid_verified;
+    result->uid_recheck = instance->clone_uid_recheck;
     memcpy(result->failed_bitmap, instance->clone_failed_bitmap, sizeof(result->failed_bitmap));
     result->used_gen1 = instance->clone_used_gen1;
     result->gen1_blocks_skipped = instance->clone_gen1_blocks_skipped;

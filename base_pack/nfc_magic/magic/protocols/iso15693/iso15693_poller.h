@@ -54,6 +54,8 @@ typedef enum {
         // Write UID asked for the UID the card already has. Those are NOT the same thing to a user --
         // read Iso15693PollerResult (uid_unexpected / gen1_attempted / uid_unverifiable) to tell them
         // apart before picking a message.
+        // A clone's re-read after a pass that reached 56/57 is a Fail too, on a UID other than the
+        // target (uid_unexpected).
     Iso15693PollerEventCardLost, // no card in the field, or removed before the operation finished.
         // Covers a card lifted DURING a block pass, which makes every remaining block fail and so is
         // indistinguishable from the card's capacity ending there: both loops re-check that the card
@@ -192,6 +194,11 @@ typedef struct {
     // did not come back, or did not answer the inventory -- so uid_changed being false is the absence of
     // an observation rather than a clean result, and a caller reporting success should say so.
     bool uid_verified;
+    // Clone only: the data pass sent a frame to block 56 or 57, which on a gen1 card IS the UID, so the
+    // run re-reads the UID before it reports. Every answer to that re-read ends the run as Success,
+    // Partial or Fail, so on CardLost this means it never answered -- the card left mid-pass or at the
+    // re-read -- and whether the card still answers to the target is unknown.
+    bool uid_recheck;
     // Blocks that failed and count as a real problem: they held source data (lost), or were empty
     // failures that weren't a clean top-of-card tail. -> Partial. In wipe mode this is every block the
     // report holds against the card, which is more than the ones that still held data: interior blocks
@@ -236,6 +243,7 @@ typedef struct {
     // Fail: the gen2 backdoor moved the UID to neither the original nor the target. That PROVES the
     // card is magic -- an inert tag cannot change its UID -- so it is not "not a magic tag".
     // uid_readback holds what the card answered with, which is the only way back to it.
+    // A clone's re-read after a pass that reached 56/57 sets it too, on a UID other than the target.
     bool uid_unexpected;
     uint8_t uid_readback[ISO15693_3_UID_SIZE];
     // This run SENT the destructive gen1 UID sequence, so the gen1 registers have had
