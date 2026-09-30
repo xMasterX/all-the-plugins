@@ -179,18 +179,6 @@ static bool emulate_hitag2_recovered_yes(FlipperFormat* flipper_format) {
     return false;
 }
 
-static void emulate_request_nav_pop(ProtoPirateApp* app) {
-    app->emulate_nav_pending = EMULATE_NAV_POP;
-}
-
-static void emulate_request_nav_after_exit(ProtoPirateApp* app) {
-    if(scene_manager_has_previous_scene(app->scene_manager, ProtoPirateSceneStart)) {
-        app->emulate_nav_pending = EMULATE_NAV_POP;
-    } else {
-        app->emulate_nav_pending = EMULATE_NAV_STOP_APP;
-    }
-}
-
 static bool emulate_prompt_hitag2_key(ProtoPirateApp* app, EmulateContext* ctx);
 
 static void emulate_hitag2_key_input_callback(void* context) {
@@ -211,7 +199,8 @@ static void emulate_hitag2_key_input_callback(void* context) {
 
     if(!emulate_write_hitag2_key(ctx->flipper_format, key)) {
         notification_message(app->notifications, &sequence_error);
-        emulate_request_nav_pop(app);
+        view_dispatcher_send_custom_event(
+            app->view_dispatcher, ProtoPirateCustomEventPluginNavigateBack);
         return;
     }
 
@@ -1080,7 +1069,8 @@ static void plugin_on_enter(void* context) {
 
     if(!g_host_api->ensure_view_about || !g_host_api->ensure_view_about(app)) {
         notification_message(app->notifications, &sequence_error);
-        emulate_request_nav_pop(app);
+        view_dispatcher_send_custom_event(
+            app->view_dispatcher, ProtoPirateCustomEventPluginNavigateBack);
         return;
     }
 
@@ -1101,7 +1091,8 @@ static void plugin_on_enter(void* context) {
         if(!g_host_api->radio_init || !g_host_api->radio_init(app)) {
             FURI_LOG_E(TAG, "Failed to initialize radio for emulate scene");
             notification_message(app->notifications, &sequence_error);
-            emulate_request_nav_pop(app);
+            view_dispatcher_send_custom_event(
+                app->view_dispatcher, ProtoPirateCustomEventPluginNavigateBack);
             return;
         }
     }
@@ -1109,14 +1100,16 @@ static void plugin_on_enter(void* context) {
     if(!emulate_radio_ready(app)) {
         FURI_LOG_E(TAG, "Radio still incomplete after emulate init");
         notification_message(app->notifications, &sequence_error);
-        emulate_request_nav_pop(app);
+        view_dispatcher_send_custom_event(
+            app->view_dispatcher, ProtoPirateCustomEventPluginNavigateBack);
         return;
     }
 
     emulate_context = malloc(sizeof(EmulateContext));
     if(!emulate_context) {
         FURI_LOG_E(TAG, "Failed to allocate emulate context");
-        emulate_request_nav_pop(app);
+        view_dispatcher_send_custom_event(
+            app->view_dispatcher, ProtoPirateCustomEventPluginNavigateBack);
         return;
     }
     memset(emulate_context, 0, sizeof(EmulateContext));
@@ -1126,7 +1119,8 @@ static void plugin_on_enter(void* context) {
     if(!ctx->protocol_name) {
         FURI_LOG_E(TAG, "Failed to allocate protocol name string");
         emulate_context_free();
-        emulate_request_nav_pop(app);
+        view_dispatcher_send_custom_event(
+            app->view_dispatcher, ProtoPirateCustomEventPluginNavigateBack);
         return;
     }
 
@@ -1134,7 +1128,8 @@ static void plugin_on_enter(void* context) {
         FURI_LOG_E(TAG, "No file path set");
         emulate_context_free();
         notification_message(app->notifications, &sequence_error);
-        emulate_request_nav_pop(app);
+        view_dispatcher_send_custom_event(
+            app->view_dispatcher, ProtoPirateCustomEventPluginNavigateBack);
         return;
     }
 
@@ -1143,7 +1138,8 @@ static void plugin_on_enter(void* context) {
         FURI_LOG_E(TAG, "Failed to open storage");
         emulate_context_free();
         notification_message(app->notifications, &sequence_error);
-        emulate_request_nav_pop(app);
+        view_dispatcher_send_custom_event(
+            app->view_dispatcher, ProtoPirateCustomEventPluginNavigateBack);
         return;
     }
 
@@ -1152,7 +1148,8 @@ static void plugin_on_enter(void* context) {
         FURI_LOG_E(TAG, "Failed to allocate FlipperFormat");
         emulate_context_free();
         notification_message(app->notifications, &sequence_error);
-        emulate_request_nav_pop(app);
+        view_dispatcher_send_custom_event(
+            app->view_dispatcher, ProtoPirateCustomEventPluginNavigateBack);
         return;
     }
 
@@ -1160,7 +1157,8 @@ static void plugin_on_enter(void* context) {
         FURI_LOG_E(TAG, "Failed to open file: %s", app->loaded_file_path);
         emulate_context_free();
         notification_message(app->notifications, &sequence_error);
-        emulate_request_nav_pop(app);
+        view_dispatcher_send_custom_event(
+            app->view_dispatcher, ProtoPirateCustomEventPluginNavigateBack);
         return;
     }
 
@@ -1313,7 +1311,8 @@ static void plugin_on_enter(void* context) {
             FURI_LOG_E(TAG, "Failed to show HITAG2 key input");
             notification_message(app->notifications, &sequence_error);
             emulate_context_free();
-            emulate_request_nav_pop(app);
+            view_dispatcher_send_custom_event(
+                app->view_dispatcher, ProtoPirateCustomEventPluginNavigateBack);
         }
         return;
     }
@@ -1474,7 +1473,13 @@ static bool plugin_on_event(void* context, SceneManagerEvent event) {
                 }
             }
 
-            emulate_request_nav_after_exit(app);
+            if(!scene_manager_has_previous_scene(app->scene_manager, ProtoPirateSceneStart)) {
+                view_dispatcher_send_custom_event(
+                    app->view_dispatcher, ProtoPirateCustomEventPluginNavigateStopApp);
+            } else {
+                view_dispatcher_send_custom_event(
+                    app->view_dispatcher, ProtoPirateCustomEventPluginNavigateBack);
+            }
             consumed = true;
             break;
         }

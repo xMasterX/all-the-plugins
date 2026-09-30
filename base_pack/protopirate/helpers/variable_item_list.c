@@ -1,3 +1,6 @@
+#include "../defines.h"
+
+#ifdef ENABLE_MODELS_DATABASE
 #include "helpers/variable_item_list.h"
 #include <gui/elements.h>
 #include <gui/canvas.h>
@@ -639,3 +642,4 @@ void* variable_item_get_context(VariableItem* item) {
     furi_check(item);
     return item->context;
 }
+#endif

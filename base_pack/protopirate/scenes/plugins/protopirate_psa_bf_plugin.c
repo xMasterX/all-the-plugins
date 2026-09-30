@@ -8,6 +8,8 @@
 
 #include <gui/modules/widget.h>
 #include <gui/modules/widget_elements/widget_element.h>
+#include <lib/flipper_application/flipper_application.h>
+
 #ifdef PROTOPIRATE_PSA_BF_PLUGIN_BUILD
 #include "pp_bf_icons.h"
 #else

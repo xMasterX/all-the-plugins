@@ -92,7 +92,6 @@ bool protopirate_scene_start_on_event(void* context, SceneManagerEvent event) {
 
     if(event.type == SceneManagerEventTypeCustom) {
         scene_manager_set_scene_state(app->scene_manager, ProtoPirateSceneStart, event.event);
-        FURI_LOG_I(TAG, "Suppressing Charging While in a scene.");
         if(event.event == SubmenuIndexProtoPirateAbout) {
             scene_manager_next_scene(app->scene_manager, ProtoPirateSceneAbout);
             consumed = true;
@@ -128,7 +127,6 @@ bool protopirate_scene_start_on_event(void* context, SceneManagerEvent event) {
 }
 
 void protopirate_scene_start_on_exit(void* context) {
-    furi_check(context);
     ProtoPirateApp* app = context;
     submenu_reset(app->submenu);
 }

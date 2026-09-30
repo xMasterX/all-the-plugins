@@ -4,7 +4,6 @@
 #include "../protocols/protocols_common.h"
 #include "../scenes/plugins/protopirate_psa_bf_plugin.h"
 
-#include <loader/firmware_api/firmware_api.h>
 #include <notification/notification_messages.h>
 
 #define TAG "PPPsaBfHost"
@@ -114,7 +113,11 @@ static const ProtoPiratePsaBfHostApi protopirate_psa_bf_host_api = {
 };
 
 bool protopirate_psa_bf_plugin_ensure_loaded(ProtoPirateApp* app) {
-    if(shared_plugin_load(app, ProtoPirateSharedPluginsPSABruteforce, NULL)) {
+    if(shared_plugin_load(
+           (void**)&app->psa_bf_plugin_flipper_application,
+           (const void**)&app->psa_bf_plugin,
+           ProtoPirateSharedPluginsPSABruteforce,
+           NULL)) {
         app->psa_bf_plugin->set_host_api(&protopirate_psa_bf_host_api);
         return true;
     } else {
@@ -127,7 +130,9 @@ void protopirate_psa_bf_plugin_unload_if_idle(ProtoPirateApp* app) {
        app->psa_bf_plugin->is_running(app)) {
         return;
     }
-    shared_plugin_unload(app, ProtoPirateSharedPluginsPSABruteforce);
+
+    shared_plugin_unload(
+        (void**)&app->psa_bf_plugin_flipper_application, (const void**)&app->psa_bf_plugin);
 }
 
 void protopirate_psa_bf_context_release(ProtoPirateApp* app) {
@@ -135,5 +140,6 @@ void protopirate_psa_bf_context_release(ProtoPirateApp* app) {
     if(app->psa_bf_plugin && app->psa_bf_plugin->context_release) {
         app->psa_bf_plugin->context_release(app);
     }
-    shared_plugin_unload(app, ProtoPirateSharedPluginsPSABruteforce);
+    shared_plugin_unload(
+        (void**)&app->psa_bf_plugin_flipper_application, (const void**)&app->psa_bf_plugin);
 }

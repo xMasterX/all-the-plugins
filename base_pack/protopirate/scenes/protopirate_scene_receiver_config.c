@@ -11,7 +11,11 @@ static const ProtoPirateConfigSceneHostApi protopirate_config_scene_host_api = {
 void protopirate_scene_receiver_config_on_enter(void* context) {
     ProtoPirateApp* app = context;
 
-    if(!shared_plugin_load(app, ProtoPirateSharedPluginsConfig, NULL)) {
+    if(!shared_plugin_load(
+           (void**)&app->plugin_flipper_application,
+           (const void**)&app->config_plugin,
+           ProtoPirateSharedPluginsConfig,
+           NULL)) {
         notification_message(app->notifications, &sequence_error);
         scene_manager_previous_scene(app->scene_manager);
         return;
@@ -39,6 +43,6 @@ bool protopirate_scene_receiver_config_on_event(void* context, SceneManagerEvent
 
 void protopirate_scene_receiver_config_on_exit(void* context) {
     ProtoPirateApp* app = context;
-
-    shared_plugin_unload(app, ProtoPirateSharedPluginsConfig);
+    shared_plugin_unload(
+        (void**)&app->plugin_flipper_application, (const void**)&app->config_plugin);
 }

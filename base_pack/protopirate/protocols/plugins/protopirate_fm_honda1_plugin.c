@@ -1,6 +1,7 @@
 #include "../protopirate_protocol_plugins.h"
 #include "../protocols_common.h"
 #include "../honda_static.h"
+#include <lib/flipper_application/flipper_application.h>
 
 static const SubGhzProtocol* const protopirate_protocol_registry_fm_honda1_items[] = {
     &honda_static_protocol,

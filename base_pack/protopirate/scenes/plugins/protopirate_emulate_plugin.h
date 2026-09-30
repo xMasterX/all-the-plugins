@@ -3,7 +3,6 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <lib/flipper_application/flipper_application.h>
 #include <gui/scene_manager.h>
 
 #define PROTOPIRATE_EMULATE_PLUGIN_APP_ID      "pp_emulate"

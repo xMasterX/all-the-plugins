@@ -1,6 +1,7 @@
 #include "../protopirate_protocol_plugins.h"
 #include "../protocols_common.h"
 #include "../vag.h"
+#include <lib/flipper_application/flipper_application.h>
 
 static const SubGhzProtocol* const protopirate_protocol_registry_am_vag_items[] = {
     &vag_protocol,

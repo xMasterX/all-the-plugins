@@ -4,6 +4,7 @@
 #include "../ford_v2.h"
 #include "../ford_v3.h"
 #include "../honda_v2.h"
+#include <lib/flipper_application/flipper_application.h>
 
 static const SubGhzProtocol* const protopirate_protocol_registry_fm_f4_items[] = {
     &ford_protocol_v1,

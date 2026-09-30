@@ -2,7 +2,6 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <lib/flipper_application/flipper_application.h>
 #include <gui/scene_manager.h>
 #include <flipper_format/flipper_format.h>
 

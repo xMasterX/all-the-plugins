@@ -47,8 +47,12 @@ void plugin_protopirate_scene_saved_info_on_enter(void* context) {
 
     if(!g_saved_info_scene_host_api->ensure_widget(app)) {
         notification_message(app->notifications, &sequence_error);
-        view_dispatcher_send_custom_event(
-            app->view_dispatcher, ProtoPirateCustomEventSavedInfoExit);
+        if(!scene_manager_has_previous_scene(app->scene_manager, ProtoPirateSceneStart)) {
+            view_dispatcher_send_custom_event(
+                app->view_dispatcher, ProtoPirateCustomEventPluginNavigateStopApp);
+        } else
+            view_dispatcher_send_custom_event(
+                app->view_dispatcher, ProtoPirateCustomEventPluginNavigateBack);
         return;
     }
 
@@ -285,9 +289,16 @@ bool plugin_protopirate_scene_saved_info_on_event(void* context, SceneManagerEve
             consumed = true;
         }
     } else if(event.type == SceneManagerEventTypeBack) {
-        return (
-            app->psa_bf_plugin && app->psa_bf_plugin->is_running &&
-            app->psa_bf_plugin->on_scene_event(app, ProtoPiratePsaBfContextReceiverInfo, event));
+        if(app->psa_bf_plugin && app->psa_bf_plugin->is_running &&
+           app->psa_bf_plugin->on_scene_event(app, ProtoPiratePsaBfContextReceiverInfo, event)) {
+            consumed = true;
+        } else {
+            if(!scene_manager_has_previous_scene(app->scene_manager, ProtoPirateSceneStart)) {
+                view_dispatcher_send_custom_event(
+                    app->view_dispatcher, ProtoPirateCustomEventPluginNavigateStopApp);
+                consumed = true;
+            }
+        }
     } else if(event.type == SceneManagerEventTypeCustom) {
         if(event.event == ProtoPirateCustomEventSavedInfoDelete) {
             FURI_LOG_I(TAG, "Delete requested");
@@ -312,8 +323,13 @@ bool plugin_protopirate_scene_saved_info_on_event(void* context, SceneManagerEve
                     g_saved_info_scene_host_api->storage_delete_file(app->loaded_file_path);
                     notification_message(app->notifications, &sequence_semi_success);
 
-                    view_dispatcher_send_custom_event(
-                        app->view_dispatcher, ProtoPirateCustomEventSavedInfoExit);
+                    if(!scene_manager_has_previous_scene(
+                           app->scene_manager, ProtoPirateSceneStart)) {
+                        view_dispatcher_send_custom_event(
+                            app->view_dispatcher, ProtoPirateCustomEventPluginNavigateStopApp);
+                    } else
+                        view_dispatcher_send_custom_event(
+                            app->view_dispatcher, ProtoPirateCustomEventPluginNavigateBack);
                 }
             }
             consumed = true;
@@ -336,7 +352,7 @@ bool plugin_protopirate_scene_saved_info_on_event(void* context, SceneManagerEve
 
             //Send custom event back to the scene, so it can start emulate for us and avoid the crashes.
             view_dispatcher_send_custom_event(
-                app->view_dispatcher, ProtoPirateCustomEventSavedInfoEmulateDelayedStart);
+                app->view_dispatcher, ProtoPirateCustomEventPluginNavigateEmulate);
 
             consumed = true;
         }

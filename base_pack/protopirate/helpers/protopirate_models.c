@@ -1,8 +1,9 @@
 #include "protopirate_models.h"
+#ifdef ENABLE_MODELS_DATABASE
 
 #define TAG "PPModels"
 
-#define PROTOPIRATE_MODELS_FILE APP_ASSETS_PATH("models.txt")
+#define PROTOPIRATE_MODELS_FILE APP_ASSETS_PATH("models_db/models.txt")
 
 //Models File Format.
 #define MODELS_FILE_HEADER              "ProtoPirate Car Models Database"
@@ -294,3 +295,4 @@ uint16_t car_model_get_count(void) {
     //Finished, return the count or 0 if error.
     return (uint16_t)model_count;
 }
+#endif

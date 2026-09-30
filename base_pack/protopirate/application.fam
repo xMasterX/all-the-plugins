@@ -14,6 +14,7 @@ def ProtoPirateDefineEnabled(name, app_manifest_path=app_manifest_path):
 
 _ENABLE_TIMING_TUNER = ProtoPirateDefineEnabled("ENABLE_TIMING_TUNER_SCENE")
 _ENABLE_EMULATE = ProtoPirateDefineEnabled("ENABLE_EMULATE_FEATURE")
+_ENABLE_MODELS_DATABASE = ProtoPirateDefineEnabled("ENABLE_MODELS_DATABASE")
 
 _MAIN_APP_SOURCES = [
     "*.c*",
@@ -43,6 +44,12 @@ if not _ENABLE_EMULATE:
         "!protopirate_scene_emulate.c",
     ]
 
+
+if _ENABLE_MODELS_DATABASE:
+    _ASSETS="assets"
+else:
+    _ASSETS="assets/keystore"
+
 App(
     appid="proto_pirate",
     name="ProtoPirate",
@@ -52,11 +59,11 @@ App(
     requires=["gui"],
     stack_size=2 * 1024,
     fap_description="Decode car key fob signals from Sub-GHz",
-    fap_version="3.6",
+    fap_version="3.7",
     fap_icon="images/protopirate_10px.png",
     fap_category="Sub-GHz",
     fap_icon_assets="images",
-    fap_file_assets="keystore",
+    fap_file_assets=_ASSETS,
     cdefines=["PROTOPIRATE_PROTOCOL_RX_ONLY=1"],
     sources=_MAIN_APP_SOURCES,
 )

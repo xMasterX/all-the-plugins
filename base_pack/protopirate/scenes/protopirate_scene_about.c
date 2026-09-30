@@ -12,7 +12,11 @@ static const ProtoPirateAboutSceneHostApi protopirate_about_scene_host_api = {
 void protopirate_scene_about_on_enter(void* context) {
     ProtoPirateApp* app = context;
 
-    if(!shared_plugin_load(app, ProtoPirateSharedPluginsAbout, NULL)) {
+    if(!shared_plugin_load(
+           (void**)&app->plugin_flipper_application,
+           (const void**)&app->about_plugin,
+           ProtoPirateSharedPluginsAbout,
+           NULL)) {
         notification_message(app->notifications, &sequence_error);
         scene_manager_previous_scene(app->scene_manager);
         return;
@@ -40,5 +44,6 @@ void protopirate_scene_about_on_exit(void* context) {
     view_set_draw_callback(app->view_about, NULL);
     view_set_input_callback(app->view_about, NULL);
     view_set_context(app->view_about, NULL);
-    shared_plugin_unload(app, ProtoPirateSharedPluginsAbout);
+    shared_plugin_unload(
+        (void**)&app->plugin_flipper_application, (const void**)&app->about_plugin);
 }

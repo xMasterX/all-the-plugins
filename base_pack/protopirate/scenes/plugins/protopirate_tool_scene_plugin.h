@@ -5,7 +5,6 @@
 #include <stdint.h>
 
 #include <gui/scene_manager.h>
-#include <lib/flipper_application/flipper_application.h>
 #include <lib/subghz/devices/devices.h>
 
 #include "../../defines.h"
@@ -58,9 +57,13 @@ typedef struct {
     void (*receiver_add_data_statusbar)(
         ProtoPirateReceiver* receiver,
         const char* frequency_str,
+        size_t frequency_size,
         const char* preset_str,
+        size_t preset_size,
         const char* history_stat_str,
+        size_t history_stat_size,
         bool external_radio);
+
     uint16_t (*receiver_get_idx_menu)(ProtoPirateReceiver* receiver);
     void (*receiver_set_idx_menu)(ProtoPirateReceiver* receiver, uint16_t idx);
     void (*receiver_set_callback)(

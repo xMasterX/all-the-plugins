@@ -35,25 +35,19 @@
 #include "scenes/plugins/protopirate_about_plugin.h"
 #include "scenes/plugins/protopirate_psa_bf_plugin.h"
 #include "scenes/plugins/protopirate_tool_scene_plugin.h"
+#include "helpers/protopirate_plugins.h"
 #include "helpers/protopirate_views.h"
 #include "helpers/protopirate_radio.h"
 #include "helpers/protopirate_protocol_plugin_host.h"
 #include "helpers/protopirate_txrx.h"
 #include "helpers/protopirate_models.h"
-#include <loader/firmware_api/firmware_api.h>
 #include "helpers/protopirate_settings.h"
 
-#define CONFIG_PLUGIN_PATH     APP_ASSETS_PATH("plugins/pp_config.fal")
-#define SAVED_INFO_PLUGIN_PATH APP_ASSETS_PATH("plugins/pp_saved_info.fal")
-#define ABOUT_PLUGIN_PATH      APP_ASSETS_PATH("plugins/pp_about.fal")
-#define EMULATE_PLUGIN_PATH    APP_ASSETS_PATH("plugins/pp_emulate.fal")
-#define SUB_DECODE_PLUGIN_PATH APP_ASSETS_PATH("plugins/pp_sub_decode.fal")
-#ifdef ENABLE_TIMING_TUNER_SCENE
-#define TIMING_TUNER_PLUGIN_PATH APP_ASSETS_PATH("plugins/pp_timing_tuner.fal")
-#endif
-#define PSA_BF_PLUGIN_PATH APP_ASSETS_PATH("plugins/pp_bf.fal")
-
+#ifdef ENABLE_MODELS_DATABASE
+#define PROTOPIRATE_KEYSTORE_DIR_NAME APP_ASSETS_PATH("keystore/encrypted")
+#else
 #define PROTOPIRATE_KEYSTORE_DIR_NAME APP_ASSETS_PATH("encrypted")
+#endif
 
 typedef struct VariableItemList VariableItemList;
 
@@ -95,6 +89,8 @@ struct ProtoPirateApp {
     SubGhzSetting* setting;
     ProtoPirateLock lock;
     char* loaded_file_path;
+    /*****************/
+    // Byte 1
     uint8_t deferred_storage_in_progress : 1;
     uint8_t auto_save                    : 1;
     uint8_t check_saved                  : 1;
@@ -103,6 +99,10 @@ struct ProtoPirateApp {
     uint8_t radio_initialized            : 1;
     uint8_t emulate_disabled_for_loaded  : 1;
     uint8_t emulate_feature_enabled      : 1;
+    // Byte 2
+    uint8_t key_found                    : 1;
+    uint8_t reserved                     : 7;
+    /*****************/
     uint32_t start_tx_time;
     uint8_t tx_power;
     char* save_filename;
@@ -110,9 +110,6 @@ struct ProtoPirateApp {
     uint16_t save_history_idx;
     FlipperApplication* plugin_flipper_application;
 #ifdef ENABLE_EMULATE_FEATURE
-#define EMULATE_NAV_NONE     0U
-#define EMULATE_NAV_POP      1U
-#define EMULATE_NAV_STOP_APP 2U
     const ProtoPirateEmulatePlugin* emulate_plugin;
     uint8_t emulate_nav_pending;
 #endif
@@ -124,15 +121,10 @@ struct ProtoPirateApp {
     FlipperApplication* tool_scene_plugin_flipper_application;
     const ProtoPirateToolScenePlugin* tool_scene_plugin;
     ProtoPirateToolScenePluginKind tool_scene_plugin_kind;
-#define TOOL_SCENE_NAV_NONE            0U
-#define TOOL_SCENE_NAV_POP             1U
-#define TOOL_SCENE_NAV_NEXT            2U
-#define TOOL_SCENE_NAV_SEARCH_PREVIOUS 3U
-    uint8_t tool_scene_nav_pending;
-    uint32_t tool_scene_nav_target;
-
+#ifdef ENABLE_MODELS_DATABASE
     ProtoPirateCarModel* selected_model;
     uint16_t car_models_count;
+#endif
 };
 
 #ifdef ENABLE_EMULATE_FEATURE
@@ -148,29 +140,6 @@ bool protopirate_tool_scene_on_enter(void* app, ProtoPirateToolScenePluginKind k
 bool protopirate_tool_scene_on_event(void* app, SceneManagerEvent event);
 void protopirate_tool_scene_on_exit(void* app);
 void protopirate_tool_scene_plugin_release(ProtoPirateApp* app);
-
-typedef enum ProtoPirateSharedPlugin {
-    ProtoPirateSharedPluginsConfig,
-    ProtoPirateSharedPluginsSavedInfo,
-    ProtoPirateSharedPluginsAbout,
-#ifdef ENABLE_EMULATE_FEATURE
-    ProtoPirateSharedPluginsEmulate,
-#endif
-    ProtoPirateSharedPluginsToolScene,
-    ProtoPirateSharedPluginsSubDecode,
-#ifdef ENABLE_TIMING_TUNER_SCENE
-    ProtoPirateSharedPluginsTimingTuner,
-#endif
-    ProtoPirateSharedPluginsPSABruteforce,
-    ProtoPirateSharedPluginsTXRX,
-} ProtoPirateSharedPlugin;
-
-bool shared_plugin_load(
-    ProtoPirateApp* app,
-    ProtoPirateSharedPlugin plugin_type,
-    const char* txrx_path);
-void shared_plugin_unload(ProtoPirateApp* app, ProtoPirateSharedPlugin plugin_type);
-
 void protopirate_app_free(ProtoPirateApp* app);
 
 static const NotificationSequence sequence_tx = {

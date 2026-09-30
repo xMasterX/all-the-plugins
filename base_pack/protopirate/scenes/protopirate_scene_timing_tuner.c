@@ -1,7 +1,7 @@
 // scenes/protopirate_scene_timing_tuner.c
 #include "../protopirate_app_i.h"
-#ifdef ENABLE_TIMING_TUNER_SCENE
 
+#ifdef ENABLE_TIMING_TUNER_SCENE
 #ifndef PROTOPIRATE_TIMING_TUNER_PLUGIN_BUILD
 
 void protopirate_scene_timing_tuner_on_enter(void* context) {
@@ -9,7 +9,13 @@ void protopirate_scene_timing_tuner_on_enter(void* context) {
 }
 
 bool protopirate_scene_timing_tuner_on_event(void* context, SceneManagerEvent event) {
-    return protopirate_tool_scene_on_event(context, event);
+    ProtoPirateApp* app = (ProtoPirateApp*)context;
+    if(protopirate_tool_scene_on_event(context, event)) {
+        return true;
+    } else {
+        return shared_plugin_handle_navigation_events(
+            app->scene_manager, app->view_dispatcher, event);
+    }
 }
 
 void protopirate_scene_timing_tuner_on_exit(void* context) {
@@ -651,14 +657,16 @@ void protopirate_scene_timing_tuner_on_enter(void* context) {
 
     if(!protopirate_ensure_view_about(app)) {
         notification_message(app->notifications, &sequence_error);
-        app->tool_scene_nav_pending = TOOL_SCENE_NAV_POP;
+        view_dispatcher_send_custom_event(
+            app->view_dispatcher, ProtoPirateCustomEventPluginNavigateBack);
         return;
     }
 
     if(!app->radio_initialized && !protopirate_radio_init(app)) {
         FURI_LOG_E(TAG, "Failed to initialize radio for timing tuner");
         notification_message(app->notifications, &sequence_error);
-        app->tool_scene_nav_pending = TOOL_SCENE_NAV_POP;
+        view_dispatcher_send_custom_event(
+            app->view_dispatcher, ProtoPirateCustomEventPluginNavigateBack);
         return;
     }
 
@@ -670,7 +678,8 @@ void protopirate_scene_timing_tuner_on_enter(void* context) {
     if(!app->txrx->receiver) {
         FURI_LOG_E(TAG, "Failed to allocate receiver for timing tuner");
         notification_message(app->notifications, &sequence_error);
-        app->tool_scene_nav_pending = TOOL_SCENE_NAV_POP;
+        view_dispatcher_send_custom_event(
+            app->view_dispatcher, ProtoPirateCustomEventPluginNavigateBack);
         return;
     }
 
@@ -678,7 +687,8 @@ void protopirate_scene_timing_tuner_on_enter(void* context) {
     if(!g_timing_ctx) {
         FURI_LOG_E(TAG, "Failed to allocate timing tuner context");
         notification_message(app->notifications, &sequence_error);
-        app->tool_scene_nav_pending = TOOL_SCENE_NAV_POP;
+        view_dispatcher_send_custom_event(
+            app->view_dispatcher, ProtoPirateCustomEventPluginNavigateBack);
         return;
     }
     memset(g_timing_ctx, 0, sizeof(TimingTunerContext));
@@ -706,7 +716,8 @@ void protopirate_scene_timing_tuner_on_enter(void* context) {
             view_set_input_callback(app->view_about, NULL);
             timing_tuner_context_free();
             notification_message(app->notifications, &sequence_error);
-            app->tool_scene_nav_pending = TOOL_SCENE_NAV_POP;
+            view_dispatcher_send_custom_event(
+                app->view_dispatcher, ProtoPirateCustomEventPluginNavigateBack);
             return;
         }
         // Set up worker callbacks
@@ -738,19 +749,20 @@ void protopirate_scene_timing_tuner_on_enter(void* context) {
 
 bool protopirate_scene_timing_tuner_on_event(void* context, SceneManagerEvent event) {
     ProtoPirateApp* app = context;
-    bool consumed = false;
 
+    bool consumed = false;
     if(event.type == SceneManagerEventTypeCustom) {
         if(event.event == 0) {
-            app->tool_scene_nav_pending = TOOL_SCENE_NAV_POP;
+            view_dispatcher_send_custom_event(
+                app->view_dispatcher, ProtoPirateCustomEventPluginNavigateBack);
             consumed = true;
         } else if(event.event == 1) {
             if(g_timing_ctx && g_timing_ctx->is_receiving) {
                 protopirate_rx_end(app);
                 g_timing_ctx->is_receiving = false;
             }
-            app->tool_scene_nav_pending = TOOL_SCENE_NAV_NEXT;
-            app->tool_scene_nav_target = ProtoPirateSceneReceiverConfig;
+            view_dispatcher_send_custom_event(
+                app->view_dispatcher, ProtoPirateCustomEventPluginNavigateConfig);
             consumed = true;
         }
     } else if(event.type == SceneManagerEventTypeTick) {

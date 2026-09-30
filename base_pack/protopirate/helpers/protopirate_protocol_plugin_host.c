@@ -2,7 +2,6 @@
 #include "protopirate_txrx.h"
 #include "../protocols/protocol_items.h"
 
-#include <loader/firmware_api/firmware_api.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -61,7 +60,9 @@ void protopirate_unload_protocol_plugin(ProtoPirateApp* app) {
         app->txrx->protocol_plugin->release();
     }
 
-    shared_plugin_unload(app, ProtoPirateSharedPluginsTXRX);
+    shared_plugin_unload(
+        (void**)&app->txrx->protocol_plugin_flipper_application,
+        (const void**)&app->txrx->protocol_plugin);
 }
 
 static bool protopirate_ensure_protocol_registry_plugin(
@@ -91,7 +92,11 @@ static bool protopirate_ensure_protocol_registry_plugin(
     }
 
     const char* plugin_path = protopirate_get_registry_plugin_path(route);
-    shared_plugin_load(app, ProtoPirateSharedPluginsTXRX, plugin_path);
+    shared_plugin_load(
+        (void**)&app->txrx->protocol_plugin_flipper_application,
+        (const void**)&app->txrx->protocol_plugin,
+        ProtoPirateSharedPluginsTXRX,
+        plugin_path);
 
     if(app->txrx->protocol_plugin->kind != ProtoPirateProtocolPluginKindRx) {
         FURI_LOG_E(TAG, "Protocol plugin kind mismatch for RX route");
@@ -157,7 +162,11 @@ static bool protopirate_ensure_tx_protocol_plugin(
         protopirate_unload_protocol_plugin(app);
     }
 
-    shared_plugin_load(app, ProtoPirateSharedPluginsTXRX, plugin_path);
+    shared_plugin_load(
+        (void**)&app->txrx->protocol_plugin_flipper_application,
+        (const void**)&app->txrx->protocol_plugin,
+        ProtoPirateSharedPluginsTXRX,
+        plugin_path);
 
     const SubGhzProtocol* tx_protocol = app->txrx->protocol_plugin->registry->items[0];
     if(!tx_protocol || !tx_protocol->encoder || !tx_protocol->encoder->alloc ||
