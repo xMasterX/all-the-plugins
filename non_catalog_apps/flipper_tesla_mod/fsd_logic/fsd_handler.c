@@ -335,8 +335,11 @@ bool fsd_handle_autopilot_frame(FSDState* state, CANFRAME* frame, uint32_t now_m
             modified = true;
         }
         if(mux == 2) {
-            frame->buffer[7] &= ~(0x07 << 5);
-            frame->buffer[7] |= (uint8_t)((state->speed_profile & 0x07) << 5);
+            // Speed profile = bits 60-62 (byte7 bits 6:4). Bit 63 is the mux2
+            // valid flag the car always sets; the old <<5 write cleared it and
+            // the speed offset in this same frame stopped taking effect (#59).
+            frame->buffer[7] &= (uint8_t) ~(0x07 << 4);
+            frame->buffer[7] |= (uint8_t)((state->speed_profile & 0x07) << 4);
             // HW4 speed offset runtime override
             // Source: ev-open-can-tools hw4OffsetRuntime
             if(state->hw4_offset > 0) {

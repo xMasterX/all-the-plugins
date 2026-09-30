@@ -16,6 +16,7 @@
 #include "capability.h"
 #include "profile_match.h"
 #include "prefs.h"
+#include "ota_verify.h"
 #include <WebServer.h>
 #include <WebSocketsServer.h>
 #include <WiFi.h>
@@ -2314,6 +2315,7 @@ static void ws_event(uint8_t num, WStype_t type,
             Serial.printf("[Web] WiFi config: AP=\"%s\" STA=\"%s\" PASS=*** HIDDEN=%d\n",
                 saved.wifi_ssid, saved.wifi_sta_ssid, saved.wifi_hidden);
             prefs_save(&saved);
+            ota_verify_confirm("WiFi config restart");
             can_shutdown_all(g_can_buses, g_can_count);
             delay(500);
             ESP.restart();
@@ -2402,6 +2404,7 @@ static void handle_blackbox_get() {
 static void handle_restart() {
     if (!require_admin_auth()) return;
     g_http.send(200, "text/plain", "OK");
+    ota_verify_confirm("web restart");
     can_shutdown_all(g_can_buses, g_can_count);
     delay(500);
     ESP.restart();
@@ -2451,6 +2454,8 @@ static void handle_ota_upload() {
             return;
         }
 
+        // esp_ota_begin() refuses while the running image is still unconfirmed.
+        ota_verify_confirm("next web OTA");
         if (!Update.begin(max_size, U_FLASH)) {
             Update.printError(Serial);
             Serial.println("[OTA] ERROR: Update.begin() failed");

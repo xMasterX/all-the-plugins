@@ -179,15 +179,72 @@ static void test_autopilot_hw4(void) {
     CHECK((f.buffer[2] & 0x08) == 0, "HW4 mux1 bit19 cleared");
     CHECK((f.buffer[5] & 0x80) != 0, "HW4 mux1 bit47 set");
 
-    // mux2 -> speed profile written to byte7 bits7:5
+    // mux2 -> speed profile written to byte7 bits 6:4 (frame bits 60-62)
     zero(&f);
     f.data_lenght = 8;
     f.buffer[0] = 2;
     CHECK(fsd_handle_autopilot_frame(&s, &f, 0), "HW4 mux2 reports modified");
     CHECK(
-        ((f.buffer[7] >> 5) & 0x07) == 4,
+        ((f.buffer[7] >> 4) & 0x07) == 4,
         "HW4 mux2 speed_profile=4 got %u",
-        (f.buffer[7] >> 5) & 0x07);
+        (f.buffer[7] >> 4) & 0x07);
+}
+
+// ── 0x3FD mux2 HW4 speed profile layout (#59) ────────────────────────────────
+// Real 0x3FD mux2 payload from HW4 cars (hw4_unbanned_* dumps and the Palladium
+// Plaid captures in #18): byte7 is 0x90 on every frame. Bit 63 is set on every
+// mux of 0x3FD (mux0 0x80/0x88, mux1 0x80, mux2 0x90) — it is the per-mux valid
+// flag, not part of the profile. The profile is bits 60-62. Writing it at <<5
+// cleared bit 63 for profiles 0-3 and voided the whole mux2 frame, including
+// the speed offset carried in byte1.
+static void test_hw4_mux2_profile_layout(void) {
+    static const uint8_t k_hw4_mux2[8] = {0x02, 0x28, 0x00, 0x00, 0x00, 0x00, 0x00, 0x90};
+    FSDState s;
+    CANFRAME f;
+
+    for(int p = 0; p <= 4; p++) {
+        memset(&s, 0, sizeof(s));
+        s.hw_version = TeslaHW_HW4;
+        s.speed_profile = p;
+        zero(&f);
+        f.data_lenght = 8;
+        memcpy(f.buffer, k_hw4_mux2, 8);
+        CHECK(fsd_handle_autopilot_frame(&s, &f, 0), "#59 p%d: HW4 mux2 modified", p);
+        CHECK(
+            ((f.buffer[7] >> 4) & 0x07) == p,
+            "#59 p%d: profile in bits 60-62, got %u",
+            p,
+            (f.buffer[7] >> 4) & 0x07);
+        CHECK(
+            (f.buffer[7] & 0x80) != 0,
+            "#59 p%d: bit63 (mux2 valid) kept, byte7=0x%02X",
+            p,
+            f.buffer[7]);
+        CHECK(
+            (f.buffer[7] & 0x0F) == 0x00,
+            "#59 p%d: byte7 low nibble untouched, byte7=0x%02X",
+            p,
+            f.buffer[7]);
+        CHECK(memcmp(f.buffer, k_hw4_mux2, 7) == 0, "#59 p%d: bytes 0-6 untouched (no offset)", p);
+    }
+
+    // Offset override rides in the same frame: byte1 bits 5:0, top bits and byte0 kept.
+    memset(&s, 0, sizeof(s));
+    s.hw_version = TeslaHW_HW4;
+    s.speed_profile = 1;
+    s.hw4_offset = 10;
+    zero(&f);
+    f.data_lenght = 8;
+    memcpy(f.buffer, k_hw4_mux2, 8);
+    f.buffer[1] |= 0xC0; // prove bits 7:6 of byte1 survive
+    CHECK(fsd_handle_autopilot_frame(&s, &f, 0), "#59 offset: HW4 mux2 modified");
+    CHECK((f.buffer[1] & 0x3F) == 10, "#59 offset: byte1[5:0]=10 got %u", f.buffer[1] & 0x3F);
+    CHECK((f.buffer[1] & 0xC0) == 0xC0, "#59 offset: byte1[7:6] kept");
+    CHECK(f.buffer[0] == 0x02, "#59 offset: byte0 untouched got 0x%02X", f.buffer[0]);
+    CHECK(
+        f.buffer[7] == 0x90,
+        "#59 offset: byte7 = 0x90 (valid + profile 1) got 0x%02X",
+        f.buffer[7]);
 }
 
 // ── 0x3FD autopilot frame, HW3 ────────────────────────────────────────────────
@@ -2960,6 +3017,7 @@ int main(void) {
     test_detect_hw();
     test_follow_distance();
     test_autopilot_hw4();
+    test_hw4_mux2_profile_layout();
     test_autopilot_hw3();
     test_summon_unlock();
     test_continue_on_green();
