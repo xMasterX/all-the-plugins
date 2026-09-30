@@ -148,8 +148,8 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
                         "UID not re-checked: the card did not answer after the field reset, so "
                         "whether the wipe changed the card's UID is unknown.");
     }
-    if(instance->iso15693_result.used_gen1) {
-        // Unconditional: those four blocks differ from the source whatever the write results above say.
+    if(instance->iso15693_result.used_gen1 && instance->iso15693_result.gen1_blocks_skipped) {
+        // Only where the file reached those blocks; see gen1_blocks_skipped.
         if(furi_string_size(message) > 0) furi_string_push_back(message, '\n');
         furi_string_cat_str(message, "gen1: 56/57/62/63 hold UID + unlock/commit, not file data.");
     }

@@ -64,7 +64,7 @@ static bool
 // Does this outcome have anything behind "Details"? One answer, for both the button in on_enter and the
 // routing in on_event.
 //
-// Why it is not simply failed_count: a partial whose only problem is the gen1 UID clobber or a rejected
+// Why it is not simply failed_count: a partial whose only problem is the gen1 data loss or a rejected
 // AFI/DSFID has zero failed blocks, and the summary shows only its highest-priority qualifier, so the
 // lower one would be reachable nowhere. UID-changed is here because it PRE-EMPTS the partial reason
 // code -- without it a wipe that both moved the UID and left blocks uncleared names them nowhere.
@@ -78,8 +78,8 @@ static bool
         // pass_truncated on its own qualifies: on a cut clone the summary's "Not written" count mixes
         // refused blocks with never-attempted ones, and the scroll view is the only place that can
         // separate them.
-        return result->failed_count > 0 || result->used_gen1 || result->identity_failed ||
-               result->pass_truncated;
+        return result->failed_count > 0 || (result->used_gen1 && result->gen1_data_lost) ||
+               result->identity_failed || result->pass_truncated;
     case NfcMagicIso15693WriteFailReasonWipeStopped:
         // Always: the blocks above the cut were never attempted, so they carry no bitmap bits and the
         // scroll view is the only place that fact can be stated.
@@ -258,7 +258,8 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
     } else if(partial) {
         // Summary only -- counts here, the per-block list behind "Details" -- mirroring the Gen2 /
         // USCUID-UL partial screens. Partial means some blocks wouldn't write (real source data lost,
-        // or empty failures that weren't a clean capacity tail), or a clone fell back to gen1.
+        // or empty failures that weren't a clean capacity tail), or a gen1 clone's file held data at
+        // 56/57/62/63.
         const uint16_t total = instance->iso15693_result.blocks_total;
         // Everything that didn't write: real-data losses plus any empty blocks past capacity.
         const uint16_t not_written =
@@ -273,9 +274,9 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             total,
             not_written);
         // Three lines fit at y=20 -- see the top of the file -- so this body is the two count lines
-        // plus ONE qualifier. Show the most significant, and there are FOUR in
-        // priority order: the cut (pass_truncated) > real data loss (capacity_confirmed) > gen1 UID
-        // clobber (used_gen1) > AFI/DSFID (identity_failed). A lower one is dropped from THIS screen
+        // plus ONE qualifier. Show the most significant, and there are FOUR in priority order: the cut
+        // (pass_truncated) > real data loss (capacity_confirmed) > gen1 data loss (used_gen1 &&
+        // gen1_data_lost) > AFI/DSFID (identity_failed). A lower one is dropped from THIS screen
         // only -- "Details" below is offered whenever any caveat applies and lists all of them, so
         // nothing is unreachable.
         // The cut ranks FIRST here, and it is a cut CLONE: a cut wipe has its own reason code and
@@ -293,7 +294,8 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             // the card -> the card is physically smaller than the source. (An empty top tail loses
             // nothing and is reported as an over-capacity success, not here.)
             furi_string_cat_str(text, "\nCard too small");
-        } else if(instance->iso15693_result.used_gen1) {
+        } else if(instance->iso15693_result.used_gen1 && instance->iso15693_result.gen1_data_lost) {
+            // Only where the file held data there; see gen1_data_lost.
             furi_string_cat_str(text, "\ngen1: 56/57/62/63 differ");
         } else if(instance->iso15693_result.identity_failed) {
             // All data blocks took, but the card rejected the AFI/DSFID write.

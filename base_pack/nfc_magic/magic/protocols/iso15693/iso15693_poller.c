@@ -131,6 +131,16 @@ static bool iso15693_poller_is_backdoor_block(uint16_t block) {
     return false;
 }
 
+// How many of the four a source of `count` blocks reaches: what a gen1 clone deducts from its total,
+// and what gen1_blocks_skipped is set from, so the figure and the flag cannot disagree.
+static uint16_t iso15693_poller_backdoor_blocks_below(uint16_t count) {
+    uint16_t n = 0;
+    for(size_t i = 0; i < COUNT_OF(iso15693_poller_backdoor_blocks); i++) {
+        if(iso15693_poller_backdoor_blocks[i] < count) n++;
+    }
+    return n;
+}
+
 // The two of those four that CARRY the UID, which is a narrower question than being a backdoor
 // block: writing 62/63 changes no identity, so an address taken before them is still good.
 static bool iso15693_poller_is_uid_block(uint16_t block) {
@@ -355,6 +365,8 @@ struct Iso15693Poller {
     bool uid_verified;
     uint8_t clone_failed_bitmap[ISO15693_POLLER_BLOCK_BITMAP_SIZE];
     bool clone_used_gen1;
+    bool clone_gen1_blocks_skipped;
+    bool clone_gen1_data_lost;
     bool clone_capacity_confirmed;
     // Two flags, one result field: get_result ORs them behind a mode gate. Both are decided by a GET
     // SYSTEM INFO read-back rather than by the write's return value -- see write_identity for why the
@@ -926,15 +938,19 @@ static bool iso15693_poller_write_source_blocks(
 
     // Report the count of blocks we actually attempt: for gen1, exclude whichever of the 4 backdoor
     // registers fall below source_count, so the "Cloned X/Y" total isn't inflated by blocks that only
-    // ever hold the UID. On a source under 57 blocks none of them do, so nothing is deducted -- two of
-    // the three chips this was validated on (SLIX 28, SLIX-S 40) are in that case.
-    uint16_t total = source_count;
-    if(skip_backdoor) {
-        for(size_t i = 0; i < COUNT_OF(iso15693_poller_backdoor_blocks); i++) {
-            if(iso15693_poller_backdoor_blocks[i] < source_count) total--;
-        }
-    }
+    // ever hold the UID. Nothing is deducted from a source that ends before block 56.
+    const uint16_t skipped = skip_backdoor ? iso15693_poller_backdoor_blocks_below(source_count) :
+                                             0;
+    const uint16_t total = (uint16_t)(source_count - skipped);
     instance->clone_blocks_total = total;
+    // Both set from the SAME count that produced the total. Derived anywhere else, the figure and the
+    // flags can disagree, and the scenes cannot catch that: on a source below block 56 the deduction
+    // is a no-op, so blocks_total reads identically either way. The gen1 caveat is a claim about the
+    // SOURCE -- that it held data at those addresses and the card does not -- so it rests on
+    // gen1_data_lost; a file that only reaches them loses nothing there.
+    instance->clone_gen1_blocks_skipped = skipped > 0;
+    instance->clone_gen1_data_lost = skipped > 0 &&
+                                     iso15693_poller_source_uses_gen1_blocks(source);
     instance->clone_failed_count = 0;
     instance->clone_over_capacity = 0;
     instance->clone_capacity_confirmed = false;
@@ -1462,13 +1478,15 @@ static uint16_t iso15693_poller_wipe_blocks(
 //    outcome carries a note on screen rather than being reported as an unqualified success. Any
 //    other empty failure is folded into clone_failed_count -> Partial (see
 //    iso15693_poller_write_source_blocks).
-//  - a CLONE that fell back to gen1 -> Partial: gen1 stamps the UID/commit into data blocks
-//    56/57/62/63, so those no longer match the source. (A bare Write-UID has no source data to
-//    disturb, so gen1 there is still a clean Success.)
+//  - a CLONE that fell back to gen1 AND whose source held data at 56/57/62/63 -> Partial: on gen1
+//    those addresses are registers, so that data was not written. A source that reaches them with
+//    nothing there, or ends before block 56, loses nothing there, so it is not Partial on their
+//    account; see gen1_data_lost. (A bare Write-UID has no source data to disturb, so gen1 there is a
+//    clean Success either way.)
 //  - a CLONE whose AFI/DSFID write was rejected -> Partial (that identity field may not be set).
 static Iso15693PollerEvent iso15693_poller_success_or_partial(Iso15693Poller* instance) {
     const bool clone = (instance->mode == Iso15693PollerModeClone);
-    const bool gen1_clone = clone && instance->clone_used_gen1;
+    const bool gen1_clone = clone && instance->clone_used_gen1 && instance->clone_gen1_data_lost;
     const bool identity_failed = clone &&
                                  (instance->clone_afi_failed || instance->clone_dsfid_failed);
     // Terminal guard, the clone-side counterpart of the wipe's "did anything accept a write": a clone
@@ -1812,8 +1830,8 @@ static NfcCommand
             iso15693_poller_report(instance, Iso15693PollerEventFail);
             return NfcCommandStop;
         }
-        // gen1 set the UID. Record it so a clone reports Partial and flags that blocks 56/57/62/63
-        // now hold UID/commit bytes, not the source's data.
+        // gen1 set the UID. Record it so a clone whose source held data at 56/57/62/63 reports
+        // Partial: on gen1 those addresses are registers, so the file's data there is not written.
         instance->clone_used_gen1 = true;
         // UID took -> now write the payload. For a clone: AFI/DSFID + every data block EXCEPT the gen1
         // backdoor registers 56/57/62/63 (writing those would clobber the UID we just set). A bare
@@ -1949,6 +1967,8 @@ static void iso15693_poller_start_internal(
     instance->pass_cut_block = 0;
     instance->uid_verified = false;
     instance->clone_used_gen1 = false;
+    instance->clone_gen1_blocks_skipped = false;
+    instance->clone_gen1_data_lost = false;
     instance->clone_capacity_confirmed = false;
     instance->clone_blocks_done = 0;
     instance->progress_step = UINT8_MAX; // no band emitted yet, so the first call fires
@@ -2047,6 +2067,8 @@ void iso15693_poller_get_result(Iso15693Poller* instance, Iso15693PollerResult* 
     result->uid_verified = instance->uid_verified;
     memcpy(result->failed_bitmap, instance->clone_failed_bitmap, sizeof(result->failed_bitmap));
     result->used_gen1 = instance->clone_used_gen1;
+    result->gen1_blocks_skipped = instance->clone_gen1_blocks_skipped;
+    result->gen1_data_lost = instance->clone_gen1_data_lost;
     result->capacity_confirmed = instance->clone_capacity_confirmed;
     // Clone-mode only, mirroring success_or_partial: the flags are reset per run and written only in
     // the clone path, so this guard is future-proofing against them ever leaking cross-mode.
