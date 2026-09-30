@@ -7,9 +7,9 @@
 // gen1 mode (NfcMagicSceneWrite reads iso15693_force_gen1 and iso15693_mode on enter).
 //
 // Reached from two flows, distinguished by this scene's state (NfcMagicIso15693Gen1OptinSource): a
-// clone, which goes on to write every data block, and a bare Write-UID, which writes only the four UID
-// registers. They consent to different things, so the body text differs; both resume in the same
-// write scene.
+// clone, which goes on to write every data block, and a bare Write-UID, which writes only the four
+// gen1 registers. They consent to different things, so the body text differs; both resume in the
+// same write scene.
 static void nfc_magic_scene_iso15693_gen1_optin_button_callback(
     GuiButtonType result,
     InputType type,
@@ -49,9 +49,9 @@ void nfc_magic_scene_iso15693_gen1_optin_on_enter(void* context) {
     } else {
         furi_string_cat_str(
             body,
-            "Might be gen1, or not magic at all. Gen1 writes the UID to blocks 56/57/62/63 first, "
-            "then the rest of the data only if that UID takes. A non-magic tag loses at most those 4 "
-            "blocks.");
+            "Might be gen1, or not magic at all. Gen1 writes blocks 56/57/62/63 first to set the "
+            "UID, then the rest of the data only if that UID takes. A non-magic tag loses at most "
+            "those 4 blocks.");
         // If the source itself stores data in those backdoor blocks, gen1 can't reproduce it -- warn
         // at the decision point rather than on the up-front confirm, which a clone never reaches.
         // Clone only: a Write-UID has no source file.

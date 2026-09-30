@@ -73,10 +73,11 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
             wipe_mode       ? "Blocks not cleared: " :
                               "Blocks not written: ");
     }
-    // The bound is list_upto, never blocks_total: the wipe and gen1 paths reduce blocks_total to a
-    // logical count that excludes the skipped backdoor blocks (56/57/62/63), yet failures are recorded
-    // at their TRUE block index, which can exceed that reduced total. Unused bits are 0, so on an
-    // uncut run scanning the whole bitmap prints only real failures, each at its true index.
+    // The bound is list_upto, never blocks_total: a gen1 clone's blocks_total excludes the skipped
+    // backdoor blocks (56/57/62/63) and a wipe's stops at the highest block proven present, yet
+    // failures are recorded at their TRUE block index, which can exceed either. Unused bits are 0,
+    // so on an uncut run scanning the whole bitmap prints only real failures, each at its true
+    // index.
     nfc_magic_partial_details_append_indices(
         message, instance->iso15693_result.failed_bitmap, list_upto, 0);
     // Separate the caveats from whatever precedes them, but don't open with a blank line when there is
@@ -92,11 +93,11 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
         // and this note would put the lift down to the time budget and the card's speed.
         nfc_magic_scene_iso15693_partial_details_begin_note(message);
         // The cut index, never blocks_total: this is a claim about which blocks were TRIED, and
-        // blocks_total is a COUNT, one past the highest block that answered. Below the cut it
-        // under-reports (the trailing run the tail-drop discards was attempted -- three writes and
-        // a read each -- yet would be excluded by the sentence); above it, a card claiming 200
-        // while holding 10 read "time limit at block 10" about 170 blocks that were attempted and
-        // answered nothing.
+        // blocks_total is a COUNT, one past the highest block that answered. It leaves out the
+        // trailing run the tail-drop discards, which was attempted -- three writes and a read each
+        // -- and below the claim that run can be most of the sweep: a card claiming 200 while
+        // holding 10, cut at block 150, would say "time limit at block 10" about the 140 blocks
+        // between that were attempted and answered nothing (the header's example at cut_block).
         if(wipe_mode) {
             // Which side of the claim the cut lands on changes what is true, so it changes the
             // sentence. The sweep runs past the advertised count deliberately, so "of the N this card

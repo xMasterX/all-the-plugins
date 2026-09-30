@@ -291,10 +291,11 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             widget, 4, 20, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(text));
         furi_string_free(text);
     } else if(over_capacity) {
-        // Clean success: every source block was written, the card just advertises more blocks than it
-        // physically holds (the extra source blocks were empty, so nothing was lost). Concise summary
-        // here, gen2-style; the exact empty top blocks are behind "Details". We confirm the writes
-        // were accepted, not a byte-for-byte read-back, so the wording says "written", not "matches".
+        // Clean success: every source block that fits was written; the file is larger than the card,
+        // and the blocks past the card's end were empty, so nothing was lost. Concise summary here,
+        // gen2-style; the exact empty top blocks are behind "Details". We confirm each write was
+        // accepted -- acknowledged, or read back on a card that cannot acknowledge one -- not that the
+        // card matches the file, so the wording says "written", not "matches".
         const uint16_t advertised = instance->iso15693_result.blocks_total;
         const uint16_t extra = instance->iso15693_result.over_capacity;
         // The over-capacity gate guarantees >=1 block wrote, so extra < advertised.

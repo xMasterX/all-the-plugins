@@ -121,15 +121,15 @@ typedef enum {
     // None is a failure and none is Partial. Why the survey's are kept apart is at
     // iso15693_poller_survey_above_source.
     NfcMagicIso15693WriteFailReasonCloneComplete,
-    NfcMagicIso15693WriteFailReasonOverCapacity, // clone OK, but the card now advertises more blocks
-        // than it physically holds (the extra were empty, so nothing was lost) -- a success with a note
+    NfcMagicIso15693WriteFailReasonOverCapacity, // clone OK, but the file is larger than the card
+        // and the blocks past its end were empty, so nothing was lost -- a success with a note
     NfcMagicIso15693WriteFailReasonNothingWiped, // wipe: not one block accepted the zero-write
     NfcMagicIso15693WriteFailReasonEmptySource, // clone: the source image has no data blocks to write
     NfcMagicIso15693WriteFailReasonNothingCloned, // clone: the UID took but not one data block did, so
         // the card carries the source's UID and none of its data
     NfcMagicIso15693WriteFailReasonUidUnexpected, // the gen2 backdoor moved the UID, but to neither the
-        // original nor the target. The card IS magic -- this is the only outcome that proves it -- so
-        // it must not share the "not a magic tag" screen. The UID it answers with is in the result.
+        // original nor the target. The card IS magic -- an inert tag cannot change its UID -- so it
+        // must not share the "not a magic tag" screen. The UID it answers with is in the result.
         // A clone's re-read after a pass that reached 56/57 lands here the same way.
         // So does a gen1 sequence that leaves half a UID.
     NfcMagicIso15693WriteFailReasonGen1Failed, // the opt-in gen1 UID didn't verify. The sequence is

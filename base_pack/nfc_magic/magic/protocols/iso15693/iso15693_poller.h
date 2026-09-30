@@ -37,23 +37,23 @@ typedef enum {
         // proven clear. What the drop does guarantee is that a block proven to hold data is never
         // dropped. Says nothing about whether the identity re-check ran -- that is uid_verified.
     Iso15693PollerEventPartial, // the operation mostly worked but isn't a clean result: a clone lost
-        // some data blocks, fell back to gen1, or had its AFI/DSFID write rejected; or a wipe couldn't
-        // clear every block, or moved the card's UID. ALSO either mode cut short by the wall-clock
-        // bound -- the run's own job is left undone whatever the counts say. A cut CLONE is Partial
-        // even if no block took, because its counts cannot separate a refusal from a block that was
-        // never sent; the Fail guard excludes cut runs for exactly that reason. A wipe cut short
-        // having cleared NOTHING reports Fail instead: the wiped == 0
-        // short-circuit runs first, which is the card this bound was written for (refuses every write,
-        // answers every read). Which of those it was is in Iso15693PollerResult, and its flags are
-        // not interchangeable: pass_truncated in particular is a qualifier no block figure can
-        // show.
+        // some data blocks, fell back to gen1 over a source holding data at 56/57/62/63, or had its
+        // AFI/DSFID write rejected; or a wipe couldn't clear every block, or moved the card's UID.
+        // ALSO either mode cut short by the wall-clock bound -- the run's own job is left undone
+        // whatever the counts say. A cut CLONE is Partial even if no block took, because its counts
+        // cannot separate a refusal from a block that was never sent; the Fail guard excludes cut
+        // runs for exactly that reason. A wipe cut short having cleared NOTHING reports Fail
+        // instead: the wiped == 0 short-circuit runs first, which is the card this bound was
+        // written for (refuses every write, answers every read). Which of those it was is in
+        // Iso15693PollerResult, and its flags are not interchangeable: pass_truncated in particular
+        // is a qualifier no block figure can show.
     Iso15693PollerEventFail, // the operation didn't take: the gen2 write changed the UID to neither
         // the original nor the target (a card that simply isn't magic leaves it UNCHANGED, which is
-        // NotGen2 and lands on the opt-in screen, not here), an opt-in
-        // gen1 UID didn't take, the clone source had no data blocks, a wipe cleared nothing, or a
-        // Write UID asked for the UID the card already has. Those are NOT the same thing to a user --
-        // read Iso15693PollerResult (uid_unexpected / gen1_attempted / uid_unverifiable) to tell them
-        // apart before picking a message.
+        // NotGen2 and lands on the opt-in screen, not here), an opt-in gen1 UID didn't take, the
+        // clone source had no data blocks, a clone's UID took but no data block did, a wipe cleared
+        // nothing, or a Write UID asked for the UID the card already has. Those are NOT the same
+        // thing to a user -- read Iso15693PollerResult (uid_unexpected / gen1_attempted /
+        // uid_unverifiable) to tell them apart before picking a message.
         // A clone's re-read after a pass that reached 56/57 is a Fail too, on a UID other than the
         // target (uid_unexpected).
         // So is a gen1 sequence that leaves half a UID (uid_unexpected).
@@ -134,11 +134,12 @@ void iso15693_poller_start_clone(
 
 // Opt-in gen1 clone retry (call after start_clone reported NotGen2 and the user confirmed). Writes the
 // destructive gen1 UID sequence FIRST and, only if that UID reads back, writes the data blocks --
-// skipping the gen1 registers, which now hold the UID and so can never match the source. That is why a
-// gen1 clone that took still reports Partial and never a clean Success, and why a card that cannot do
-// gen1 loses at most those four blocks. Emits CardDetected, then Partial, Fail (the gen1 UID didn't
-// take, the source had no data blocks, or every data block was rejected -- gen1_attempted separates
-// the first, since those four blocks are gone either way) or CardLost. Hardware-validated as above.
+// skipping the gen1 registers, which cannot hold the source's data. A source holding data there
+// therefore reports Partial; one that reaches them with nothing there, or ends before block 56, loses
+// nothing there. A card that cannot do gen1 loses at most those four blocks. Emits CardDetected, then
+// Success, Partial, Fail (the gen1 UID didn't take, the source had no data blocks, or every data
+// block was rejected -- gen1_attempted separates the first, since those four blocks are gone either
+// way) or CardLost. Hardware-validated as above.
 void iso15693_poller_start_clone_gen1(
     Iso15693Poller* instance,
     const Iso15693_3Data* source,

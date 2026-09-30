@@ -198,8 +198,7 @@ static void
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventIso15693NotGen2);
     } else if(event == Iso15693PollerEventFail) {
-        // Backdoor write not accepted (not a magic tag), or an empty-source clone. Stash the stats so
-        // the fail handler can tell an empty source (blocks_total == 0) from a non-magic card.
+        // Stash the result: every Fail carries its reason, and the fail handler picks the screen.
         iso15693_poller_get_result(instance->iso15693_poller, &instance->iso15693_result);
         view_dispatcher_send_custom_event(
             instance->view_dispatcher, NfcMagicCustomEventWorkerFail);
@@ -524,7 +523,7 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
         } else if(event.event == NfcMagicCustomEventIso15693NotGen2) {
             // gen2 left the UID unchanged -> offer the opt-in gen1 retry on a dedicated screen. Tell
             // it which flow it came from: a clone consents to a full data-block write, a Write-UID only
-            // to the four UID registers.
+            // to the four gen1 registers.
             scene_manager_set_scene_state(
                 instance->scene_manager,
                 NfcMagicSceneIso15693Gen1Optin,

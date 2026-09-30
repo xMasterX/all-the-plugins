@@ -209,9 +209,8 @@ static bool iso15693_poller_is_uid_block(uint16_t block) {
 #define ISO15693_POLLER_VERIFY_RETRY_MS (5U)
 
 // Retry a failed WRITE BLOCK this many times -- either block pass -- before treating the block as
-// genuinely unwritable. On these cards writes are gated by physical memory, so a block that fails
-// EVERY attempt is past the card's real capacity; retrying rides out a transient RF error that would
-// otherwise look like one.
+// genuinely unwritable. Retrying rides out a transient RF error; what a block that fails every
+// attempt means is decided by a read afterwards, in each pass, not here.
 #define ISO15693_POLLER_WRITE_ATTEMPTS (3U)
 
 // How many 1/N progress bands a block pass is divided into. A pass emits at most N+1 events, not N:
@@ -250,22 +249,25 @@ static bool iso15693_poller_is_uid_block(uint16_t block) {
 //
 // 256 is the ISO15693 block-number space, the failure bitmap's capacity, and the bound proxmark's own
 // `hf 15 wipe` loop carries (cmdhf15.c) -- though it breaks at the FIRST refused write, so the
-// tolerance below is ours. It is a ceiling, not a cost: the sweep stops at the card's real top plus
-// ISO15693_POLLER_WIPE_ABSENT_RUN probes and one re-probe of the run.
+// tolerance below is ours. It is a ceiling: a card that stops answering ends the sweep
+// ISO15693_POLLER_WIPE_ABSENT_RUN blocks past its top or at its claim, whichever is later. The pass
+// budget below covers the card that never stops answering.
 //
-// Writing above physical capacity is inert on this silicon rather than destructive: measured on both
-// the gen2 test card and a plain NXP SLI, phantom writes are rejected, phantom reads fail outright,
-// and block 0 was unchanged across four runs. A card that DID alias would only receive the zeros a
-// wipe is writing anyway. (The probe that measured it lives in the dev repo, not in this tree, so the
-// observation is stated rather than cited -- a bare tool name would resolve to nothing here.)
+// Writing above physical capacity is inert rather than destructive, and a read there fails
+// outright: on a gen2 magic card phantom writes were rejected, phantom reads failed and block 0 was
+// unchanged across four runs; a plain NXP ICODE tag was sent writes past its end and its last block
+// was unchanged; and full read sweeps of two more cards stop at their top. Not on every card: two
+// tested tags mirror their cells across the whole block space and serve a read at every address. A
+// card that aliases like that only receives the zeros a wipe is writing anyway.
 #define ISO15693_POLLER_WIPE_MAX_BLOCKS ISO15693_POLLER_MAX_BLOCKS
 
 // Wall-clock bound on the sweep, because the block ceiling above is not a tight one.
 //
 // The absent-run check ends the sweep at the card's top, but only for a card that stops ANSWERING
 // there. A card that refuses the write and still serves a read at every address never accumulates a
-// run, so it walks all 256 blocks at the 40-70ms a refused-write-plus-read costs: 10-18 seconds inside
-// a single poller callback, emitting no progress past the advertised count.
+// run, so it walks all 256 blocks at an estimated 40-70ms a block (see
+// ISO15693_POLLER_WIPE_ABSENT_RUN): 10-18 seconds inside a single poller callback, emitting no
+// progress past the advertised count.
 //
 // This is a BACKSTOP, not a tuning knob, and the two errors it sits between are wildly asymmetric:
 //   - cutting a legitimate sweep early leaves real data unwiped above the cut -- the privacy failure
@@ -307,10 +309,11 @@ static bool iso15693_poller_is_uid_block(uint16_t block) {
 // Writing one block off costs 40-70ms (three refused writes, three 5ms waits, one refused read). A
 // refused write answers IN BAND (Iso15693_3ErrorInternal) rather than burning the full FDT timeout, so
 // the waits are a large share of that -- which is what makes ISO15693_POLLER_VERIFY_RETRY_MS move the
-// figure materially. Two bench runs disagree by about 2x and neither was instrumented for this, so
-// treat 40-70ms as an estimate, not a measurement. At 8 blocks it is a few hundred ms of tolerance and
-// about the same again spent past the card's real top on every wipe, against a ~1s wipe. That cost is
-// the reason not to keep raising it.
+// figure materially. A card running with the OPTION flag refuses in silence instead, so there each
+// attempt costs a frame timeout and a read-back. Two bench runs disagree by about 2x and neither was
+// instrumented for this, so treat 40-70ms as an estimate, not a measurement. At 8 blocks it is a few
+// hundred ms of tolerance and about the same again spent past the card's real top on every wipe,
+// against a ~1s wipe. That cost is the reason not to keep raising it.
 //
 // The run length is deliberately NOT the only guard: above the advertised count the re-probe at the
 // trip is what makes a filled run recoverable, so this number sets how much dropout is absorbed
@@ -1201,14 +1204,16 @@ static bool iso15693_poller_write_source_blocks(
     if(source_count == 0 || block_size == 0) return true;
 
     // Attempt every source block; deliberately NOT capped at the target's advertised count. On these
-    // magic cards WRITE BLOCK is gated by physical memory, not the reported count (measured: writes
-    // succeed well past it), and capping leaves stale data in the reachable gap when re-cloning onto a
-    // card that currently advertises fewer blocks. Only a write tests capacity.
+    // magic cards WRITE BLOCK is gated by physical memory, not the reported count (measured on the
+    // gen2 cards tested: writes succeed well past it), and capping leaves stale data in the
+    // reachable gap when re-cloning onto a card that currently advertises fewer blocks. Only a
+    // write tests capacity.
     //
-    // Magic cards ignore their own lock bits, so a block that survives the retries is past physical
-    // capacity. Classify each persistent failure by whether the source had data there (non-empty ->
-    // data lost; empty -> nothing lost), and track position to confirm below that the failures are a
-    // contiguous run at the TOP -- the capacity signature. A scattered failure is not capacity.
+    // A block that survives the retries is a capacity candidate, and only that: the read-probe
+    // below decides. Classify each persistent failure by whether the source had data there
+    // (non-empty -> data lost; empty -> nothing lost), and track position to confirm below that the
+    // failures are a contiguous run at the TOP -- the capacity signature. A scattered failure is
+    // not capacity.
     //
     // Do NOT skip blocks locked in the SOURCE image: the source's lock bits describe the ORIGINAL
     // card, not the magic target (which is writable regardless), and locked blocks are exactly where
@@ -1315,12 +1320,14 @@ static bool iso15693_poller_write_source_blocks(
         // asks "does this block exist at all".
         //
         // It discriminates because a block past physical capacity refuses reads as well as writes
-        // (measured: writes come back Iso15693_3ErrorInternal, reads fail outright). So a block that
-        // ANSWERS a read exists, which means its write failure was something else -- a transient that
-        // outlasted every retry, or a block the card genuinely refuses -- and calling that the card's
-        // capacity edge would be a fabricated claim about the user's hardware. Without this, a transient
-        // near the end of the pass produces a perfect contiguous empty tail and the app reports
-        // "All data written. Holds 60/64 blocks." about a card that holds 64.
+        // on the cards measured (see ISO15693_POLLER_WIPE_MAX_BLOCKS): writes come back
+        // Iso15693_3ErrorInternal, or time out on a card running with the OPTION flag, and reads
+        // fail outright. So a block that ANSWERS a read exists, which means its write failure was
+        // something else -- a transient that outlasted every retry, or a block the card genuinely
+        // refuses -- and calling that the card's capacity edge would be a fabricated claim about
+        // the user's hardware. Without this, a transient near the end of the pass produces a
+        // perfect contiguous empty tail and the app reports "All data written. Holds 60/64 blocks."
+        // about a card that holds 64.
         //
         // Paid on EVERY persistent failure, not only the empty ones: emptiness decides which BUCKET a
         // failure lands in, but a run containing ANY block that answers is not a capacity edge whatever
@@ -1403,9 +1410,10 @@ static bool iso15693_poller_write_source_blocks(
     //
     // Left as it is because of the direction of the error: dropping the guard would let a cut claim
     // capacity from partial evidence, since the run below the cut looks like a top tail whether or not
-    // memory resumes above it. Under-claiming leaves a correct report and a Retry to act on;
-    // over-claiming gives a verdict about the user's hardware the pass never finished testing. A longer
-    // budget for the clone alone would close it, at the cost of more seconds swallowing Back -- #253.
+    // memory resumes above it. Under-claiming leaves a correct report and a Retry, which clears
+    // only a transient; over-claiming gives a verdict about the user's hardware the pass never
+    // finished testing. A longer budget for the clone alone would close it, at the cost of more
+    // seconds swallowing Back -- #253.
     const bool failures_are_top_tail = any_failure && wrote_any && !wrote_above_failure &&
                                        !any_failure_answered && !instance->pass_truncated;
     if(failures_are_top_tail) {
@@ -1652,8 +1660,8 @@ static uint16_t iso15693_poller_wipe_blocks(
         // Bounded by the run length, and not deadline-checked -- it would have to abandon the run
         // half-classified. On a card advertising far more than it holds the run never trips below the
         // claim (the trip needs block + 1 >= advertised), so it can grow to the whole claimed range and
-        // be re-probed in one go, with Back swallowed throughout -- the worst case iso15693_poller.h
-        // states beside the budget, rather than the one short run a healthy card gives.
+        // be re-probed in one go, with Back swallowed throughout -- the worst case stated beside
+        // ISO15693_POLLER_PASS_MAX_MS, rather than the one short run a healthy card gives.
         const uint16_t run_start = (uint16_t)(block + 1 - absent_run);
         uint16_t still_absent = 0;
         for(uint16_t probe = run_start; probe <= block; probe++) {
@@ -1702,8 +1710,9 @@ static uint16_t iso15693_poller_wipe_blocks(
     //
     // One premise this cannot establish: when the clock ends the sweep, the run it ends on is wherever
     // the budget ran out rather than the card's top, so dropping the part of it above the advertised
-    // count is unverified. pass_truncated is what carries that -- the outcome is reported as Partial
-    // and names where the sweep stopped, so the drop is not passing those blocks off as absent memory.
+    // count is unverified. pass_truncated is what carries that -- the outcome is reported as
+    // Partial, or as Fail if nothing cleared, and either names where the sweep stopped, so the drop
+    // is not passing those blocks off as absent memory.
     //
     // WHY THIS LOOP MAY DISAGREE WITH wipe_note_present, AND WHY THAT IS SAFE. note_present resolves a
     // whole run at once: a block proved present, therefore every absence still open BELOW it is
@@ -1767,9 +1776,9 @@ static uint16_t iso15693_poller_wipe_blocks(
 //    contiguous tail above the last block that wrote -> clean Success: the source held nothing
 //    there, so there was nothing to lose. That is NOT a claim that the clone behaves identically --
 //    the source reads those blocks back as zeros, whereas past a card's real capacity the read
-//    itself fails (measured on hardware; it may differ by card). That difference is why this
-//    outcome carries a note on screen rather than being reported as an unqualified success. Any
-//    other empty failure is folded into clone_failed_count -> Partial (see
+//    itself fails on the cards measured (see ISO15693_POLLER_WIPE_MAX_BLOCKS). That difference is
+//    why this outcome carries a note on screen rather than being reported as an unqualified
+//    success. Any other empty failure is folded into clone_failed_count -> Partial (see
 //    iso15693_poller_write_source_blocks).
 //  - a CLONE that fell back to gen1 AND whose source held data at 56/57/62/63 -> Partial: on gen1
 //    those addresses are registers, so that data was not written. A source that reaches them with
@@ -1933,8 +1942,9 @@ static NfcCommand
             // ISO15693_POLLER_PASS_MAX_MS), or the geometry guard above returned before the first
             // write, which also lands here, since it returns 0.
             //
-            // THE REACH RULE, and 49 is not a threshold about the claim CONTAINING 56. TWO gates must
-            // both pass before the sweep can stop, so the last block attempted is the later of them:
+            // THE REACH RULE, and 49 is not a threshold about the claim CONTAINING 56. THREE gates
+            // must all pass before the sweep can stop, and the last block attempted is the later of
+            // the first two:
             //   - ISO15693_POLLER_WIPE_ABSENT_RUN blocks in a row answer nothing. ANSWER, not take the
             //     write: a read is enough, and wipe_note_present zeroes the run from the read path and
             //     from the re-probe as well as from a landed write. A card silent from block A is
@@ -2040,8 +2050,8 @@ static NfcCommand
                 // loaded .nfc, so hand-editable and unbounded by anything this app controls. This is
                 // the site where it matters most -- the other two clamps guard a stack buffer and a
                 // screen, while these two bytes are PROGRAMMED INTO THE CARD and outlive the run.
-                // Unclamped, a source claiming 257 blocks wrapped the cast to 0 and left the card
-                // permanently advertising a single block while the pass wrote 256.
+                // Unclamped, a source claiming 257 blocks would wrap the cast to 0 and program the
+                // card to advertise a single block while the pass wrote 256.
                 const uint16_t cfg_count = sys->block_count > ISO15693_POLLER_MAX_BLOCKS ?
                                                (uint16_t)ISO15693_POLLER_MAX_BLOCKS :
                                                sys->block_count;
@@ -2085,9 +2095,9 @@ static NfcCommand
             return NfcCommandStop;
         }
         // gen2 changed the UID but not to the target: stop rather than compound it with gen1. Record
-        // what came back. This is the ONE branch that proves the card is magic -- an inert tag cannot
-        // change its UID at all -- so it must not fall through to "not a magic tag", and the UID the
-        // card is now answering with is the only way the user can find it again.
+        // what came back. This proves the card is magic -- an inert tag cannot change its UID at
+        // all -- so it must not fall through to "not a magic tag", and the UID the card is now
+        // answering with is the only way the user can find it again.
         instance->uid_unexpected = true;
         memcpy(instance->uid_readback, readback, ISO15693_3_UID_SIZE);
         iso15693_poller_report(instance, Iso15693PollerEventFail);
