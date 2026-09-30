@@ -931,11 +931,16 @@ static Iso15693_3Error iso15693_poller_write_block_retried(
 // Named rather than inline bit ops because a slip -- `mark_failed` where `unmark_failed` belongs --
 // reads correct in any branch that takes a mark back: `|=` against `&= ~` differs by two characters
 // and gives no signal.
+//
+// Both check the index. The callers keep it in range, but an index past the bitmap would write past
+// it, so a slip there is a crash here rather than a corrupted poller.
 static void iso15693_poller_mark_failed(Iso15693Poller* instance, uint16_t block) {
+    furi_check(block < ISO15693_POLLER_MAX_BLOCKS);
     instance->clone_failed_bitmap[block / 8] |= (uint8_t)(1u << (block % 8));
 }
 
 static void iso15693_poller_unmark_failed(Iso15693Poller* instance, uint16_t block) {
+    furi_check(block < ISO15693_POLLER_MAX_BLOCKS);
     instance->clone_failed_bitmap[block / 8] &= (uint8_t) ~(1u << (block % 8));
 }
 
@@ -1266,7 +1271,7 @@ static bool iso15693_poller_write_source_blocks(
         // Before the write, so a clean run reports progress too -- the success path below continues
         // straight to the next block.
         iso15693_poller_report_progress(instance, done++, total);
-        const uint8_t* block_data = iso15693_3_get_block_data(source, block);
+        const uint8_t* block_data = iso15693_3_get_block_data(source, (uint8_t)block);
         const Iso15693_3Error error = iso15693_poller_write_block_retried(
             instance, iso_poller, block_data, (uint8_t)block, block_size);
         if(iso15693_poller_is_uid_block(block)) uid_block_sent = true;
@@ -2480,7 +2485,7 @@ bool iso15693_poller_source_uses_gen1_blocks(const Iso15693_3Data* source) {
     for(size_t i = 0; i < COUNT_OF(iso15693_poller_backdoor_blocks); i++) {
         const uint16_t block = iso15693_poller_backdoor_blocks[i];
         if(block >= block_count) continue;
-        const uint8_t* data = iso15693_3_get_block_data(source, block);
+        const uint8_t* data = iso15693_3_get_block_data(source, (uint8_t)block);
         if(!iso15693_poller_block_is_empty(data, block_size)) return true;
     }
     return false;
