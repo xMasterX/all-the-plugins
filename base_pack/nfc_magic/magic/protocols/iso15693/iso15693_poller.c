@@ -30,12 +30,53 @@
 // and on every one a write to a UID one byte wrong leaves its block unchanged -- read back, not
 // inferred from the silence.
 //
+// On TI Tag-it HF-I Plus the addressing is not what makes the write work -- what that card wants is
+// the OPTION flag, measured across all four combinations:
+//
+//     02 unaddressed, no option   refused, error 0x01      42 unaddressed, OPTION   ACCEPTED
+//     22 addressed,   no option   refused, error 0x03      62 addressed,   OPTION   ACCEPTED
+//
+// So the OPTION flag is necessary and sufficient there, and the addressing is orthogonal to whether
+// the write is accepted -- though not to how the card says so; see ISO15693_POLLER_OPTION_FLAG.
+// Addressing remains worth doing for what #251 filed it as -- keeping the write off a second tag in
+// the field -- and no card measured refuses it.
+//
 // The SDK cannot send it: iso15693_3_poller_write_block hardcodes SUBCARRIER_1 | DATA_RATE_HI with no
 // flags parameter and no UID, and iso15693_3_write_block_response_parse is internal to lib/nfc. So the
 // frame and its response check are both built here.
 #define ISO15693_POLLER_WRITE_FLAGS                                        \
     (ISO15693_3_REQ_FLAG_SUBCARRIER_1 | ISO15693_3_REQ_FLAG_DATA_RATE_HI | \
      ISO15693_3_REQ_FLAG_T4_ADDRESSED)
+
+// SOME SILICON WANTS THE OPTION FLAG ON WRITES, and says so. TI Tag-it HF-I Plus answers an
+// ADDRESSED WRITE BLOCK whose OPTION bit is clear with error 0x03 -- "the option is not supported",
+// the tag naming the bit -- and accepts the identical frame with 0x40 set, addressed or not:
+// measured on both such cards, bracketed by inventories and read back. This, not the addressing, is
+// what makes that chip writable. Unaddressed, the same frame draws 0x01, which names no bit, so the
+// detection below works only because these writes are addressed.
+//
+// NOT decided from the UID, although proxmark's `hf 15 wrbl` decides it that way (it forces the flag
+// when the manufacturer byte is TI's 0x07). A UID is not a statement about silicon here, and this app
+// is in the business of changing it: a clone writes the SOURCE's UID onto the card, so a TI card
+// cloned from an NXP image stops looking like TI exactly before the data pass that needs the flag;
+// a wipe zeroing block 57 rewrites uid[3..0], which is where the manufacturer byte lives; and a card
+// that arrived already carrying someone else's UID never looked like its own silicon at all.
+//
+// So it is decided by what the TAG SAYS: the first write of a run goes out without the flag, and a
+// 0x03 refusal sets it for the rest of the run. The retry that follows is the attempt that lands, so
+// the recovery costs no extra frames.
+//
+// AND THE FLAG COSTS US THE ACKNOWLEDGEMENT. ISO15693-3 10.3.1: with OPTION set, the card answers a
+// WRITE BLOCK only after the READER sends a standalone EOF, and this SDK cannot send one --
+// iso15693_3_poller_encode_frame appends exactly one EOF as the tail of the frame and there is no
+// call for another. proxmark sends it (SendDataTagEOF, armsrc/iso15693.c), which is the only reason
+// its raw write gets an answer.
+//
+// So on a card that wants OPTION the write LANDS and the ACK never arrives. Measured on the same card:
+// block 8 held AA BB CC DD, a wipe from this app reported every block refused, and the block read back
+// as zeros. Silence there is not a refusal; the timeout arm of iso15693_poller_write_block_retried
+// settles it by reading the block back.
+#define ISO15693_POLLER_OPTION_FLAG (ISO15693_3_REQ_FLAG_T4_OPTION)
 
 // gen1: WRITE BLOCK (0x21) to backdoor blocks; 4 data bytes each. The UID blocks are named by the
 // UID bytes they carry (uid[0] is the MSB, so uid[7..4] is the numerically low half of the UID).
@@ -283,6 +324,9 @@ struct Iso15693Poller {
     // original_uid, because a wipe zeroes blocks 56/57 -- which on a gen1 card ARE the UID -- so this
     // one has to move mid-pass while original_uid stays put for VerifyWipe to compare against.
     uint8_t address_uid[ISO15693_3_UID_SIZE];
+    // Set once, by a tag answering error 0x03 to a write, and then carried for the rest of the run.
+    // See ISO15693_POLLER_OPTION_FLAG for why it is not decided from the UID.
+    bool write_option;
     // The addressed WRITE BLOCK frame and the response it gets. Owned for the poller's whole life
     // rather than allocated per block: the clone pass sends up to 256 of these in one loop.
     BitBuffer* frame_tx;
@@ -435,6 +479,31 @@ static void iso15693_poller_send_backdoor_uid_gen2(
 
     bit_buffer_free(tx);
     bit_buffer_free(rx);
+}
+
+// Did the tag refuse because the OPTION flag was clear, rather than for any of the other reasons a
+// write is refused? Error 0x03 is the only one that means that, and parse_write_response folds it in
+// with NOT_SUPPORTED the way the SDK does -- so it is read here, from the frame, before that happens.
+static bool iso15693_poller_response_wants_option(const BitBuffer* rx) {
+    return bit_buffer_get_size_bytes(rx) >= 2 &&
+           (bit_buffer_get_byte(rx, 0) & ISO15693_3_RESP_FLAG_ERROR) != 0 &&
+           bit_buffer_get_byte(rx, 1) == ISO15693_3_RESP_ERROR_OPTION;
+}
+
+// The flags every addressed write carries: the base set, plus OPTION once the card has asked for it.
+static uint8_t iso15693_poller_write_flags(const Iso15693Poller* instance) {
+    return instance->write_option ?
+               (uint8_t)(ISO15693_POLLER_WRITE_FLAGS | ISO15693_POLLER_OPTION_FLAG) :
+               (uint8_t)ISO15693_POLLER_WRITE_FLAGS;
+}
+
+// Sticky, and never cleared inside a run: the answer is about the silicon, and the silicon does not
+// change when the UID does. Clearing it would re-ask the question on a card whose identity this app
+// has just rewritten, which is the one moment the UID cannot be trusted to describe it.
+static void iso15693_poller_note_option_wanted(Iso15693Poller* instance, const BitBuffer* rx) {
+    if(instance->write_option || !iso15693_poller_response_wants_option(rx)) return;
+    FURI_LOG_I(TAG, "the card wants the OPTION flag on writes; setting it for this run");
+    instance->write_option = true;
 }
 
 // The UID goes out LEAST SIGNIFICANT BYTE FIRST -- the reverse of the order every screen, every .nfc
@@ -608,10 +677,17 @@ static Iso15693_3Error iso15693_poller_write_block_addressed(
     uint8_t block,
     uint8_t size) {
     iso15693_poller_build_write_frame(
-        instance->frame_tx, ISO15693_POLLER_WRITE_FLAGS, instance->address_uid, block, data, size);
+        instance->frame_tx,
+        iso15693_poller_write_flags(instance),
+        instance->address_uid,
+        block,
+        data,
+        size);
     const Iso15693_3Error error = iso15693_3_poller_send_frame(
         iso_poller, instance->frame_tx, instance->frame_rx, ISO15693_3_FDT_WRITE_POLL_FC);
     if(error != Iso15693_3ErrorNone) return error;
+
+    iso15693_poller_note_option_wanted(instance, instance->frame_rx);
     return iso15693_poller_parse_write_response(instance->frame_rx);
 }
 
@@ -675,6 +751,21 @@ static void iso15693_poller_readdress(
     memcpy(instance->address_uid, uid, ISO15693_3_UID_SIZE);
 }
 
+// Did the block end up holding what we sent? The only question left on a card whose acknowledgement
+// we cannot collect. Reads need no OPTION flag and are answered normally, which is what makes this
+// available at all.
+static bool iso15693_poller_write_landed(
+    Iso15693_3Poller* iso_poller,
+    const uint8_t* data,
+    uint8_t block,
+    uint8_t size) {
+    uint8_t readback[ISO15693_MAX_BLOCK_SIZE] = {0};
+    if(iso15693_3_poller_read_block(iso_poller, readback, block, size) != Iso15693_3ErrorNone) {
+        return false;
+    }
+    return memcmp(readback, data, size) == 0;
+}
+
 // The one write both block passes make; ISO15693_POLLER_WRITE_ATTEMPTS says why it retries at all.
 // Retries only ever run on a failure, so a card that takes its writes pays nothing for them. There is
 // deliberately no break before the last delay, which is where the per-refused-block figure comes from.
@@ -692,6 +783,21 @@ static Iso15693_3Error iso15693_poller_write_block_retried(
     for(uint32_t attempt = 0; attempt < ISO15693_POLLER_WRITE_ATTEMPTS; attempt++) {
         error = iso15693_poller_write_block_addressed(instance, iso_poller, data, block, size);
         if(error == Iso15693_3ErrorNone) break;
+
+        // Silence from a card that asked for the OPTION flag is the one failure not taken at face
+        // value: that card is waiting for an EOF this SDK cannot send (ISO15693_POLLER_OPTION_FLAG),
+        // so it never answers a write at all. The block is read back instead.
+        //
+        // Deliberately NOT extended to a card that never asked for the flag. There, silence means the
+        // card is gone or the coupling is bad, the retries are the right response, and adding a read
+        // to every failed write would double the cost of exactly the path the pass budget is there to
+        // bound. And NOT extended to an in-band error either: a card that answers has decided, and a
+        // read-back would overrule it.
+        if(error == Iso15693_3ErrorTimeout && instance->write_option &&
+           iso15693_poller_write_landed(iso_poller, data, block, size)) {
+            error = Iso15693_3ErrorNone;
+            break;
+        }
         furi_delay_ms(ISO15693_POLLER_VERIFY_RETRY_MS);
     }
 
@@ -1855,6 +1961,7 @@ static void iso15693_poller_start_internal(
     memset(instance->uid_readback, 0, sizeof(instance->uid_readback));
     // Set in write_step from the card's own answer, so it is reset here with the rest of the run state.
     memset(instance->address_uid, 0, sizeof(instance->address_uid));
+    instance->write_option = false; // re-asked on every run, since the card may be a different one
     memset(instance->clone_failed_bitmap, 0, sizeof(instance->clone_failed_bitmap));
     iso15693_3_reset(instance->data);
     instance->running = true;

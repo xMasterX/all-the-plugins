@@ -28,8 +28,9 @@ typedef enum {
 
 typedef enum {
     Iso15693PollerEventSuccess, // Info: card read. Write/clone: the target UID read back and matched
-        // (the UID, plus the AFI/DSFID on a clone, are re-read; block CONTENTS are never compared --
-        // a data block counts as written when the card ACKs it). Wipe: the sweep ended without the
+        // (the UID, plus the AFI/DSFID on a clone, are re-read; a data block counts as written when
+        // the card ACKs it, and its CONTENTS are compared only on a card that cannot acknowledge a
+        // write -- see ISO15693_POLLER_OPTION_FLAG in the .c). Wipe: the sweep ended without the
         // clock cutting it, and nothing it reached is known to still hold data -- which is weaker than
         // "reached the card's top and cleared everything", because the sweep can also end at the
         // 256-block ceiling, and a block dropped below the advertised count was reached without being
