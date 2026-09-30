@@ -395,7 +395,7 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
             "The UID was written,\nbut no data block took.\nThe card has UID only.");
     } else if(wipe_uid_changed) {
         // The wipe cleared its blocks and the card came back answering a different UID -- in practice a
-        // gen1 card an earlier UID write left armed, which #255 covers and gen2 cannot do at all. Print
+        // gen1 card whose 56/57 the sweep reached, which #255 covers and gen2 cannot do at all. Print
         // what it answers to now: without that the card is simply lost, since it no longer responds to
         // the UID the user knows it by.
         // success_or_partial ORs uid_changed with failed_count, so BOTH can hold: a wipe can move the UID

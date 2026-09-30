@@ -56,6 +56,7 @@ typedef enum {
         // apart before picking a message.
         // A clone's re-read after a pass that reached 56/57 is a Fail too, on a UID other than the
         // target (uid_unexpected).
+        // So is a gen1 sequence that leaves half a UID (uid_unexpected).
     Iso15693PollerEventCardLost, // no card in the field, or removed before the operation finished.
         // Covers a card lifted DURING a block pass, which makes every remaining block fail and so is
         // indistinguishable from the card's capacity ending there: both loops re-check that the card
@@ -89,7 +90,7 @@ void iso15693_poller_start(
 // the read-back it power-cycles the field, like proxmark's switch_off + getUID. There is no
 // power-up latch on the gen1 chips tested (see ISO15693_MAGIC_BLK_UNLOCK in the .c); it is kept
 // anyway because it re-activates the card for a clean read, and a gen2 UID lives in a register
-// space never tested here.
+// space never tested for a latch.
 // Emits CardDetected, then Success (the read-back inventory returns the requested UID), Fail,
 // CardLost, or NotGen2 -- the last offering the destructive gen1 retry via
 // iso15693_poller_start_write_uid_gen1(). Two distinct Fails, both flagged in the result:
@@ -106,7 +107,9 @@ void iso15693_poller_start_write_uid(
 // Writes the destructive gen1 sequence -- ordinary WRITE BLOCK into blocks 56/57/62/63, the four
 // registers the rest of this header calls the gen1 registers (ISO15693_MAGIC_BLK_* in the .c says which
 // is which). ANY writable tag accepts an ordinary write, so on a non-magic tag this destroys four
-// blocks of user data. A Write-UID has no payload to follow, so a verified UID is a clean Success.
+// blocks of user data. ADDRESSED: a tag in the field with a different UID ignores these frames, so a
+// caller's consent text need cover only the card in hand. A Write-UID has no payload to follow, so a
+// verified UID is a clean Success.
 // Emits CardDetected, then Success, Fail (the gen1 UID didn't take) or CardLost. The sequence goes out
 // before anything is verified, so a Fail still carries gen1_attempted -- see that field for what the
 // caller then owes the user. Hardware-validated across three chips -- ISO15693_MAGIC_BLK_UNLOCK in
@@ -274,10 +277,11 @@ typedef struct {
     // card is magic -- an inert tag cannot change its UID -- so it is not "not a magic tag".
     // uid_readback holds what the card answered with, which is the only way back to it.
     // A clone's re-read after a pass that reached 56/57 sets it too, on a UID other than the target.
+    // So does a gen1 sequence that leaves half a UID.
     bool uid_unexpected;
     uint8_t uid_readback[ISO15693_3_UID_SIZE];
-    // This run SENT the destructive gen1 UID sequence, so the gen1 registers have had
-    // UID/unlock/commit bytes written at them whatever the outcome. Whether the tag took them is
+    // This run SENT the destructive gen1 UID sequence, so the gen1 registers have had the
+    // sequence's bytes written at them whatever the outcome. Whether the tag took them is
     // not known -- the frames' return values are discarded, because a refusal does not mean the
     // write did not land. And any writable tag accepts an ordinary WRITE BLOCK, so on a Fail the
     // honest report is that those four blocks may have been overwritten on what is most likely an
@@ -294,10 +298,10 @@ typedef struct {
     // outright is logged and ignored, since it cannot be told from the card being lifted the
     // moment the wipe finished.
     //
-    // "Moved" is the generous reading. Observed on an armed LRi2K: the UID went to ALL ZEROS, and an
-    // ISO15693 UID must begin 0xE0, so the card was left with no valid identity rather than a different
-    // one. It still answered inventory and gen1's frames carry no UID, so it stayed reachable -- which
-    // is why uid_readback is printed. Recovery was byte-identical, and needed the original recorded.
+    // "Moved" is the generous reading. Observed on an LRi2K: the UID went to ALL ZEROS, and an
+    // ISO15693 UID must begin 0xE0, so the card was left with no valid identity rather than a
+    // different one. It still answered inventory, so it stayed reachable -- which is why
+    // uid_readback is printed.
     bool uid_changed;
 } Iso15693PollerResult;
 

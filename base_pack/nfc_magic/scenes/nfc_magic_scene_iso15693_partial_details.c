@@ -172,7 +172,8 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
     if(instance->iso15693_result.used_gen1 && instance->iso15693_result.gen1_blocks_skipped) {
         // Only where the file reached those blocks; see gen1_blocks_skipped.
         nfc_magic_scene_iso15693_partial_details_begin_note(message);
-        furi_string_cat_str(message, "gen1: 56/57/62/63 hold UID + unlock/commit, not file data.");
+        furi_string_cat_str(
+            message, "gen1: 56/57/62/63 are the UID / backdoor registers, not file data.");
     }
     if(instance->iso15693_result.residue_found) {
         nfc_magic_scene_iso15693_partial_details_begin_note(message);
