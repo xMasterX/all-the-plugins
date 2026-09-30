@@ -47,6 +47,7 @@ steps:
       - rm -f artifacts-base/Sub-GHz/subghz_remote.fap
       - rm -f artifacts-base/Sub-GHz/secplus_pin.fap
       - rm -f artifacts-base/Sub-GHz/nice_o_code.fap
+      - rm -f artifacts-base/Sub-GHz/seed_capturer.fap
       - rm -f artifacts-base/Tools/clock.fap
       - rm -f artifacts-base/USB/bad_usb.fap
       - rm -f artifacts-base/USB/u2f.fap
@@ -95,6 +96,7 @@ steps:
       - rm -f artifacts-extra/Sub-GHz/subghz_remote.fap
       - rm -f artifacts-extra/Sub-GHz/secplus_pin.fap
       - rm -f artifacts-extra/Sub-GHz/nice_o_code.fap
+      - rm -f artifacts-extra/Sub-GHz/seed_capturer.fap
       - rm -f artifacts-extra/Tools/clock.fap
       - rm -f artifacts-extra/USB/bad_usb.fap
       - rm -f artifacts-extra/USB/u2f.fap
