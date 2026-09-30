@@ -39,9 +39,8 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
     // loss, a rejected AFI/DSFID, or a cut that happened before anything was refused -- so the list,
     // and the label that opens it, appear only when there is something to list.
     //
-    // Asked over the SAME range that will be printed, which is now structural rather than a promise in a
-    // comment: both go through list_upto. Not from failed_count, which on a cut run includes every
-    // unattempted block above the cut.
+    // Asked over the SAME range that will be printed, structurally: both go through list_upto. Not
+    // from failed_count, which on a cut run includes every unattempted block above the cut.
     //
     // No `+ over_capacity` term: over_capacity survives non-zero only down the failures_are_top_tail
     // branch, which requires an uncut pass and so forces list_upto to the full range, where every one
@@ -105,9 +104,7 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
             // STRICT <, and the boundary is why: blocks_advertised is a COUNT and cut_block is an INDEX,
             // so at equality the claimed blocks are 0..N-1 and the cut sits at index N -- the first block
             // PAST the claim. "at block N of the N this card claims" would name an index that is not one
-            // of the N, and read as a completed fraction on the one boundary where the sweep really was
-            // cut. Both of us have had this backwards once, which is why the derivation is written out
-            // rather than left as a bare operator.
+            // of the N, and read as a completed fraction on the one boundary where the sweep was cut.
             if(instance->iso15693_result.cut_block < instance->iso15693_result.blocks_advertised) {
                 furi_string_cat_printf(
                     message,
@@ -126,7 +123,7 @@ void nfc_magic_scene_iso15693_partial_details_on_enter(void* context) {
         } else {
             // A clone has no advertised count to measure against -- its denominator is the source -- so
             // it states the cut alone. What re-running can do is the shared clause below; it is the same
-            // answer in both modes and was wrong to phrase as a clone-specific promise.
+            // answer in both modes.
             furi_string_cat_printf(
                 message,
                 "Clone hit its time limit at block %u. Blocks from there up were never sent to the "

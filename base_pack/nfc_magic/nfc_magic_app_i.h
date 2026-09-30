@@ -160,8 +160,7 @@ typedef enum {
         // data may sit above the cut.
 } NfcMagicIso15693WriteFailReason;
 
-// Which ISO15693 operation the shared write scene is running. Replaces the old is-wipe bool, now that
-// Write-UID runs there too rather than in a scene of its own.
+// Which ISO15693 operation the shared write scene is running: a clone, a wipe or a Write-UID.
 typedef enum {
     NfcMagicIso15693ModeClone, // write a saved .nfc image onto the card
     NfcMagicIso15693ModeWipe, // zero every data block on the card, 56/57/62/63 included

@@ -194,7 +194,7 @@ static void nfc_magic_scanner_load_mfc_probe_keys(
 static bool nfc_magic_scanner_detect_iso15693(Nfc* nfc) {
     // ISO15693 (NfcV) is a different RF technology from ISO14443-3A, so it gets its own
     // activation probe. There is no reliable non-destructive backdoor probe for a magic
-    // ISO15693 tag, so any ISO15693 tag that activates is treated as a ISO15693 *candidate* --
+    // ISO15693 tag, so any ISO15693 tag that activates is treated as an ISO15693 *candidate* --
     // magic-ness is proven at write time via a UID read-back. This mirrors how a generic
     // MIFARE Classic is reported as an unconfirmed candidate.
     NfcPoller* poller = nfc_poller_alloc(nfc, NfcProtocolIso15693_3);

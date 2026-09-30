@@ -290,7 +290,8 @@ static bool iso15693_poller_is_uid_block(uint16_t block) {
 // target's.
 //
 // The per-block figures are not "a 4-byte write" as a property of the code: the wipe's payload is
-// iso15693_3_get_block_size(target) clamped to ISO15693_MAX_BLOCK_SIZE. 4 is the sample card.
+// iso15693_3_get_block_size(target) clamped to ISO15693_MAX_BLOCK_SIZE. They were estimated on 4-byte
+// blocks.
 //
 // See the capacity test in write_source_blocks for the one place this bound costs something.
 #define ISO15693_POLLER_PASS_MAX_MS (10000U)
@@ -310,7 +311,7 @@ static bool iso15693_poller_is_uid_block(uint16_t block) {
 // refused write answers IN BAND (Iso15693_3ErrorInternal) rather than burning the full FDT timeout, so
 // the waits are a large share of that -- which is what makes ISO15693_POLLER_VERIFY_RETRY_MS move the
 // figure materially. A card running with the OPTION flag refuses in silence instead, so there each
-// attempt costs a frame timeout and a read-back. Two bench runs disagree by about 2x and neither was
+// attempt costs a frame timeout and a read-back. Two runs disagree by about 2x and neither was
 // instrumented for this, so treat 40-70ms as an estimate, not a measurement. At 8 blocks it is a few
 // hundred ms of tolerance and about the same again spent past the card's real top on every wipe,
 // against a ~1s wipe. That cost is the reason not to keep raising it.
@@ -361,16 +362,15 @@ struct Iso15693Poller {
     // Everything from here down to `callback` is this run's reporting state, and get_result copies
     // it into an Iso15693PollerResult one assignment per field -- except where a field notes that it
     // does not. THAT function is the mapping, and iso15693_poller.h owns what each
-    // field means, so this side comments only what the header cannot know. The `clone_` prefix is
-    // historical: a wipe reuses the same fields, which is why clone_blocks_total ends up holding a
-    // wipe's measured block count.
+    // field means, so this side comments only what the header cannot know. The `clone_` fields
+    // serve a wipe too, which is why clone_blocks_total ends up holding a wipe's measured block
+    // count.
     uint16_t clone_blocks_total;
     uint16_t clone_failed_count;
     uint16_t clone_over_capacity;
     uint16_t wipe_advertised;
     // Set by the WIPE's sweep and by the CLONE's data pass -- see the truncation break in
-    // write_source_blocks. nfc_magic_scene_write.c mode-gates on this for exactly that reason, so a
-    // reader who takes it for wipe-only deletes that gate and lands a cut clone on the wipe screen.
+    // write_source_blocks -- so a consumer that wants one mode must check the mode itself.
     bool pass_truncated;
     uint16_t pass_cut_block;
     bool uid_verified;
@@ -1872,9 +1872,8 @@ static void iso15693_poller_finish_progress(Iso15693Poller* instance) {
         instance, instance->pass_truncated ? instance->clone_blocks_done : total, total);
 }
 
-// The tail both UID verifies share, once the UID has read back as the target. It exists because the two
-// were byte-identical apart from skip_backdoor, and the call sites sit ~80 lines apart -- so a change to
-// the gen2 arm could silently fail to reach the gen1 one. That seam is the reason, not the nine lines.
+// The tail both UID verifies share, once the UID has read back as the target, so a change to the
+// gen2 arm reaches the gen1 one.
 //
 // skip_backdoor is the whole difference: a gen2 UID lives in a separate register space, so data-block
 // writes cannot disturb it; a gen1 UID lives IN blocks 56/57/62/63, so a gen1 clone must skip them.
@@ -2025,10 +2024,7 @@ static NfcCommand
             // ONLY the gen1 UID sequence now, verify it in VerifyGen1, and write the data blocks there
             // only if the UID took -- so a non-magic tag that can't do gen1 loses at most the four
             // backdoor registers, not all its data.
-            // Set on the line before the send rather than in start_internal, because the flag's
-            // whole meaning is that these frames went out. A run whose card never activates never
-            // reaches this line: write_step is entered only from the Ready event, so at start the
-            // flag claimed spent gen1 registers for a card the field never saw.
+            // Set at the send, since the flag means these frames went out -- see gen1_attempted.
             instance->gen1_attempted = true;
             iso15693_poller_send_backdoor_uid_gen1(instance, iso_poller, instance->target_uid);
             instance->write_state = Iso15693WriteStateVerifyGen1;

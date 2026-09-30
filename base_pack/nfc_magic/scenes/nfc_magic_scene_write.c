@@ -450,7 +450,7 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
                 } else if(
                     instance->iso15693_result.pass_truncated &&
                     instance->iso15693_mode == NfcMagicIso15693ModeWipe) {
-                    // Mode-gated because pass_truncated now covers a clone's data pass too, and
+                    // Mode-gated because a clone's data pass sets pass_truncated too, and
                     // WipeStopped's screen is wipe-specific down to its wording. A cut clone stays on
                     // the ordinary partial screen and is qualified there.
                     partial_reason = NfcMagicIso15693WriteFailReasonWipeStopped;
@@ -537,11 +537,11 @@ bool nfc_magic_scene_write_on_event(void* context, SceneManagerEvent event) {
         // ISO15693 only: once a card has been found, Back is swallowed until the poller reports an
         // outcome.
         //
-        // It never aborted a write in the first place -- leaving this scene runs on_exit ->
-        // <proto>_poller_stop -> furi_thread_join, which waits for the worker to finish whatever it is
-        // doing. Measured on an ISO15693 wipe: the key-down arrives, the GUI thread sits in the join,
-        // the worker runs the sweep to completion, and only then does the view change. So the write
-        // happens either way; Back only discarded the report.
+        // Back cannot abort a write: leaving this scene runs on_exit -> <proto>_poller_stop ->
+        // furi_thread_join, which waits for the worker to finish whatever it is doing. Measured on
+        // an ISO15693 wipe: the key-down arrives, the GUI thread sits in the join, the worker runs
+        // the sweep to completion, and only then does the view change. So the write happens either
+        // way; leaving would only discard the report.
         //
         // Worse for a clone, which has a NfcCommandReset between the UID write and the data pass. Back
         // landing in that gap leaves the card carrying a new UID and reprogrammed geometry with none of

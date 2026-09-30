@@ -35,11 +35,11 @@ void nfc_magic_scene_iso15693_write_fail_widget_callback(
 // restatement of a three-way contract is exactly what drifts. The deduction varies too: the clone
 // passes failed_count plus over_capacity, not failed_count alone.
 //
-// So the two are not halves of one count, and they have disagreed. The tail-drop's keep branch can
-// count a proven-present block as failed while blocks_total stops at the highest block the card
-// proved, rendering "Wiped 0/20, not cleared: 44" -- the example that branch carries in its own
-// comment. That is guarded where it happens, in the sweep; this is a promise about what reaches the
-// user if it recurs. The counts are unsigned, so an inversion would otherwise print near 65535.
+// So the two are not halves of one count, and they can disagree: the tail-drop's keep branch can count
+// a proven-present block as failed while blocks_total stops at the highest block the card proved,
+// rendering "Wiped 0/20, not cleared: 44" -- the example that branch carries in its own comment. That
+// is guarded where it happens, in the sweep; this is what reaches the user if the guard fails. The
+// counts are unsigned, so an inversion would otherwise print near 65535.
 static uint16_t nfc_magic_iso15693_blocks_ok(uint16_t total, uint16_t bad) {
     return (total >= bad) ? (uint16_t)(total - bad) : 0;
 }
@@ -487,10 +487,9 @@ void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {
     //   else             -> no right button at all
     // on_event decides the same way, in the same order. That third case matters to anyone extending
     // this: a non-retryable reason with nothing behind Details gets NO right button, not an Exit.
-    // Nothing enforces it but this comment. While is_retryable and has_details shared no reason,
-    // on_enter could branch on retryable and on_event on details and never disagree; putting one reason
-    // in both made a control labelled Exit open the Details scroll view. Add a reason to either
-    // predicate and re-read this.
+    // Nothing enforces it but this comment. With a reason in both predicates, deciding the slot on one
+    // test and handling it on the other puts Details behind a control labelled Exit. Add a reason to
+    // either predicate and re-read this.
     //
     // Back escapes from anywhere (on_event's SceneManagerEventTypeBack), so a screen that spends both
     // slots on Retry and Details is not a trap -- and Back is precisely what the "Exit" button below
@@ -556,7 +555,7 @@ bool nfc_magic_scene_iso15693_write_fail_on_event(void* context, SceneManagerEve
         } else if(event.event == GuiButtonTypeRight) {
             // Same test, same order as the right slot in on_enter -- see the rule stated there. This
             // branch is what the label says only because the two agree; it does NOT get to assume the
-            // reason is non-retryable, which is the assumption that put Details under an "Exit" label.
+            // reason is non-retryable.
             if(nfc_magic_scene_iso15693_write_fail_has_details(instance, reason)) {
                 // Details -> the affected-block list (failed blocks, or the empty top blocks).
                 scene_manager_next_scene(
