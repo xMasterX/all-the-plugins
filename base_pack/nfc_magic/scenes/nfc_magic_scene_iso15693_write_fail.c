@@ -71,7 +71,7 @@ static bool
 static bool
     nfc_magic_scene_iso15693_write_fail_has_details(NfcMagicApp* instance, uint32_t reason) {
     const Iso15693PollerResult* result = &instance->iso15693_result;
-    switch(reason) {
+    switch((NfcMagicIso15693WriteFailReason)reason) {
     case NfcMagicIso15693WriteFailReasonOverCapacity:
     case NfcMagicIso15693WriteFailReasonCloneComplete:
         return true;
@@ -101,9 +101,22 @@ static bool
         // that grew a CardLost exit from that state would need it.
         return instance->iso15693_mode == NfcMagicIso15693ModeWipe ? !result->uid_verified :
                                                                      result->uid_recheck;
-    default:
+    case NfcMagicIso15693WriteFailReasonNotMagic:
+    case NfcMagicIso15693WriteFailReasonNothingWiped:
+    case NfcMagicIso15693WriteFailReasonEmptySource:
+    case NfcMagicIso15693WriteFailReasonNothingCloned:
+    case NfcMagicIso15693WriteFailReasonUidUnexpected:
+    case NfcMagicIso15693WriteFailReasonGen1Failed:
+    case NfcMagicIso15693WriteFailReasonUidUnverifiable:
+    case NfcMagicIso15693WriteFailReasonWipeComplete:
         return false;
+    case NfcMagicIso15693WriteFailReasonUnset:
+        break;
     }
+    // No default, so -Wswitch (in -Wall, with -Werror) makes a reason added without an answer here a
+    // build error. Unset, or a value outside the enum, is a caller that entered this scene without
+    // setting a reason.
+    furi_crash("iso15693 write-fail: no reason");
 }
 
 // The one thing every screen here has in common: exactly one centred FontPrimary title, so it is named
@@ -114,7 +127,7 @@ static bool
 // two mechanisms and turn "what does reason X render?" into a two-place lookup -- worse than one chain.
 // The title is the part that really is uniform, so it is the part that gets the table.
 static const char* nfc_magic_scene_iso15693_write_fail_title(uint32_t reason, bool wipe_mode) {
-    switch(reason) {
+    switch((NfcMagicIso15693WriteFailReason)reason) {
     case NfcMagicIso15693WriteFailReasonWipeComplete:
         return "Wipe complete";
     case NfcMagicIso15693WriteFailReasonWipeStopped:
@@ -139,10 +152,15 @@ static const char* nfc_magic_scene_iso15693_write_fail_title(uint32_t reason, bo
         return "UID unchanged";
     case NfcMagicIso15693WriteFailReasonEmptySource:
         return "Nothing to clone";
-    default:
-        // CardLost and NotMagic share a screen -- see the final else of the render chain.
+    case NfcMagicIso15693WriteFailReasonCardLost:
+    case NfcMagicIso15693WriteFailReasonNotMagic:
+        // They share a screen -- see the final else of the render chain.
         return "Write failed";
+    case NfcMagicIso15693WriteFailReasonUnset:
+        break;
     }
+    // Unset, or a value outside the enum: see nfc_magic_scene_iso15693_write_fail_has_details.
+    furi_crash("iso15693 write-fail: no reason");
 }
 
 void nfc_magic_scene_iso15693_write_fail_on_enter(void* context) {

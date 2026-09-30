@@ -108,6 +108,9 @@ typedef enum {
 
 // Reason passed to the Iso15693WriteFail scene via its scene state so it can explain the outcome.
 typedef enum {
+    NfcMagicIso15693WriteFailReasonUnset, // 0, the scene manager's starting state, so a screen
+        // entered without a reason cannot pass for NotMagic. Never set on purpose: the reason
+        // switches crash on it.
     NfcMagicIso15693WriteFailReasonNotMagic, // card present, but the backdoor write was not accepted.
         // Defensive fallback only: a card that really isn't magic leaves the UID unchanged, which is
         // NotGen2 rather than Fail, and lands on the gen1 opt-in screen instead of here.
