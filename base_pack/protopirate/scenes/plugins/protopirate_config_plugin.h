@@ -19,8 +19,8 @@ enum ProtoPirateSettingIndex {
     ProtoPirateSettingIndexTXPower,
 #endif
     ProtoPirateSettingIndexAutoSave,
-    ProtoPirateSettingIndexDateTimeFilenames,
     ProtoPirateSettingIndexCheckSaved,
+    ProtoPirateSettingIndexDateTimeFilenames,
     ProtoPirateSettingIndexSound,
     ProtoPirateSettingIndexLock,
 };

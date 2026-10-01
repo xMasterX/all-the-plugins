@@ -30,6 +30,7 @@ _MAIN_APP_SOURCES = [
     "!protopirate_config_plugin.c",
     "protocols/protocol_items.c",
     "protocols/protocols_common.c",
+    "protocols/protocol_bf_probe.c",
     "!raw_file_reader.c",
 ]
 
@@ -59,7 +60,7 @@ App(
     requires=["gui"],
     stack_size=2 * 1024,
     fap_description="Decode car key fob signals from Sub-GHz",
-    fap_version="3.7",
+    fap_version="3.8",
     fap_icon="images/protopirate_10px.png",
     fap_category="Sub-GHz",
     fap_icon_assets="images",
@@ -376,12 +377,10 @@ App(
     requires=["proto_pirate"],
     cdefines=["PROTOPIRATE_SUB_DECODE_PLUGIN_BUILD=1"],
     sources=[
+        # Everything else this scene needs reaches it through ProtoPirateToolSceneHostApi,
+        # rather than compiling a second copy of host-resident code into the .fal.
         "scenes/protopirate_scene_sub_decode.c",
         "helpers/raw_file_reader.c",
-        "protopirate_history.c",
-        "helpers/protopirate_storage.c",
-        "protocols/protocol_items.c",
-        "protocols/protocols_common.c",
     ],
     fap_icon_assets="images",
     fal_embedded=True,
@@ -427,6 +426,7 @@ App(
         "protocols/psa_bf_core.c",
         "protocols/renault_v1.c",
         "protocols/protocols_common.c",
+        "protocols/protocol_bf_probe.c",
     ],
     fap_icon_assets="images",
     fal_embedded=True,
@@ -456,6 +456,7 @@ App(
     sources=[
         "scenes/plugins/protopirate_saved_info_plugin.c",
         "protocols/protocols_common.c",
+        "protocols/protocol_bf_probe.c",
     ],
     fap_icon_assets="images",
     fal_embedded=True,

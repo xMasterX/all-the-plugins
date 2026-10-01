@@ -126,11 +126,15 @@ void protopirate_view_receiver_set_sub_decode_progress(
     uint8_t progress) {
     furi_check(receiver);
     if(progress > 100) progress = 100;
+    bool changed = false;
     with_view_model(
         receiver->view,
         ProtoPirateReceiverModel * model,
-        { model->sub_decode_progress = progress; },
-        true);
+        {
+            changed = model->sub_decode_progress != progress;
+            model->sub_decode_progress = progress;
+        },
+        changed);
 }
 
 void protopirate_view_receiver_set_rssi(ProtoPirateReceiver* receiver, float rssi) {
@@ -198,16 +202,21 @@ void protopirate_view_receiver_add_data_statusbar(
     size_t history_stat_size,
     bool external_radio) {
     furi_check(receiver);
+    bool changed = false;
     with_view_model(
         receiver->view,
         ProtoPirateReceiverModel * model,
         {
+            changed = model->external_radio != external_radio ||
+                      memcmp(model->frequency_str, frequency_str, freqency_size) != 0 ||
+                      memcmp(model->preset_str, preset_str, preset_size) != 0 ||
+                      memcmp(model->history_stat_str, history_stat_str, history_stat_size) != 0;
             memcpy(model->frequency_str, frequency_str, freqency_size);
             memcpy(model->preset_str, preset_str, preset_size);
             memcpy(model->history_stat_str, history_stat_str, history_stat_size);
             model->external_radio = external_radio;
         },
-        true);
+        changed);
 }
 
 static void protopirate_view_receiver_draw_frame(Canvas* canvas, uint16_t idx, bool scrollbar) {

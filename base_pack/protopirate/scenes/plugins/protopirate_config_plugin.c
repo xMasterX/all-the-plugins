@@ -459,6 +459,17 @@ static void plugin_on_enter(void* context, bool show_lock_keyboard) {
         app);
     variable_item_set_current_value_index(item, app->auto_save ? 1 : 0);
     variable_item_set_current_value_text(item, on_off_text[app->auto_save ? 1 : 0]);
+
+    //Check Saved Option
+    item = variable_item_list_add(
+        app->variable_item_list,
+        "Check Saved:",
+        ON_OFF_COUNT,
+        protopirate_scene_receiver_config_set_check_saved,
+        app);
+    variable_item_set_current_value_index(item, app->check_saved ? 1 : 0);
+    variable_item_set_current_value_text(item, on_off_text[app->check_saved ? 1 : 0]);
+
     // Date/time filenames option
     item = variable_item_list_add(
         app->variable_item_list,
@@ -469,15 +480,6 @@ static void plugin_on_enter(void* context, bool show_lock_keyboard) {
     variable_item_set_current_value_index(item, app->datetime_filenames ? 1 : 0);
     variable_item_set_current_value_text(
         item, sequence_time_text[app->datetime_filenames ? 1 : 0]);
-
-    item = variable_item_list_add(
-        app->variable_item_list,
-        "Check Saved:",
-        ON_OFF_COUNT,
-        protopirate_scene_receiver_config_set_check_saved,
-        app);
-    variable_item_set_current_value_index(item, app->check_saved ? 1 : 0);
-    variable_item_set_current_value_text(item, on_off_text[app->check_saved ? 1 : 0]);
 
     // Sound option
     item = variable_item_list_add(

@@ -18,7 +18,13 @@ const FlipperAppPluginDescriptor* load_plugin_fal(
         FlipperApplicationPreloadStatus preload_res =
             flipper_application_preload(*fal_app, plugin_path);
         if(preload_res != FlipperApplicationPreloadStatusSuccess) {
-            FURI_LOG_E(TAG, "Failed to preload plugin: %s", plugin_path);
+            FURI_LOG_E(
+                TAG,
+                "Failed to preload plugin: %s (%s)",
+                plugin_path,
+                preload_res == FlipperApplicationPreloadStatusNotEnoughMemory ?
+                    "out of memory" :
+                    "invalid or stale");
             break;
         }
 
@@ -200,7 +206,8 @@ bool shared_plugin_load(
 #endif
             ) {
                 const ProtoPirateToolScenePlugin* plugin_tool_scene = app_descriptor->entry_point;
-                if(!plugin_tool_scene || !plugin_tool_scene->on_enter) {
+                if(!plugin_tool_scene || !plugin_tool_scene->on_enter ||
+                   !plugin_tool_scene->set_host_api) {
                     FURI_LOG_E(TAG, "Tool Scene plugin entry point is invalid");
                 } else {
                     *plugin_pointer = plugin_tool_scene;
@@ -208,15 +215,16 @@ bool shared_plugin_load(
                 }
             } else if(plugin_type == ProtoPirateSharedPluginsPSABruteforce) {
                 const ProtoPiratePsaBfPlugin* plugin_psa_bf = app_descriptor->entry_point;
-                if(!plugin_psa_bf || !plugin_psa_bf->needs_bruteforce) {
-                    FURI_LOG_E(TAG, "PSA plugin entry needs_bruteforce is invalid");
+                if(!plugin_psa_bf || !plugin_psa_bf->set_host_api || !plugin_psa_bf->is_running ||
+                   !plugin_psa_bf->on_scene_event) {
+                    FURI_LOG_E(TAG, "PSA plugin entry point is invalid");
                 } else {
                     *plugin_pointer = plugin_psa_bf;
                     return_value = true;
                 }
             } else if(plugin_type == ProtoPirateSharedPluginsTXRX) {
                 const ProtoPirateProtocolPlugin* plugin_txrx = app_descriptor->entry_point;
-                if(!plugin_txrx || !plugin_txrx->registry) {
+                if(!plugin_txrx || !plugin_txrx->registry || plugin_txrx->registry->size == 0U) {
                     FURI_LOG_E(TAG, "Protocol plugin registry entry is invalid");
                 } else {
                     *plugin_pointer = plugin_txrx;
@@ -226,7 +234,12 @@ bool shared_plugin_load(
         }
     } while(false);
 
-    //Free the plugin if there was an error, otherwise we are done!
+    // A descriptor that loads but fails validation leaves fal_app mapped, so drop it here:
+    // "returns false" must mean "nothing to clean up", or every call site has to remember.
+    if(!return_value && fal_app) {
+        flipper_application_free(fal_app);
+        fal_app = NULL;
+    }
     *flipper_application_pointer = fal_app;
     furi_record_close(RECORD_STORAGE);
     return return_value;

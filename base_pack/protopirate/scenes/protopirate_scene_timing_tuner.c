@@ -33,16 +33,6 @@ void protopirate_scene_timing_tuner_on_exit(void* context) {
 
 static const ProtoPirateToolSceneHostApi* g_tool_scene_host_api = NULL;
 
-#define protopirate_ensure_view_about(app) g_tool_scene_host_api->ensure_view_about(app)
-#define protopirate_radio_init(app)        g_tool_scene_host_api->radio_init(app)
-#define protopirate_rx_stack_resume_after_tx(app) \
-    g_tool_scene_host_api->rx_stack_resume_after_tx(app)
-#define protopirate_begin(app, preset_data) g_tool_scene_host_api->begin(app, preset_data)
-#define protopirate_rx(app, frequency)      g_tool_scene_host_api->rx(app, frequency)
-#define protopirate_rx_end(app)             g_tool_scene_host_api->rx_end(app)
-#define protopirate_history_release_scratch(history) \
-    g_tool_scene_host_api->history_release_scratch(history)
-
 #define MAX_TIMING_SAMPLES       512
 #define VISIBLE_LINES            6
 #define LINE_HEIGHT              9
@@ -655,14 +645,14 @@ void protopirate_scene_timing_tuner_on_enter(void* context) {
 
     FURI_LOG_I(TAG, "Entering Timing Tuner");
 
-    if(!protopirate_ensure_view_about(app)) {
+    if(!g_tool_scene_host_api->ensure_view_about(app)) {
         notification_message(app->notifications, &sequence_error);
         view_dispatcher_send_custom_event(
             app->view_dispatcher, ProtoPirateCustomEventPluginNavigateBack);
         return;
     }
 
-    if(!app->radio_initialized && !protopirate_radio_init(app)) {
+    if(!app->radio_initialized && !g_tool_scene_host_api->radio_init(app)) {
         FURI_LOG_E(TAG, "Failed to initialize radio for timing tuner");
         notification_message(app->notifications, &sequence_error);
         view_dispatcher_send_custom_event(
@@ -671,10 +661,10 @@ void protopirate_scene_timing_tuner_on_enter(void* context) {
     }
 
     if(app->txrx && app->txrx->history) {
-        protopirate_history_release_scratch(app->txrx->history);
+        g_tool_scene_host_api->history_release_scratch(app->txrx->history);
     }
 
-    protopirate_rx_stack_resume_after_tx(app);
+    g_tool_scene_host_api->rx_stack_resume_after_tx(app);
     if(!app->txrx->receiver) {
         FURI_LOG_E(TAG, "Failed to allocate receiver for timing tuner");
         notification_message(app->notifications, &sequence_error);
@@ -733,8 +723,8 @@ void protopirate_scene_timing_tuner_on_enter(void* context) {
     subghz_worker_set_pair_callback(
         app->txrx->worker, (SubGhzWorkerPairCallback)timing_tuner_pair_callback);
 
-    protopirate_begin(app, app->txrx->preset->data);
-    protopirate_rx(app, app->txrx->preset->frequency);
+    g_tool_scene_host_api->begin(app, app->txrx->preset->data);
+    g_tool_scene_host_api->rx(app, app->txrx->preset->frequency);
     g_timing_ctx->is_receiving = true;
 
     view_dispatcher_switch_to_view(app->view_dispatcher, ProtoPirateViewAbout);
@@ -758,7 +748,7 @@ bool protopirate_scene_timing_tuner_on_event(void* context, SceneManagerEvent ev
             consumed = true;
         } else if(event.event == 1) {
             if(g_timing_ctx && g_timing_ctx->is_receiving) {
-                protopirate_rx_end(app);
+                g_tool_scene_host_api->rx_end(app);
                 g_timing_ctx->is_receiving = false;
             }
             view_dispatcher_send_custom_event(
@@ -786,7 +776,7 @@ void protopirate_scene_timing_tuner_on_exit(void* context) {
     FURI_LOG_I(TAG, "Exiting Timing Tuner");
 
     if(g_timing_ctx && g_timing_ctx->is_receiving) {
-        protopirate_rx_end(app);
+        g_tool_scene_host_api->rx_end(app);
     }
 
     if(app->txrx && app->txrx->receiver) {

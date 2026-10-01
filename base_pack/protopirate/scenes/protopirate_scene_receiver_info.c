@@ -3,6 +3,7 @@
 #include "../helpers/protopirate_storage.h"
 #include "../helpers/protopirate_psa_bf_host.h"
 #include "../protocols/protocol_items.h"
+#include "../protocols/protocol_bf_probe.h"
 #include "proto_pirate_icons.h"
 #include <storage/storage.h>
 
@@ -112,11 +113,10 @@ static void protopirate_receiver_info_build_normal_widget(ProtoPirateApp* app) {
             app->widget, 0, 11, AlignLeft, AlignTop, FontSecondary, text_str);
     }
 
-    bool needs_bf = false;
-    if(offers_bf && protopirate_psa_bf_plugin_ensure_loaded(app) && app->psa_bf_plugin) {
-        needs_bf = app->psa_bf_plugin->widget_left_should_bruteforce(app, ff);
-    }
-    protopirate_psa_bf_plugin_unload_if_idle(app);
+    // The predicate is host-resident, so asking it costs no .fal map. A load failure used to
+    // leave the button silently undrawn, which looked like "this protocol has no bruteforce".
+    const bool bf_running = app->psa_bf_plugin && app->psa_bf_plugin->is_running(app);
+    const bool needs_bf = offers_bf && !bf_running && protopirate_bf_probe_needs_bruteforce(ff);
     if(needs_bf) {
         scene_manager_set_scene_state(app->scene_manager, ProtoPirateSceneReceiverInfo, STATE_BF);
         widget_add_button_element(
@@ -223,8 +223,11 @@ bool protopirate_scene_receiver_info_on_event(void* context, SceneManagerEvent e
     bool consumed = false;
 
     if((event.type == SceneManagerEventTypeCustom) &&
-       (event.event == ProtoPirateCustomEventBruteforceStart)) {
-        protopirate_psa_bf_plugin_ensure_loaded(app);
+       (event.event == ProtoPirateCustomEventBruteforceStart) &&
+       !protopirate_psa_bf_plugin_ensure_loaded(app)) {
+        FURI_LOG_E(TAG, "Failed to load PSA bruteforce plugin");
+        notification_message(app->notifications, &sequence_error);
+        return true;
     }
 
     if(app->psa_bf_plugin) {

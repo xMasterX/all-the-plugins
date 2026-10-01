@@ -92,11 +92,15 @@ static bool protopirate_ensure_protocol_registry_plugin(
     }
 
     const char* plugin_path = protopirate_get_registry_plugin_path(route);
-    shared_plugin_load(
-        (void**)&app->txrx->protocol_plugin_flipper_application,
-        (const void**)&app->txrx->protocol_plugin,
-        ProtoPirateSharedPluginsTXRX,
-        plugin_path);
+    if(!shared_plugin_load(
+           (void**)&app->txrx->protocol_plugin_flipper_application,
+           (const void**)&app->txrx->protocol_plugin,
+           ProtoPirateSharedPluginsTXRX,
+           plugin_path)) {
+        FURI_LOG_E(TAG, "Failed to load RX protocol plugin %s", plugin_path);
+        protopirate_unload_protocol_plugin(app);
+        return false;
+    }
 
     if(app->txrx->protocol_plugin->kind != ProtoPirateProtocolPluginKindRx) {
         FURI_LOG_E(TAG, "Protocol plugin kind mismatch for RX route");
@@ -162,20 +166,21 @@ static bool protopirate_ensure_tx_protocol_plugin(
         protopirate_unload_protocol_plugin(app);
     }
 
-    shared_plugin_load(
-        (void**)&app->txrx->protocol_plugin_flipper_application,
-        (const void**)&app->txrx->protocol_plugin,
-        ProtoPirateSharedPluginsTXRX,
-        plugin_path);
+    if(!shared_plugin_load(
+           (void**)&app->txrx->protocol_plugin_flipper_application,
+           (const void**)&app->txrx->protocol_plugin,
+           ProtoPirateSharedPluginsTXRX,
+           plugin_path)) {
+        FURI_LOG_E(TAG, "Failed to load TX protocol plugin %s", plugin_path);
+        protopirate_unload_protocol_plugin(app);
+        return false;
+    }
 
     const SubGhzProtocol* tx_protocol = app->txrx->protocol_plugin->registry->items[0];
     if(!tx_protocol || !tx_protocol->encoder || !tx_protocol->encoder->alloc ||
        !tx_protocol->encoder->deserialize || !tx_protocol->encoder->yield) {
         FURI_LOG_E(TAG, "TX protocol plugin for %s has no encoder", registry_name);
-        if(app->txrx->protocol_plugin->release) {
-            app->txrx->protocol_plugin->release();
-        }
-        protopirate_unload_protocol_plugin(app);
+        protopirate_unload_protocol_plugin(app); // already calls release()
         return false;
     }
 

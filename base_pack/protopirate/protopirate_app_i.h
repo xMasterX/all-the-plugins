@@ -120,7 +120,6 @@ struct ProtoPirateApp {
     const ProtoPiratePsaBfPlugin* psa_bf_plugin;
     FlipperApplication* tool_scene_plugin_flipper_application;
     const ProtoPirateToolScenePlugin* tool_scene_plugin;
-    ProtoPirateToolScenePluginKind tool_scene_plugin_kind;
 #ifdef ENABLE_MODELS_DATABASE
     ProtoPirateCarModel* selected_model;
     uint16_t car_models_count;
