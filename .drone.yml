@@ -6,12 +6,15 @@ platform:
   os: linux
   arch: amd64
 
+clone:
+  depth: 1
+
 steps:
   - name: "Update submodules"
     image: alpine/git
     commands: 
       - git submodule sync
-      - git -c protocol.version=2 submodule update --init --force --recursive --jobs 4
+      - git -c protocol.version=2 submodule update --init --force --recursive --depth 1 --jobs 4
       - git submodule foreach git config --local gc.auto 0
       - git log -1 --format='%H'
 
@@ -35,7 +38,9 @@ steps:
     image: hfdj/fztools
     pull: never
     commands:
-      - git clone --branch dev https://github.com/DarkFlippers/unleashed-firmware.git
+      - echo "T $(date -u +%T) clone start"
+      - git clone --depth 1 --branch dev --recurse-submodules --shallow-submodules --jobs 8 https://github.com/DarkFlippers/unleashed-firmware.git
+      - echo "T $(date -u +%T) clone done"
       - rm -rf unleashed-firmware/build/
       - rm -rf unleashed-firmware/dist/
       - rm -rf unleashed-firmware/.sconsign.dblite
@@ -50,7 +55,9 @@ steps:
       - echo "cores - nproc $(nproc) / cgroup $(cat /sys/fs/cgroup/cpu.max 2>/dev/null || echo n/a)"
       - ccache -p 2>/dev/null | grep -E "cache_dir|max_size" || true
       - echo "--- ccache stats BEFORE ---"; ccache -s 2>/dev/null | head -6 || true
-      - ./fbt --debug=time -j "$(nproc)" COMPACT=1 DEBUG=0 updater_package
+      - echo "T $(date -u +%T) fbt start"
+      - rc=0; ./fbt -j "$(nproc)" COMPACT=1 DEBUG=0 updater_package > /tmp/fbt.log 2>&1 || rc=$?; grep -E "warning:|error:|Error [0-9]|\*\*\*|FAILED|StopError|undefined reference" /tmp/fbt.log || echo "no warnings or errors"; echo "fbt log lines $(wc -l < /tmp/fbt.log)"; [ $rc -eq 0 ] || { echo "BUILD FAILED"; tail -80 /tmp/fbt.log; exit $rc; }
+      - echo "T $(date -u +%T) fbt done"
       - echo "--- ccache stats AFTER ---"; ccache -s 2>/dev/null | head -14 || true
       - du -sh /ccache 2>/dev/null || true
       - mkdir artifacts-base
@@ -89,6 +96,7 @@ steps:
       - sh categorize_apps.sh base_pack_build/artifacts-base
     environment:
       FBT_TOOLCHAIN_PATH: /fbt
+      FBT_NO_SYNC: 1
       CCACHE_DIR: /ccache
       FBT_TOOLS_CUSTOM_LINK:
         from_secret: fbt_link
@@ -115,7 +123,9 @@ steps:
       - echo "cores - nproc $(nproc) / cgroup $(cat /sys/fs/cgroup/cpu.max 2>/dev/null || echo n/a)"
       - ccache -p 2>/dev/null | grep -E "cache_dir|max_size" || true
       - echo "--- ccache stats BEFORE ---"; ccache -s 2>/dev/null | head -6 || true
-      - ./fbt --debug=time -j "$(nproc)" COMPACT=1 DEBUG=0 updater_package
+      - echo "T $(date -u +%T) fbt start"
+      - rc=0; ./fbt -j "$(nproc)" COMPACT=1 DEBUG=0 updater_package > /tmp/fbt.log 2>&1 || rc=$?; grep -E "warning:|error:|Error [0-9]|\*\*\*|FAILED|StopError|undefined reference" /tmp/fbt.log || echo "no warnings or errors"; echo "fbt log lines $(wc -l < /tmp/fbt.log)"; [ $rc -eq 0 ] || { echo "BUILD FAILED"; tail -80 /tmp/fbt.log; exit $rc; }
+      - echo "T $(date -u +%T) fbt done"
       - echo "--- ccache stats AFTER ---"; ccache -s 2>/dev/null | head -14 || true
       - du -sh /ccache 2>/dev/null || true
       - mkdir artifacts-extra
@@ -149,6 +159,7 @@ steps:
       - sh categorize_apps.sh extra_pack_build/artifacts-extra
     environment:
       FBT_TOOLCHAIN_PATH: /fbt
+      FBT_NO_SYNC: 1
       CCACHE_DIR: /ccache
       FBT_TOOLS_CUSTOM_LINK:
         from_secret: fbt_link
