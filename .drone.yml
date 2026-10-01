@@ -15,6 +15,22 @@ steps:
       - git submodule foreach git config --local gc.auto 0
       - git log -1 --format='%H'
 
+  - name: "Provide ccache"
+    image: debian:bookworm-slim
+    volumes:
+      - name: fbt-toolchain
+        path: /fbt
+    commands:
+      - if [ -x /fbt/bin/ccache ]; then /fbt/bin/ccache -V | head -1; exit 0; fi
+      - apt-get update -qq
+      - apt-get install -y -qq --no-install-recommends ca-certificates wget xz-utils
+      - wget -qO /tmp/ccache.tar.xz https://github.com/ccache/ccache/releases/download/v4.10.2/ccache-4.10.2-linux-x86_64.tar.xz
+      - tar xJf /tmp/ccache.tar.xz -C /tmp
+      - mkdir -p /fbt/bin
+      - cp /tmp/ccache-4.10.2-linux-x86_64/ccache /fbt/bin/ccache
+      - chmod 755 /fbt/bin/ccache
+      - /fbt/bin/ccache -V | head -1
+
   - name: "Build base pack"
     image: hfdj/fztools
     pull: never
@@ -28,11 +44,16 @@ steps:
       - ./parse_api_ver.sh
       - cd unleashed-firmware
       - export FBT_GIT_SUBMODULE_SHALLOW=1
-      - ./fbt COMPACT=1 DEBUG=0 updater_package
+      - mkdir -p /ccache "$HOME/.config/ccache" "$HOME/.ccache"
+      - printf 'cache_dir = /ccache\nmax_size = 10G\ncompression = true\n' | tee "$HOME/.config/ccache/ccache.conf" > "$HOME/.ccache/ccache.conf"
+      - if /fbt/bin/ccache -V >/dev/null 2>&1; then export PATH=/fbt/bin:$PATH; ccache -V | head -1; else echo "WARNING ccache unusable - building without cache"; fi
+      - echo "cores - nproc $(nproc) / cgroup $(cat /sys/fs/cgroup/cpu.max 2>/dev/null || echo n/a)"
+      - ./fbt -j "$(nproc)" COMPACT=1 DEBUG=0 updater_package
+      - ccache -s 2>/dev/null || true
       - mkdir artifacts-base
       - mkdir artifacts-totp
       - mkdir dist/f7-C/f7-update-local/resources
-      - toolchain/current/bin/python3 scripts/hs.py decompress dist/f7-C/f7-update-local/resources.ths -o dist/f7-C/f7-update-local/resources.tar
+      - /fbt/toolchain/current/bin/python3 scripts/hs.py decompress dist/f7-C/f7-update-local/resources.ths -o dist/f7-C/f7-update-local/resources.tar
       - tar xf dist/f7-C/f7-update-local/resources.tar -C dist/f7-C/f7-update-local/resources
       - mv dist/f7-C/f7-update-local/resources/apps/* artifacts-base/
       - mv dist/f7-C/f7-update-local/resources/apps_data/totp/* artifacts-totp/
@@ -64,8 +85,15 @@ steps:
       - mv unleashed-firmware/artifacts-totp/* base_pack_build/apps_data/totp/
       - sh categorize_apps.sh base_pack_build/artifacts-base
     environment:
+      FBT_TOOLCHAIN_PATH: /fbt
+      CCACHE_DIR: /ccache
       FBT_TOOLS_CUSTOM_LINK:
         from_secret: fbt_link
+    volumes:
+      - name: ccache
+        path: /ccache
+      - name: fbt-toolchain
+        path: /fbt
 
   - name: "Build extra apps"
     image: hfdj/fztools
@@ -80,10 +108,15 @@ steps:
       - sh strip_name_tags.sh unleashed-firmware/applications_user
       - cd unleashed-firmware
       - export FBT_GIT_SUBMODULE_SHALLOW=1
-      - ./fbt COMPACT=1 DEBUG=0 updater_package
+      - mkdir -p /ccache "$HOME/.config/ccache" "$HOME/.ccache"
+      - printf 'cache_dir = /ccache\nmax_size = 10G\ncompression = true\n' | tee "$HOME/.config/ccache/ccache.conf" > "$HOME/.ccache/ccache.conf"
+      - if /fbt/bin/ccache -V >/dev/null 2>&1; then export PATH=/fbt/bin:$PATH; ccache -V | head -1; else echo "WARNING ccache unusable - building without cache"; fi
+      - echo "cores - nproc $(nproc) / cgroup $(cat /sys/fs/cgroup/cpu.max 2>/dev/null || echo n/a)"
+      - ./fbt -j "$(nproc)" COMPACT=1 DEBUG=0 updater_package
+      - ccache -s 2>/dev/null || true
       - mkdir artifacts-extra
       - mkdir dist/f7-C/f7-update-local/resources
-      - toolchain/current/bin/python3 scripts/hs.py decompress dist/f7-C/f7-update-local/resources.ths -o dist/f7-C/f7-update-local/resources.tar
+      - /fbt/toolchain/current/bin/python3 scripts/hs.py decompress dist/f7-C/f7-update-local/resources.ths -o dist/f7-C/f7-update-local/resources.tar
       - tar xf dist/f7-C/f7-update-local/resources.tar -C dist/f7-C/f7-update-local/resources
       - mv dist/f7-C/f7-update-local/resources/apps/* artifacts-extra/
       - ls -laS artifacts-extra
@@ -111,8 +144,15 @@ steps:
       - mv unleashed-firmware/artifacts-extra/ extra_pack_build
       - sh categorize_apps.sh extra_pack_build/artifacts-extra
     environment:
+      FBT_TOOLCHAIN_PATH: /fbt
+      CCACHE_DIR: /ccache
       FBT_TOOLS_CUSTOM_LINK:
         from_secret: fbt_link
+    volumes:
+      - name: ccache
+        path: /ccache
+      - name: fbt-toolchain
+        path: /fbt
 
   - name: "Build apps index"
     image: python:3-alpine
@@ -159,6 +199,14 @@ steps:
         - md5
         - sha1
         - crc32
+
+volumes:
+  - name: ccache
+    host:
+      path: /var/lib/drone/cache/unleashed-ccache
+  - name: fbt-toolchain
+    host:
+      path: /var/lib/drone/cache/fbt-toolchain
 
 trigger:
   event:
