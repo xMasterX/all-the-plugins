@@ -48,8 +48,11 @@ steps:
       - printf 'cache_dir = /ccache\nmax_size = 10G\ncompression = true\n' | tee "$HOME/.config/ccache/ccache.conf" > "$HOME/.ccache/ccache.conf"
       - if /fbt/bin/ccache -V >/dev/null 2>&1; then export PATH=/fbt/bin:$PATH; ccache -V | head -1; else echo "WARNING ccache unusable - building without cache"; fi
       - echo "cores - nproc $(nproc) / cgroup $(cat /sys/fs/cgroup/cpu.max 2>/dev/null || echo n/a)"
+      - ccache -p 2>/dev/null | grep -E "cache_dir|max_size" || true
+      - echo "--- ccache stats BEFORE ---"; ccache -s 2>/dev/null | head -6 || true
       - ./fbt -j "$(nproc)" COMPACT=1 DEBUG=0 updater_package
-      - ccache -s 2>/dev/null || true
+      - echo "--- ccache stats AFTER ---"; ccache -s 2>/dev/null | head -14 || true
+      - du -sh /ccache 2>/dev/null || true
       - mkdir artifacts-base
       - mkdir artifacts-totp
       - mkdir dist/f7-C/f7-update-local/resources
@@ -99,9 +102,7 @@ steps:
     image: hfdj/fztools
     pull: never
     commands:
-      - rm -rf unleashed-firmware/build/
       - rm -rf unleashed-firmware/dist/
-      - rm -rf unleashed-firmware/.sconsign.dblite
       - rm -rf unleashed-firmware/applications_user/*
       - mv apps_source_code/* unleashed-firmware/applications_user/
       - mv non_catalog_apps/* unleashed-firmware/applications_user/
@@ -112,8 +113,11 @@ steps:
       - printf 'cache_dir = /ccache\nmax_size = 10G\ncompression = true\n' | tee "$HOME/.config/ccache/ccache.conf" > "$HOME/.ccache/ccache.conf"
       - if /fbt/bin/ccache -V >/dev/null 2>&1; then export PATH=/fbt/bin:$PATH; ccache -V | head -1; else echo "WARNING ccache unusable - building without cache"; fi
       - echo "cores - nproc $(nproc) / cgroup $(cat /sys/fs/cgroup/cpu.max 2>/dev/null || echo n/a)"
+      - ccache -p 2>/dev/null | grep -E "cache_dir|max_size" || true
+      - echo "--- ccache stats BEFORE ---"; ccache -s 2>/dev/null | head -6 || true
       - ./fbt -j "$(nproc)" COMPACT=1 DEBUG=0 updater_package
-      - ccache -s 2>/dev/null || true
+      - echo "--- ccache stats AFTER ---"; ccache -s 2>/dev/null | head -14 || true
+      - du -sh /ccache 2>/dev/null || true
       - mkdir artifacts-extra
       - mkdir dist/f7-C/f7-update-local/resources
       - /fbt/toolchain/current/bin/python3 scripts/hs.py decompress dist/f7-C/f7-update-local/resources.ths -o dist/f7-C/f7-update-local/resources.tar
