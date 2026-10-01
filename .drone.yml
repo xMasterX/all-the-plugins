@@ -45,12 +45,12 @@ steps:
       - cd unleashed-firmware
       - export FBT_GIT_SUBMODULE_SHALLOW=1
       - mkdir -p /ccache "$HOME/.config/ccache" "$HOME/.ccache"
-      - printf 'cache_dir = /ccache\nmax_size = 10G\ncompression = true\n' | tee "$HOME/.config/ccache/ccache.conf" > "$HOME/.ccache/ccache.conf"
+      - printf 'cache_dir = /ccache\nmax_size = 10G\ncompression = true\n' | tee /ccache/ccache.conf "$HOME/.config/ccache/ccache.conf" > "$HOME/.ccache/ccache.conf"
       - if /fbt/bin/ccache -V >/dev/null 2>&1; then export PATH=/fbt/bin:$PATH; ccache -V | head -1; else echo "WARNING ccache unusable - building without cache"; fi
       - echo "cores - nproc $(nproc) / cgroup $(cat /sys/fs/cgroup/cpu.max 2>/dev/null || echo n/a)"
       - ccache -p 2>/dev/null | grep -E "cache_dir|max_size" || true
       - echo "--- ccache stats BEFORE ---"; ccache -s 2>/dev/null | head -6 || true
-      - ./fbt -j "$(nproc)" COMPACT=1 DEBUG=0 updater_package
+      - ./fbt --debug=time -j "$(nproc)" COMPACT=1 DEBUG=0 updater_package
       - echo "--- ccache stats AFTER ---"; ccache -s 2>/dev/null | head -14 || true
       - du -sh /ccache 2>/dev/null || true
       - mkdir artifacts-base
@@ -110,12 +110,12 @@ steps:
       - cd unleashed-firmware
       - export FBT_GIT_SUBMODULE_SHALLOW=1
       - mkdir -p /ccache "$HOME/.config/ccache" "$HOME/.ccache"
-      - printf 'cache_dir = /ccache\nmax_size = 10G\ncompression = true\n' | tee "$HOME/.config/ccache/ccache.conf" > "$HOME/.ccache/ccache.conf"
+      - printf 'cache_dir = /ccache\nmax_size = 10G\ncompression = true\n' | tee /ccache/ccache.conf "$HOME/.config/ccache/ccache.conf" > "$HOME/.ccache/ccache.conf"
       - if /fbt/bin/ccache -V >/dev/null 2>&1; then export PATH=/fbt/bin:$PATH; ccache -V | head -1; else echo "WARNING ccache unusable - building without cache"; fi
       - echo "cores - nproc $(nproc) / cgroup $(cat /sys/fs/cgroup/cpu.max 2>/dev/null || echo n/a)"
       - ccache -p 2>/dev/null | grep -E "cache_dir|max_size" || true
       - echo "--- ccache stats BEFORE ---"; ccache -s 2>/dev/null | head -6 || true
-      - ./fbt -j "$(nproc)" COMPACT=1 DEBUG=0 updater_package
+      - ./fbt --debug=time -j "$(nproc)" COMPACT=1 DEBUG=0 updater_package
       - echo "--- ccache stats AFTER ---"; ccache -s 2>/dev/null | head -14 || true
       - du -sh /ccache 2>/dev/null || true
       - mkdir artifacts-extra
