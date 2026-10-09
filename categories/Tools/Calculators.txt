@@ -4,4 +4,5 @@ fordradiocode
 multi_converter
 programmercalc
 resistors
+telemetro
 vin_decoder

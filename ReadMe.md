@@ -198,6 +198,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Morse Trainer | ![Games Badge] | [by barismert98](https://github.com/barismert98/flipper-morse-trainer) |  | [![Author Badge]](https://lab.flipper.net/apps/morse_trainer) |
 | Stack Attack | ![Games Badge] | [by Negenii](https://github.com/Negenii/flipper-stack-attack) | remake of the legendary Siemens mobile game | [![Author Badge]](https://lab.flipper.net/apps/stack_attack) |
 | Bounce | ![Games Badge] | [by tomxposed](https://github.com/tomxposed/flipper-bounce) | Nokia-style Bounce - roll, jump, collect every ring and reach the exit | [![Author Badge]](https://lab.flipper.net/apps/bounce) |
+| Stack | ![Games Badge] | [by bergr22](https://github.com/bergr22/Stack) | stack the falling blocks into the tallest tower - vibration, sound & LED effects | [![Author Badge]](https://lab.flipper.net/apps/stack_game) |
 | Air Mouse | ![GPIO Badge] | [by ginkage](https://github.com/ginkage/FlippAirMouse/) |  | [![Author Badge]](https://lab.flipper.net/apps/air_mouse) |
 | Plantower PMSx003 sensor reader | ![GPIO Badge] | [by 3cky](https://github.com/3cky/flipperzero-airmon) |  | [![UFW Badge]](https://lab.flipper.net/apps/airmon) |
 | Bar code scanner emulator via COM port | ![GPIO Badge] | [by polarikus](https://github.com/polarikus/flipper-zero_bc_scanner_emulator) |  | [![Author Badge]](https://lab.flipper.net/apps/bc_scanner) |
@@ -407,6 +408,8 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Morse Flipper | ![Tools Badge] | [by yo3gnd](https://github.com/yo3gnd/morse-flipper/tree/market-flavour) |  | [![Author Badge]](https://lab.flipper.net/apps/morse_flipper) |
 | LetterBeacon | ![Tools Badge] | [by nmrr](https://github.com/nmrr/flipperzero-rfidbeacon)  | `A letter/number Morse beacon on 125 kHz / 13.56 MHz` | ![None Badge] |
 | Net Calculator | ![Tools Badge] | [by WolfRorDev](https://github.com/WolfRorDev/Net-Calculator-for-Flipper-Zero) | IP subnet / network calculator | [![Author Badge]](https://lab.flipper.net/apps/net_calculator) |
+| Pulse BPM | ![Tools Badge] | [by alaviation](https://github.com/alaviation/flipper-pulse) | tap along a pulse to measure heart rate, locks the reading after 20s | [![Author Badge]](https://lab.flipper.net/apps/pulse_bpm) |
+| Telemeter | ![Tools Badge] | [by alaviation](https://github.com/alaviation/flipper-telemeter) | distance to a storm or a cannon from the flash-to-bang delay | [![Author Badge]](https://lab.flipper.net/apps/telemetro) |
 | USB HID Autofire | ![USB Badge] | [by pbek](https://github.com/pbek/usb_hid_autofire) |  | [![UFW Badge]](https://lab.flipper.net/apps/usb_hid_autofire) |
 | USB Consumer Control | ![USB Badge] | [by WithSecureLabs](https://github.com/WithSecureLabs/usb-consumer-control/tree/main) |  | ![None Badge] |
 | HID File Transfer | ![USB Badge] | [by Kavakuo](https://github.com/Kavakuo/HID-File-Transfer) | Get client app in [original repo](https://github.com/Kavakuo/HID-File-Transfer) | ![None Badge] |

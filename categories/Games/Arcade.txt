@@ -36,6 +36,7 @@ scorched_tanks
 snake20
 spaceimpactii985e
 stack_attack
+stack_game
 t_rex_runner
 tanks
 wave
