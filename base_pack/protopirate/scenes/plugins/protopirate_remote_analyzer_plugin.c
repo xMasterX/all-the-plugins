@@ -63,12 +63,12 @@ bool plugin_protopirate_scene_remote_analyzer_on_event(
             app->txrx->hopper_state = ProtoPirateHopperStateOFF;
             app->txrx->hopper_rssi = 0;
 
-            //We need to clear the selected model if there is one.
 #ifdef ENABLE_MODELS_DATABASE
-            if(app->selected_model->index > 0) {
+            //We need to clear the selected model if there is one.
+            if(app->selected_model && app->selected_model->index > 0) {
                 //Load the Plugin for the models.
                 FlipperApplication* running_config_fal = NULL;
-                ProtoPiratePlugin running_config_plugin;
+                ProtoPiratePlugin running_config_plugin = {.plugin_pointer = NULL};
                 if(g_remote_analyzer_scene_host_api->plugin_load(
                        &running_config_fal,
                        &running_config_plugin,
@@ -78,17 +78,6 @@ bool plugin_protopirate_scene_remote_analyzer_on_event(
                     running_config_plugin.config_plugin->car_model_get_by_index(
                         app->selected_model, 0, app->car_models_count, app->setting);
 
-                    //Restore last preset before model was selected...
-                    /*protopirate_preset_init(
-                        app,
-                        subghz_setting_get_preset_name(
-                            app->setting, app->selected_model->last_preset_index),
-                        app->txrx->preset->frequency,
-                        subghz_setting_get_preset_data(
-                            app->setting, app->selected_model->last_preset_index),
-                        subghz_setting_get_preset_data_size(
-                            app->setting, app->selected_model->last_preset_index));
-*/
                     g_remote_analyzer_scene_host_api->plugin_unload(
                         &running_config_fal, &running_config_plugin);
                 } else {

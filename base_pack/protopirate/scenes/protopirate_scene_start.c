@@ -102,8 +102,7 @@ void protopirate_scene_start_on_enter(void* context) {
 
     view_dispatcher_switch_to_view(app->view_dispatcher, ProtoPirateViewSubmenu);
 
-    //Kill Config if it exists now to save memory.
-    protopirate_variable_item_list_free(app);
+    //Kill Widget if it exists now to save memory.
     protopirate_widget_free(app);
 }
 

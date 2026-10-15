@@ -86,7 +86,18 @@ ProtoPirateApp* protopirate_app_alloc() {
 
     // Load saved settings
     ProtoPirateSettings settings;
-    protopirate_settings_load(&settings);
+    //Load settings from plugin, keep it open for models below.
+    if(shared_plugin_load(
+           &app->running_plugin_flipper_application,
+           &app->running_plugin,
+           ProtoPirateSharedPluginsConfig,
+           NULL) &&
+       app->running_plugin.config_plugin) {
+        //Call the function in the plugin.
+        app->running_plugin.config_plugin->protopirate_settings_load(&settings);
+    } else {
+        notification_message(app->notifications, &sequence_error);
+    }
 
     // Apply auto-save setting
     app->auto_save = settings.auto_save;
@@ -145,6 +156,7 @@ ProtoPirateApp* protopirate_app_alloc() {
     const char* preset_name = subghz_setting_get_preset_name(app->setting, preset_index);
     uint8_t* preset_data = subghz_setting_get_preset_data(app->setting, preset_index);
     size_t preset_data_size = subghz_setting_get_preset_data_size(app->setting, preset_index);
+    protopirate_preset_init(app, preset_name, frequency, preset_data, preset_data_size);
 
     FURI_LOG_I(
         TAG,
@@ -156,19 +168,6 @@ ProtoPirateApp* protopirate_app_alloc() {
 
     //Load the models database, get the count of the models for the list.
 #ifdef ENABLE_MODELS_DATABASE
-    if(shared_plugin_load(
-           &app->running_plugin_flipper_application,
-           &app->running_plugin,
-           ProtoPirateSharedPluginsConfig,
-           NULL) &&
-       app->running_plugin.config_plugin) {
-        FURI_LOG_D("test", "getting count");
-        app->car_models_count = app->running_plugin.config_plugin->car_model_get_count();
-        FURI_LOG_D("test", "got count");
-    } else {
-        notification_message(app->notifications, &sequence_error);
-        app->car_models_count = 0;
-    }
     app->selected_model = malloc(sizeof(ProtoPirateCarModel));
     app->selected_model->name = NULL;
     app->selected_model->preset = NULL; // important initialization
@@ -176,7 +175,13 @@ ProtoPirateApp* protopirate_app_alloc() {
 
     //Grab selected car model.
     if(app->running_plugin.config_plugin) {
+        FURI_LOG_D(TAG, "Getting Models count");
+        app->car_models_count = app->running_plugin.config_plugin->car_model_get_count();
+        FURI_LOG_D(TAG, "Got Models count");
+
         if(settings.car_model_index) {
+            FURI_LOG_D(TAG, "Restoring Selected Model.");
+
             //Get the selected car model.
             app->running_plugin.config_plugin->car_model_get_by_index(
                 app->selected_model, settings.car_model_index, app->car_models_count, app->setting);
@@ -189,24 +194,19 @@ ProtoPirateApp* protopirate_app_alloc() {
                 app->selected_model->preset->frequency,
                 app->selected_model->preset->data,
                 app->selected_model->preset->data_size);
+
         } else {
             //This will return Select a model or No Models in Database
             app->running_plugin.config_plugin->car_model_get_by_index(
                 app->selected_model, 0, app->car_models_count, app->setting);
-
-            //Preset set in Config.
-            protopirate_preset_init(app, preset_name, frequency, preset_data, preset_data_size);
         }
-
-        //Kill the config plugin now.
-        shared_plugin_unload(&app->running_plugin_flipper_application, &app->running_plugin);
     } else {
-#endif
-        //Preset set in Config.
-        protopirate_preset_init(app, preset_name, frequency, preset_data, preset_data_size);
-#ifdef ENABLE_MODELS_DATABASE
+        app->car_models_count = 0;
     }
 #endif
+
+    //Kill the config plugin now.
+    shared_plugin_unload(&app->running_plugin_flipper_application, &app->running_plugin);
 
     // Apply hopping state from settings
     if(settings.hopper_state) {
@@ -299,7 +299,7 @@ void protopirate_app_free(ProtoPirateApp* app) {
         settings.hopper_state,
         settings.emulate_feature_enabled);
 
-    protopirate_settings_save(&settings);
+    protopirate_settings_save_from_plugin(&settings);
 
     FURI_LOG_D(TAG, "Calling radio_deinit");
     protopirate_radio_deinit(app);

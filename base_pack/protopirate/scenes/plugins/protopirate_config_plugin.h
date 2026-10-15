@@ -1,6 +1,7 @@
 #pragma once
 //#include "../../protopirate_app_i.h"
 #include "helpers/protopirate_models.h"
+#include "helpers/protopirate_settings.h"
 
 #include "helpers/variable_item_list.h"
 
@@ -33,6 +34,10 @@ typedef struct ProtoPirateConfigPlugin {
         SubGhzSetting* app_settings);
     uint16_t (*car_model_get_count)(void);
 #endif
-    void (*on_enter)(void* app, bool show_lock_keyboard);
+    bool (*on_enter)(void* app, bool show_lock_keyboard);
+    void (*on_exit)(void* app);
     void (*set_host_api)(const ProtoPirateSharedPluginHostApi* host_api);
+    void (*protopirate_settings_load)(ProtoPirateSettings* settings);
+    void (*protopirate_settings_save)(ProtoPirateSettings* settings);
+    void (*protopirate_settings_set_defaults)(ProtoPirateSettings* settings);
 } ProtoPirateConfigPlugin;

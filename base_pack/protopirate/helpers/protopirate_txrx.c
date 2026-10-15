@@ -10,16 +10,6 @@
 
 #define HOPPER_PAUSE_THRESHOLD -60.0f
 
-bool subghz_txrx_radio_device_is_frequency_valid(ProtoPirateTxRx* instance, uint32_t frequency) {
-    furi_assert(instance);
-    return subghz_devices_is_frequency_valid(instance->radio_device, frequency);
-}
-
-const char* subghz_txrx_radio_device_get_name(ProtoPirateTxRx* instance) {
-    furi_assert(instance);
-    return subghz_devices_get_name(instance->radio_device);
-}
-
 void protopirate_rx_stack_teardown_for_registry_switch(ProtoPirateApp* app) {
     if(app->txrx->txrx_state == ProtoPirateTxRxStateRx) {
         protopirate_rx_end(app);
@@ -73,24 +63,6 @@ void protopirate_get_frequency_modulation_str(
     if(modulation) {
         snprintf(
             modulation, modulation_size, "%.2s", furi_string_get_cstr(app->txrx->preset->name));
-    }
-}
-
-void protopirate_get_frequency_modulation(
-    ProtoPirateApp* app,
-    FuriString* frequency,
-    size_t frequency_size,
-    FuriString* modulation,
-    size_t modulation_size) {
-    char frequency_buf[16] = {0};
-    char modulation_buf[8] = {0};
-    protopirate_get_frequency_modulation_str(app, frequency_buf, 16, modulation_buf, 8);
-
-    if(frequency != NULL) {
-        memcpy(frequency, frequency_buf, frequency_size);
-    }
-    if(modulation != NULL) {
-        memcpy(modulation, modulation_buf, modulation_size);
     }
 }
 

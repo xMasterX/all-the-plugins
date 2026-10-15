@@ -12,9 +12,6 @@
 #define PROTOPIRATE_CACHE_FOLDER     APP_DATA_PATH("cache")
 #define PROTOPIRATE_HISTORY_FOLDER   APP_DATA_PATH("cache/history")
 
-// Initialize storage (create folder if needed)
-bool protopirate_storage_init(void);
-
 bool protopirate_storage_commit_temp_file(
     Storage* storage,
     const char* tmp_path,
@@ -45,8 +42,6 @@ bool protopirate_storage_get_capture_display_protocol(
 
 // Delete a file
 bool protopirate_storage_delete_file(const char* file_path);
-
-bool protopirate_storage_ensure_history_folder(void);
 
 void protopirate_storage_purge_temp_history_at_startup(void);
 

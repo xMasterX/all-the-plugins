@@ -131,9 +131,9 @@ static void bf_show_progress(void* app) {
 
     if(g_bf_kind == ProtoPirateBfKindHitag2) {
         widget_add_string_element(widget, 62, 0, AlignLeft, AlignTop, FontPrimary, "Recover Key");
-        widget_add_string_element(widget, 62, 12, AlignLeft, AlignTop, FontSecondary, "Max ETA:");
+        widget_add_string_element(widget, 62, 14, AlignLeft, AlignTop, FontSecondary, "Max ETA:");
         widget_add_string_element(
-            widget, 62, 22, AlignLeft, AlignTop, FontSecondary, "60 seconds");
+            widget, 62, 24, AlignLeft, AlignTop, FontSecondary, "60 seconds");
     } else {
         widget_add_string_element(
             widget, 62, 0, AlignLeft, AlignTop, FontPrimary, "Bruteforcing...");
@@ -150,14 +150,14 @@ static void bf_show_progress(void* app) {
     widget_add_string_element(
         widget,
         62,
-        (g_bf_kind == ProtoPirateBfKindHitag2) ? 34 : 12,
+        (g_bf_kind == ProtoPirateBfKindHitag2) ? 36 : 12,
         AlignLeft,
         AlignTop,
         FontSecondary,
         furi_string_get_cstr(pct_str));
     furi_string_free(pct_str);
 
-    const uint8_t bar_y = (g_bf_kind == ProtoPirateBfKindHitag2) ? 46 : BRUTEFORCE_PROGRESS_BAR_Y;
+    const uint8_t bar_y = (g_bf_kind == ProtoPirateBfKindHitag2) ? 48 : BRUTEFORCE_PROGRESS_BAR_Y;
     widget_add_rect_element(
         widget,
         BRUTEFORCE_PROGRESS_BAR_X,
@@ -211,23 +211,31 @@ static void bf_show_result(void* app, uint8_t status, ButtonCallback callback) {
     Widget* widget = g_host_api->get_widget(app);
     if(!widget) return;
     widget_reset(widget);
-    const char* title = (status == BRUTEFORCE_STATUS_FOUND)     ? "Found!" :
-                        (status == BRUTEFORCE_STATUS_CANCELLED) ? "Cancelled" :
-                                                                  "Not found";
 
     if(status == BRUTEFORCE_STATUS_FOUND) {
+        //Add theFound Heading and Text, we use different here to the other 2 statuses.
         g_host_api->notification_success(app);
         widget_add_icon_element(widget, 0, 3, &I_DolphinDone_80x58);
-        widget_add_string_element(widget, 82, 32, AlignLeft, AlignCenter, FontPrimary, title);
+        widget_add_string_element(widget, 82, 32, AlignLeft, AlignCenter, FontPrimary, "Found!");
         if(callback) {
             widget_add_button_element(widget, GuiButtonTypeCenter, "OK", callback, app);
         }
         return;
+    } else if(status == BRUTEFORCE_STATUS_CANCELLED) {
+        //Add the Cancelled Heading and Text
+        widget_add_string_multiline_element(
+            widget, 60, 26, AlignLeft, AlignTop, FontSecondary, "Try again later.");
+        widget_add_string_element(widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Canceled");
     } else {
-        if(status != BRUTEFORCE_STATUS_CANCELLED) g_host_api->notification_error(app);
-        widget_add_string_element(widget, 64, 0, AlignCenter, AlignTop, FontPrimary, title);
+        //Add the Not Found Heading and Text
+        g_host_api->notification_error(app);
+        widget_add_string_multiline_element(
+            widget, 60, 15, AlignLeft, AlignTop, FontSecondary, "Could not\nBrute Force\nthe key.");
+        widget_add_string_element(widget, 64, 0, AlignCenter, AlignTop, FontPrimary, "Not found");
     }
-    widget_add_icon_element(widget, (128 - 45) / 2, 14, &I_WarningDolphin_45x42);
+
+    //Add the Warning Dolphin for C
+    widget_add_icon_element(widget, 5, 11, &I_WarningDolphin_45x42);
     if(callback) {
         widget_add_button_element(widget, GuiButtonTypeCenter, "OK", callback, app);
     }

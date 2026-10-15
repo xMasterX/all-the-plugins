@@ -9,7 +9,7 @@
 
 #define TAG "PPStorage"
 
-bool protopirate_storage_init(void) {
+static bool protopirate_storage_init(void) {
     Storage* storage = furi_record_open(RECORD_STORAGE);
     bool result = storage_simply_mkdir(storage, PROTOPIRATE_APP_FOLDER);
     furi_record_close(RECORD_STORAGE);
@@ -75,7 +75,7 @@ void protopirate_storage_purge_temp_history_at_startup(void) {
     protopirate_storage_remove_history_folder();
 }
 
-bool protopirate_storage_ensure_history_folder(void) {
+static bool protopirate_storage_ensure_history_folder(void) {
     if(!protopirate_storage_init()) {
         return false;
     }

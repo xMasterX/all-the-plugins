@@ -79,8 +79,8 @@ typedef struct ProtoPirateSharedPluginHostApi {
         ProtoPirateReceiver* receiver,
         ProtoPirateHistory* history);
 
-    void (*settings_load)(ProtoPirateSettings* settings);
-    void (*settings_save)(ProtoPirateSettings* settings);
+    void (*settings_load_from_plugin)(ProtoPirateSettings* settings);
+    void (*settings_save_from_plugin)(ProtoPirateSettings* settings);
     bool (*plugin_load)(
         FlipperApplication** flipper_application_pointer,
         ProtoPiratePlugin* plugin_pointer,
@@ -94,6 +94,8 @@ typedef struct ProtoPirateSharedPluginHostApi {
     void (*bruteforce_context_release)(ProtoPirateApp* app);
     bool (*protocol_catalog_can_tx)(const char* protocol_name);
     bool (*storage_delete_file)(const char* file_path);
+    bool (
+        *storage_commit_temp_file)(Storage* storage, const char* tmp_path, const char* final_path);
     bool (*protocol_catalog_offers_bruteforce)(const char* protocol_name);
     void (*rx_stack_suspend_for_tx)(ProtoPirateApp* app);
     void (*idle)(ProtoPirateApp* app);

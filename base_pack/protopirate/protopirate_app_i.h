@@ -28,6 +28,7 @@
 #include "protocols/protocols_common.h"
 #include "protocols/protocol_items.h"
 #include "helpers/protopirate_plugins.h"
+#include "helpers/protopirate_settings_plugin_helpers.h"
 #include "helpers/protopirate_views.h"
 #include "helpers/protopirate_radio.h"
 #include "helpers/protopirate_protocol_plugin_host.h"

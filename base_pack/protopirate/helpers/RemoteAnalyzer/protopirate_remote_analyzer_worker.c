@@ -1,6 +1,8 @@
 #ifdef PROTOPIRATE_REMOTE_ANALYZER_PLUGIN_BUILD //These are excluded in FAM file, but heres a double catch!
 #include "protopirate_remote_analyzer_worker.h"
 
+#define TAG "PPRemoteAnalyzerWorker"
+
 SubGhzSetting* txrx_get_setting(ProtoPirateApp* instance) {
     furi_assert(instance);
     return instance->setting;
@@ -9,8 +11,6 @@ SubGhzSetting* txrx_get_setting(ProtoPirateApp* instance) {
 #include <furi.h>
 #include <float_tools.h>
 #include "cc1101.h"
-
-#define TAG "PPFAWorker"
 
 #define SUBGHZ_REMOTE_ANALYZER_THRESHOLD -97.0f
 
@@ -79,7 +79,7 @@ static int32_t protopirate_remote_analyzer_worker_thread(void* context) {
     float rssi_temp = 0;
     uint32_t frequency_temp = 0;
 
-    FURI_LOG_D("TEST", "Resetting Radio");
+    FURI_LOG_D(TAG, "Resetting Radio.");
 
     //Start CC1101
     furi_hal_subghz_reset();

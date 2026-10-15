@@ -2,6 +2,8 @@
 #include "../../helpers/protopirate_models.h"
 #include <gui/view_dispatcher.h>
 
+#define TAG "PPConfigPlugin"
+
 static const ProtoPirateSharedPluginHostApi* g_config_scene_host_api = NULL;
 
 #define ON_OFF_COUNT 2
@@ -58,25 +60,6 @@ const char* const tx_power_text[TX_POWER_COUNT] = {
     "-30dBm",
 };
 #endif
-
-bool protopirate_ensure_variable_item_list(ProtoPirateApp* app) {
-    if(app->variable_item_list) {
-        view_dispatcher_remove_view(app->view_dispatcher, ProtoPirateViewVariableItemList);
-        variable_item_list_free(app->variable_item_list);
-        //Reassigned below... app->variable_item_list = NULL;
-    }
-
-    app->variable_item_list = variable_item_list_alloc();
-    if(!app->variable_item_list) {
-        return false;
-    }
-
-    view_dispatcher_add_view(
-        app->view_dispatcher,
-        ProtoPirateViewVariableItemList,
-        variable_item_list_get_view(app->variable_item_list));
-    return true;
-}
 
 static void protopirate_scene_receiver_config_set_frequency(VariableItem* item) {
     ProtoPirateApp* app = variable_item_get_context(item);
@@ -361,7 +344,7 @@ static void
     protopirate_scene_receiver_config_var_list_enter_callback(void* context, uint32_t index) {
     ProtoPirateApp* app = context;
 
-    FURI_LOG_D("TEST", "Index= %lu", index);
+    FURI_LOG_D(TAG, "Index= %lu", index);
 
     switch(index) {
 #ifdef ENABLE_MODELS_DATABASE
@@ -380,15 +363,21 @@ static void
     }
 }
 
-static void plugin_on_enter(void* context, bool show_lock_keyboard) {
+static bool plugin_on_enter(void* context, bool show_lock_keyboard) {
     ProtoPirateApp* app = context;
     VariableItem* item;
     uint8_t value_index;
 
-    if(!protopirate_ensure_variable_item_list(app)) {
+    //Create the Variable Item List Object
+    app->variable_item_list = variable_item_list_alloc();
+    if(app->variable_item_list) {
+        view_dispatcher_add_view(
+            app->view_dispatcher,
+            ProtoPirateViewVariableItemList,
+            variable_item_list_get_view(app->variable_item_list));
+    } else {
         notification_message(app->notifications, &sequence_error);
-        scene_manager_previous_scene(app->scene_manager);
-        return;
+        return false;
     }
 
     //Add he car model the list, with the correct selection and text.
@@ -522,6 +511,15 @@ static void plugin_on_enter(void* context, bool show_lock_keyboard) {
         variable_item_list_add(app->variable_item_list, "Lock Keyboard", 1, NULL, NULL);
     }
     view_dispatcher_switch_to_view(app->view_dispatcher, ProtoPirateViewVariableItemList);
+    return true;
+}
+
+static void plugin_on_exit(void* context) {
+    ProtoPirateApp* app = context;
+    if(app->variable_item_list) {
+        variable_item_list_free(app->variable_item_list);
+        app->variable_item_list = NULL;
+    }
 }
 
 void config_plugin_set_host_api(const ProtoPirateSharedPluginHostApi* host_api) {
@@ -534,7 +532,11 @@ static const ProtoPirateConfigPlugin protopirate_config_plugin = {
     .car_model_get_by_index = car_model_get_by_index,
     .car_model_get_count = car_model_get_count,
 #endif
+    .protopirate_settings_load = protopirate_settings_load,
+    .protopirate_settings_save = protopirate_settings_save,
+    .protopirate_settings_set_defaults = protopirate_settings_set_defaults,
     .on_enter = plugin_on_enter,
+    .on_exit = plugin_on_exit,
     .set_host_api = config_plugin_set_host_api,
 };
 

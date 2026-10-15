@@ -90,12 +90,6 @@ void protopirate_views_free(ProtoPirateApp* app) {
         app->submenu = NULL;
     }
 
-    if(app->variable_item_list) {
-        FURI_LOG_D(TAG, "Removing variable_item_list view");
-        view_dispatcher_remove_view(app->view_dispatcher, ProtoPirateViewVariableItemList);
-        app->variable_item_list = NULL;
-    }
-
     if(app->view_about) {
         FURI_LOG_D(TAG, "Removing about view");
         view_dispatcher_remove_view(app->view_dispatcher, ProtoPirateViewAbout);
@@ -122,14 +116,6 @@ void protopirate_views_free(ProtoPirateApp* app) {
         view_dispatcher_remove_view(app->view_dispatcher, ProtoPirateViewReceiver);
         protopirate_view_receiver_free(app->protopirate_receiver);
         app->protopirate_receiver = NULL;
-    }
-}
-
-void protopirate_variable_item_list_free(ProtoPirateApp* app) {
-    if(app->variable_item_list) {
-        view_dispatcher_remove_view(app->view_dispatcher, ProtoPirateViewVariableItemList);
-        variable_item_list_free(app->variable_item_list);
-        app->variable_item_list = NULL;
     }
 }
 

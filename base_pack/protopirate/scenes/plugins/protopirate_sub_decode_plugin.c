@@ -262,6 +262,7 @@ static void protopirate_sub_decode_receiver_callback(
            ctx->history, decoder_base, app->txrx->preset, virtual_tick)) {
         ctx->signal_count++;
         FURI_LOG_I(TAG, "Added signal %u to history", ctx->signal_count);
+        notification_message(app->notifications, &sequence_semi_success);
 
         view_dispatcher_send_custom_event(
             app->view_dispatcher, ProtoPirateCustomEventSubDecodeUpdate);
