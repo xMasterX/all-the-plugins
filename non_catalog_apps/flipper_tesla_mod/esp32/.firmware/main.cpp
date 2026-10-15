@@ -42,6 +42,14 @@
 #include <driver/gpio.h>   // CAN TX pad hold across deep sleep
 #endif
 
+// Loop task stack. The Arduino default is 8 KB, and the dashboard's deepest
+// path (WebSocket connect -> state JSON -> printf) ran past it once loop()'s
+// own frame had grown: the board rebooted whenever a browser connected.
+// NOINLINE keeps the per-frame and tick helpers out of loop()'s frame, so
+// their locals are only on the stack while they run.
+SET_LOOP_TASK_STACK_SIZE(16 * 1024);
+#define NOINLINE __attribute__((noinline))
+
 // ── Globals ───────────────────────────────────────────────────────────────────
 #if defined(CAN_DRIVER_T2CAN_DUAL)
 #define CAN_ACTIVE_BUS_COUNT 2u
@@ -115,7 +123,7 @@ static bool serial_cmd_equals(const char *cmd, const char *expected) {
     return *cmd == '\0' && *expected == '\0';
 }
 
-static void serial_command_tick() {
+static NOINLINE void serial_command_tick() {
     static char buf[24];
     static uint8_t len = 0;
 
@@ -881,7 +889,7 @@ static void continuous_ap_tick_hw4(uint32_t now,
     }
 }
 
-static void continuous_ap_tick(uint32_t now) {
+static NOINLINE void continuous_ap_tick(uint32_t now) {
     FSDState s = state_snapshot();
     bool ap_disabled_now = g_cont_ap_last_ap_active && !s.ap_active;
     g_cont_ap_last_ap_active = s.ap_active;
@@ -969,7 +977,7 @@ static void dispatch_clicks(int n) {
     }
 }
 
-static void button_tick() {
+static NOINLINE void button_tick() {
     bool pressed = (digitalRead(PIN_BUTTON) == LOW);
     uint32_t now = millis();
 
@@ -1083,7 +1091,7 @@ static void update_led() {
 }
 
 // ── CAN frame dispatcher ──────────────────────────────────────────────────────
-static void process_frame(CanBusId bus, const CanFrame &frame) {
+static NOINLINE void process_frame(CanBusId bus, const CanFrame &frame) {
     uint32_t now = millis();
     // Every id the handlers act on is an 11-bit data frame. Extended frames can
     // alias a target id and remote frames carry no payload, so they are only
@@ -1558,7 +1566,7 @@ static void process_frame(CanBusId bus, const CanFrame &frame) {
 
 #if defined(BOARD_LILYGO)
 // ── Deep-sleep watchdog (Lilygo only) ────────────────────────────────────────
-static void sleep_tick(uint32_t now) {
+static NOINLINE void sleep_tick(uint32_t now) {
     if (now < g_last_can_rx_ms) return;
     uint32_t idle_ms = now - g_last_can_rx_ms;
     FSDState s = state_snapshot();
@@ -1602,7 +1610,10 @@ void setup() {
     Serial.println("\n============================");
     Serial.println(" Tesla Mod — ESP32          ");
     Serial.println("============================");
+    Serial.printf("[FSD] Version: %s\n", FW_VERSION);
+    Serial.printf("[FSD] Board: %s\n", BOARD_NAME);
     Serial.printf("[FSD] Build: %s %s\n", __DATE__, __TIME__);
+    Serial.printf("[FSD] Loop stack: %u bytes\n", (unsigned)getArduinoLoopTaskStackSize());
 
     {
         const esp_partition_t *running = esp_ota_get_running_partition();
@@ -1618,7 +1629,7 @@ void setup() {
   #elif defined(BOARD_LILYGO)
     Serial.println("[CAN] Driver: ESP32 TWAI (LilyGO T-CAN485)");
   #else
-    Serial.println("[CAN] Driver: ESP32 TWAI (M5Stack ATOM Lite + ATOMIC CAN Base)");
+    Serial.println("[CAN] Driver: ESP32 TWAI (" BOARD_NAME ")");
   #endif
 #elif defined(CAN_DRIVER_MCP2515)
     Serial.println("[CAN] Driver: MCP2515 via SPI");
@@ -1776,7 +1787,7 @@ void setup() {
     }
 }
 
-static void drain_can_bus_index(uint8_t index) {
+static NOINLINE void drain_can_bus_index(uint8_t index) {
     if (index >= CAN_ACTIVE_BUS_COUNT || !g_can_ok[index] || !g_can[index]) return;
     CanBusId bus = bus_id_from_index(index);
     CanFrame frame;

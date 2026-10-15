@@ -37,6 +37,36 @@
 #define CAN_ID_VCSEC_WINDOW    0x119u // 281  - VCSEC_windowRequests: windows
 #define CAN_ID_DAS_BODY        0x3E9u // 1001 - DAS_bodyControls: lights/hazards/turn/wipers
 
+// ── Build identity ────────────────────────────────────────────────────────────
+// Board name for the boot banner and the dashboard — same wording as the board
+// table in esp32/README.md. One entry per BOARD_* flag in platformio.ini.
+#if defined(BOARD_LILYGO_T2CAN)
+  #define BOARD_NAME "LilyGO T-2CAN"
+#elif defined(BOARD_LILYGO)
+  #define BOARD_NAME "LilyGO T-CAN485"
+#elif defined(BOARD_TTGO_DISPLAY)
+  #define BOARD_NAME "TTGO T-Display + MCP2515"
+#elif defined(BOARD_WAVESHARE_S3)
+  #define BOARD_NAME "Waveshare ESP32-S3-RS485-CAN"
+#elif defined(BOARD_M5STACK_ATOM_MATRIX)
+  #define BOARD_NAME "M5Stack ATOM Matrix + ATOMIC CAN Base"
+#elif defined(BOARD_M5STACK_ATOM)
+  #define BOARD_NAME "M5Stack ATOM Lite + ATOMIC CAN Base"
+#elif defined(BOARD_ESP32_GENERIC) && defined(CAN_DRIVER_MCP2515)
+  #define BOARD_NAME "Generic ESP32 + MCP2515 module"
+#elif defined(BOARD_ESP32_GENERIC)
+  #define BOARD_NAME "Classic ESP32 DevKit + SN65HVD230"
+#else
+  #define BOARD_NAME "ESP32"
+#endif
+
+// Release version. gen_version.py (PlatformIO pre-script) passes the release
+// tag or `git describe`; the fallback keeps host tests and other builds that
+// bypass PlatformIO compiling.
+#ifndef FW_VERSION
+#define FW_VERSION "dev"
+#endif
+
 // ── GPIO ──────────────────────────────────────────────────────────────────────
 #if defined(BOARD_LILYGO_T2CAN)
   #define PIN_CAN_TX         7
