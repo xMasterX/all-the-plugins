@@ -26,6 +26,8 @@ struct SubGhzWarDrivingTxRx {
 
     SubGhzTxRxNeedSaveCallback need_save_callback;
     void* need_save_context;
+    //TX of own fff_data, only that one may be saved back to file after TX
+    bool tx_from_internal_fff;
 
     // Kept here so the lazily (re)allocated receiver can be restored to the
     // filter/callback the app last asked for.

@@ -4,6 +4,7 @@
 #include <applications/drivers/subghz/cc1101_ext/cc1101_ext_interconnect.h>
 #include <lib/subghz/devices/cc1101_int/cc1101_int_interconnect.h>
 #include <lib/subghz/blocks/custom_btn.h>
+#include <lib/subghz/protocols/public_api.h>
 
 #include <power/power_service/power.h>
 #include <storage/storage.h>
@@ -365,6 +366,11 @@ SubGhzTxRxStartTxState
     subghz_wardriving_txrx_rx_pipeline_alloc(instance);
     subghz_wardriving_txrx_stop(instance);
 
+    //Only a transmission of our own fff_data corresponds to subghz->file_path
+    //and may be saved back after TX. History/RX signals (passed as a separate
+    //flipper_format) must never trigger the save-back
+    instance->tx_from_internal_fff = (flipper_format == instance->fff_data);
+
     SubGhzTxRxStartTxState ret = SubGhzTxRxStartTxStateErrorParserOthers;
     FuriString* temp_str = furi_string_alloc();
     do {
@@ -417,7 +423,10 @@ SubGhzTxRxStartTxState
             ret = SubGhzTxRxStartTxStateErrorParserOthers;
         }
         if(ret != SubGhzTxRxStartTxStateOk) {
-            if(instance->transmitter) subghz_transmitter_free(instance->transmitter);
+            if(instance->transmitter) {
+                subghz_transmitter_free(instance->transmitter);
+                instance->transmitter = NULL;
+            }
             if(instance->txrx_state != SubGhzTxRxStateIDLE) {
                 subghz_wardriving_txrx_idle(instance);
             }
@@ -456,9 +465,12 @@ static void subghz_wardriving_txrx_tx_stop(SubGhzWarDrivingTxRx* instance) {
     subghz_devices_stop_async_tx(instance->radio_device);
     subghz_transmitter_stop(instance->transmitter);
     subghz_transmitter_free(instance->transmitter);
+    instance->transmitter = NULL;
 
     //if protocol dynamic then we save the last upload
-    if(instance->decoder_result &&
+    //but only when we transmitted our own fff_data (bound to file_path)
+    //never for history/RX signals, which would overwrite an unrelated file
+    if(instance->tx_from_internal_fff && instance->decoder_result &&
        instance->decoder_result->protocol->type == SubGhzProtocolTypeDynamic) {
         if(instance->need_save_callback) {
             instance->need_save_callback(instance->need_save_context);
@@ -818,7 +830,7 @@ void subghz_wardriving_txrx_reset_dynamic_and_custom_btns(SubGhzWarDrivingTxRx* 
     furi_assert(instance);
     if(instance->environment) subghz_environment_reset_keeloq(instance->environment);
 
-    //faac_slh_reset_prog_mode();
+    faac_slh_reset_prog_mode();
 
     subghz_custom_btns_reset();
 }
