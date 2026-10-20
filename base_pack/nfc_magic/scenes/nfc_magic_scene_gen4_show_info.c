@@ -33,6 +33,13 @@ void nfc_magic_scene_gen4_show_info_on_enter(void* context) {
     furi_string_cat_printf(
         output, "Revision: %02X %02X\n", gen4->revision.data[3], gen4->revision.data[4]);
 
+    // Config length
+    if(gen4_config_size_is_known(gen4)) {
+        furi_string_cat_printf(output, "Config: %zu bytes\n", gen4->config_size);
+    } else {
+        furi_string_cat_printf(output, "Config: unknown length\n");
+    }
+
     // Password
     furi_string_cat_printf(
         output,

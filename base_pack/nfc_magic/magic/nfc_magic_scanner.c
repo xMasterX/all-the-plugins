@@ -130,12 +130,13 @@ static NfcMagicScannerIdentity nfc_magic_scanner_read_identity(Nfc* nfc) {
 
 static bool nfc_magic_scanner_detect_gen4(NfcMagicScanner* instance) {
     gen4_reset(instance->gen4_data);
-    Gen4 gen4_data;
+    Gen4 gen4_data = {};
     Gen4PollerError error = gen4_poller_detect(instance->nfc, instance->gen4_password, &gen4_data);
     if(error == Gen4PollerErrorNone) {
         gen4_copy(instance->gen4_data, &gen4_data);
         return true;
     }
+    FURI_LOG_D(TAG, "Gen4 detect failed: %d", error);
     return false;
 }
 
