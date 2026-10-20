@@ -1,5 +1,33 @@
 # Changelog
 
+## 2.3
+
+### Added
+
+- **Gen 4 cards whose configuration dump is 30 or 31 bytes are now detected.** The dump length is
+  firmware specific: alongside the 32-byte variant the app knew, Ultimate Magic Cards exist that
+  answer the backdoor config command with 30 or 31 bytes, and Proxmark3 has accepted 30 or 32
+  since 2022. Anything other than 32 was rejected as **not a magic card**, which also made the
+  card unwritable, because writing is only offered once detection succeeds. All three lengths are
+  now accepted, the length the card returned is remembered, and the configuration is written back
+  at that same length rather than always 32. A dump of any other length is still rejected, but it
+  is now logged with its byte count so an unknown variant can be told apart from a card that
+  simply is not a Gen 4. The Gen 4 info screen reports the length it read.
+
+### Fixed
+
+- **The configuration write no longer sends uninitialized memory to the card.** The write path
+  filled 28 bytes of a 32-byte configuration buffer from its template and the remaining documented
+  fields by hand, but the two undocumented trailing bytes were never assigned, and the poller
+  allocates its state without zeroing it. Those two bytes were transmitted and stored as part of
+  the card configuration on every Gen 4 write, differing between runs. The card's own trailing
+  bytes are now read back and carried over unchanged, and zeroed if they cannot be read.
+
+- **The Gen 4 poller no longer dispatches on an uninitialized state.** Its state field was never
+  set to the idle state at allocation, so the first card callback indexed the state handler table
+  with whatever the heap held. It worked while the allocator happened to return zeroed memory,
+  which stops being true the second time a Gen 4 screen is opened in one session.
+
 ## 2.2
 
 ### Changed

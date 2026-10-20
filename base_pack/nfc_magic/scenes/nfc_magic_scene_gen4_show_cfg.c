@@ -18,10 +18,13 @@ void nfc_magic_scene_gen4_show_cfg_on_enter(void* context) {
     FuriString* output = furi_string_alloc();
 
     Gen4Config* config = &instance->gen4_data->config;
+    size_t config_size = gen4_get_config_size_or_max(instance->gen4_data);
 
-    for(size_t i = 0; i < GEN4_CONFIG_SIZE; i += 2) {
+    // The dump can be an odd number of bytes long.
+    for(size_t i = 0; i < config_size; i++) {
         if(i && !(i % 8)) furi_string_cat_printf(output, "\n");
-        furi_string_cat_printf(output, "%02X%02X ", config->data_raw[i], config->data_raw[i + 1]);
+        furi_string_cat_printf(output, "%02X", config->data_raw[i]);
+        if(i % 2) furi_string_cat_printf(output, " ");
     }
 
     widget_add_string_element(widget, 3, 4, AlignLeft, AlignTop, FontPrimary, "Gen 4 Config");

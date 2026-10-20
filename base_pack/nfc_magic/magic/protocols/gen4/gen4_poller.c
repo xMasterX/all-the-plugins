@@ -53,6 +53,8 @@ Gen4Poller* gen4_poller_alloc(Nfc* nfc) {
     furi_assert(nfc);
 
     Gen4Poller* instance = malloc(sizeof(Gen4Poller));
+    memset(instance, 0, sizeof(Gen4Poller));
+    instance->state = Gen4PollerStateIdle;
     instance->poller = nfc_poller_alloc(nfc, NfcProtocolIso14443_3a);
 
     instance->gen4_event.data = &instance->gen4_event_data;
@@ -116,16 +118,11 @@ NfcCommand gen4_poller_detect_callback(NfcGenericEvent event, void* context) {
                 gen4_poller_detect_ctx->error = Gen4PollerErrorProtocol;
                 break;
             }
-            size_t rx_bytes = bit_buffer_get_size_bytes(gen4_poller_detect_ctx->rx_buffer);
-            if(rx_bytes != GEN4_CONFIG_SIZE) {
-                gen4_poller_detect_ctx->error = Gen4PollerErrorProtocol;
-                break;
-            }
-
-            memcpy(
-                gen4_poller_detect_ctx->gen4_data.config.data_raw,
-                bit_buffer_get_data(gen4_poller_detect_ctx->rx_buffer),
-                GEN4_CONFIG_SIZE);
+            gen4_poller_detect_ctx->error = gen4_poller_parse_config_response(
+                gen4_poller_detect_ctx->rx_buffer,
+                &gen4_poller_detect_ctx->gen4_data.config,
+                &gen4_poller_detect_ctx->gen4_data.config_size);
+            if(gen4_poller_detect_ctx->error != Gen4PollerErrorNone) break;
 
             // check revision
             bit_buffer_reset(gen4_poller_detect_ctx->tx_buffer);
@@ -148,7 +145,7 @@ NfcCommand gen4_poller_detect_callback(NfcGenericEvent event, void* context) {
                 gen4_poller_detect_ctx->error = Gen4PollerErrorProtocol;
                 break;
             }
-            rx_bytes = bit_buffer_get_size_bytes(gen4_poller_detect_ctx->rx_buffer);
+            size_t rx_bytes = bit_buffer_get_size_bytes(gen4_poller_detect_ctx->rx_buffer);
             if(rx_bytes != GEN4_REVISION_SIZE) {
                 gen4_poller_detect_ctx->error = Gen4PollerErrorProtocol;
                 break;
@@ -204,6 +201,7 @@ NfcCommand gen4_poller_idle_handler(Gen4Poller* instance) {
     NfcCommand command = NfcCommandContinue;
 
     instance->current_block = 0;
+    instance->card_config_size = 0;
 
     instance->gen4_event.type = Gen4PollerEventTypeCardDetected;
     command = instance->callback(instance->gen4_event, instance->context);
@@ -332,7 +330,7 @@ static NfcCommand gen4_poller_write_mf_classic(Gen4Poller* instance) {
             instance->config.data_parsed.direct_write_mode = Gen4DirectWriteBlock0ModeDisabled;
 
             Gen4PollerError error = gen4_poller_set_config(
-                instance, instance->password, &instance->config, GEN4_CONFIG_SIZE, false);
+                instance, instance->password, &instance->config, instance->card_config_size, false);
             if(error != Gen4PollerErrorNone) {
                 FURI_LOG_D(TAG, "Failed to write config: %d", error);
                 instance->state = Gen4PollerStateFail;
@@ -436,7 +434,7 @@ static NfcCommand gen4_poller_write_mf_ultralight(Gen4Poller* instance) {
             instance->config.data_parsed.direct_write_mode = Gen4DirectWriteBlock0ModeDisabled;
 
             Gen4PollerError error = gen4_poller_set_config(
-                instance, instance->password, &instance->config, GEN4_CONFIG_SIZE, false);
+                instance, instance->password, &instance->config, instance->card_config_size, false);
             if(error != Gen4PollerErrorNone) {
                 FURI_LOG_D(TAG, "Failed to write config: %d", error);
                 instance->state = Gen4PollerStateFail;
@@ -568,8 +566,37 @@ static NfcCommand gen4_poller_write_mf_ultralight(Gen4Poller* instance) {
     return command;
 }
 
+// The config is written back at the length the card itself reports: a card
+// dumping 30 or 31 bytes may reject a 32 byte F0 payload (untested; the lengths
+// known to be accepted are 28, our default config, and 30, the Proxmark3
+// presets). Detection already read that length, but it lands in the scanner's
+// own Gen4 rather than in ours, so ask the card again here.
+static void gen4_poller_probe_card_config_size(Gen4Poller* instance) {
+    Gen4Config probe = {};
+    size_t probe_size = 0;
+    Gen4PollerError error =
+        gen4_poller_get_config(instance, instance->password, &probe, &probe_size);
+
+    if(error == Gen4PollerErrorNone) {
+        FURI_LOG_D(TAG, "Config size to write: %zu", probe_size);
+    } else {
+        probe_size = GEN4_CONFIG_SIZE_MAX;
+        FURI_LOG_W(
+            TAG, "Config size probe failed: %d, assuming %d bytes", error, GEN4_CONFIG_SIZE_MAX);
+    }
+
+    instance->card_config_size = probe_size;
+    // Only the documented fields are rewritten by the write handlers, so carry
+    // the card's own undocumented tail over; zeroed when the probe failed.
+    memcpy(instance->config.data_parsed.tail, probe.data_parsed.tail, GEN4_CONFIG_TAIL_LEN);
+}
+
 NfcCommand gen4_poller_write_handler(Gen4Poller* instance) {
     NfcCommand command = NfcCommandContinue;
+
+    if(!gen4_config_dump_size_is_valid(instance->card_config_size)) {
+        gen4_poller_probe_card_config_size(instance);
+    }
 
     memcpy(
         instance->config.data_raw,
@@ -578,7 +605,8 @@ NfcCommand gen4_poller_write_handler(Gen4Poller* instance) {
 
     memcpy(
         instance->config.data_parsed.password.bytes, instance->password.bytes, GEN4_PASSWORD_LEN);
-    memset(&instance->config.data_raw[7], 0, 17);
+    instance->config.data_parsed.ats_len = 0;
+    memset(instance->config.data_parsed.ats, 0, GEN4_ATS_MAX_LEN);
     if(instance->protocol == NfcProtocolMfClassic) {
         command = gen4_poller_write_mf_classic(instance);
     } else if(instance->protocol == NfcProtocolMfUltralight) {
@@ -641,15 +669,18 @@ NfcCommand gen4_poller_get_current_cfg_handler(Gen4Poller* instance) {
 
     do {
         Gen4Config config = {};
+        size_t config_size = 0;
 
-        Gen4PollerError error = gen4_poller_get_config(instance, instance->password, &config);
+        Gen4PollerError error =
+            gen4_poller_get_config(instance, instance->password, &config, &config_size);
         if(error != Gen4PollerErrorNone) {
             FURI_LOG_E(TAG, "Failed to get current config: %d", error);
             instance->state = Gen4PollerStateFail;
             break;
         }
         // Copy config data to event data buffer
-        memcpy(instance->gen4_data->config.data_raw, config.data_raw, sizeof(config));
+        instance->gen4_data->config = config;
+        instance->gen4_data->config_size = config_size;
 
         instance->state = Gen4PollerStateSuccess;
     } while(false);
@@ -681,7 +712,7 @@ NfcCommand gen4_poller_get_info_handler(Gen4Poller* instance) {
     NfcCommand command = NfcCommandContinue;
 
     do {
-        Gen4 gen4_data;
+        Gen4 gen4_data = {};
 
         Gen4PollerError error =
             gen4_poller_get_revision(instance, instance->password, &gen4_data.revision);
@@ -691,7 +722,8 @@ NfcCommand gen4_poller_get_info_handler(Gen4Poller* instance) {
             break;
         }
 
-        error = gen4_poller_get_config(instance, instance->password, &gen4_data.config);
+        error = gen4_poller_get_config(
+            instance, instance->password, &gen4_data.config, &gen4_data.config_size);
         if(error != Gen4PollerErrorNone) {
             FURI_LOG_E(TAG, "Failed to get current config: %d", error);
             instance->state = Gen4PollerStateFail;

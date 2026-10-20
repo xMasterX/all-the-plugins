@@ -47,6 +47,9 @@ struct Gen4Poller {
 
     Gen4Password new_password;
     Gen4Config config;
+    // Config length this card accepts, 0 until probed. Describes the card, not
+    // the contents of config above.
+    size_t card_config_size;
     Gen4ShadowMode shadow_mode;
     Gen4DirectWriteBlock0Mode direct_write_block_0_mode;
 
@@ -89,8 +92,19 @@ Gen4PollerError gen4_poller_get_revision(
     Gen4Password password,
     Gen4Revision* revision_result);
 
-Gen4PollerError
-    gen4_poller_get_config(Gen4Poller* instance, Gen4Password password, Gen4Config* config_result);
+// Writes config_result and config_size only on success, callers rely on that
+// to keep a zeroed config meaningful after a failure
+Gen4PollerError gen4_poller_get_config(
+    Gen4Poller* instance,
+    Gen4Password password,
+    Gen4Config* config_result,
+    size_t* config_size);
+
+// Validates the length of a config dump response and stores it zero padded
+Gen4PollerError gen4_poller_parse_config_response(
+    const BitBuffer* rx_buffer,
+    Gen4Config* config,
+    size_t* config_size);
 
 Gen4PollerError
     gen4_poller_set_shadow_mode(Gen4Poller* instance, Gen4Password password, Gen4ShadowMode mode);
