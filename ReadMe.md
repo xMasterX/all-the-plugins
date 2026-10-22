@@ -349,7 +349,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Specter | ![NFC Badge] | [by at0m-b0mb](https://github.com/at0m-b0mb/Specter-FlipperZero) |  | [![Author Badge]](https://lab.flipper.net/apps/specter) |
 | EM4100 universal keys generator (for RFID Fuzzer) | ![RFID Badge] | [by Milk-Cool](https://github.com/Milk-Cool/fz-em4100-generator) |  | [![Author Badge]](https://lab.flipper.net/apps/key_generator) |
 | (Q)M100 UHF RFID | ![RFID Badge] | [by frux-c](https://github.com/frux-c/uhf_rfid) | WIP -> (+Added icon by @xMasterX) | [![UFW Badge]](https://lab.flipper.net/apps/uhf_rfid) |
-| T5577 Multiwriter | ![RFID Badge] | [by Leptopt1los](https://github.com/Leptopt1los/t5577_multiwriter) | | [![UFW Badge]](https://lab.flipper.net/apps/t5577_multiwriter) |
+| T5577 MultiWriter | ![RFID Badge] | [by Leptopt1los](https://github.com/Leptopt1los/t5577_multiwriter) | Verified writes, tag check, reader test & password [by mishamyte](https://github.com/mishamyte) | [![UFW Badge]](https://lab.flipper.net/apps/t5577_multiwriter) |
 | T5577 Raw Writer | ![RFID Badge] | [by zinongli](https://github.com/zinongli/T5577_Raw_Writer) | | [![Author Badge]](https://lab.flipper.net/apps/t5577_writer) |
 | FDX-B Maker | ![RFID Badge] | [by snowsign](https://github.com/snowsign/fdxb-maker) | | [![Author Badge]](https://lab.flipper.net/apps/fdxb_maker) |
 | RFID Metal Detector | ![RFID Badge] | [by hnsvrdmn](https://github.com/hnsvrdmn/flipper-rfid-metal-detector)  |  | ![None Badge] |
