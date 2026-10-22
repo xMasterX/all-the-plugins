@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `16 Oct 01:16 GMT +3`
+### Apps checked & updated at `22 Oct 04:00 GMT +3`
 
 
 # Default pack
@@ -267,6 +267,8 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Fake Chip Detector | ![GPIO Badge] | [by hleserg](https://github.com/hleserg/flipper-fake-chip-detector) | Reads an I2C sensor's factory ID register to tell whether it really is the chip it was sold as | ![None Badge] |
 | I2C BMS Reader | ![GPIO Badge] | [by gazirov](https://github.com/gazirov/battery_reader) | SBS battery reader/service tool for TI BQ30/BQ40 controllers (via I2C) | ![None Badge] |
 | YRM100X PRO UHF RFID | ![GPIO Badge] | [by AlexeySmirnov74](https://github.com/AlexeySmirnov74/YRM100X_PRO) | UHF RFID read, write, clone, lock and kill toolkit for the YRM100X module | [![Author Badge]](https://lab.flipper.net/apps/yrm100x_pro) |
+| UHF Expansion | ![GPIO Badge] | [by MTools Tec](https://github.com/mtoolstec/fz-uhf-expansion) | UHF RFID inventory, tag memory read/write, EPC filtering and saved-tag library for the MTools UHF expansion board | [![Author Badge]](https://lab.flipper.net/apps/uhf_expansion) |
+| Telink SWS | ![GPIO Badge] | [by ngxson](https://github.com/ngxson/flipper-telink) | SWire (SWS) master for Telink TLSR chips - probe, read RAM/registers and dump SPI flash over bitbang, driven from the `sws` CLI command | [![Author Badge]](https://lab.flipper.net/apps/telink_sws) |
 | IR Remote | ![IR Badge] | [by Hong5489](https://github.com/Hong5489/ir_remote) | improvements [by friebel](https://github.com/RogueMaster/flipperzero-firmware-wPlugins/pull/535) - Hold Option, RAW support [by d4ve10](https://github.com/d4ve10/ir_remote/tree/infrared_hold_option) | ![None Badge] |
 | IR Intervalometer | ![IR Badge] | [by Nitepone](https://github.com/Nitepone/flipper-intervalometer) |  | [![UFW Badge]](https://lab.flipper.net/apps/sony_intervalometer) |
 | IR Xbox Controller | ![IR Badge] | [by gebeto](https://github.com/gebeto/flipper-xbox-controller) |  | [![Author Badge]](https://lab.flipper.net/apps/xbox_controller) |

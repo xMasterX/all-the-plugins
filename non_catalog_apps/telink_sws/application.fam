@@ -1,0 +1,13 @@
+App(
+    appid="telink_sws",
+    name="Telink SWS",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="telink_sws_app",
+    stack_size=4 * 1024,
+    fap_category="GPIO",
+    fap_icon="sws-icon.png",
+    fap_version="0.1",
+    fap_author="ngxson",
+    fap_weburl="https://github.com/ngxson/flipper-telink",
+    fap_description="Telink SWire (SWS) master: probe, read RAM/regs, dump SPI flash",
+)

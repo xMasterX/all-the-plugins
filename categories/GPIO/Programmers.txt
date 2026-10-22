@@ -7,4 +7,5 @@ fake_chip_detector
 flip_tdi
 spi_mem_manager
 swd_probe
+telink_sws
 wch_swio_flasher
