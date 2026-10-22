@@ -4,6 +4,10 @@
  * HTTP  :80  → serves the embedded HTML page
  * WS    :81  → pushes JSON state every 1 s; receives control commands
  *
+ * The WS is the primary link. GET /api/status and POST /api/cmd carry the same
+ * state and commands over plain HTTP for clients whose WebSocket never
+ * delivers (the iOS/macOS captive-portal sheet).
+ *
  * All HTML/CSS/JS is embedded as a raw-string literal — no external CDN.
  * State is shared with the CAN task. Reads copy a locked snapshot; writes use
  * the same FreeRTOS critical section as the CAN/button side.
@@ -44,6 +48,9 @@ static float    g_fps         = 0.0f;
 #define CAN_VEHICLE_ALIVE_MS 3000u
 #define OTA_ESP32_IMAGE_MAGIC 0xE9u
 #define OTA_AUTH_USER "admin"
+// Longest command is wifi_cfg: ~90 bytes of JSON around two SSIDs (32) and two
+// passphrases (64) = ~282, more once JSON escaping or multi-byte UTF-8 kicks in.
+#define WEB_CMD_MAX_LEN 511u
 
 static void state_enter() {
     if (g_state_mux) portENTER_CRITICAL(g_state_mux);
@@ -290,6 +297,21 @@ input:checked+.sl2:before{transform:translateX(20px);background:#fff}
 .test-btn:disabled{opacity:.4;color:var(--text3);border-color:var(--border);background:var(--card2)}
 .metric{font-size:.95em;font-weight:700;font-variant-numeric:tabular-nums}
 .metric small{font-size:.72em;color:var(--text3);font-weight:600}
+
+/* ── In-page dialog + toast ── */
+.dlg{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:100;
+  align-items:center;justify-content:center;padding:16px;background:rgba(5,6,16,.8)}
+.dlg.show{display:flex}
+.dlg-box{width:100%;max-width:400px;max-height:100%;overflow:auto;background:var(--card);
+  border:1px solid var(--border);border-radius:16px;padding:18px 16px 16px;
+  box-shadow:0 12px 40px rgba(0,0,0,.55)}
+.dlg-msg{font-size:.9em;line-height:1.45;overflow-wrap:anywhere;word-break:break-word}
+.dlg-msg div+div{margin-top:8px}
+.toast{display:none;position:fixed;left:16px;right:16px;bottom:16px;z-index:90;
+  max-width:448px;margin:0 auto;padding:11px 14px;border-radius:12px;text-align:center;
+  font-size:.8em;line-height:1.4;color:var(--red);background:var(--card2);
+  border:1px solid rgba(255,107,107,.45);box-shadow:0 8px 28px rgba(0,0,0,.5)}
+.toast.show{display:block}
 </style>
 </head>
 <body>
@@ -783,7 +805,7 @@ R"rawliteral(
     <span class="lbl">Network Password</span>
     <input type="password" id="wifiStaPass" maxlength="64" style="width:140px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:4px;border-radius:4px;text-align:right">
   </div>
-  <button class="btn-main btn-stop" onclick="saveWifi()" style="margin-top:12px">SAVE & RESTART WIFI</button>
+  <button class="btn-main btn-stop" onclick="saveWifi(this)" style="margin-top:12px">SAVE & RESTART WIFI</button>
 </div>
 
 <!-- OTA Update -->
@@ -825,7 +847,7 @@ R"rawliteral(
   <div class="card-head"><div class="icon ic-d">D</div><h2>Device</h2></div>
   <div class="row">
     <span class="lbl">Firmware</span>
-    <span id="fwBuild" style="font-size:.8em;color:var(--text2)">--</span>
+    <span id="fwBuild" style="font-size:.8em;color:var(--text2)">)rawliteral" FW_VERSION " &middot; " __DATE__ " " __TIME__ R"rawliteral(</span>
   </div>
   <div class="row">
     <span class="lbl">Uptime</span>
@@ -834,6 +856,10 @@ R"rawliteral(
   <div class="row">
     <span class="lbl">WiFi Clients</span>
     <span id="wifiCl">--</span>
+  </div>
+  <div class="row">
+    <span class="lbl">Memory</span>
+    <span id="memInfo" style="font-size:.78em;color:var(--text2)">--</span>
   </div>
   <div class="row">
     <span class="lbl">OTA Partition</span>
@@ -845,19 +871,25 @@ R"rawliteral(
   </div>
 </details>
 
-<div class="foot">Tesla FSD ESP32 &middot;
-)rawliteral"
-#if defined(BOARD_TTGO_DISPLAY)
-R"rawliteral( TTGO T-Display + MCP2515)rawliteral"
-#else
-R"rawliteral( M5Stack ATOM Lite + ATOMIC CAN Base)rawliteral"
-#endif
-R"rawliteral(</div>
+<div class="foot">Tesla FSD ESP32 &middot; )rawliteral" BOARD_NAME " &middot; " FW_VERSION R"rawliteral(</div>
 <div class="foot">Free &amp; open source &middot; <a href="https://fsd.fkey.id/" target="_blank" rel="noopener">support the research</a></div>
 </div><!-- /wrap -->
 
+<!-- In-page alert / confirm + command-error toast -->
+<div id="uiDlg" class="dlg" role="alertdialog" aria-modal="true" aria-labelledby="uiDlgMsg">
+  <div class="dlg-box">
+    <div id="uiDlgMsg" class="dlg-msg"></div>
+    <div class="auth-actions">
+      <button type="button" id="uiDlgNo" class="btn-main btn-stop" onclick="dlgDone(false)">Cancel</button>
+      <button type="button" id="uiDlgYes" class="btn-main btn-blue" onclick="dlgDone(true)">OK</button>
+    </div>
+  </div>
+</div>
+<div id="uiToast" class="toast" role="alert"></div>
+
 <script>
 var ws,rt,busy=0,wifiOnce=false,authHeader='',authAction=null,restartAnchor=null;
+var wsRx=0,httpUp=true,stBusy=false,otaBusy=false;
 var httpLogAbort=null,httpLogReader=null,httpLogParts=[],httpLogBytes=0,httpLogStarted=0,httpLogRunning=false;
 var httpLogName='',httpLogReady=false,httpLogSaveUrl='';
 var httpLogAllowed=true;
@@ -865,8 +897,58 @@ var HW=['Unknown','Legacy','HW3','HW4'];
 var CIRC=326.73;
 document.getElementById('deviceHost').textContent=location.host||location.hostname||'192.168.4.1';
 
+// ── In-page dialogs ──
+// Captive-portal sheets (iOS/macOS) ignore the native alert / confirm dialogs
+// (a confirm just returns false), so prompts are drawn in the page. One at a
+// time; later calls queue.
+var dlgQ=[],dlgCur=null,dlgPrev=null;
+function dlgShow(){
+  if(dlgCur||!dlgQ.length)return;
+  dlgCur=dlgQ.shift();
+  var m=document.getElementById('uiDlgMsg'),no=document.getElementById('uiDlgNo');
+  m.textContent='';
+  // One block per line: keeps the breaks and lets each line translate on its own.
+  String(dlgCur.msg).split('\n').forEach(function(l){
+    if(!l)return;
+    var p=document.createElement('div');p.textContent=l;m.appendChild(p);
+  });
+  no.style.display=dlgCur.ask?'':'none';
+  dlgPrev=document.activeElement;
+  document.getElementById('uiDlg').className='dlg show';
+  // Confirms open on Cancel: each one guards a destructive action.
+  (dlgCur.ask?no:document.getElementById('uiDlgYes')).focus();
+}
+function dlgDone(ok){
+  var c=dlgCur;if(!c)return;
+  dlgCur=null;
+  document.getElementById('uiDlg').className='dlg';
+  try{if(dlgPrev&&dlgPrev.focus)dlgPrev.focus();}catch(e){}
+  dlgPrev=null;
+  var f=ok?c.yes:c.no;
+  try{if(f)f();}finally{dlgShow();}
+}
+document.addEventListener('keydown',function(e){
+  if(!dlgCur)return;
+  var k=e.key||e.keyCode;
+  if(k==='Escape'||k==='Esc'||k===27){e.preventDefault();dlgDone(!dlgCur.ask);}
+  else if(k==='Tab'||k===9){
+    // Keep focus inside the dialog.
+    e.preventDefault();
+    var no=document.getElementById('uiDlgNo'),yes=document.getElementById('uiDlgYes');
+    ((dlgCur.ask&&document.activeElement===yes)?no:yes).focus();
+  }
+},true);
+function uiAlert(msg,done){dlgQ.push({msg:msg,ask:false,yes:done,no:done});dlgShow();}
+function uiConfirm(msg,onYes,onNo){dlgQ.push({msg:msg,ask:true,yes:onYes,no:onNo});dlgShow();}
+var toastT=0;
+function uiToast(msg){
+  var t=document.getElementById('uiToast');if(!t)return;
+  t.textContent=msg;t.className='toast show';
+  clearTimeout(toastT);toastT=setTimeout(function(){t.className='toast';},6000);
+}
+
 function initWifi(d){
-  if(wifiOnce)return;
+  if(wifiOnce||d.wifi_ssid===undefined)return;
   wifiOnce=true;
   document.getElementById('wifiSsid').value=d.wifi_ssid||'';
   document.getElementById('wifiPass').value=d.wifi_pass||'';
@@ -904,10 +986,11 @@ function renderPerf(d){
   // Timers: locked result if present, else the live run time while armed.
   function cell(id,bid,t,best){
     var e=document.getElementById(id);
+    setTxt(bid,'best '+pfT(best));
+    if(!e)return;
     if(t>0){e.textContent=pfT(t);e.style.color='var(--accent)';}
     else if(p.armed&&p.run_ms>0){e.textContent=pfT(p.run_ms);e.style.color='var(--yellow)';}
     else{e.textContent='--';e.style.color='';}
-    setTxt(bid,'best '+pfT(best));
   }
   cell('pf050','pf050b',p.t50,p.best50);
   cell('pf060mph','pf060mphb',p.t60mph,p.best60mph);
@@ -945,6 +1028,7 @@ function renderPerf(d){
 }
 function pill(id,on,txt,warnClass){
   var e=document.getElementById(id);
+  if(!e)return;
   e.className='pill '+(warnClass||''+(on?'on':'off'));
   e.innerHTML='<span class="pd"></span>'+txt;
 }
@@ -1021,7 +1105,7 @@ function bbRefreshList(){
   }).catch(function(){});
 }
 function bbDelete(n){cmd('blackbox_delete',n);setTimeout(bbRefreshList,400);}
-function bbDeleteAll(){if(confirm('Delete all recorded events from the device?')){cmd('blackbox_delete_all',true);bbSeen();setTimeout(bbRefreshList,400);}}
+function bbDeleteAll(){uiConfirm('Delete all recorded events from the device?',function(){cmd('blackbox_delete_all',true);bbSeen();setTimeout(bbRefreshList,400);});}
 // ── Tap capability checker (#125) ──
 var CAP_MSG={
   nag_killer:['0x370 + DAS state present — gates correctly',
@@ -1088,8 +1172,20 @@ function ring(p){
   b.style.stroke=socCol(p);
 }
 
+function focusId(){var a=document.activeElement;return a?a.id:'';}
+// Each section is guarded on its own, so a bad field in one cannot blank the
+// rest of the page. Device goes first: it has nothing to wait for.
+function sect(name,fn,d){try{fn(d);}catch(x){console.error('upd '+name,x);}}
 function upd(d){
   if(!d || Date.now() < busy) return;
+  sect('device',updDevice,d);
+  sect('status',updStatus,d);
+  sect('controls',updControls,d);
+  sect('can',updCan,d);
+  sect('battery',updBattery,d);
+  sect('perf',renderPerf,d);   // read-only, opt-in
+}
+function updStatus(d){
   // Status
   var apActive=!!d.ap_active;
   pill('fsdSt', apActive, apActive?'Active':'Waiting');
@@ -1134,7 +1230,8 @@ function upd(d){
   // 14.x firmware warning banner
   var w14x=document.getElementById('warn14x');
   if(w14x) w14x.style.display=d.firmware_14x_warning?'block':'none';
-
+}
+function updControls(d){
   // Mode button
   var act=d.op_mode===1;
   var btn=document.getElementById('btnMode');
@@ -1188,23 +1285,24 @@ function upd(d){
     acSt.textContent=at;
   }
   if(document.getElementById('swTrkMode')) document.getElementById('swTrkMode').checked=d.track_mode_inject;
-  if(document.getElementById('trkRot')&&document.activeElement.id!=='trkRot'&&d.track_rotation_pct!==undefined){document.getElementById('trkRot').value=d.track_rotation_pct;var _tr=document.getElementById('trkRotV');if(_tr)_tr.textContent=d.track_rotation_pct;}
-  if(document.getElementById('trkStab')&&document.activeElement.id!=='trkStab'&&d.track_stability_pct!==undefined){document.getElementById('trkStab').value=d.track_stability_pct;var _ts=document.getElementById('trkStabV');if(_ts)_ts.textContent=d.track_stability_pct;}
+  if(document.getElementById('trkRot')&&focusId()!=='trkRot'&&d.track_rotation_pct!==undefined){document.getElementById('trkRot').value=d.track_rotation_pct;var _tr=document.getElementById('trkRotV');if(_tr)_tr.textContent=d.track_rotation_pct;}
+  if(document.getElementById('trkStab')&&focusId()!=='trkStab'&&d.track_stability_pct!==undefined){document.getElementById('trkStab').value=d.track_stability_pct;var _ts=document.getElementById('trkStabV');if(_ts)_ts.textContent=d.track_stability_pct;}
   if(document.getElementById('swTrkPC')) document.getElementById('swTrkPC').checked=d.track_post_cooling;
   if(document.getElementById('swTrkCO')) document.getElementById('swTrkCO').checked=d.track_cmp_overclock;
   if(document.getElementById('swDisp')) document.getElementById('swDisp').checked=!!d.display_enabled;
-  if(document.activeElement.id!=='dispBr' && document.getElementById('dispBr'))
+  if(focusId()!=='dispBr' && document.getElementById('dispBr'))
     document.getElementById('dispBr').value=d.display_brightness||50;
-  if(document.activeElement.id!=='dispTo' && document.getElementById('dispTo'))
+  if(focusId()!=='dispTo' && document.getElementById('dispTo'))
     document.getElementById('dispTo').value=d.display_timeout_s||60;
   if(document.getElementById('swDump')) document.getElementById('swDump').checked=!!d.can_dump;
 
-  if(document.activeElement.id!=='numSleep' && document.getElementById('numSleep'))
+  if(focusId()!=='numSleep' && document.getElementById('numSleep'))
     document.getElementById('numSleep').value=Math.floor((d.sleep_ms||0)/1000);
 
   updateControlsSummary(d);
   pill('dumpSt',d.can_dump,d.can_dump?'Recording':'Idle');
-
+}
+function updCan(d){
   // CAN stats
   if(document.getElementById('rxCnt')) document.getElementById('rxCnt').textContent=(d.rx_count||0).toLocaleString();
   if(document.getElementById('txCnt')) document.getElementById('txCnt').textContent=(d.tx_count||0).toLocaleString();
@@ -1229,7 +1327,8 @@ function upd(d){
     document.getElementById('httpLogDrop').textContent=((d.http_can_stream&&d.http_can_stream.dropped)||0)+' frames / rx-missed '+((d.http_can_stream&&d.http_can_stream.rx_missed)||0);
   if(document.getElementById('httpLogFiltered'))
     document.getElementById('httpLogFiltered').textContent=((d.http_can_stream&&d.http_can_stream.filtered)||0)+' frames';
-
+}
+function updBattery(d){
   // Battery
   if(d.bms && d.bms.seen){
     var sn=document.getElementById('bSoc');
@@ -1246,14 +1345,19 @@ function upd(d){
     }
     if(document.getElementById('bTemp')) document.getElementById('bTemp').textContent=d.bms.temp_min+'~'+d.bms.temp_max+'\u00b0C';
   }
-
-  // Performance (read-only, opt-in)
-  renderPerf(d);
-
+}
+function updDevice(d){
   // Device
-  if(document.getElementById('fwBuild')) document.getElementById('fwBuild').textContent=d.fw_build;
+  if(document.getElementById('fwBuild') && d.fw_build) document.getElementById('fwBuild').textContent=(d.fw_version?d.fw_version+' \u00b7 ':'')+d.fw_build;
   if(document.getElementById('uptime')) document.getElementById('uptime').textContent=fmt(d.uptime_s||0);
   if(document.getElementById('wifiCl')) document.getElementById('wifiCl').textContent=d.wifi_clients||0;
+  // Lowest free loop-task stack since boot + heap now / lowest. Red under 1 KB of stack.
+  var me=document.getElementById('memInfo');
+  if(me && d.stack_free!==undefined){
+    var kb=function(b){return ((b||0)/1024).toFixed(1)+' KB';};
+    me.textContent='stack '+kb(d.stack_free)+' \u00b7 heap '+kb(d.heap_free)+' (min '+kb(d.heap_min)+')';
+    me.style.color=d.stack_free<1024?'var(--red)':'var(--text2)';
+  }
   var partEl=document.getElementById('otaPartInfo');
   if(partEl && d.ota_partition){
     var p=d.ota_partition;
@@ -1270,14 +1374,21 @@ function uploadFirmware(){
   var input=document.getElementById('otaFile');
   var file=input.files[0];
   if(!file)return;
-  if(!file.name.endsWith('.bin')){alert('Error: Please select a .bin firmware file');input.value='';return;}
+  function drop(){input.value='';}
+  if(!file.name.endsWith('.bin')){drop();uiAlert('Error: Please select a .bin firmware file');return;}
   var MAX_SIZE=16*1024*1024;
-  if(file.size>MAX_SIZE){alert('Error: Firmware file too large (max 16MB)');input.value='';return;}
-  if(file.size<32768 && !confirm('Warning: This file is very small ('+Math.round(file.size/1024)+' KB).\nAre you sure it is a valid ESP32 firmware?')){input.value='';return;}
-  if(!confirm('Flash firmware: '+file.name+' ('+Math.round(file.size/1024)+' KB)?\n\nDevice will reboot after update.')){input.value='';return;}
+  if(file.size>MAX_SIZE){drop();uiAlert('Error: Firmware file too large (max 16MB)');return;}
+  var kb=Math.round(file.size/1024);
+  function ask(){uiConfirm('Flash firmware: '+file.name+' ('+kb+' KB)?\n\nDevice will reboot after update.',function(){otaSend(input,file);},drop);}
+  if(file.size<32768)uiConfirm('Warning: This file is very small ('+kb+' KB).\nAre you sure it is a valid ESP32 firmware?',ask,drop);
+  else ask();
+}
+function otaSend(input,file){
   var prog=document.getElementById('otaProgress'),bar=document.getElementById('otaBar'),status=document.getElementById('otaStatus'),bytes=document.getElementById('otaBytes'),btn=document.getElementById('otaSelectBtn');
   prog.style.display='block';bar.style.width='0%';bar.style.background='var(--accent)';status.textContent='Uploading firmware...';status.style.color='var(--text2)';bytes.textContent='0 / '+Math.round(file.size/1024)+' KB';btn.disabled=true;btn.style.opacity='.5';
+  otaBusy=true;
   var xhr=new XMLHttpRequest();
+  xhr.addEventListener('loadend',function(){otaBusy=false;});
   xhr.upload.addEventListener('progress',function(e){if(e.lengthComputable){var pct=Math.round((e.loaded/e.total)*100);bar.style.width=pct+'%';status.textContent='Uploading: '+pct+'%';bytes.textContent=Math.round(e.loaded/1024)+' / '+Math.round(e.total/1024)+' KB';}});
   xhr.addEventListener('load',function(){btn.disabled=false;btn.style.opacity='1';if(xhr.status===200&&xhr.responseText==='OK'){bar.style.width='100%';status.textContent='Upload complete - rebooting...';status.style.color='var(--accent)';var c=8;var t=setInterval(function(){c--;bytes.textContent='Reconnecting in '+c+'s...';if(c<=0){clearInterval(t);location.reload();}},1000);}else{bar.style.background='var(--red)';status.textContent='Update failed';status.style.color='var(--red)';bytes.textContent='Server response: '+(xhr.responseText||xhr.statusText||'Unknown error');input.value='';}});
   xhr.addEventListener('error',function(){btn.disabled=false;btn.style.opacity='1';bar.style.background='var(--red)';status.textContent='Connection lost during upload';status.style.color='var(--red)';bytes.textContent='Check WiFi connection and try again';input.value='';});
@@ -1319,7 +1430,7 @@ function confirmRestart(){
 function requestRestart(){
   fetch('/restart',{headers:{Authorization:authHeader}}).then(function(r){
     if(!r.ok){authHeader='';requireAuth(function(){showRestartConfirm(restartAnchor);},restartAnchor);return;}
-    alert('Device restart triggered');
+    uiAlert('Device restart triggered');
     setTimeout(function(){location.reload();},8000);
   }).catch(function(){setTimeout(function(){location.reload();},8000);});
 }
@@ -1357,8 +1468,8 @@ function submitAuth(){
   authHeader='Basic '+btoa(user+':'+pass);
   if(!checkAuth()){
     authHeader='';
-    authFailed();
-    if(p){p.value='';p.focus();}
+    if(p)p.value='';
+    authFailed(p);
     return;
   }
   var action=authAction;
@@ -1378,14 +1489,16 @@ function checkAuth(){
   }
 }
 
-function authFailed(){
-  alert('Authentication failed');
+function authFailed(el){
   var input=document.getElementById('otaFile');
   if(input)input.value='';
+  uiAlert('Authentication failed',function(){if(el)el.focus();});
 }
 
 function sdFormat(){
-  if(!confirm('Format SD card? All data will be lost.'))return;
+  uiConfirm('Format SD card? All data will be lost.',sdFormatRun);
+}
+function sdFormatRun(){
   var btn=document.getElementById('btnFmt');
   var out=document.getElementById('fmtOut');
   btn.disabled=true;btn.textContent='FORMATTING\u2026';
@@ -1399,25 +1512,47 @@ function sdFormat(){
     btn.disabled=false;btn.textContent='FORMAT SD CARD';
   });
 }
-function saveWifi(){
+function saveWifi(b){
   var s=document.getElementById('wifiSsid').value;
   var p=document.getElementById('wifiPass').value;
   var h=document.getElementById('swWifiHid').checked;
   var ss=document.getElementById('wifiStaSsid').value;
   var sp=document.getElementById('wifiStaPass').value;
-  if(s.length<1){alert('SSID required');return;}
-  if(p!=='***' && p.length>0 && p.length<8){alert('Password must be empty or 8+ chars');return;}
-  if(sp!=='***' && ss.length>0 && sp.length>0 && sp.length<8){alert('Network password must be empty or 8+ chars');return;}
-  if(confirm('WiFi settings will be updated and the device will restart.')){
-    var b=document.activeElement; if(b&&b.tagName==='BUTTON'){b.disabled=true;b.textContent='SAVING...';}
-    cmd('wifi_cfg',{ssid:s,pass:p,hidden:h,sta_ssid:ss,sta_pass:sp});
-  }
+  if(s.length<1){uiAlert('SSID required');return;}
+  if(p!=='***' && p.length>0 && p.length<8){uiAlert('Password must be empty or 8+ chars');return;}
+  if(sp!=='***' && ss.length>0 && sp.length>0 && sp.length<8){uiAlert('Network password must be empty or 8+ chars');return;}
+  uiConfirm('WiFi settings will be updated and the device will restart.',function(){
+    var t=b?b.textContent:'';
+    if(b){b.disabled=true;b.textContent='SAVING...';}
+    cmd('wifi_cfg',{ssid:s,pass:p,hidden:h,sta_ssid:ss,sta_pass:sp},function(){
+      if(b){b.disabled=false;b.textContent=t;}
+    });
+  });
 }
-function cmd(c,v){
-  if(ws&&ws.readyState===1) {
-    ws.send(JSON.stringify({cmd:c,value:v}));
-    busy = Date.now() + 3000;
-  }
+// fetch() with a deadline, so a dead link fails in seconds instead of hanging.
+// Resolves with the body text; rejects on a network error, timeout or non-2xx.
+function fetchT(url,opt,ms){
+  var ac=window.AbortController?new AbortController():null,t=0;
+  if(ac){opt.signal=ac.signal;t=setTimeout(function(){ac.abort();},ms);}
+  return fetch(url,opt).then(function(r){
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    return r.text();
+  }).then(function(s){clearTimeout(t);return s;},function(x){clearTimeout(t);throw x;});
+}
+// The WS only counts while it is delivering: the device pushes state at 1 Hz,
+// so an open socket that has gone quiet is treated like a closed one.
+function wsLive(){return !!ws&&ws.readyState===1&&Date.now()-wsRx<4000;}
+// Commands go over the WS when it is live, else as the same JSON over HTTP.
+function cmd(c,v,fail){
+  var m=JSON.stringify({cmd:c,value:v});
+  busy = Date.now() + 3000;
+  if(wsLive()){ws.send(m);return;}
+  fetchT('/api/cmd',{method:'POST',headers:{'Content-Type':'application/json'},body:m},5000).catch(function(x){
+    console.error('cmd '+c,x);
+    busy=0;
+    uiToast('Command failed — the device did not accept it. Check the connection and try again.');
+    if(fail)fail();
+  });
 }
 function toggleMode(){ cmd('mode',null); }
 function gv(id){ var e=document.getElementById(id); return (e&&e.value.trim()!=='')?e.value.trim():'0'; }
@@ -1588,7 +1723,7 @@ function startHttpLog(){
     return;
   }
   if(!window.ReadableStream){
-    alert('This browser does not support HTTP stream collection.');
+    uiAlert('This browser does not support HTTP stream collection.');
     return;
   }
   httpLogParts=[];
@@ -1657,24 +1792,61 @@ function auxPoll(){
 }
 setInterval(auxPoll,2500);
 
+function applyState(d){
+  if(!d)return;
+  try{initWifi(d);}catch(x){console.error('initWifi',x);}
+  upd(d);
+}
+// Connected = an open socket or a status poll that just succeeded.
+function link(){
+  var up=(!!ws&&ws.readyState===1)||httpUp;
+  document.getElementById('dot').className=up?'cdot':'cdot off';
+  document.getElementById('connErr').style.display=up?'none':'block';
+}
+
+// ── Status over HTTP ──
+// The WS push is the primary feed. GET /api/status covers the first paint and
+// any client where :81 never delivers (captive-portal sheets): polled only
+// while the socket is not live, so a healthy WS is never applied twice. Paused
+// during a firmware upload — the server is busy with it anyway.
+function statusPoll(){
+  if(stBusy||otaBusy||wsLive())return;
+  stBusy=true;
+  fetchT('/api/status',{cache:'no-store'},4000).then(function(s){
+    var d=JSON.parse(s);
+    httpUp=true;
+    if(!wsLive())applyState(d);
+  }).catch(function(){httpUp=false;}).then(function(){stBusy=false;link();});
+}
+
 function conn(){
-  ws=new WebSocket('ws://'+location.hostname+':81/');
+  // Some embedded browsers refuse to construct a WebSocket at all; HTTP carries on.
+  try{ws=new WebSocket('ws://'+location.hostname+':81/');}catch(x){ws=null;return;}
   ws.onopen=function(){
-    document.getElementById('dot').className='cdot';
-    document.getElementById('connErr').style.display='none';
+    wsRx=0;   // not live until this socket delivers its first frame
+    link();
     clearTimeout(rt);
     auxPoll();
   };
-  ws.onmessage=function(e){ try{var d=JSON.parse(e.data);initWifi(d);upd(d);}catch(x){} };
+  ws.onmessage=function(e){
+    wsRx=Date.now();
+    httpUp=false;   // polling stops while the WS delivers, so HTTP is unknown again
+    var d;
+    try{d=JSON.parse(e.data);}catch(x){console.error('ws frame',x);return;}
+    applyState(d);
+  };
   ws.onclose=function(){
-    document.getElementById('dot').className='cdot off';
-    document.getElementById('connErr').style.display='block';
+    link();
+    // A feed that was live just stopped: take over now, not at the next tick.
+    if(Date.now()-wsRx<4000)statusPoll();
     rt=setTimeout(conn,2000);
   };
   ws.onerror=function(){ ws.close(); };
 }
 perfInit();
 conn();
+statusPoll();
+setInterval(statusPoll,2000);
 </script>
 )rawliteral"
 #include "web_i18n.inc"
@@ -1869,6 +2041,12 @@ static String build_json() {
     j += "\"bms\":";           j += bms;                               j += ',';
     j += "\"perf\":";          j += perf;                              j += ',';
     j += "\"uptime_s\":";      j += uptime_s;                          j += ',';
+    // Loop-task stack low-water mark (this runs on it) and heap, for field reports.
+    j += "\"stack_free\":";    j += (uint32_t)uxTaskGetStackHighWaterMark(nullptr); j += ',';
+    j += "\"heap_free\":";     j += (uint32_t)ESP.getFreeHeap();       j += ',';
+    j += "\"heap_min\":";      j += (uint32_t)ESP.getMinFreeHeap();    j += ',';
+    j += "\"fw_version\":\""   FW_VERSION "\",";
+    j += "\"board\":\""        BOARD_NAME "\",";
     j += "\"fw_build\":\"";    j += __DATE__;  j += ' '; j += __TIME__; j += "\",";
     j += "\"can_dump\":";      j += can_dump_active()                 ? "true" : "false"; j += ',';
     // blackbox/capability/profile moved OFF the hot WS state push (#124): they
@@ -1908,27 +2086,22 @@ static String build_aux_json() {
     return j;
 }
 
-// ── WebSocket event handler ───────────────────────────────────────────────────
-static void ws_event(uint8_t num, WStype_t type,
-                     uint8_t *payload, size_t length)
+// ── Command dispatcher ────────────────────────────────────────────────────────
+// Runs one dashboard command, {"cmd":"xxx","value":yyy}. The single command
+// table for both transports: WS TEXT frames and POST /api/cmd.
+static void web_command(const uint8_t *payload, size_t length)
 {
-    if (type == WStype_CONNECTED) {
-        // Auto-run the tap capability check on connect (#125): the first few
-        // seconds answer "will the nag killer work on this tap?" before any
-        // guesswork. Pure RX — counting only.
-        capability_start(millis());
-        // Push current state immediately on connect
-        String json = build_json();
-        g_ws.sendTXT(num, json.c_str(), json.length());
+    if (g_state == nullptr || length == 0) return;
+    // Over-long input is dropped, never truncated: a cut-off wifi_cfg would
+    // save half its fields and then restart the device.
+    if (length > WEB_CMD_MAX_LEN) {
+        Serial.printf("[Web] command dropped: %u bytes\n", (unsigned)length);
         return;
     }
 
-    if (type != WStype_TEXT || g_state == nullptr || length == 0) return;
-
     // Use a slightly more robust way to find the value after the second colon
-    char buf[256] = {};
-    size_t n = (length < sizeof(buf) - 1) ? length : sizeof(buf) - 1;
-    memcpy(buf, payload, n);
+    char buf[WEB_CMD_MAX_LEN + 1] = {};
+    memcpy(buf, payload, length);
 
     // Find the "value" part of {"cmd":"xxx","value":yyy}
     const char *vptr = strstr(buf, "\"value\":");
@@ -2566,8 +2739,27 @@ static void ws_event(uint8_t num, WStype_t type,
     }
 }
 
+// ── WebSocket event handler ───────────────────────────────────────────────────
+static void ws_event(uint8_t num, WStype_t type,
+                     uint8_t *payload, size_t length)
+{
+    if (type == WStype_CONNECTED) {
+        // Auto-run the tap capability check on connect (#125): the first few
+        // seconds answer "will the nag killer work on this tap?" before any
+        // guesswork. Pure RX — counting only.
+        capability_start(millis());
+        // Push current state immediately on connect
+        String json = build_json();
+        g_ws.sendTXT(num, json.c_str(), json.length());
+        return;
+    }
+
+    if (type == WStype_TEXT) web_command(payload, length);
+}
+
 // ── HTTP handlers ─────────────────────────────────────────────────────────────
 static void handle_root() {
+    captive_portal_note_dashboard(g_http);   // portal "login" for Apple's probe (SoftAP only)
     g_http.setContentLength(sizeof(WEB_HTML) - 1);
     g_http.send(200, "text/html", "");
 
@@ -2593,7 +2785,31 @@ static void handle_root() {
 
 static void handle_status() {
     if (g_state == nullptr) { g_http.send(503, "application/json", "{}"); return; }
+    g_http.sendHeader("Cache-Control", "no-store");
     g_http.send(200, "application/json", build_json());
+}
+
+// Commands over HTTP, for clients without a working WebSocket. The body is the
+// same JSON text a WS frame carries and goes through the same dispatcher.
+// Content-Type must be application/json: a cross-site form or no-cors fetch
+// cannot send that without a CORS preflight, which this server never grants.
+static void handle_cmd() {
+    if (g_state == nullptr) { g_http.send(503, "application/json", "{}"); return; }
+    String ctype = g_http.header("Content-Type");
+    ctype.toLowerCase();
+    if (!ctype.startsWith("application/json")) {
+        g_http.send(415, "text/plain", "Content-Type must be application/json");
+        return;
+    }
+    String body = g_http.arg("plain");
+    if (body.length() == 0) { g_http.send(400, "text/plain", "empty body"); return; }
+    if (body.length() > WEB_CMD_MAX_LEN) {
+        g_http.send(413, "text/plain", "command too long");
+        return;
+    }
+    // Reply before running it: wifi_cfg restarts from inside the dispatcher.
+    g_http.send(200, "application/json", "{\"ok\":true}");
+    web_command((const uint8_t *)body.c_str(), body.length());
 }
 
 // On-demand aux status (blackbox/capability/profile). Polled by the dashboard
@@ -2814,6 +3030,7 @@ void web_dashboard_init(FSDState *state,
 
     g_http.on("/",           HTTP_GET,  handle_root);
     g_http.on("/api/status", HTTP_GET,  handle_status);
+    g_http.on("/api/cmd",    HTTP_POST, handle_cmd);
     g_http.on("/api/aux",    HTTP_GET,  handle_aux);
     g_http.on("/auth",       HTTP_GET,  handle_auth);
     g_http.on("/sdformat",   HTTP_GET,  handle_sdformat);
@@ -2824,6 +3041,12 @@ void web_dashboard_init(FSDState *state,
     // Captive portal: OS probe routes + catch-all onNotFound (SoftAP only).
     // Registered last so the explicit routes above take precedence.
     captive_portal_register_routes(g_http);
+    // WebServer keeps only the request headers named here (plus Authorization),
+    // and collectHeaders() replaces the list instead of adding to it. This is
+    // the last call before begin(), so it names every header a handler reads:
+    // Content-Type for /api/cmd, User-Agent for the captive portal's probes.
+    const char *collect[] = { "Content-Type", "User-Agent" };
+    g_http.collectHeaders(collect, sizeof(collect) / sizeof(collect[0]));
     g_http.begin();
     captive_portal_begin();
     http_can_stream_init();

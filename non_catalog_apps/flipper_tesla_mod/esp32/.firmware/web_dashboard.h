@@ -7,7 +7,8 @@
 /**
  * web_dashboard.h — HTTP + WebSocket dashboard
  *
- * HTTP  port 80 : serves the embedded HTML dashboard
+ * HTTP  port 80 : serves the embedded HTML dashboard; GET /api/status and
+ *                 POST /api/cmd mirror the WebSocket for clients without one
  * WebSocket port 81 : pushes JSON state every 1 s;
  *                     receives control commands from the browser
  *
