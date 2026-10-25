@@ -12,6 +12,7 @@ R"rawliteral(
 var TABLES = {
 "zh-Hans": {
  "Connection lost — retrying…": "连接已断开 — 正在重试…",
+ "Command failed — the device did not accept it. Check the connection and try again.": "命令未生效 — 设备没有接受该命令。请检查连接后重试。",
  "⚠️ 2026.14.x firmware enforcement active.": "⚠️ 2026.14.x 固件限制已生效。",
  "⚠️ IN-CAR AUTOPARK — CAN TX PAUSED": "⚠️ 车内自动泊车 — CAN 发送已暂停",
  "⚠️ OTA UPDATE IN PROGRESS — CAN TX SUSPENDED": "⚠️ OTA 更新进行中 — CAN 发送已挂起",
@@ -32,7 +33,7 @@ var TABLES = {
  "Controls": "控制",
  "CAN Bus": "CAN 总线",
  "Black-box": "黑匣子",
- "CAN Dump": "CAN 抓包",
+ "CAN Dump": "CAN 转储",
  "HTTP CAN Log": "HTTP CAN 日志",
  "BMS Display": "BMS 显示",
  "WiFi Configuration": "WiFi 配置",
@@ -48,10 +49,12 @@ var TABLES = {
  "RE-CHECK": "重新检测",
  "Tap Check": "取线检测",
  "SAVE & RESTART WIFI": "保存并重启 WiFi",
+ "WiFi settings will be updated and the device will restart.": "WiFi 设置将被更新，设备将重启。",
  "RESTART DEVICE": "重启设备",
  "Restart device?": "确定重启设备吗？",
  "The device will reboot immediately and the web connection will drop briefly.": "设备将立即重启，网页连接会短暂中断。",
  "Cancel": "取消",
+ "OK": "确定",
  "Dismiss": "忽略",
  "Got it": "知道了",
  "Sign In": "登录",
@@ -59,9 +62,15 @@ var TABLES = {
  "SELECT FIRMWARE (.bin)": "选择固件（.bin）",
  "Upload a .bin firmware file. Device will reboot after a successful update.": "上传 .bin 固件文件，更新成功后设备将重启。",
  "Error: Please select a .bin firmware file": "错误：请选择 .bin 固件文件",
+ "Error: Firmware file too large (max 16MB)": "错误：固件文件过大（最大 16MB）",
+ "Warning: This file is very small": "警告：此文件非常小",
+ "Are you sure it is a valid ESP32 firmware?": "确定这是有效的 ESP32 固件吗？",
+ "Flash firmware:": "刷入固件",
+ "Device will reboot after update.": "更新后设备将重启。",
  "STREAM LOG AND SAVE": "开始串流并保存",
  "Ready to collect a candump file in this browser.": "已就绪，可在此浏览器中采集 candump 文件。",
  "FORMAT SD CARD": "格式化 SD 卡",
+ "Format SD card? All data will be lost.": "确定格式化 SD 卡吗？所有数据都将丢失。",
  "DELETE ALL EVENTS": "删除全部事件",
  "Delete all recorded events from the device?": "确定删除设备上所有已记录的事件吗？",
  "No events recorded yet.": "暂无已记录的事件。",
@@ -138,7 +147,7 @@ var TABLES = {
  "Experimental — Vehicle-bus; not car-validated. Defaults to rear-biased (rotation 100) + 30% stability — fun with a safety margin. Raise stability for stock feel.": "实验性 — 车辆总线；未经实车验证。默认为偏后驱（rotation 100）+ 30% 稳定性 — 在安全余量内体验乐趣，提高稳定性可获得接近原厂的感受。",
  "CAN Errors": "CAN 错误",
  "CAN Vehicle": "车辆 CAN",
- "Dump Status": "抓包状态",
+ "Dump Status": "转储状态",
  "Filter IDs": "过滤 ID",
  "RX Frames": "接收帧",
  "TX Frames": "发送帧",
@@ -230,10 +239,12 @@ var TABLES = {
  "Password must be empty or 8+ chars": "密码须为空或 8 位以上",
  "SSID required": "需要填写 SSID",
  "OTA writes to the next app partition when available. The new image is kept only after 15 s of runtime; a crash or power cut before that restores the previous firmware. Keep USB reflashing available as a recovery path.": "OTA 会在可用时写入下一个 app 分区；新固件需连续运行 15 秒后才会被保留，在此之前崩溃或断电会回滚到上一版固件。请保留 USB 线刷作为恢复手段。",
- "WiFi Clients": "WiFi 客户端"
+ "WiFi Clients": "WiFi 客户端",
+ "Memory": "内存"
 },
 "zh-Hant": {
  "Connection lost — retrying…": "連線已中斷 — 正在重試…",
+ "Command failed — the device did not accept it. Check the connection and try again.": "指令未生效 — 裝置沒有接受這個指令。請檢查連線後再試一次。",
  "⚠️ 2026.14.x firmware enforcement active.": "⚠️ 2026.14.x 韌體限制已生效。",
  "⚠️ IN-CAR AUTOPARK — CAN TX PAUSED": "⚠️ 車內自動停車 — CAN 傳送已暫停",
  "⚠️ OTA UPDATE IN PROGRESS — CAN TX SUSPENDED": "⚠️ OTA 更新進行中 — CAN 傳送已暫停",
@@ -270,10 +281,12 @@ var TABLES = {
  "RE-CHECK": "重新檢測",
  "Tap Check": "接線檢查",
  "SAVE & RESTART WIFI": "儲存並重啟 WiFi",
+ "WiFi settings will be updated and the device will restart.": "將更新 WiFi 設定，裝置會重新啟動。",
  "RESTART DEVICE": "重啟裝置",
  "Restart device?": "確定要重啟裝置嗎？",
  "The device will reboot immediately and the web connection will drop briefly.": "裝置將立即重啟，網頁連線會短暫中斷。",
  "Cancel": "取消",
+ "OK": "確定",
  "Dismiss": "忽略",
  "Got it": "知道了",
  "Sign In": "登入",
@@ -281,9 +294,15 @@ var TABLES = {
  "SELECT FIRMWARE (.bin)": "選擇韌體（.bin）",
  "Upload a .bin firmware file. Device will reboot after a successful update.": "上傳 .bin 韌體檔案，更新成功後裝置將重啟。",
  "Error: Please select a .bin firmware file": "錯誤：請選擇 .bin 韌體檔案",
+ "Error: Firmware file too large (max 16MB)": "錯誤：韌體檔案過大（上限 16MB）",
+ "Warning: This file is very small": "警告：這個檔案非常小",
+ "Are you sure it is a valid ESP32 firmware?": "確定這是有效的 ESP32 韌體嗎？",
+ "Flash firmware:": "燒錄韌體",
+ "Device will reboot after update.": "更新後裝置會重新啟動。",
  "STREAM LOG AND SAVE": "開始串流並儲存",
  "Ready to collect a candump file in this browser.": "已就緒，可在此瀏覽器中擷取 candump 檔案。",
  "FORMAT SD CARD": "格式化 SD 卡",
+ "Format SD card? All data will be lost.": "確定要格式化 SD 卡嗎？所有資料都會遺失。",
  "DELETE ALL EVENTS": "刪除全部事件",
  "Delete all recorded events from the device?": "確定刪除裝置上所有已記錄的事件嗎？",
  "No events recorded yet.": "尚無已記錄的事件。",
@@ -452,7 +471,8 @@ var TABLES = {
  "Password must be empty or 8+ chars": "密碼須為空或 8 位以上",
  "SSID required": "需要填寫 SSID",
  "OTA writes to the next app partition when available. The new image is kept only after 15 s of runtime; a crash or power cut before that restores the previous firmware. Keep USB reflashing available as a recovery path.": "OTA 會在可用時寫入下一個 app 分割區；新韌體需連續執行 15 秒後才會被保留，在此之前當機或斷電會還原到上一版韌體。請保留 USB 線刷作為還原手段。",
- "WiFi Clients": "WiFi 客戶端"
+ "WiFi Clients": "WiFi 客戶端",
+ "Memory": "記憶體"
 }
 };
 
@@ -552,27 +572,22 @@ function walk(root){
 
 function currentIsZh(){ return lang !== "en"; }
 
-// Translate native dialogs (alert/confirm) issued by the page's own script.
-(function(){
-  if(window.__i18nAlertWrapped) return;
-  window.__i18nAlertWrapped = true;
-  var _alert = window.alert ? window.alert.bind(window) : null;
-  var _confirm = window.confirm ? window.confirm.bind(window) : null;
-  if(_alert) window.alert = function(msg){ _alert(currentIsZh() ? (zhText(msg) || msg) : msg); };
-  if(_confirm) window.confirm = function(msg){ return _confirm(currentIsZh() ? (zhText(msg) || msg) : msg); };
-})();
-
 function applyLang(){
   if(!currentIsZh() || !document.documentElement) return;
   walk(document.documentElement);
 }
 
-try{
-  var saved = window.localStorage.getItem(LS_KEY);
-  if(saved === "zh") saved = "zh-Hans";  // migrate the old two-way value
-  if(saved === "en" || saved === "zh-Hans" || saved === "zh-Hant"){ setLang(saved); }
-  else { setLang(detectLang(navigator.language || navigator.userLanguage)); }
-}catch(e){ setLang("en"); }
+// Saved choice: localStorage, else the URL fragment the toggle leaves behind
+// when storage is refused (captive-portal sheets), else the browser language.
+var saved = null;
+try{ saved = window.localStorage.getItem(LS_KEY); }catch(e){}
+if(saved === "zh") saved = "zh-Hans";  // migrate the old two-way value
+if(LANGS.indexOf(saved) < 0){
+  var hm = /(?:^|[#&])lang=([A-Za-z-]+)/.exec(window.location.hash || "");
+  saved = hm ? hm[1] : null;
+}
+if(LANGS.indexOf(saved) >= 0){ setLang(saved); }
+else { setLang(detectLang(navigator.language || navigator.userLanguage)); }
 
 var btn = document.createElement("button");
 btn.id = "langToggle";
@@ -587,7 +602,9 @@ btn.onclick = function(){
   var from = lang;
   var i = LANGS.indexOf(lang);
   setLang(LANGS[(i + 1) % LANGS.length]);
-  try{ window.localStorage.setItem(LS_KEY, lang); }catch(e){}
+  var stored = false;
+  try{ window.localStorage.setItem(LS_KEY, lang); stored = (window.localStorage.getItem(LS_KEY) === lang); }catch(e){}
+  if(!stored){ try{ window.location.hash = "lang=" + lang; }catch(e){} }
   paintBtn();
   if(from === "en" && currentIsZh()){ applyLang(); }
   else { window.location.reload(); }
@@ -606,7 +623,8 @@ if(document.readyState === "loading"){
   mount();
 }
 
-// Translate WebSocket-driven live updates as they land in the DOM.
+// Translate live updates, and the page's own dialogs / toasts, as they land
+// in the DOM.
 if("MutationObserver" in window){
   var mo = new MutationObserver(function(muts){
     var i, j, m, added, nd;
