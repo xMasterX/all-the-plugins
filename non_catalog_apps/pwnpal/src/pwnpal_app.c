@@ -22,7 +22,7 @@
 #include "../include/wardrive.h"
 // pure 802.11 parsers shared with the firmware; here they run over the frames we actually save to
 // the pcap, so "crackable" means the saved file will crack (see pwnpal_note_crackable).
-#include "../../pwnpal-marauder/pwnpal_frames.h"
+#include "../include/pwnpal_frames.h"
 #include "pwnpal_geo.h" // pure geo/identity helpers
 #include "qrcodegen.h"
 #include <storage/storage.h>
@@ -41,55 +41,56 @@ typedef enum {
 #define PWND_SEEN_MAX 64
 
 // per-AP records, keyed by BSSID so a resume replay can't double-count
-#define AP_MAX 256 // browsable AP history (persisted to aps.bin)
-#define WL_MAX 16 // whitelisted BSSIDs sent to firmware (matches its MAX_WL)
+#define AP_MAX     256 // browsable AP history (persisted to aps.bin)
+#define WL_MAX     16 // whitelisted BSSIDs sent to firmware (matches its MAX_WL)
 #define FRIEND_MAX 64 // browsable friend history (persisted to friends.bin)
 
 // default "home" point; "Set home" overrides it with the current fix (persisted)
-#define HOME_LAT 50.081148f
-#define HOME_LON 14.451144f
-#define HOME_NAME "Home"
-#define HOME_DB_PATH "/ext/apps_data/pwnpal/home.bin"
+#define HOME_LAT      50.081148f
+#define HOME_LON      14.451144f
+#define HOME_NAME     "Home"
+#define HOME_DB_PATH  "/ext/apps_data/pwnpal/home.bin"
 #define HOME_DB_MAGIC 0x484D4E46u // 'FNMH'
 
 // persisted AP table
-#define AP_DB_PATH "/ext/apps_data/pwnpal/aps.bin"
+#define AP_DB_PATH  "/ext/apps_data/pwnpal/aps.bin"
 #define AP_DB_MAGIC 0x50414E46u // 'FNAP'
-#define AP_DB_VERSION 5 // v5: ApRec gained the strict `crackable` flag (loose skull vs crackable ✓)
+#define AP_DB_VERSION \
+    5 // v5: ApRec gained the strict `crackable` flag (loose skull vs crackable ✓)
 
 // persisted friends table
-#define FRIEND_DB_PATH "/ext/apps_data/pwnpal/friends.bin"
-#define FRIEND_DB_MAGIC 0x52464E46u // 'FNFR'
+#define FRIEND_DB_PATH    "/ext/apps_data/pwnpal/friends.bin"
+#define FRIEND_DB_MAGIC   0x52464E46u // 'FNFR'
 #define FRIEND_DB_VERSION 3 // v3: triangulation centroid sums; pwnd_tot widened to int32
 
 // dev telemetry: one CSV row per epoch, offline algo tuning
-#define TELEMETRY_PATH "/ext/apps_data/pwnpal/telemetry.csv"
+#define TELEMETRY_PATH    "/ext/apps_data/pwnpal/telemetry.csv"
 // dev telemetry: one CSV row per capture
-#define CAPTURES_PATH "/ext/apps_data/pwnpal/captures.csv"
+#define CAPTURES_PATH     "/ext/apps_data/pwnpal/captures.csv"
 // one row per friend sighting; many spots = a triangulation set
-#define PEERS_PATH "/ext/apps_data/pwnpal/peers.csv"
+#define PEERS_PATH        "/ext/apps_data/pwnpal/peers.csv"
 // per-AP (position,rssi) samples, throttled per AP_TRACK_MIN_SECS
-#define AP_TRACK_PATH "/ext/apps_data/pwnpal/ap_track.csv"
+#define AP_TRACK_PATH     "/ext/apps_data/pwnpal/ap_track.csv"
 #define AP_TRACK_MIN_SECS 10
 // GPS fix-status samples for debugging slow acquisition / time-to-first-fix
-#define GPS_PATH "/ext/apps_data/pwnpal/gps.csv"
+#define GPS_PATH          "/ext/apps_data/pwnpal/gps.csv"
 // link-watchdog transitions, to debug spurious "no ESP32" flashes
-#define LINKDBG_PATH "/ext/apps_data/pwnpal/linkdbg.csv"
+#define LINKDBG_PATH      "/ext/apps_data/pwnpal/linkdbg.csv"
 // per-AP pcap bookkeeping: EAPOL filed? ESSID beacon spliced?
-#define APF_HS_SEEN 0x01
-#define APF_BEACON_DONE 0x02
+#define APF_HS_SEEN       0x01
+#define APF_BEACON_DONE   0x02
 
 // timer fires ANIM_HZ/sec for smooth About scroll; brain work gated to every ANIM_HZ-th fire
-#define ANIM_HZ 8
+#define ANIM_HZ             8
 #define ABOUT_SPEED_DEFAULT 3 // px per animation fire
-#define ABOUT_SPEED_MAX 12
+#define ABOUT_SPEED_MAX     12
 
 // home stat panel: idle secs before reverting to the persona voice
 #define HOME_STATS_TIMEOUT_SECS 8
 
 // exit prompt self-cancels after CONFIRM_EXIT_TIMEOUT_SECS; "staying" beat lasts CONFIRM_STAY_SECS
 #define CONFIRM_EXIT_TIMEOUT_SECS 5
-#define CONFIRM_STAY_SECS 2
+#define CONFIRM_STAY_SECS         2
 
 // AP unheard this long -> stale RSSI, hide the signal meter
 #define AP_SIGNAL_TTL_SECS 60
@@ -133,17 +134,17 @@ typedef struct {
 // Passive = record sniffed handshakes; Deauth = also associate + deauth (-deauth 1)
 // Auto mode: switch to wardrive once we've moved ~this far recently; fall back to siege after
 // this long parked (or with no GPS fix).
-#define AUTO_MOVE_KM 0.02f
-#define AUTO_STATIONARY_SECS 45
+#define AUTO_MOVE_KM           0.02f
+#define AUTO_STATIONARY_SECS   45
 // GPS-independent movement (no fix): the firmware reports, per epoch, how much the APs we still
 // hear have faded (recede %, "we're leaving them") and how many new BSSIDs entered (adds, "new
 // stuff ahead"). either over threshold => moving. settle to parked only after a few quiet epochs
 // so a single ambiguous epoch doesn't flip us to siege mid-move. tune from telemetry.
-#define AUTO_RECEDE_PCT 30       // >= this % of the cohort faded >=RECEDE_DB -> moving
-#define AUTO_RECEDE_AVG_DB 3     // ...or the cohort's average fade this epoch is this many dB
+#define AUTO_RECEDE_PCT        30 // >= this % of the cohort faded >=RECEDE_DB -> moving
+#define AUTO_RECEDE_AVG_DB     3 // ...or the cohort's average fade this epoch is this many dB
 #define AUTO_RECEDE_MIN_COHORT 5 // ...but only trust recede with at least this many APs to average
-#define AUTO_ADDS_MOVE 6         // new BSSIDs/epoch that alone imply movement (fast case)
-#define AUTO_PARK_EPOCHS 2
+#define AUTO_ADDS_MOVE         6 // new BSSIDs/epoch that alone imply movement (fast case)
+#define AUTO_PARK_EPOCHS       2
 
 typedef enum {
     CaptureWardrive = 0, // recon-only fast sweep, record what's heard, no attack (for moving)
@@ -238,14 +239,15 @@ typedef struct {
     uint8_t ap_attacks[AP_MAX]; // assoc/deauth bursts the ESP aimed at this AP (live, fw>=6)
     uint8_t ap_decloaked[AP_MAX]; // hidden ESSID recovered via de-cloak this session (list "D" mark)
     uint32_t ap_pwned_tick[AP_MAX]; // tick_secs this AP was captured THIS session (0 = not/older);
-                                    // orders the Pwned list latest-first (session-only, not persisted)
+        // orders the Pwned list latest-first (session-only, not persisted)
 
     // every friend met (the browser reads this; persisted)
     FriendRec friends[FRIEND_MAX];
     uint16_t friend_count;
     bool friend_overflow; // hit FRIEND_MAX and recycling -> show "N+"
     uint32_t friend_seq; // monotonic, stamped into FriendRec.first_seq
-    uint32_t friend_seen_tick[FRIEND_MAX]; // tick_secs each friend was last heard (0 = not this session)
+    uint32_t
+        friend_seen_tick[FRIEND_MAX]; // tick_secs each friend was last heard (0 = not this session)
     uint32_t friend_track_tick[FRIEND_MAX]; // tick each friend last fed the centroid (throttle)
 
     // Channel tuning: 0 = auto (the pwnagotchi '*' sweep, default); 1..14 = pinned.
@@ -270,11 +272,11 @@ typedef struct {
     bool auto_ap_moving; // last epoch said we're moving (RSSI receding / new APs)
     uint8_t auto_park_streak; // consecutive "parked" epochs; settles auto_ap_moving off after a few
     // "Verify captures": background re-read of handshakes/*.pcap to flag genuinely crackable APs.
-    bool verify_active;    // scan in progress
-    bool verify_abort;     // Back pressed -> stop early
-    bool verify_complete;  // finished (show the result line)
+    bool verify_active; // scan in progress
+    bool verify_abort; // Back pressed -> stop early
+    bool verify_complete; // finished (show the result line)
     uint16_t verify_total; // pcap files to scan
-    uint16_t verify_seen;  // files processed so far
+    uint16_t verify_seen; // files processed so far
     uint16_t verify_found; // crackable files found
     uint8_t last_cap_eff; // last effective capture mode pushed to the ESP (change-triggered resend)
     bool confirm_reset; // modal: "reset settings?" confirmation
@@ -451,7 +453,8 @@ static void pwnpal_send_advertise(PwnpalApp* app) {
             int wardrive = (em == CaptureWardrive || em == CaptureRoam) ? 1 : 0;
             // -ch: 0 = auto-hop ('*' sweep); 1..14 pins the tuned channel
             int ch = (model->tuned_channel >= 1 && model->tuned_channel <= 14) ?
-                         model->tuned_channel : 0;
+                         model->tuned_channel :
+                         0;
             // -target: focus BSSID ("0" = none). -wl: whitelist (<=WL_MAX). build wl first to keep the snprintf flat
             char target[13] = "0";
             char wl[WL_MAX * 13 + 4];
@@ -470,7 +473,10 @@ static void pwnpal_send_advertise(PwnpalApp* app) {
                     wn++;
                 }
             }
-            if(wn == 0) { wl[0] = '0'; wl[1] = '\0'; } // "0" = clear the whitelist
+            if(wn == 0) {
+                wl[0] = '0';
+                wl[1] = '\0';
+            } // "0" = clear the whitelist
             snprintf(
                 cmd,
                 sizeof(cmd),
@@ -549,8 +555,8 @@ static bool line_extract_number(const char* s, const char* key, char* out, size_
     size_t i = 0;
     while(*pos && i < out_sz - 1) {
         char c = *pos;
-        bool numeric = (c >= '0' && c <= '9') || c == '-' || c == '+' || c == '.' ||
-                       c == 'e' || c == 'E';
+        bool numeric = (c >= '0' && c <= '9') || c == '-' || c == '+' || c == '.' || c == 'e' ||
+                       c == 'E';
         if(!numeric) break;
         out[i++] = c;
         pos++;
@@ -615,8 +621,7 @@ static void pwnpal_handle_peer_line(PwnpalApp* app, const char* line) {
             tri = model->triangulate;
             // gps-outlier guard: drop a far-off junk fix (fall back to last good below)
             if(have_gps && gps_outlier(model, parse_deg(lat), parse_deg(lon))) have_gps = false;
-            is_new = peers_update(
-                &model->peers, name, identity, pwnd_tot, rssi, channel, now);
+            is_new = peers_update(&model->peers, name, identity, pwnd_tot, rssi, channel, now);
             bool bonded = peers_any_bonded(&model->peers, now);
             if(!have_gps && model->last_lat[0] && coord_ok(model->last_lat, model->last_lon)) {
                 strncpy(lat, model->last_lat, sizeof(lat) - 1);
@@ -644,8 +649,9 @@ static void pwnpal_handle_peer_line(PwnpalApp* app, const char* line) {
                         fr->loc_rssi = (int8_t)rssi;
                     }
                     // fold one throttled sample per window so a long dwell can't out-vote distinct positions
-                    if(tri && (model->friend_track_tick[fi] == 0 ||
-                               model->tick_secs - model->friend_track_tick[fi] >= AP_TRACK_MIN_SECS)) {
+                    if(tri &&
+                       (model->friend_track_tick[fi] == 0 ||
+                        model->tick_secs - model->friend_track_tick[fi] >= AP_TRACK_MIN_SECS)) {
                         model->friend_track_tick[fi] = model->tick_secs;
                         loc_accumulate(
                             &fr->loc_n, &fr->w_sum, &fr->wlat_sum, &fr->wlon_sum, la, lo, rssi);
@@ -670,8 +676,16 @@ static void pwnpal_handle_peer_line(PwnpalApp* app, const char* line) {
             csv_quote(name, qn, sizeof(qn));
             char row[160];
             snprintf(
-                row, sizeof(row), "%lu,%s,%s,%d,%d,%s,%s\n", (unsigned long)up, identity, qn,
-                rssi, channel, have_gps ? lat : "", have_gps ? lon : "");
+                row,
+                sizeof(row),
+                "%lu,%s,%s,%d,%d,%s,%s\n",
+                (unsigned long)up,
+                identity,
+                qn,
+                rssi,
+                channel,
+                have_gps ? lat : "",
+                have_gps ? lon : "");
             storage_file_write(f, row, strlen(row));
         }
         storage_file_close(f);
@@ -723,7 +737,8 @@ static void pwnpal_handle_adv_line(PwnpalApp* app, const char* line) {
         if(last_rxdbg == 0 || t - last_rxdbg >= 60) {
             last_rxdbg = t;
             File* df = storage_file_alloc(app->storage);
-            if(storage_file_open(df, "/ext/apps_data/pwnpal/rxdbg.txt", FSAM_WRITE, FSOM_OPEN_APPEND)) {
+            if(storage_file_open(
+                   df, "/ext/apps_data/pwnpal/rxdbg.txt", FSAM_WRITE, FSOM_OPEN_APPEND)) {
                 char dl[160];
                 int dn = snprintf(dl, sizeof(dl), "t=%lu %s\n", (unsigned long)t, line);
                 if(dn > 0) storage_file_write(df, dl, (size_t)dn);
@@ -1014,7 +1029,10 @@ static void fmt_coord(float v, char* out, size_t n) {
     char* p = out;
     size_t rem = n;
     if(v < 0.0f) {
-        if(rem > 1) { *p++ = '-'; rem--; }
+        if(rem > 1) {
+            *p++ = '-';
+            rem--;
+        }
         v = -v;
     }
     long ip = (long)v;
@@ -1024,7 +1042,10 @@ static void fmt_coord(float v, char* out, size_t n) {
         p += w;
         rem -= (size_t)w;
     }
-    if(rem > 1) { *p++ = '.'; rem--; }
+    if(rem > 1) {
+        *p++ = '.';
+        rem--;
+    }
     for(int i = 0; i < 6 && rem > 1; i++) {
         frac *= 10.0f;
         int d = (int)frac;
@@ -1067,7 +1088,8 @@ static void pwnpal_update_place(PwnpalModel* model) {
     } else {
         // row1 name+distance; row2 dir+bearing (° ring drawn at render time; no ° glyph in the font)
         if(km < 1.0f)
-            snprintf(model->gps_place, sizeof(model->gps_place), "%s %dm", hn, (int)(km * 1000.0f));
+            snprintf(
+                model->gps_place, sizeof(model->gps_place), "%s %dm", hn, (int)(km * 1000.0f));
         else
             snprintf(model->gps_place, sizeof(model->gps_place), "%s %dkm", hn, (int)(km + 0.5f));
         snprintf(model->gps_course, sizeof(model->gps_course), "%s %d", dir, brg);
@@ -1111,21 +1133,26 @@ static void pwnpal_handle_pwnd_line(PwnpalApp* app, const char* line) {
             // already captured (persisted from a prior session, or earlier this run)? after a
             // restart the ESP re-attacks everything in range and re-emits PWND — those must not
             // re-count, or lifetime pwns inflate on every reboot in the same spot.
-            bool had_capture =
-                (ai >= 0) && !ap_new && (model->aps[ai].pmkid || model->aps[ai].handshake);
+            bool had_capture = (ai >= 0) && !ap_new &&
+                               (model->aps[ai].pmkid || model->aps[ai].handshake);
             // count a capture once per AP: skip 15s re-emits and already-captured APs
             if(!had_capture && pwnd_seen_insert(model, key)) {
                 persona_note_pwnd(model->persona);
                 // recycle-proof per-type tally (deduped once per AP, same gate as pwnd_tot)
-                if(strcmp(type, "pmkid") == 0) model->persona->s.pmkid_tot++;
-                else model->persona->s.hs_tot++;
+                if(strcmp(type, "pmkid") == 0)
+                    model->persona->s.pmkid_tot++;
+                else
+                    model->persona->s.hs_tot++;
                 strncpy(model->last_pwnd_ssid, label, sizeof(model->last_pwnd_ssid) - 1);
                 model->last_pwnd_ssid[sizeof(model->last_pwnd_ssid) - 1] = '\0';
                 // Provenance split: did our attack earn it, or did we sniff it passively?
-                if(strcmp(via, "active") == 0) model->pwn_active++;
-                else model->pwn_passive++;
+                if(strcmp(via, "active") == 0)
+                    model->pwn_active++;
+                else
+                    model->pwn_passive++;
                 counted = true;
-                if(ai >= 0) model->ap_pwned_tick[ai] = model->tick_secs; // newest -> top of Pwned list
+                if(ai >= 0)
+                    model->ap_pwned_tick[ai] = model->tick_secs; // newest -> top of Pwned list
             }
             // record the capture on the AP regardless of the count gate (reflects what landed)
             if(ai >= 0) {
@@ -1138,8 +1165,10 @@ static void pwnpal_handle_pwnd_line(PwnpalApp* app, const char* line) {
                     a->ssid[sizeof(a->ssid) - 1] = '\0';
                     a->has_essid = true;
                 }
-                if(strcmp(type, "pmkid") == 0) a->pmkid = true;
-                else a->handshake = true;
+                if(strcmp(type, "pmkid") == 0)
+                    a->pmkid = true;
+                else
+                    a->handshake = true;
                 if(have_gps) {
                     float la = parse_deg(lat);
                     float lo = parse_deg(lon);
@@ -1154,8 +1183,8 @@ static void pwnpal_handle_pwnd_line(PwnpalApp* app, const char* line) {
                        (model->ap_track_tick[ai] == 0 ||
                         model->tick_secs - model->ap_track_tick[ai] >= AP_TRACK_MIN_SECS)) {
                         model->ap_track_tick[ai] = model->tick_secs;
-                        loc_accumulate(&a->loc_n, &a->w_sum, &a->wlat_sum, &a->wlon_sum, la, lo,
-                                       rssi);
+                        loc_accumulate(
+                            &a->loc_n, &a->w_sum, &a->wlat_sum, &a->wlon_sum, la, lo, rssi);
                     }
                 }
             }
@@ -1172,8 +1201,7 @@ static void pwnpal_handle_pwnd_line(PwnpalApp* app, const char* line) {
 
     // A captured handshake implies WPA/WPA2-PSK; log it (once) as a geotagged row.
     if(have_gps && counted) {
-        wardrive_log(
-            app->storage, bssid, ssid, "[WPA2-PSK-CCMP][ESS]", channel, rssi, lat, lon);
+        wardrive_log(app->storage, bssid, ssid, "[WPA2-PSK-CCMP][ESS]", channel, rssi, lat, lon);
     }
 
     // dev telemetry: one row per capture (provenance + RSSI)
@@ -1187,8 +1215,18 @@ static void pwnpal_handle_pwnd_line(PwnpalApp* app, const char* line) {
             }
             char row[128];
             snprintf(
-                row, sizeof(row), "%lu,%s,%s,%s,%s,%d,%d,%s,%s\n", (unsigned long)up, bssid, ssid,
-                type, via[0] ? via : "?", rssi, channel, lat, lon);
+                row,
+                sizeof(row),
+                "%lu,%s,%s,%s,%s,%d,%d,%s,%s\n",
+                (unsigned long)up,
+                bssid,
+                ssid,
+                type,
+                via[0] ? via : "?",
+                rssi,
+                channel,
+                lat,
+                lon);
             storage_file_write(f, row, strlen(row));
         }
         storage_file_close(f);
@@ -1213,21 +1251,32 @@ static int build_synth_beacon(uint8_t* b, const char* bssidhex, const char* ssid
     if(slen > 32) slen = 32;
     int p = 0;
     static const uint8_t head[10] = {0x80, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-    memcpy(b + p, head, 10); p += 10;
-    memcpy(b + p, mac, 6); p += 6; // Addr2 = BSSID
-    memcpy(b + p, mac, 6); p += 6; // Addr3 = BSSID
-    b[p++] = 0x00; b[p++] = 0x00; // seq-ctl
-    memset(b + p, 0, 8); p += 8; // timestamp
-    b[p++] = 0x64; b[p++] = 0x00; // beacon interval
-    b[p++] = 0x11; b[p++] = 0x00; // caps: ESS + Privacy
-    b[p++] = 0x00; b[p++] = (uint8_t)slen; // SSID IE
-    memcpy(b + p, ssid, slen); p += slen;
+    memcpy(b + p, head, 10);
+    p += 10;
+    memcpy(b + p, mac, 6);
+    p += 6; // Addr2 = BSSID
+    memcpy(b + p, mac, 6);
+    p += 6; // Addr3 = BSSID
+    b[p++] = 0x00;
+    b[p++] = 0x00; // seq-ctl
+    memset(b + p, 0, 8);
+    p += 8; // timestamp
+    b[p++] = 0x64;
+    b[p++] = 0x00; // beacon interval
+    b[p++] = 0x11;
+    b[p++] = 0x00; // caps: ESS + Privacy
+    b[p++] = 0x00;
+    b[p++] = (uint8_t)slen; // SSID IE
+    memcpy(b + p, ssid, slen);
+    p += slen;
     static const uint8_t rates[6] = {0x01, 0x04, 0x82, 0x84, 0x8b, 0x96};
-    memcpy(b + p, rates, 6); p += 6;
-    static const uint8_t rsn[22] = {0x30, 0x14, 0x01, 0x00, 0x00, 0x0f, 0xac, 0x04, 0x01, 0x00,
-                                    0x00, 0x0f, 0xac, 0x04, 0x01, 0x00, 0x00, 0x0f, 0xac, 0x02,
-                                    0x0c, 0x00};
-    memcpy(b + p, rsn, 22); p += 22;
+    memcpy(b + p, rates, 6);
+    p += 6;
+    static const uint8_t rsn[22] = {0x30, 0x14, 0x01, 0x00, 0x00, 0x0f, 0xac, 0x04,
+                                    0x01, 0x00, 0x00, 0x0f, 0xac, 0x04, 0x01, 0x00,
+                                    0x00, 0x0f, 0xac, 0x02, 0x0c, 0x00};
+    memcpy(b + p, rsn, 22);
+    p += 22;
     return p;
 }
 
@@ -1247,7 +1296,8 @@ static void pwnpal_handle_rssi_line(PwnpalApp* app, const char* line) {
         if(p3) attacks = (int)strtol(p3 + 1, NULL, 10);
     }
     with_view_model(
-        app->view, PwnpalModel * model,
+        app->view,
+        PwnpalModel * model,
         {
             int ai = ap_find(model, key);
             if(ai >= 0) {
@@ -1328,8 +1378,8 @@ static void pwnpal_handle_ap_line(PwnpalApp* app, const char* line) {
                        (model->ap_track_tick[ai] == 0 ||
                         model->tick_secs - model->ap_track_tick[ai] >= AP_TRACK_MIN_SECS)) {
                         model->ap_track_tick[ai] = model->tick_secs;
-                        loc_accumulate(&a->loc_n, &a->w_sum, &a->wlat_sum, &a->wlon_sum, la, lo,
-                                       rssi);
+                        loc_accumulate(
+                            &a->loc_n, &a->w_sum, &a->wlat_sum, &a->wlon_sum, la, lo, rssi);
                         do_track = true;
                     }
                 }
@@ -1362,7 +1412,8 @@ static void pwnpal_handle_ap_line(PwnpalApp* app, const char* line) {
     if(log_decloak) {
         storage_common_mkdir(app->storage, "/ext/apps_data/pwnpal");
         File* f = storage_file_alloc(app->storage);
-        if(storage_file_open(f, "/ext/apps_data/pwnpal/decloak.csv", FSAM_WRITE, FSOM_OPEN_APPEND)) {
+        if(storage_file_open(
+               f, "/ext/apps_data/pwnpal/decloak.csv", FSAM_WRITE, FSOM_OPEN_APPEND)) {
             if(storage_file_size(f) == 0) {
                 const char* h = "uptime_s,bssid,ssid,channel,rssi,lat,lon\n";
                 storage_file_write(f, h, strlen(h));
@@ -1371,8 +1422,16 @@ static void pwnpal_handle_ap_line(PwnpalApp* app, const char* line) {
             csv_quote(ssid, qs, sizeof(qs));
             char row[160];
             snprintf(
-                row, sizeof(row), "%lu,%s,%s,%d,%d,%s,%s\n", (unsigned long)up, bssid, qs, channel,
-                rssi, lat, lon);
+                row,
+                sizeof(row),
+                "%lu,%s,%s,%d,%d,%s,%s\n",
+                (unsigned long)up,
+                bssid,
+                qs,
+                channel,
+                rssi,
+                lat,
+                lon);
             storage_file_write(f, row, strlen(row));
         }
         storage_file_close(f);
@@ -1392,8 +1451,16 @@ static void pwnpal_handle_ap_line(PwnpalApp* app, const char* line) {
             csv_quote(ssid, qs, sizeof(qs));
             char row[160];
             snprintf(
-                row, sizeof(row), "%lu,%s,%s,%d,%d,%s,%s\n", (unsigned long)up, bssid, qs, rssi,
-                channel, lat, lon);
+                row,
+                sizeof(row),
+                "%lu,%s,%s,%d,%d,%s,%s\n",
+                (unsigned long)up,
+                bssid,
+                qs,
+                rssi,
+                channel,
+                lat,
+                lon);
             storage_file_write(f, row, strlen(row));
         }
         storage_file_close(f);
@@ -1406,7 +1473,7 @@ static void pwnpal_handle_ap_line(PwnpalApp* app, const char* line) {
 // which hashcat can't crack. Sets the AP's crackable flag (persists with the record and can flip
 // true later as more frames land). One scratch table; only the serial-worker thread calls this.
 #define FLIPPER_HS_SLOTS 64
-#define HS_CRACK_WIN_MS 2000
+#define HS_CRACK_WIN_MS  2000
 // flag an AP crackable and bump the recycle-proof lifetime tally once, on the false->true edge
 // (the AP table evicts records; crack_tot persists so Stats never under-reports after a long run)
 static void mark_crackable(PwnpalModel* model, int ai) {
@@ -1416,7 +1483,8 @@ static void mark_crackable(PwnpalModel* model, int ai) {
     }
 }
 
-static void pwnpal_note_crackable(PwnpalApp* app, const char* key, const uint8_t* frame, size_t flen) {
+static void
+    pwnpal_note_crackable(PwnpalApp* app, const char* key, const uint8_t* frame, size_t flen) {
     int eo = pwnpal_eapol_locate(frame, (int)flen);
     if(eo < 0) {
         // not EAPOL — a roaming client's (re)assoc frame may carry a crackable PMKID (RSN IE)
@@ -1450,7 +1518,15 @@ static void pwnpal_note_crackable(PwnpalApp* app, const char* key, const uint8_t
             int ai = ap_find(model, key);
             if(ai >= 0) {
                 PwnpalHsVerdict v = pwnpal_hs_note(
-                    hs_tab, FLIPPER_HS_SLOTS, (uint8_t)ai, client, msg, pmkid, k.kdv, k.replay, now,
+                    hs_tab,
+                    FLIPPER_HS_SLOTS,
+                    (uint8_t)ai,
+                    client,
+                    msg,
+                    pmkid,
+                    k.kdv,
+                    k.replay,
+                    now,
                     HS_CRACK_WIN_MS);
                 if(v.strict) mark_crackable(model, ai);
             }
@@ -1488,8 +1564,7 @@ static void pwnpal_handle_hs_line(PwnpalApp* app, const char* line) {
                 int ai = ap_find(model, bssid); // bssid is the 12-hex key
                 if(ai >= 0) {
                     model->ap_pcap_flags[ai] |= APF_HS_SEEN;
-                    if(model->aps[ai].has_essid &&
-                       !(model->ap_pcap_flags[ai] & APF_BEACON_DONE)) {
+                    if(model->aps[ai].has_essid && !(model->ap_pcap_flags[ai] & APF_BEACON_DONE)) {
                         model->ap_pcap_flags[ai] |= APF_BEACON_DONE;
                         strncpy(beac_ssid, model->aps[ai].ssid, sizeof(beac_ssid) - 1);
                         inject = true;
@@ -1547,8 +1622,8 @@ static const char* capture_name(CaptureMode m); // defined below; used for the t
 // "PWNPAL_EPOCH {...}" — dev telemetry (fw v4): one CSV row per epoch for offline tuning
 static void pwnpal_handle_epoch_line(PwnpalApp* app, const char* line) {
     int n = 0, recon = 0, att = 0, chans = 0, assoc = 0, deauth = 0, uni = 0, sta = 0, hs = 0,
-        pmkid = 0, miss = 0, dpmf = 0, dnocli = 0, dcloak = 0, adds = 0, recede = 0, recede_avg = 0,
-        cohort = 0;
+        pmkid = 0, miss = 0, dpmf = 0, dnocli = 0, dcloak = 0, adds = 0, recede = 0,
+        recede_avg = 0, cohort = 0;
     line_extract_int(line, "\"n\":", &n);
     line_extract_int(line, "\"recon\":", &recon);
     line_extract_int(line, "\"attackable\":", &att);
@@ -1565,14 +1640,16 @@ static void pwnpal_handle_epoch_line(PwnpalApp* app, const char* line) {
     line_extract_int(line, "\"dcloak\":", &dcloak); // hidden APs de-cloaked (ESSID recovered)
     line_extract_int(line, "\"adds\":", &adds); // new BSSIDs this epoch (leading-edge movement)
     line_extract_int(line, "\"recede\":", &recede); // % of tracked APs fading (no-GPS movement)
-    line_extract_int(line, "\"recede_avg\":", &recede_avg); // avg dB the cohort faded (+ = receding)
+    line_extract_int(
+        line, "\"recede_avg\":", &recede_avg); // avg dB the cohort faded (+ = receding)
     line_extract_int(line, "\"cohort\":", &cohort); // APs the recede stats were measured over
 
     uint32_t up = 0;
     char lat[16], lon[16], mode[8] = {0}, eff[8] = {0};
     int moving = 0;
     with_view_model(
-        app->view, PwnpalModel * model,
+        app->view,
+        PwnpalModel * model,
         {
             up = model->tick_secs;
             strncpy(lat, model->last_lat, sizeof(lat));
@@ -1619,10 +1696,33 @@ static void pwnpal_handle_epoch_line(PwnpalApp* app, const char* line) {
         }
         char row[256];
         snprintf(
-            row, sizeof(row),
+            row,
+            sizeof(row),
             "%lu,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d\n",
-            (unsigned long)up, lat, lon, n, recon, att, chans, assoc, deauth, uni, sta, hs, pmkid,
-            miss, dpmf, dnocli, dcloak, mode, eff, moving, adds, recede, recede_avg, cohort);
+            (unsigned long)up,
+            lat,
+            lon,
+            n,
+            recon,
+            att,
+            chans,
+            assoc,
+            deauth,
+            uni,
+            sta,
+            hs,
+            pmkid,
+            miss,
+            dpmf,
+            dnocli,
+            dcloak,
+            mode,
+            eff,
+            moving,
+            adds,
+            recede,
+            recede_avg,
+            cohort);
         storage_file_write(f, row, strlen(row));
     }
     storage_file_close(f);
@@ -1643,7 +1743,8 @@ static void pwnpal_handle_gps_line(PwnpalApp* app, const char* line) {
     uint32_t up = 0;
     int em = 0; // effective capture mode, to correlate fix behaviour with the mode
     with_view_model(
-        app->view, PwnpalModel * model,
+        app->view,
+        PwnpalModel * model,
         {
             model->gps_fix = fix != 0;
             model->gps_sats = sats;
@@ -1683,8 +1784,16 @@ static void pwnpal_handle_gps_line(PwnpalApp* app, const char* line) {
         }
         char row[96];
         snprintf(
-            row, sizeof(row), "%lu,%d,%d,%d,%s,%s,%s\n", (unsigned long)up, fix, sats, acc, lat,
-            lon, mode);
+            row,
+            sizeof(row),
+            "%lu,%d,%d,%d,%s,%s,%s\n",
+            (unsigned long)up,
+            fix,
+            sats,
+            acc,
+            lat,
+            lon,
+            mode);
         storage_file_write(f, row, strlen(row));
     }
     storage_file_close(f);
@@ -1792,10 +1901,7 @@ static void pwnpal_populate(PwnpalModel* model) {
 
     // PWND: real handshakes captured, this session (lifetime).
     furi_string_printf(
-        pwn->handshakes,
-        "%lu (%lu)",
-        (unsigned long)p->pwnd_run,
-        (unsigned long)p->s.pwnd_tot);
+        pwn->handshakes, "%lu (%lu)", (unsigned long)p->pwnd_run, (unsigned long)p->s.pwnd_tot);
 
     // message bubble (Mood page only). exit prompt / staying beat take top priority; then paused
     // hint + fresh-catch shout; else mood, and now and then a stat brag
@@ -1831,8 +1937,10 @@ static void pwnpal_populate(PwnpalModel* model) {
     if(best) {
         int bars = peers_rssi_bars(best->rssi);
         furi_string_reset(pwn->friendStat);
-        for(int b = 0; b < bars; b++) furi_string_cat_str(pwn->friendStat, "|");
-        for(int b = bars; b < 4; b++) furi_string_cat_str(pwn->friendStat, ".");
+        for(int b = 0; b < bars; b++)
+            furi_string_cat_str(pwn->friendStat, "|");
+        for(int b = bars; b < 4; b++)
+            furi_string_cat_str(pwn->friendStat, ".");
         furi_string_cat_printf(pwn->friendStat, " %s %d", best->name, best->pwnd_tot);
     } else {
         furi_string_set(pwn->friendStat, "");
@@ -1880,8 +1988,7 @@ static void pwnpal_reset_settings(PwnpalModel* model) {
 static void pwnpal_qr_encode(PwnpalModel* model) {
     uint8_t tmp[qrcodegen_BUFFER_LEN_FOR_VERSION(4)];
     model->qr_ok = qrcodegen_encodeText(
-        PWNPAL_SETUP_URL, tmp, model->qr, qrcodegen_Ecc_LOW, 1, 4,
-        qrcodegen_Mask_AUTO, true);
+        PWNPAL_SETUP_URL, tmp, model->qr, qrcodegen_Ecc_LOW, 1, 4, qrcodegen_Mask_AUTO, true);
 }
 
 // "No ESP32" warning: setup QR (left) + what-to-check text (right)
@@ -1948,8 +2055,15 @@ static void pwnpal_draw_ap_qr(Canvas* canvas, const PwnpalModel* model) {
         canvas_set_font(canvas, FontSecondary);
         float elat = a->lat, elon = a->lon;
         loc_estimate(
-            model->triangulate, a->loc_n, a->w_sum, a->wlat_sum, a->wlon_sum, a->lat, a->lon,
-            &elat, &elon);
+            model->triangulate,
+            a->loc_n,
+            a->w_sum,
+            a->wlat_sum,
+            a->wlon_sum,
+            a->lat,
+            a->lon,
+            &elat,
+            &elon);
         char cbuf[16];
         fmt_coord(elat, cbuf, sizeof(cbuf));
         canvas_draw_str(canvas, tx, 30, cbuf);
@@ -1964,7 +2078,7 @@ static void pwnpal_draw_ap_qr(Canvas* canvas, const PwnpalModel* model) {
 
 // bottom-right: the last pwned AP, right-aligned on the PWND baseline, clamped so it never collides with the "PWND N (N)" count
 #define PWNPAL_STATUS_LEFT_LIMIT 64
-#define PWNPAL_STATUS_Y PWNAGOTCHI_HANDSHAKES_I // 63, the PWND baseline row
+#define PWNPAL_STATUS_Y          PWNAGOTCHI_HANDSHAKES_I // 63, the PWND baseline row
 
 static void pwnpal_draw_last_pwnd(Canvas* canvas, const PwnpalModel* model) {
     if(!model->last_pwnd_ssid[0]) return; // nothing captured yet -> leave it blank
@@ -2047,7 +2161,8 @@ static void draw_str_trunc(Canvas* c, int x, int y, const char* s, int maxw) {
         if(ch == '\0') break;
         if(!ascii) {
             // one dot per non-ASCII char: skip its UTF-8 continuation bytes
-            while(((unsigned char)*(p + 1) & 0xC0) == 0x80) p++;
+            while(((unsigned char)*(p + 1) & 0xC0) == 0x80)
+                p++;
             if(x + dot_cell > xend) return;
             canvas_draw_box(c, x + 1, y - 4, 2, 2); // centred in the ~8px row
             x += dot_cell;
@@ -2078,20 +2193,27 @@ static void fmt_bssid_colons(const char* k, char out[18]) {
 
 static const char* capture_name(CaptureMode m) {
     switch(m) {
-    case CaptureWardrive: return "WDRV";
-    case CaptureRoam: return "ROAM";
-    case CaptureSiege: return "SIEGE";
-    case CaptureAuto: return "AUTO";
-    default: return "?";
+    case CaptureWardrive:
+        return "WDRV";
+    case CaptureRoam:
+        return "ROAM";
+    case CaptureSiege:
+        return "SIEGE";
+    case CaptureAuto:
+        return "AUTO";
+    default:
+        return "?";
     }
 }
 
 // tiny inline d-pad glyphs (no firmware icons); x = left edge, yc = vertical centre
 static void icon_left(Canvas* c, int x, int yc) { // solid ◄, 4x7
-    for(int i = 0; i < 4; i++) canvas_draw_line(c, x + i, yc - i, x + i, yc + i);
+    for(int i = 0; i < 4; i++)
+        canvas_draw_line(c, x + i, yc - i, x + i, yc + i);
 }
 static void icon_right(Canvas* c, int x, int yc) { // solid ►, 4x7
-    for(int i = 0; i < 4; i++) canvas_draw_line(c, x + 3 - i, yc - i, x + 3 - i, yc + i);
+    for(int i = 0; i < 4; i++)
+        canvas_draw_line(c, x + 3 - i, yc - i, x + 3 - i, yc + i);
 }
 // right-aligned "◄ value ►" for an arrow-adjustable row; y = text baseline
 static void draw_adjust_value(Canvas* c, int y, const char* value) {
@@ -2115,7 +2237,7 @@ static void draw_titlebar(Canvas* c, const char* title, const char* right) {
 }
 
 #define APLIST_ROWS 5
-#define MENU_ROWS 6 // menu has no titlebar, so one more row fits
+#define MENU_ROWS   6 // menu has no titlebar, so one more row fits
 
 // fill out[] with filtered aps[] indices: live signal first, then strongest RSSI, discovery order as a stable tiebreak. insertion sort, n<=256
 static uint16_t ap_filtered(const PwnpalModel* m, uint16_t* out) {
@@ -2144,9 +2266,9 @@ static uint16_t ap_filtered(const PwnpalModel* m, uint16_t* out) {
                 bool ru = ap_signal_recent(m, u);
                 int16_t rssiu = m->aps[u].rssi;
                 // v outranks u: live over stale; else stronger RSSI; else earlier-discovered (stable)
-                v_first = (rv && !ru) ||
-                          (rv == ru &&
-                           (rssiv > rssiu || (rssiv == rssiu && sv > m->aps[u].first_seq)));
+                v_first =
+                    (rv && !ru) ||
+                    (rv == ru && (rssiv > rssiu || (rssiv == rssiu && sv > m->aps[u].first_seq)));
             }
             if(!v_first) break;
             out[j + 1] = out[j];
@@ -2159,7 +2281,7 @@ static uint16_t ap_filtered(const PwnpalModel* m, uint16_t* out) {
 
 // how long to hold a rebuilt list order, and how long to wait after the last keypress before
 // letting a rebuild happen — so the list never reorders while you're scrolling it.
-#define LIST_RESORT_MIN_SECS 8
+#define LIST_RESORT_MIN_SECS  8
 #define LIST_RESORT_IDLE_SECS 3
 
 // recompute the frozen list order from the current filter, then keep the selection sane.
@@ -2185,7 +2307,8 @@ static bool friend_signal_recent(const PwnpalModel* m, uint16_t i) {
 // order friends[]: live first, then strongest RSSI, discovery order as a stable tiebreak. insertion sort, n<=64
 static uint16_t friend_order(const PwnpalModel* m, uint16_t* out) {
     uint16_t n = m->friend_count;
-    for(uint16_t i = 0; i < n; i++) out[i] = i;
+    for(uint16_t i = 0; i < n; i++)
+        out[i] = i;
     for(uint16_t i = 1; i < n; i++) {
         uint16_t v = out[i];
         bool rv = friend_signal_recent(m, v);
@@ -2196,9 +2319,9 @@ static uint16_t friend_order(const PwnpalModel* m, uint16_t* out) {
             uint16_t u = out[j];
             bool ru = friend_signal_recent(m, u);
             int16_t rssiu = m->friends[u].rssi;
-            bool v_first = (rv && !ru) ||
-                           (rv == ru &&
-                            (rssiv > rssiu || (rssiv == rssiu && sv > m->friends[u].first_seq)));
+            bool v_first =
+                (rv && !ru) ||
+                (rv == ru && (rssiv > rssiu || (rssiv == rssiu && sv > m->friends[u].first_seq)));
             if(!v_first) break;
             out[j + 1] = out[j];
             j--;
@@ -2237,11 +2360,17 @@ static void pwnpal_draw_menu(Canvas* canvas, const PwnpalModel* model) {
             // APs heard this session (includes persisted APs re-heard, so it tracks the live list)
             snprintf(value, sizeof(value), "%lu", (unsigned long)model->persona->aps_session);
             break;
-        case MenuWhitelist: label = "Ignore"; snprintf(value, sizeof(value), "%u", wl); break;
+        case MenuWhitelist:
+            label = "Ignore";
+            snprintf(value, sizeof(value), "%u", wl);
+            break;
         case MenuFriends:
             label = "Friends";
             snprintf(
-                value, sizeof(value), "%u%s", model->friend_count,
+                value,
+                sizeof(value),
+                "%u%s",
+                model->friend_count,
                 model->friend_overflow ? "+" : "");
             break;
         case MenuTarget: {
@@ -2255,7 +2384,9 @@ static void pwnpal_draw_menu(Canvas* canvas, const PwnpalModel* model) {
             snprintf(value, sizeof(value), "%.14s", tn ? tn : "*"); // clear it with OK
             break;
         }
-        case MenuStats: label = "Stats"; break;
+        case MenuStats:
+            label = "Stats";
+            break;
         case MenuName:
             label = "Name";
             snprintf(value, sizeof(value), "%s", model->persona->s.name);
@@ -2302,16 +2433,25 @@ static void pwnpal_draw_menu(Canvas* canvas, const PwnpalModel* model) {
             label = "Battery saver";
             adjustable = true;
             snprintf(
-                value, sizeof(value), "%s",
+                value,
+                sizeof(value),
+                "%s",
                 model->saver == 3 ? "auto" :
                 model->saver == 2 ? "deep" :
                 model->saver == 1 ? "light" :
                                     "off");
             break;
-        case MenuVerify: label = "Verify captures"; break;
-        case MenuReset: label = "Reset settings"; break;
-        case MenuAbout: label = "About"; break;
-        default: break;
+        case MenuVerify:
+            label = "Verify captures";
+            break;
+        case MenuReset:
+            label = "Reset settings";
+            break;
+        case MenuAbout:
+            label = "About";
+            break;
+        default:
+            break;
         }
         int y = 9 + r * 10; // baseline of this row (no titlebar; rows fill from the top)
         bool sel = it == model->menu_idx;
@@ -2354,8 +2494,10 @@ static void pwnpal_draw_aplist(Canvas* canvas, const PwnpalModel* model) {
     canvas_clear(canvas);
     char title[24];
     snprintf(
-        title, sizeof(title), "%s",
-        model->list_filter == FilterPwned    ? "PWNED APS" :
+        title,
+        sizeof(title),
+        "%s",
+        model->list_filter == FilterPwned     ? "PWNED APS" :
         model->list_filter == FilterWhitelist ? "IGNORED" :
                                                 "RECENT APS");
     const uint16_t* idx = model->list_order; // frozen order; rebuilt off the render path
@@ -2374,8 +2516,10 @@ static void pwnpal_draw_aplist(Canvas* canvas, const PwnpalModel* model) {
     canvas_set_font(canvas, FontSecondary);
     if(n == 0) {
         canvas_draw_str(
-            canvas, 2, 36,
-            model->list_filter == FilterPwned    ? "no pwned APs yet" :
+            canvas,
+            2,
+            36,
+            model->list_filter == FilterPwned     ? "no pwned APs yet" :
             model->list_filter == FilterWhitelist ? "no ignored APs" :
                                                     "no APs seen yet");
         return;
@@ -2451,7 +2595,14 @@ static void pwnpal_draw_apdetail(Canvas* canvas, const PwnpalModel* model) {
     float clat = parse_deg(model->last_lat), clon = parse_deg(model->last_lon);
     float alat = 1e9f, alon = 1e9f;
     loc_estimate(
-        model->triangulate, a->loc_n, a->w_sum, a->wlat_sum, a->wlon_sum, a->lat, a->lon, &alat,
+        model->triangulate,
+        a->loc_n,
+        a->w_sum,
+        a->wlat_sum,
+        a->wlon_sum,
+        a->lat,
+        a->lon,
+        &alat,
         &alon);
     char dist[14];
     dist[0] = '\0';
@@ -2482,7 +2633,10 @@ static void pwnpal_draw_apdetail(Canvas* canvas, const PwnpalModel* model) {
             canvas, FLIPPER_SCREEN_WIDTH - 2 - (int)canvas_string_width(canvas, dist), 31, dist);
     // live from the ESP (fw>=6): associated clients + assoc/deauth bursts aimed at this AP
     snprintf(
-        l, sizeof(l), "clients %u   atk %u", (unsigned)model->ap_clients[model->detail_ap],
+        l,
+        sizeof(l),
+        "clients %u   atk %u",
+        (unsigned)model->ap_clients[model->detail_ap],
         (unsigned)model->ap_attacks[model->detail_ap]);
     canvas_draw_str(canvas, 2, 41, l);
     // Crackability as a plain-language formula. The firmware's strict verdict (a->crackable) is the
@@ -2572,8 +2726,15 @@ static void pwnpal_draw_frienddetail(Canvas* canvas, const PwnpalModel* model) {
     float clat = parse_deg(model->last_lat), clon = parse_deg(model->last_lon);
     float alat = 1e9f, alon = 1e9f;
     loc_estimate(
-        model->triangulate, fr->loc_n, fr->w_sum, fr->wlat_sum, fr->wlon_sum, fr->lat, fr->lon,
-        &alat, &alon);
+        model->triangulate,
+        fr->loc_n,
+        fr->w_sum,
+        fr->wlat_sum,
+        fr->wlon_sum,
+        fr->lat,
+        fr->lon,
+        &alat,
+        &alon);
     char dist[14];
     dist[0] = '\0';
     if(model->gps_seen && clat < 1e8f && alat < 1e8f) {
@@ -2635,8 +2796,15 @@ static void pwnpal_draw_friend_qr(Canvas* canvas, const PwnpalModel* model) {
         canvas_set_font(canvas, FontSecondary);
         float elat = fr->lat, elon = fr->lon;
         loc_estimate(
-            model->triangulate, fr->loc_n, fr->w_sum, fr->wlat_sum, fr->wlon_sum, fr->lat, fr->lon,
-            &elat, &elon);
+            model->triangulate,
+            fr->loc_n,
+            fr->w_sum,
+            fr->wlat_sum,
+            fr->wlon_sum,
+            fr->lat,
+            fr->lon,
+            &elat,
+            &elon);
         char cbuf[16];
         fmt_coord(elat, cbuf, sizeof(cbuf));
         canvas_draw_str(canvas, tx, 30, cbuf);
@@ -2657,15 +2825,25 @@ static void pwnpal_draw_stats(Canvas* canvas, const PwnpalModel* model) {
     uint32_t up = (uint32_t)p->session_uptime;
     char l[40];
     snprintf(
-        l, sizeof(l), "epoch %lu   up %02lu:%02lu:%02lu", (unsigned long)p->epoch,
-        (unsigned long)(up / 3600), (unsigned long)((up % 3600) / 60), (unsigned long)(up % 60));
+        l,
+        sizeof(l),
+        "epoch %lu   up %02lu:%02lu:%02lu",
+        (unsigned long)p->epoch,
+        (unsigned long)(up / 3600),
+        (unsigned long)((up % 3600) / 60),
+        (unsigned long)(up % 60));
     canvas_draw_str(canvas, 2, 21, l);
     // capture tallies come from the persisted persona stats (recycle-proof), not the AP table
     snprintf(
-        l, sizeof(l), "pwnd %lu (%lu)  seen %lu", (unsigned long)p->pwnd_run,
-        (unsigned long)p->s.pwnd_tot, (unsigned long)p->aps_session);
+        l,
+        sizeof(l),
+        "pwnd %lu (%lu)  seen %lu",
+        (unsigned long)p->pwnd_run,
+        (unsigned long)p->s.pwnd_tot,
+        (unsigned long)p->aps_session);
     canvas_draw_str(canvas, 2, 31, l);
-    snprintf(l, sizeof(l), "sats %d   mode %s", model->gps_sats, capture_name(model->capture_mode));
+    snprintf(
+        l, sizeof(l), "sats %d   mode %s", model->gps_sats, capture_name(model->capture_mode));
     canvas_draw_str(canvas, 2, 41, l);
     // coords get the whole row (no prefix/comma) so a full lat+lon fits at this font
     if(model->gps_seen) {
@@ -2676,8 +2854,12 @@ static void pwnpal_draw_stats(Canvas* canvas, const PwnpalModel* model) {
     }
     // captures: crackable (strict ✓) leads so it never clips; then loose P=pmkid/H=handshake, tx.
     snprintf(
-        l, sizeof(l), "crack %lu  P%lu/H%lu  tx %lu", (unsigned long)p->s.crack_tot,
-        (unsigned long)p->s.pmkid_tot, (unsigned long)p->s.hs_tot,
+        l,
+        sizeof(l),
+        "crack %lu  P%lu/H%lu  tx %lu",
+        (unsigned long)p->s.crack_tot,
+        (unsigned long)p->s.pmkid_tot,
+        (unsigned long)p->s.hs_tot,
         (unsigned long)model->adv_sent_count);
     canvas_draw_str(canvas, 2, 61, l);
 }
@@ -2743,10 +2925,13 @@ static void pwnpal_draw_about(Canvas* canvas, const PwnpalModel* model) {
         snprintf(line, sizeof(line), "fw  none (want v%d)", PWNPAL_FW_PROTO);
     else if(model->fw_commit[0])
         snprintf(
-            line, sizeof(line), "fw  %s %s", model->fw_commit,
+            line,
+            sizeof(line),
+            "fw  %s %s",
+            model->fw_commit,
             model->fw_proto < PWNPAL_FW_PROTO ? "old" :
-            model->fw_outdated              ? "reflash" :
-                                              "ok");
+            model->fw_outdated                ? "reflash" :
+                                                "ok");
     else if(model->fw_proto < PWNPAL_FW_PROTO)
         snprintf(line, sizeof(line), "fw  v%d old (want v%d)", model->fw_proto, PWNPAL_FW_PROTO);
     else
@@ -2761,11 +2946,11 @@ static void pwnpal_draw_home_stats(Canvas* canvas, const PwnpalModel* model) {
     const int x = 61;
     int y = 17;
     char l[40];
-#define HS_ROW(...)                              \
-    do {                                         \
-        snprintf(l, sizeof(l), __VA_ARGS__);     \
-        canvas_draw_str(canvas, x, y, l);        \
-        y += 9;                                  \
+#define HS_ROW(...)                          \
+    do {                                     \
+        snprintf(l, sizeof(l), __VA_ARGS__); \
+        canvas_draw_str(canvas, x, y, l);    \
+        y += 9;                              \
     } while(0)
     switch(model->stat_page) {
     case StatPageCounts: {
@@ -2846,7 +3031,13 @@ static void pwnpal_draw_verify(Canvas* canvas, const PwnpalModel* model) {
         canvas_draw_str(canvas, 2, 38, l);
         if(model->verify_total)
             draw_progress(
-                canvas, 2, 44, FLIPPER_SCREEN_WIDTH - 4, 7, model->verify_seen, model->verify_total);
+                canvas,
+                2,
+                44,
+                FLIPPER_SCREEN_WIDTH - 4,
+                7,
+                model->verify_seen,
+                model->verify_total);
         canvas_draw_str(canvas, 2, 62, "Back: cancel");
     } else {
         snprintf(l, sizeof(l), "%u crackable", model->verify_found);
@@ -2879,18 +3070,40 @@ static void pwnpal_draw_callback(Canvas* canvas, void* ctx) {
         return;
     }
     switch(model->screen) {
-    case ScreenMenu: pwnpal_draw_menu(canvas, model); return;
-    case ScreenApList: pwnpal_draw_aplist(canvas, model); return;
-    case ScreenApDetail: pwnpal_draw_apdetail(canvas, model); return;
-    case ScreenApQr: pwnpal_draw_ap_qr(canvas, model); return;
-    case ScreenFriendList: pwnpal_draw_friendlist(canvas, model); return;
-    case ScreenFriendDetail: pwnpal_draw_frienddetail(canvas, model); return;
-    case ScreenFriendQr: pwnpal_draw_friend_qr(canvas, model); return;
-    case ScreenStats: pwnpal_draw_stats(canvas, model); return;
-    case ScreenVerify: pwnpal_draw_verify(canvas, model); return;
-    case ScreenAbout: pwnpal_draw_about(canvas, model); return;
+    case ScreenMenu:
+        pwnpal_draw_menu(canvas, model);
+        return;
+    case ScreenApList:
+        pwnpal_draw_aplist(canvas, model);
+        return;
+    case ScreenApDetail:
+        pwnpal_draw_apdetail(canvas, model);
+        return;
+    case ScreenApQr:
+        pwnpal_draw_ap_qr(canvas, model);
+        return;
+    case ScreenFriendList:
+        pwnpal_draw_friendlist(canvas, model);
+        return;
+    case ScreenFriendDetail:
+        pwnpal_draw_frienddetail(canvas, model);
+        return;
+    case ScreenFriendQr:
+        pwnpal_draw_friend_qr(canvas, model);
+        return;
+    case ScreenStats:
+        pwnpal_draw_stats(canvas, model);
+        return;
+    case ScreenVerify:
+        pwnpal_draw_verify(canvas, model);
+        return;
+    case ScreenAbout:
+        pwnpal_draw_about(canvas, model);
+        return;
     case ScreenHome:
-    default: pwnpal_draw_home(canvas, model); return;
+    default:
+        pwnpal_draw_home(canvas, model);
+        return;
     }
 }
 
@@ -2937,7 +3150,8 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
                 PwnpalModel * model,
                 {
                     model->showing_consent = false;
-                    model->consent_given = true; // unlocks active TX for the current mode (default Auto)
+                    model->consent_given =
+                        true; // unlocks active TX for the current mode (default Auto)
                     advertising = model->advertising;
                 },
                 true);
@@ -2960,7 +3174,8 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
         if(event->key == InputKeyOk && event->type == InputTypeLong) {
             bool advertising = false;
             with_view_model(
-                app->view, PwnpalModel * model,
+                app->view,
+                PwnpalModel * model,
                 {
                     pwnpal_reset_settings(model);
                     home_save(app->storage, model); // persist the defaults
@@ -2990,8 +3205,10 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
         // reflash nudge is up: any key (incl Back) dismisses it for the session, nothing else
         bool notice_up = false;
         with_view_model(
-            app->view, PwnpalModel * model,
-            { notice_up = model->fw_outdated && !model->fw_notice_ack; }, false);
+            app->view,
+            PwnpalModel * model,
+            { notice_up = model->fw_outdated && !model->fw_notice_ack; },
+            false);
         if(notice_up) {
             with_view_model(
                 app->view, PwnpalModel * model, { model->fw_notice_ack = true; }, true);
@@ -3004,7 +3221,8 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
         if(exit_armed) {
             if(event->key == InputKeyBack) return false; // confirmed -> quit to launcher
             with_view_model(
-                app->view, PwnpalModel * model,
+                app->view,
+                PwnpalModel * model,
                 {
                     model->confirm_exit = false; // any other key cancels -> "staying" beat
                     model->stayed_until = model->tick_secs + CONFIRM_STAY_SECS;
@@ -3015,20 +3233,31 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
     }
         if(event->key == InputKeyBack) {
             with_view_model(
-                app->view, PwnpalModel * model,
-                { model->confirm_exit = true; model->confirm_secs = model->tick_secs; }, true);
+                app->view,
+                PwnpalModel * model,
+                {
+                    model->confirm_exit = true;
+                    model->confirm_secs = model->tick_secs;
+                },
+                true);
             return true; // first Back raises the prompt (auto-cancels after the timeout)
         }
         if(event->key == InputKeyOk) { // OK opens the menu
             with_view_model(
-                app->view, PwnpalModel * model,
-                { model->screen = ScreenMenu; model->menu_idx = 0; }, true);
+                app->view,
+                PwnpalModel * model,
+                {
+                    model->screen = ScreenMenu;
+                    model->menu_idx = 0;
+                },
+                true);
             return true;
         }
         if(event->key == InputKeyLeft || event->key == InputKeyRight) {
             // scroll the stat the persona speaks
             with_view_model(
-                app->view, PwnpalModel * model,
+                app->view,
+                PwnpalModel * model,
                 {
                     if(event->key == InputKeyRight)
                         model->stat_page = (model->stat_page + 1) % StatPageCount;
@@ -3044,11 +3273,12 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
             int dir = (event->key == InputKeyUp) ? 1 : -1;
             bool need_adv = false;
             with_view_model(
-                app->view, PwnpalModel * model,
+                app->view,
+                PwnpalModel * model,
                 {
-                    model->capture_mode = (uint8_t)(((int)model->capture_mode + dir +
-                                                     CaptureModeCount) %
-                                                    CaptureModeCount);
+                    model->capture_mode =
+                        (uint8_t)(((int)model->capture_mode + dir + CaptureModeCount) %
+                                  CaptureModeCount);
                     if(!model->consent_given) model->showing_consent = true; // active TX needs it
                     need_adv = model->advertising;
                     home_save(app->storage, model);
@@ -3061,13 +3291,13 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
 
     case ScreenMenu:
         if(event->key == InputKeyBack) {
-            with_view_model(
-                app->view, PwnpalModel * model, { model->screen = ScreenHome; }, true);
+            with_view_model(app->view, PwnpalModel * model, { model->screen = ScreenHome; }, true);
             return true;
         }
         if(event->key == InputKeyUp || event->key == InputKeyDown) {
             with_view_model(
-                app->view, PwnpalModel * model,
+                app->view,
+                PwnpalModel * model,
                 {
                     // Wrap around both ways: Down off the end -> first, Up off the top -> last.
                     if(event->key == InputKeyDown)
@@ -3082,7 +3312,8 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
             int dir = (event->key == InputKeyRight) ? 1 : -1;
             bool toggled_adv = false, now_adv = false, prompted = false;
             with_view_model(
-                app->view, PwnpalModel * model,
+                app->view,
+                PwnpalModel * model,
                 {
                     switch(model->menu_idx) {
                     case MenuAdvertise:
@@ -3101,8 +3332,8 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
                     case MenuCapture: {
                         // cycle wardrive/roam/siege/auto. active TX stays gated on consent in
                         // the flag mapping; if consent was declined, re-raise the prompt here.
-                        int v = ((int)model->capture_mode + dir + CaptureModeCount) %
-                                CaptureModeCount;
+                        int v =
+                            ((int)model->capture_mode + dir + CaptureModeCount) % CaptureModeCount;
                         model->capture_mode = (uint8_t)v;
                         if(!model->consent_given) model->showing_consent = true;
                         need_advertise = model->advertising;
@@ -3145,7 +3376,8 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
                         need_advertise = model->advertising; // push effective -saver to the ESP
                         home_save(app->storage, model);
                         break;
-                    default: break; // nav rows act on OK
+                    default:
+                        break; // nav rows act on OK
                     }
                 },
                 true);
@@ -3163,7 +3395,8 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
             bool open_name = false;
             bool start_verify = false;
             with_view_model(
-                app->view, PwnpalModel * model,
+                app->view,
+                PwnpalModel * model,
                 {
                     switch(model->menu_idx) {
                     case MenuName:
@@ -3215,7 +3448,9 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
                         }
                         break;
                     }
-                    case MenuStats: model->screen = ScreenStats; break;
+                    case MenuStats:
+                        model->screen = ScreenStats;
+                        break;
                     case MenuVerify:
                         if(!model->verify_active) {
                             model->verify_active = true;
@@ -3226,8 +3461,12 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
                             start_verify = true;
                         }
                         break;
-                    case MenuReset: model->confirm_reset = true; break; // raise the confirm modal
-                    case MenuAbout: model->screen = ScreenAbout; break;
+                    case MenuReset:
+                        model->confirm_reset = true;
+                        break; // raise the confirm modal
+                    case MenuAbout:
+                        model->screen = ScreenAbout;
+                        break;
                     case MenuSetHome:
                         // Capture the current fix as home (persisted). Needs a fix.
                         if(model->gps_seen) {
@@ -3238,20 +3477,26 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
                             home_save(app->storage, model);
                         }
                         break;
-                    default: break; // Advertise/Capture/Channel/MinRssi/Recon/Quiet use Left/Right
+                    default:
+                        break; // Advertise/Capture/Channel/MinRssi/Recon/Quiet use Left/Right
                     }
                 },
                 true);
             if(open_name) {
                 text_input_set_header_text(app->text_input, "Persona name");
                 text_input_set_result_callback(
-                    app->text_input, pwnpal_name_result, app, app->name_buf,
-                    sizeof(app->name_buf), false);
+                    app->text_input,
+                    pwnpal_name_result,
+                    app,
+                    app->name_buf,
+                    sizeof(app->name_buf),
+                    false);
                 view_dispatcher_switch_to_view(app->view_dispatcher, 1);
             }
             if(need_advertise) pwnpal_send_advertise(app); // e.g. after clearing the target
             if(start_verify) {
-                if(app->verify_started) furi_thread_join(app->verify_thread); // reclaim a prior run
+                if(app->verify_started)
+                    furi_thread_join(app->verify_thread); // reclaim a prior run
                 furi_thread_start(app->verify_thread);
                 app->verify_started = true;
             }
@@ -3261,13 +3506,13 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
 
     case ScreenApList:
         if(event->key == InputKeyBack) {
-            with_view_model(
-                app->view, PwnpalModel * model, { model->screen = ScreenMenu; }, true);
+            with_view_model(app->view, PwnpalModel * model, { model->screen = ScreenMenu; }, true);
             return true;
         }
         if(event->key == InputKeyUp || event->key == InputKeyDown) {
             with_view_model(
-                app->view, PwnpalModel * model,
+                app->view,
+                PwnpalModel * model,
                 {
                     model->list_input_tick = model->tick_secs; // hold off resort while scrolling
                     uint16_t n = model->list_order_n;
@@ -3288,7 +3533,8 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
         if(event->key == InputKeyLeft || event->key == InputKeyRight) {
             bool is_left = event->key == InputKeyLeft; // Left = target, Right = ignore
             with_view_model(
-                app->view, PwnpalModel * model,
+                app->view,
+                PwnpalModel * model,
                 {
                     model->list_input_tick = model->tick_secs;
                     uint16_t n = model->list_order_n;
@@ -3322,7 +3568,8 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
         }
         if(event->key == InputKeyOk) {
             with_view_model(
-                app->view, PwnpalModel * model,
+                app->view,
+                PwnpalModel * model,
                 {
                     uint16_t n = model->list_order_n;
                     if(n && model->list_idx < n) {
@@ -3345,14 +3592,18 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
         if(event->key == InputKeyUp || event->key == InputKeyDown) {
             // Up/Down flip to prev/next AP in detail, keeping list_idx in sync
             with_view_model(
-                app->view, PwnpalModel * model,
+                app->view,
+                PwnpalModel * model,
                 {
                     const uint16_t* idx = model->list_order; // same frozen order as the list
                     uint16_t n = model->list_order_n;
                     if(n) {
                         uint16_t pos = 0;
                         for(uint16_t k = 0; k < n; k++)
-                            if(idx[k] == model->detail_ap) { pos = k; break; }
+                            if(idx[k] == model->detail_ap) {
+                                pos = k;
+                                break;
+                            }
                         if(event->key == InputKeyDown)
                             pos = (uint16_t)((pos + 1) % n);
                         else
@@ -3370,14 +3621,22 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
         if(event->key == InputKeyOk) {
             // OK: QR of this AP's location (a geo: URI) to scan with a phone, if we have one.
             with_view_model(
-                app->view, PwnpalModel * model,
+                app->view,
+                PwnpalModel * model,
                 {
                     const ApRec* a = &model->aps[model->detail_ap];
                     float alat = 1e9f;
                     float alon = 1e9f;
                     if(loc_estimate(
-                           model->triangulate, a->loc_n, a->w_sum, a->wlat_sum, a->wlon_sum,
-                           a->lat, a->lon, &alat, &alon)) {
+                           model->triangulate,
+                           a->loc_n,
+                           a->w_sum,
+                           a->wlat_sum,
+                           a->wlon_sum,
+                           a->lat,
+                           a->lon,
+                           &alat,
+                           &alon)) {
                         char lats[16];
                         char lons[16];
                         char url[64];
@@ -3387,7 +3646,13 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
                         // vendor-neutral geo: URI (opens in whatever map app, not forced Google)
                         snprintf(url, sizeof(url), "geo:%s,%s", lats, lons);
                         model->ap_qr_ok = qrcodegen_encodeText(
-                            url, tmp, model->ap_qr, qrcodegen_Ecc_LOW, 1, 4, qrcodegen_Mask_AUTO,
+                            url,
+                            tmp,
+                            model->ap_qr,
+                            qrcodegen_Ecc_LOW,
+                            1,
+                            4,
+                            qrcodegen_Mask_AUTO,
                             true);
                         model->screen = ScreenApQr;
                     }
@@ -3398,7 +3663,8 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
         if(event->key == InputKeyLeft || event->key == InputKeyRight) {
             bool is_left = event->key == InputKeyLeft; // Left = target, Right = ignore
             with_view_model(
-                app->view, PwnpalModel * model,
+                app->view,
+                PwnpalModel * model,
                 {
                     ApRec* a = &model->aps[model->detail_ap];
                     if(is_left) { // exclusive: one focus AP, clears ignore, pins channel
@@ -3436,13 +3702,13 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
 
     case ScreenFriendList:
         if(event->key == InputKeyBack) {
-            with_view_model(
-                app->view, PwnpalModel * model, { model->screen = ScreenMenu; }, true);
+            with_view_model(app->view, PwnpalModel * model, { model->screen = ScreenMenu; }, true);
             return true;
         }
         if(event->key == InputKeyUp || event->key == InputKeyDown) {
             with_view_model(
-                app->view, PwnpalModel * model,
+                app->view,
+                PwnpalModel * model,
                 {
                     uint16_t n = model->friend_count;
                     if(n) {
@@ -3460,7 +3726,8 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
         }
         if(event->key == InputKeyOk) {
             with_view_model(
-                app->view, PwnpalModel * model,
+                app->view,
+                PwnpalModel * model,
                 {
                     uint16_t idx[FRIEND_MAX];
                     uint16_t n = friend_order(model, idx);
@@ -3484,14 +3751,18 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
         if(event->key == InputKeyUp || event->key == InputKeyDown) {
             // Up/Down flip to the prev/next friend, staying in detail; fl_idx stays in sync.
             with_view_model(
-                app->view, PwnpalModel * model,
+                app->view,
+                PwnpalModel * model,
                 {
                     uint16_t idx[FRIEND_MAX];
                     uint16_t n = friend_order(model, idx);
                     if(n) {
                         uint16_t pos = 0;
                         for(uint16_t k = 0; k < n; k++)
-                            if(idx[k] == model->detail_friend) { pos = k; break; }
+                            if(idx[k] == model->detail_friend) {
+                                pos = k;
+                                break;
+                            }
                         if(event->key == InputKeyDown)
                             pos = (uint16_t)((pos + 1) % n);
                         else
@@ -3509,14 +3780,22 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
         if(event->key == InputKeyOk) {
             // OK: QR of this friend's last location (a geo: URI) to scan with a phone.
             with_view_model(
-                app->view, PwnpalModel * model,
+                app->view,
+                PwnpalModel * model,
                 {
                     const FriendRec* fr = &model->friends[model->detail_friend];
                     float alat = 1e9f;
                     float alon = 1e9f;
                     if(loc_estimate(
-                           model->triangulate, fr->loc_n, fr->w_sum, fr->wlat_sum, fr->wlon_sum,
-                           fr->lat, fr->lon, &alat, &alon)) {
+                           model->triangulate,
+                           fr->loc_n,
+                           fr->w_sum,
+                           fr->wlat_sum,
+                           fr->wlon_sum,
+                           fr->lat,
+                           fr->lon,
+                           &alat,
+                           &alon)) {
                         char lats[16];
                         char lons[16];
                         char url[64];
@@ -3525,7 +3804,13 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
                         fmt_coord(alon, lons, sizeof(lons));
                         snprintf(url, sizeof(url), "geo:%s,%s", lats, lons);
                         model->ap_qr_ok = qrcodegen_encodeText(
-                            url, tmp, model->ap_qr, qrcodegen_Ecc_LOW, 1, 4, qrcodegen_Mask_AUTO,
+                            url,
+                            tmp,
+                            model->ap_qr,
+                            qrcodegen_Ecc_LOW,
+                            1,
+                            4,
+                            qrcodegen_Mask_AUTO,
                             true);
                         model->screen = ScreenFriendQr;
                     }
@@ -3545,8 +3830,7 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
 
     case ScreenStats:
         if(event->key == InputKeyBack) {
-            with_view_model(
-                app->view, PwnpalModel * model, { model->screen = ScreenMenu; }, true);
+            with_view_model(app->view, PwnpalModel * model, { model->screen = ScreenMenu; }, true);
             return true;
         }
         return true;
@@ -3554,7 +3838,8 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
     case ScreenVerify:
         if(event->key == InputKeyBack) {
             with_view_model(
-                app->view, PwnpalModel * model,
+                app->view,
+                PwnpalModel * model,
                 {
                     if(model->verify_active)
                         model->verify_abort = true; // stop the scan; thread flips it complete
@@ -3568,14 +3853,14 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
 
     case ScreenAbout:
         if(event->key == InputKeyBack) {
-            with_view_model(
-                app->view, PwnpalModel * model, { model->screen = ScreenMenu; }, true);
+            with_view_model(app->view, PwnpalModel * model, { model->screen = ScreenMenu; }, true);
             return true;
         }
         // OK toggles bounce/infinite scroll; Left speeds the banner up, Right slows it.
         if(event->key == InputKeyOk) {
             with_view_model(
-                app->view, PwnpalModel * model,
+                app->view,
+                PwnpalModel * model,
                 {
                     model->about_infinite = !model->about_infinite;
                     model->about_scroll = 0; // restart cleanly in the new mode
@@ -3586,7 +3871,8 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
         if(event->key == InputKeyLeft || event->key == InputKeyRight) {
             int dir = (event->key == InputKeyLeft) ? 1 : -1; // Left = faster
             with_view_model(
-                app->view, PwnpalModel * model,
+                app->view,
+                PwnpalModel * model,
                 {
                     int s = (int)model->about_speed + dir;
                     if(s < 1) s = 1;
@@ -3598,7 +3884,8 @@ static bool pwnpal_input_callback(InputEvent* event, void* ctx) {
         }
         return true;
 
-    default: return false;
+    default:
+        return false;
     }
 }
 
@@ -3623,14 +3910,18 @@ static bool pwnpal_pcap_crackable(Storage* storage, const char* path) {
         uint8_t gh[24];
         if(storage_file_read(f, gh, sizeof(gh)) == sizeof(gh)) { // skip the pcap global header
             static PwnpalHs tab[8]; // one AP per file; only a few clients
-            for(int i = 0; i < 8; i++) tab[i].used = false;
+            for(int i = 0; i < 8; i++)
+                tab[i].used = false;
             static uint8_t frame[PCAP_SNAPLEN];
             uint8_t rec[16];
             uint32_t idx = 0;
             while(!crackable && storage_file_read(f, rec, sizeof(rec)) == sizeof(rec)) {
-                uint32_t ts_sec = rec[0] | (rec[1] << 8) | (rec[2] << 16) | ((uint32_t)rec[3] << 24);
-                uint32_t ts_us = rec[4] | (rec[5] << 8) | (rec[6] << 16) | ((uint32_t)rec[7] << 24);
-                uint32_t incl = rec[8] | (rec[9] << 8) | (rec[10] << 16) | ((uint32_t)rec[11] << 24);
+                uint32_t ts_sec = rec[0] | (rec[1] << 8) | (rec[2] << 16) |
+                                  ((uint32_t)rec[3] << 24);
+                uint32_t ts_us = rec[4] | (rec[5] << 8) | (rec[6] << 16) |
+                                 ((uint32_t)rec[7] << 24);
+                uint32_t incl = rec[8] | (rec[9] << 8) | (rec[10] << 16) |
+                                ((uint32_t)rec[11] << 24);
                 if(incl == 0 || incl > PCAP_SNAPLEN) break; // malformed length -> stop this file
                 if(storage_file_read(f, frame, incl) != incl) break;
                 int eo = pwnpal_eapol_locate(frame, (int)incl);
@@ -3673,7 +3964,8 @@ static int32_t pwnpal_verify_thread(void* ctx) {
     if(storage_dir_open(dir, PWNPAL_HS_DIR)) {
         while(storage_dir_read(dir, &fi, name, sizeof(name))) {
             size_t nl = strlen(name);
-            if(!(fi.flags & FSF_DIRECTORY) && nl > 5 && strcmp(name + nl - 5, ".pcap") == 0) total++;
+            if(!(fi.flags & FSF_DIRECTORY) && nl > 5 && strcmp(name + nl - 5, ".pcap") == 0)
+                total++;
         }
     }
     storage_dir_close(dir);
@@ -3683,10 +3975,12 @@ static int32_t pwnpal_verify_thread(void* ctx) {
     if(storage_dir_open(dir, PWNPAL_HS_DIR)) {
         while(storage_dir_read(dir, &fi, name, sizeof(name))) {
             bool abort = false;
-            with_view_model(app->view, PwnpalModel * model, { abort = model->verify_abort; }, false);
+            with_view_model(
+                app->view, PwnpalModel * model, { abort = model->verify_abort; }, false);
             if(abort) break;
             size_t nl = strlen(name);
-            if((fi.flags & FSF_DIRECTORY) || nl <= 5 || strcmp(name + nl - 5, ".pcap") != 0) continue;
+            if((fi.flags & FSF_DIRECTORY) || nl <= 5 || strcmp(name + nl - 5, ".pcap") != 0)
+                continue;
             char path[128];
             snprintf(path, sizeof(path), "%s/%s", PWNPAL_HS_DIR, name);
             bool crk = pwnpal_pcap_crackable(app->storage, path);
@@ -3698,7 +3992,8 @@ static int32_t pwnpal_verify_thread(void* ctx) {
                 memcpy(key, name, kl);
                 key[kl] = '\0';
                 with_view_model(
-                    app->view, PwnpalModel * model,
+                    app->view,
+                    PwnpalModel * model,
                     {
                         int ai = ap_find(model, key);
                         mark_crackable(model, ai);
@@ -3706,7 +4001,8 @@ static int32_t pwnpal_verify_thread(void* ctx) {
                     false);
             }
             with_view_model(
-                app->view, PwnpalModel * model,
+                app->view,
+                PwnpalModel * model,
                 {
                     model->verify_seen = seen;
                     model->verify_found = found;
@@ -3767,7 +4063,8 @@ static void pwnpal_timer_callback(void* ctx) {
                 // even data-only USB) -> saver forced off, slot shows PWR. is_charging() alone
                 // misses the full-battery case.
                 model->on_power = furi_hal_power_get_usb_voltage() > 4.0f;
-                model->charging = furi_hal_power_is_charging(); // charging -> "PWR %"; stopped -> "PWR"
+                model->charging =
+                    furi_hal_power_is_charging(); // charging -> "PWR %"; stopped -> "PWR"
 
                 // Auto mode: detect movement to pick wardrive (moving) vs siege (parked). two
                 // signals stamp last_move_secs: GPS displacement, and (GPS-independent) a burst
@@ -3779,16 +4076,17 @@ static void pwnpal_timer_callback(void* ctx) {
                         if(model->move_ref_lat > 1e8f) { // seed reference on the first fix
                             model->move_ref_lat = clat;
                             model->move_ref_lon = clon;
-                        } else if(geo_km(model->move_ref_lat, model->move_ref_lon, clat, clon) >
-                                  AUTO_MOVE_KM) {
+                        } else if(
+                            geo_km(model->move_ref_lat, model->move_ref_lon, clat, clon) >
+                            AUTO_MOVE_KM) {
                             model->move_ref_lat = clat; // moved far enough -> "moving"
                             model->move_ref_lon = clon;
                             model->last_move_secs = model->tick_secs;
                         }
                     }
-                    bool gps_moving = (model->last_move_secs != 0) &&
-                                      (model->tick_secs - model->last_move_secs <
-                                       AUTO_STATIONARY_SECS);
+                    bool gps_moving =
+                        (model->last_move_secs != 0) &&
+                        (model->tick_secs - model->last_move_secs < AUTO_STATIONARY_SECS);
                     // GPS is authoritative when we have a fix; with no fix, ride the firmware's
                     // per-epoch recede/adds verdict (auto_ap_moving) instead. this is what makes
                     // bag/pocket walks work — the old cumulative-AP fallback went blind on them.
@@ -3822,10 +4120,11 @@ static void pwnpal_timer_callback(void* ctx) {
                     uint32_t since_adv = model->tick_secs - model->advertising_since;
                     // deep saver dozes the radio ~25s at a time (near-silent) — don't flash the
                     // "no ESP32" screen then; only warn after a much longer real silence.
-                    uint32_t link_to = (effective_saver(model) == 2) ? 40 : PWNPAL_LINK_TIMEOUT_SECS;
+                    uint32_t link_to = (effective_saver(model) == 2) ? 40 :
+                                                                       PWNPAL_LINK_TIMEOUT_SECS;
                     bool was_down = model->link_down;
-                    model->link_down =
-                        (since_rx >= link_to) && (since_adv >= PWNPAL_LINK_GRACE_SECS);
+                    model->link_down = (since_rx >= link_to) &&
+                                       (since_adv >= PWNPAL_LINK_GRACE_SECS);
                     if(model->link_down != was_down) { // log the flip with its context
                         link_dbg = true;
                         d_down = model->link_down;
@@ -3880,9 +4179,16 @@ static void pwnpal_timer_callback(void* ctx) {
             }
             // heap-based (furi_string) to keep the 1KB timer stack clear of a big snprintf
             FuriString* row = furi_string_alloc_printf(
-                "%lu,%s,%lu,%lu,%lu,%u,%u,%u,%u\n", (unsigned long)d_tick, d_down ? "down" : "up",
-                (unsigned long)d_srx, (unsigned long)d_to, (unsigned long)d_sadv, d_eff, d_saver,
-                d_pwr ? 1 : 0, d_chg ? 1 : 0);
+                "%lu,%s,%lu,%lu,%lu,%u,%u,%u,%u\n",
+                (unsigned long)d_tick,
+                d_down ? "down" : "up",
+                (unsigned long)d_srx,
+                (unsigned long)d_to,
+                (unsigned long)d_sadv,
+                d_eff,
+                d_saver,
+                d_pwr ? 1 : 0,
+                d_chg ? 1 : 0);
             storage_file_write(f, furi_string_get_cstr(row), furi_string_size(row));
             furi_string_free(row);
         }
@@ -3916,10 +4222,8 @@ static void pwnpal_timer_callback(void* ctx) {
 // Serial RX plumbing
 // ---------------------------------------------------------------------------
 
-static void pwnpal_on_irq_cb(
-    FuriHalSerialHandle* serial_handle,
-    FuriHalSerialRxEvent ev,
-    void* context) {
+static void
+    pwnpal_on_irq_cb(FuriHalSerialHandle* serial_handle, FuriHalSerialRxEvent ev, void* context) {
     furi_assert(context);
     PwnpalApp* app = context;
     if(ev & FuriHalSerialRxEventData) {
@@ -3963,8 +4267,7 @@ static int32_t pwnpal_worker(void* context) {
 
             if(app->got_new_friend || app->got_pwnd) {
                 bool quiet = false;
-                with_view_model(
-                    app->view, PwnpalModel * model, { quiet = model->quiet; }, false);
+                with_view_model(app->view, PwnpalModel * model, { quiet = model->quiet; }, false);
                 if(app->got_new_friend) {
                     app->got_new_friend = false;
                     if(!quiet) notification_message(app->notification, &sequence_new_friend);
@@ -4108,7 +4411,8 @@ static PwnpalApp* pwnpal_app_alloc(void) {
     view_dispatcher_switch_to_view(app->view_dispatcher, 0);
 
     // Serial
-    app->last_rx_tick = furi_get_tick(); // seed liveness so the watchdog doesn't fire pre-first-byte
+    app->last_rx_tick =
+        furi_get_tick(); // seed liveness so the watchdog doesn't fire pre-first-byte
     app->serial_handle = furi_hal_serial_control_acquire(PWNPAL_UART_CHANNEL);
     furi_check(app->serial_handle);
     furi_hal_serial_init(app->serial_handle, PWNPAL_UART_BAUD);

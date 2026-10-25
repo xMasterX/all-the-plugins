@@ -7,7 +7,6 @@ App(
     cdefines=["APP_PWNPAL"],
     requires=["gui"],
     stack_size=4 * 1024,
-    order=13,
     fap_icon="pwnpal_10px.png",
     fap_category="GPIO",
     fap_icon_assets="assets",

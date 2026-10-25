@@ -5,7 +5,7 @@
 
 // the friend's identity and how it grows; persisted to SD so a stable pwngrid identity
 // lets the pwnagotchi keep counting encounters and eventually treat it as a good friend
-#define PERSONA_NAME_MAX 17
+#define PERSONA_NAME_MAX   17
 #define PERSONA_ID_HEX_LEN 64
 
 typedef enum {
@@ -30,7 +30,7 @@ typedef enum {
 
 // persisted-to-SD portion; fixed layout, bump PERSONA_SAVE_VERSION on change. loader
 // rejects any blob whose size/version differs, so an old file is cleanly discarded
-#define PERSONA_SAVE_MAGIC 0x50574E46u // "PWNF"
+#define PERSONA_SAVE_MAGIC   0x50574E46u // "PWNF"
 #define PERSONA_SAVE_VERSION 3
 
 typedef struct {

@@ -5,8 +5,8 @@
 
 // one-time persisted "authorized to test only" acknowledgement. stored separately from
 // the persona so a persona reset never re-arms capture; bumping the text re-prompts.
-#define PWNPAL_CONSENT_PATH "/ext/apps_data/pwnpal/capture_consent.bin"
-#define PWNPAL_CONSENT_MAGIC 0x50574343u // "PWCC"
+#define PWNPAL_CONSENT_PATH    "/ext/apps_data/pwnpal/capture_consent.bin"
+#define PWNPAL_CONSENT_MAGIC   0x50574343u // "PWCC"
 #define PWNPAL_CONSENT_VERSION 1 // bump when the warning text changes
 
 typedef struct {

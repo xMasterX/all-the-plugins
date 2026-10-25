@@ -5,7 +5,7 @@
 #include <stdbool.h>
 
 // WiGLE-importable wardrive log; one CSV, a row per geotagged AP/PWND, beside the persona
-#define PWNPAL_WARDRIVE_DIR "/ext/apps_data/pwnpal"
+#define PWNPAL_WARDRIVE_DIR  "/ext/apps_data/pwnpal"
 #define PWNPAL_WARDRIVE_PATH PWNPAL_WARDRIVE_DIR "/wardrive.csv"
 
 // append one WiGLE-1.4 row. lat/lon are verbatim decimal-degree strings from the firmware

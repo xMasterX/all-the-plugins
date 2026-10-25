@@ -9,7 +9,7 @@
 #include <datetime/datetime.h>
 #include <furi_hal_rtc.h>
 
-#define PERSONA_DIR "/ext/apps_data/pwnpal"
+#define PERSONA_DIR  "/ext/apps_data/pwnpal"
 #define PERSONA_PATH PERSONA_DIR "/persona.bin"
 
 // lonely is staleness, not peer-absence: attacked APs this epoch, caught nothing
@@ -21,18 +21,18 @@
 
 // agent.recon() doubles recon_time once inactive_for >= max_inactive_scale; we stretch
 // the epoch window the same way, scaling boredom/sadness onset like upstream
-#define PERSONA_MAX_INACTIVE_SCALE 2 // personality.max_inactive_scale
+#define PERSONA_MAX_INACTIVE_SCALE  2 // personality.max_inactive_scale
 #define PERSONA_RECON_INACTIVE_MULT 2 // personality.recon_inactive_multiplier
 
 // per-epoch AP volume as a proxy for upstream's deauth/assoc/handshake activity
 #define PERSONA_EPOCH_ACTIVE_APS 4 // >= this -> epoch is "active"
-#define PERSONA_SMART_APS 8 // a flood this epoch -> SMART face
+#define PERSONA_SMART_APS        8 // a flood this epoch -> SMART face
 
 // Consecutive-epoch thresholds (real pwnagotchi defaults.toml values).
 #define PERSONA_EXCITED_EPOCHS 10 // active_for >= excited_num_epochs -> EXCITED
-#define PERSONA_BORED_EPOCHS 15 // inactive_for >= bored_num_epochs -> BORED
-#define PERSONA_SAD_EPOCHS 25 // inactive_for >= sad_num_epochs   -> SAD
-#define PERSONA_SLEEP_EPOCHS (PERSONA_SAD_EPOCHS * 2) // 2x sad (automata's escalation) -> SLEEP
+#define PERSONA_BORED_EPOCHS   15 // inactive_for >= bored_num_epochs -> BORED
+#define PERSONA_SAD_EPOCHS     25 // inactive_for >= sad_num_epochs   -> SAD
+#define PERSONA_SLEEP_EPOCHS   (PERSONA_SAD_EPOCHS * 2) // 2x sad (automata's escalation) -> SLEEP
 
 // Handshake streak inside one epoch that earns the COOL face.
 #define PERSONA_COOL_STREAK 4
@@ -41,7 +41,7 @@
 #define PERSONA_HUNT_PATIENCE 5
 
 // Time-based feels (seconds).
-#define PERSONA_CURIOUS_SECS 15 // a peer this recently -> curious
+#define PERSONA_CURIOUS_SECS    15 // a peer this recently -> curious
 #define PERSONA_PWND_REACT_SECS 8 // hold the capture (happy/cool/excited) face
 #define PERSONA_PEER_REACT_SECS 6 // hold the "new friend!" excited face
 #define PERSONA_MISS_REACT_SECS 4 // hold the "missed!" demotivated face
@@ -342,8 +342,8 @@ const char* persona_mood_label(const Persona* p) {
     uint32_t r = p->epoch;
     switch(p->mood) {
     case MoodLonely: {
-        static const char* v[] = {"I feel so alone ...", "Where is everybody?",
-                                  "Nobody wants to play ..."};
+        static const char* v[] = {
+            "I feel so alone ...", "Where is everybody?", "Nobody wants to play ..."};
         return v[r % 3];
     }
     case MoodContent: {
@@ -355,8 +355,7 @@ const char* persona_mood_label(const Persona* p) {
         return v[r % 2];
     }
     case MoodExcited: {
-        static const char* v[] = {"I'm living the life!", "So much fun!",
-                                  "My crime is curiosity"};
+        static const char* v[] = {"I'm living the life!", "So much fun!", "My crime is curiosity"};
         return v[r % 3];
     }
     case MoodBonded: {

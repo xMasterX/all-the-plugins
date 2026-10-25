@@ -4,14 +4,14 @@
 
 // pwnagotchis this friend can currently hear (ESP32 PWNPAL_PEER lines).
 #define PEER_NAME_MAX 17
-#define PEER_ID_MAX 65
-#define MAX_PEERS 8
+#define PEER_ID_MAX   65
+#define MAX_PEERS     8
 
 // heard this long -> a lingering buddy, not a passer-by; drives the bonded mood
 #define PEER_BONDED_AFTER_SECS 60
 // generous TTL: a peer's only heard when our hop lands on its channel, so during an
 // attack dwell we're off-channel for long stretches — a shorter TTL blinked friends out
-#define PEER_TTL_SECS 180
+#define PEER_TTL_SECS          180
 
 typedef struct {
     bool used;

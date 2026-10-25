@@ -4,7 +4,7 @@
 
 // serial link to the ESP32 board; same USART/baud as Marauder's CLI, no rewiring
 #define PWNPAL_UART_CHANNEL FuriHalSerialIdUsart
-#define PWNPAL_UART_BAUD 115200
+#define PWNPAL_UART_BAUD    115200
 
 // secs between persona re-pushes to the ESP32 so its beacon reflects growing counts
 #define PWNPAL_ADV_RESEND_SECS 15
@@ -25,7 +25,7 @@
 // (assoc+deauth over 20-30 APs) — that's a BUSY board, not a dead one. keep the timeout well
 // above the worst-case attack-phase gap so we only cry "no ESP32" on a real disconnect.
 #define PWNPAL_LINK_TIMEOUT_SECS 15
-#define PWNPAL_LINK_GRACE_SECS 10
+#define PWNPAL_LINK_GRACE_SECS   10
 
 // setup link QR'd on the "no ESP32" screen; <=53 bytes so the QR stays version-3 (29x29) at 2px/module
 #define PWNPAL_SETUP_URL "https://github.com/mrq1911/pwnpal"

@@ -125,21 +125,27 @@ void pwnagotchi_draw_face(Pwnagotchi* pwn, Canvas* canvas) {
 }
 
 // draw "<preceder><info>" at (j_pos, i_pos)
-static void pwnagotchi_draw_str(char* preceder, FuriString* info, const unsigned int i_pos,
-                                const unsigned int j_pos, Canvas* canvas) {
-    FuriString* formatTemp = furi_string_alloc_printf("%s%s", preceder, furi_string_get_cstr(info));
+static void pwnagotchi_draw_str(
+    char* preceder,
+    FuriString* info,
+    const unsigned int i_pos,
+    const unsigned int j_pos,
+    Canvas* canvas) {
+    FuriString* formatTemp =
+        furi_string_alloc_printf("%s%s", preceder, furi_string_get_cstr(info));
 
     canvas_set_font(canvas, PWNAGOTCHI_FONT);
-    canvas_draw_str(
-        canvas, j_pos, i_pos, furi_string_get_cstr(formatTemp));
+    canvas_draw_str(canvas, j_pos, i_pos, furi_string_get_cstr(formatTemp));
     furi_string_free(formatTemp);
 }
 
 void pwnagotchi_draw_name(Pwnagotchi* pwn, Canvas* canvas) {
-    FuriString* formatName = furi_string_alloc_printf("%s%s", furi_string_get_cstr(pwn->hostname), ">");
+    FuriString* formatName =
+        furi_string_alloc_printf("%s%s", furi_string_get_cstr(pwn->hostname), ">");
 
     canvas_set_font(canvas, PWNAGOTCHI_FONT);
-    canvas_draw_str(canvas, PWNAGOTCHI_NAME_J, PWNAGOTCHI_NAME_I, furi_string_get_cstr(formatName));
+    canvas_draw_str(
+        canvas, PWNAGOTCHI_NAME_J, PWNAGOTCHI_NAME_I, furi_string_get_cstr(formatName));
     furi_string_free(formatName);
 }
 
@@ -180,7 +186,8 @@ void pwnagotchi_draw_lines(Pwnagotchi* pwn, Canvas* canvas) {
 }
 
 void pwnagotchi_draw_handshakes(Pwnagotchi* pwn, Canvas* canvas) {
-    pwnagotchi_draw_str("PWND ", pwn->handshakes, PWNAGOTCHI_HANDSHAKES_I, PWNAGOTCHI_HANDSHAKES_J, canvas);
+    pwnagotchi_draw_str(
+        "PWND ", pwn->handshakes, PWNAGOTCHI_HANDSHAKES_I, PWNAGOTCHI_HANDSHAKES_J, canvas);
 }
 
 void pwnagotchi_draw_friend(Pwnagotchi* pwn, Canvas* canvas) {
@@ -230,10 +237,12 @@ void pwnagotchi_draw_message(Pwnagotchi* pwn, Canvas* canvas) {
 
     const char* p = msg;
     while(*p && drawn < maxlines) {
-        while(*p == ' ') p++; // skip spaces between words
+        while(*p == ' ')
+            p++; // skip spaces between words
         if(!*p) break;
         const char* ws = p;
-        while(*p && *p != ' ') p++; // [ws, p) is one word
+        while(*p && *p != ' ')
+            p++; // [ws, p) is one word
         size_t wlen = (size_t)(p - ws);
 
         // does "line + space + word" still fit?

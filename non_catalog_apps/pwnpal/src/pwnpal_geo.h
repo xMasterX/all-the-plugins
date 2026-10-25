@@ -67,7 +67,13 @@ static inline bool identity_is_64hex(const char* s) {
 // fold a geotagged sighting into a running RSSI-weighted centroid: stronger signal -> more
 // weight; averaging cancels GPS jitter. O(1). rssi==0 skipped, capped at LOC_SAMPLE_CAP.
 static inline void loc_accumulate(
-    uint16_t* n, float* w_sum, float* wlat_sum, float* wlon_sum, float lat, float lon, int rssi) {
+    uint16_t* n,
+    float* w_sum,
+    float* wlat_sum,
+    float* wlon_sum,
+    float lat,
+    float lon,
+    int rssi) {
     if(rssi == 0) return;
     if(*n >= LOC_SAMPLE_CAP) return;
     float w = (float)(rssi + 100); // ~ -100dBm floor -> tiny weight, -30dBm close -> ~70
@@ -81,8 +87,15 @@ static inline void loc_accumulate(
 // best position: weighted centroid with >=2 samples + triangulation on, else the strongest
 // fix (fix_lat 1e9 = none). false if no loc.
 static inline bool loc_estimate(
-    bool tri, uint16_t n, float w_sum, float wlat_sum, float wlon_sum, float fix_lat,
-    float fix_lon, float* out_lat, float* out_lon) {
+    bool tri,
+    uint16_t n,
+    float w_sum,
+    float wlat_sum,
+    float wlon_sum,
+    float fix_lat,
+    float fix_lon,
+    float* out_lat,
+    float* out_lon) {
     if(tri && n >= 2 && w_sum > 0.0f) {
         *out_lat = wlat_sum / w_sum;
         *out_lon = wlon_sum / w_sum;
