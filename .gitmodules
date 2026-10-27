@@ -7,3 +7,6 @@
 [submodule "base_pack/flipper-dallas-tester"]
 	path = base_pack/flipper-dallas-tester
 	url = https://github.com/mishamyte/flipper-dallas-tester.git
+[submodule "base_pack/varta"]
+	path = base_pack/varta
+	url = https://github.com/mishamyte/varta.git

@@ -70,6 +70,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | MIFARE Classic Editor | ![NFC Badge] | [by TollyH](https://github.com/TollyH/flipper-apps/tree/main/mfc-editor) | edit dumps on flipper | [![Author Badge]](https://lab.flipper.net/apps/mfc_editor) |
 | **Flipper Share NFC** | ![NFC Badge] | [by lomalkin](https://github.com/lomalkin/flipper-zero-apps/blob/-/flipper_share_nfc) | | [![Author Badge]](https://lab.flipper.net/apps/flipper_share_nfc) |
 | **RFID Fuzzer** | ![RFID Badge] | [by @gid9798](https://github.com/DarkFlippers/Multi_Fuzzer) | original by Ganapati & xMasterX | [![UFW Badge]](https://lab.flipper.net/apps/fuzzer_rfid) |
+| **Varta** | ![RFID Badge] | [by @mishamyte](https://github.com/mishamyte/varta) | Read, identify and emulate Варта-М (Varta-M) intercom keys, rebuild a working key from the number on the fob, and check what a reader asks for | ![None Badge] |
 | **iButton Fuzzer** | ![iButton Badge] | [by @gid9798](https://github.com/DarkFlippers/Multi_Fuzzer) | original by xMasterX | [![UFW Badge]](https://lab.flipper.net/apps/fuzzer_ibtn) |
 | **iButton Converter** | ![iButton Badge] | [by @Leptopt1los](https://github.com/Leptopt1los/ibutton_converter) | | [![UFW Badge]](https://lab.flipper.net/apps/ibutton_converter) |
 | **Dallas Tester** | ![iButton Badge] | [by @mishamyte](https://github.com/mishamyte/flipper-dallas-tester) | Read-only tPDL & family-code bench meter for iButton / Dallas keys & blanks (DS1990A, RW1990, TM1990 …) | ![None Badge] |
