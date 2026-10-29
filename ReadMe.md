@@ -324,6 +324,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Flipper ATM | ![Media Badge] | [by apfxtech](https://github.com/apfxtech/FlipperATM) |  | ![None Badge] |
 | Morse Master | ![Media Badge] | [by w84death](https://github.com/w84death/morse-master) |  | [![Author Badge]](https://lab.flipper.net/apps/morse_master) |
 | MP3 Player | ![Media Badge] | [by coolshrimp](https://github.com/coolshrimp/flipperzero-mp3-player) |  | [![Author Badge]](https://lab.flipper.net/apps/mp3_player) |
+| AI Composer | ![Media Badge] | [by TheProductAgency](https://github.com/TheProductAgency/flipper-ai-composer) | A tiny neural net that writes new melodies on-device - eight styles with blending, live piano roll, saves as .fmf | [![Author Badge]](https://lab.flipper.net/apps/ai_composer) |
 | Mifare Fuzzer | ![NFC Badge] | [by spheeere98](https://github.com/spheeere98/mifare_fuzzer) | Fixed crash on exit. / Update!: Ported to new NFC API [by @Sil333033](https://github.com/Flipper-XFW/Xtreme-Firmware/commit/ac5744328a28b73fb5022ce7baaa4332a824a739) | [![UFW Badge]](https://lab.flipper.net/apps/mifare_fuzzer) |
 | Seader | ![NFC Badge] | [by bettse](https://github.com/bettse/seader/tree/main) | `Interface with a SAM from the Flipper Zero over UART` | [![Author Badge]](https://lab.flipper.net/apps/seader) |
 | VB Lab Migration Assistant | ![NFC Badge] | [by GMMan (cyanic)](https://github.com/GMMan/flipperzero-vb-migrate) |  | [![Author Badge]](https://lab.flipper.net/apps/vb_migrate) |
@@ -349,6 +350,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Xiaomi Filter Reset | ![NFC Badge] | [by khmm12](https://github.com/khmm12/flipper-xiaomi-filter-reset) |  | [![Author Badge]](https://lab.flipper.net/apps/xiaomi_filter_reset) |
 | NFC Canary | ![NFC Badge] | [by antitree](https://github.com/antitree/nfc_canary) | Passive NFC skim detector - alarms when a reader interrogates the device | ![None Badge] |
 | Specter | ![NFC Badge] | [by at0m-b0mb](https://github.com/at0m-b0mb/Specter-FlipperZero) |  | [![Author Badge]](https://lab.flipper.net/apps/specter) |
+| CFS Tag Writer+ | ![NFC Badge] | [by BaniMun](https://github.com/BaniMun/cfs-tag-writer) | Read, write, clone and erase CFS filament spool NFC tags - brand/material/colour/weight picker and a saved-tag library | [![Author Badge]](https://lab.flipper.net/apps/cfs_tag_writer_plus) |
 | EM4100 universal keys generator (for RFID Fuzzer) | ![RFID Badge] | [by Milk-Cool](https://github.com/Milk-Cool/fz-em4100-generator) |  | [![Author Badge]](https://lab.flipper.net/apps/key_generator) |
 | (Q)M100 UHF RFID | ![RFID Badge] | [by frux-c](https://github.com/frux-c/uhf_rfid) | WIP -> (+Added icon by @xMasterX) | [![UFW Badge]](https://lab.flipper.net/apps/uhf_rfid) |
 | T5577 MultiWriter | ![RFID Badge] | [by Leptopt1los](https://github.com/Leptopt1los/t5577_multiwriter) | Verified writes, tag check, reader test & password [by mishamyte](https://github.com/mishamyte) | [![UFW Badge]](https://lab.flipper.net/apps/t5577_multiwriter) |
@@ -422,6 +424,8 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Lego Dimensions ToyPad Emu | ![USB Badge] | [by SegerEnd](https://github.com/SegerEnd/Flipper-Zero-LD-Toypad-Emulator) |  | [![Author Badge]](https://lab.flipper.net/apps/ldtoypad) |
 | CCID | ![USB Badge] | [by kidbomb](https://github.com/kidbomb/flipper-ccid-app) |  | [![Author Badge]](https://lab.flipper.net/apps/ccid_test) |
 | Better Mouse | ![USB Badge] | [by Timon-sys](https://github.com/Timon-sys/Bettermouse) | USB mouse remote with acceleration, diagonals, scroll & momentum | [![Author Badge]](https://lab.flipper.net/apps/bettermouse) |
+| USB Floppy | ![USB Badge] | [by piersroberts](https://github.com/piersroberts/flipperfloppy) | Emulates a USB floppy drive (UFI) from a 720K or 1.44M disk image on the SD card | ![None Badge] |
+| USB CD-ROM | ![USB Badge] | [by piersroberts](https://github.com/piersroberts/flippercd) | Emulates a USB CD/DVD-ROM drive from .iso images on the SD card | ![None Badge] |
 
 
 #### Catalog links checked at `17 Feb 2026 00:01 GMT +3`

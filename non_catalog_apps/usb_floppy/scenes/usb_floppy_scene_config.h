@@ -1,0 +1,6 @@
+ADD_SCENE(usb_floppy, start, Start)
+ADD_SCENE(usb_floppy, file_select, FileSelect)
+ADD_SCENE(usb_floppy, work, Work)
+ADD_SCENE(usb_floppy, bad_image, BadImage)
+ADD_SCENE(usb_floppy, usb_locked, UsbLocked)
+ADD_SCENE(usb_floppy, about, About)
