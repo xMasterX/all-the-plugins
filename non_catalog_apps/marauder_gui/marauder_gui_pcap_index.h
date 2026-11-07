@@ -78,7 +78,7 @@ bool marauder_pcap_entry_matches_filter(
    marauder_pcap_classify_frame() and for reading the 802.11 address fields out of the MAC
    header); the rest of the body is counted off and discarded as it streams past. */
 
-#define MARAUDER_PCAP_LIVE_PEEK_MAX 128
+#define MARAUDER_PCAP_LIVE_PEEK_MAX 160
 
 typedef enum {
     MarauderPcapLiveWaitGlobalHeader,
@@ -94,9 +94,11 @@ typedef struct {
     size_t peek_len;
     uint32_t body_incl_len;
     uint32_t body_consumed;
+    uint64_t time_us;
 } MarauderPcapLiveParser;
 
-typedef void (*MarauderPcapLiveFrameCallback)(void* ctx, const uint8_t* data, size_t len);
+typedef void (*MarauderPcapLiveFrameCallback)(
+    void* ctx, const uint8_t* data, size_t len, size_t frame_len, uint64_t time_us);
 
 /* Resets the parser to "expecting a fresh global header next" - call once when a new live
    capture starts (the same moment marauder_uart_reset_capture() is called), since the very first
@@ -104,7 +106,8 @@ typedef void (*MarauderPcapLiveFrameCallback)(void* ctx, const uint8_t* data, si
 void marauder_pcap_live_parser_reset(MarauderPcapLiveParser* parser);
 
 /* Feeds newly-arrived raw pcap-stream bytes (the same bytes being written verbatim to the .pcap
-   file, in order, with no gaps) through the parser. Calls on_frame(ctx, peeked_bytes, peeked_len)
+   file, in order, with no gaps) through the parser. Calls
+   on_frame(ctx, peeked_bytes, peeked_len, captured_frame_len, capture_time_us)
    exactly once per complete record found - possibly more than once per call, possibly zero times,
    and possibly split across several calls before a record actually completes. */
 void marauder_pcap_live_parser_feed(
@@ -122,4 +125,5 @@ typedef struct {
     uint8_t bssid[6];
     char ssid[16];
     uint32_t counts[MARAUDER_PCAP_FRAME_TYPE_COUNT];
+    bool has_m1_m2;
 } MarauderPcapLiveApStat;
