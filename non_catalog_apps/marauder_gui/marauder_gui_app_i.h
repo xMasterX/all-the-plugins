@@ -11,6 +11,7 @@
 #include "marauder_uart.h"
 #include "file/sequential_file.h"
 #include "marauder_gui_pcap_index.h"
+#include "marauder_gui_pcap_pair.h"
 #include "scenes/marauder_gui_scene.h"
 
 #define MARAUDER_AP_LIST_MAX          32
@@ -302,6 +303,8 @@ struct MarauderGuiApp {
        rows" scene; pcap_live_aps is the underlying per-AP counters that ap_list's row strings get
        reformatted from whenever pcap_live_dirty says something changed. */
     MarauderPcapLiveParser pcap_live_parser;
+    MarauderPcapPairTracker pcap_pair_tracker;
+    bool pcap_write_error;
     MarauderPcapLiveApStat pcap_live_aps[MARAUDER_AP_LIST_MAX];
     size_t pcap_live_ap_count;
     bool pcap_live_dirty;

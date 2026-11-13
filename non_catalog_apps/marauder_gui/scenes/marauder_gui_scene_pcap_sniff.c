@@ -7,11 +7,10 @@
    the wire, and writes those bytes straight into a sequential .pcap file on the Flipper SD card.
    The actual byte draining/writing/live-classifying happens in the shared app tick
    (marauder_gui.c) whenever app->is_writing_pcap is set; this scene opens/closes the file and
-   shows the results as a live per-AP dashboard: one row per AP, with a running count of how many
-   packets of each interesting type have been seen from it (e.g. "MyWiFi | 115 data | 5 auth | 90
-   probe |") - not a raw packet-by-packet feed, so the user can tell at a glance whether the
-   traffic they're after (a handshake, a specific AP's data, ...) is showing up without having to
-   read anything. Reuses ap_list/MarauderGuiViewWifiList like every other "list of rows" scene;
+   shows the results as a live per-AP dashboard. Counters depend on the capture mode;
+   in particular EAPOL and Beacon are separate categories, not part of Data/Auth/Probe.
+   PMKID mode also indicates a matched WPA2 M1/M2 candidate (not MIC verification).
+   Reuses ap_list/MarauderGuiViewWifiList like every other "list of rows" scene;
    rows are reformatted from app->pcap_live_aps (see marauder_gui_pcap_live_frame_callback in
    marauder_gui.c) whenever pcap_live_dirty says something changed, throttled to a few times a
    second so this doesn't reformat MARAUDER_AP_LIST_MAX strings on every single 100ms tick.
@@ -60,14 +59,44 @@ static void marauder_gui_scene_pcap_sniff_format_row(MarauderGuiApp* app, size_t
             ap->bssid[4],
             ap->bssid[5]);
     }
-    snprintf(
-        app->ap_list[i],
-        MARAUDER_LINE_MAX,
-        "%s | %lu data | %lu auth | %lu probe |",
-        name,
-        (unsigned long)ap->counts[MarauderPcapFrameData],
-        (unsigned long)ap->counts[MarauderPcapFrameAuth],
-        (unsigned long)ap->counts[MarauderPcapFrameProbe]);
+    if(strcmp(app->pcap_sniff_prefix, "sniffpmkid") == 0) {
+        snprintf(
+            app->ap_list[i], MARAUDER_LINE_MAX,
+            "%s | %lu EAPOL | %s | %lu beacon",
+            name, (unsigned long)ap->counts[MarauderPcapFrameEapol],
+            ap->has_m1_m2 ? "M1+M2" : marauder_gui_text(app, "Cift bekleniyor", "Waiting pair"),
+            (unsigned long)ap->counts[MarauderPcapFrameBeacon]);
+    } else if(strcmp(app->pcap_sniff_prefix, "sniffraw") == 0) {
+        /* Retain the general-purpose breakdown, with EAPOL explicitly separate. */
+        snprintf(
+            app->ap_list[i], MARAUDER_LINE_MAX,
+            "%s | EAPOL:%lu Data:%lu Auth:%lu Probe:%lu",
+            name, (unsigned long)ap->counts[MarauderPcapFrameEapol],
+            (unsigned long)ap->counts[MarauderPcapFrameData],
+            (unsigned long)ap->counts[MarauderPcapFrameAuth],
+            (unsigned long)ap->counts[MarauderPcapFrameProbe]);
+    } else {
+        MarauderPcapFrameType primary = MarauderPcapFrameData;
+        if(strcmp(app->pcap_sniff_prefix, "sniffbeacon") == 0 ||
+           strcmp(app->pcap_sniff_prefix, "wardrive") == 0 ||
+           strcmp(app->pcap_sniff_prefix, "sniffpwn") == 0) {
+            primary = MarauderPcapFrameBeacon;
+        } else if(strcmp(app->pcap_sniff_prefix, "sniffdeauth") == 0) {
+            primary = MarauderPcapFrameDeauth;
+        } else if(strcmp(app->pcap_sniff_prefix, "sniffprobe") == 0) {
+            primary = MarauderPcapFrameProbe;
+        }
+        uint32_t total = 0;
+        for(size_t type = 0; type < MARAUDER_PCAP_FRAME_TYPE_COUNT; type++) {
+            total += ap->counts[type];
+        }
+        snprintf(
+            app->ap_list[i], MARAUDER_LINE_MAX,
+            "%s | %lu %s | %lu EAPOL | %lu total",
+            name, (unsigned long)ap->counts[primary],
+            marauder_pcap_frame_type_label(primary, app->language == MarauderLanguageEnglish),
+            (unsigned long)ap->counts[MarauderPcapFrameEapol], (unsigned long)total);
+    }
 }
 
 static void marauder_gui_scene_pcap_sniff_refresh_rows(MarauderGuiApp* app) {
@@ -80,6 +109,13 @@ static void marauder_gui_scene_pcap_sniff_refresh_rows(MarauderGuiApp* app) {
 }
 
 static void marauder_gui_scene_pcap_sniff_tick(MarauderGuiApp* app) {
+    if(app->pcap_write_error) {
+        app->wifi_list_scanning_label = marauder_gui_text(app, "SD yazma hatasi", "SD WRITE ERROR");
+        app->ap_count = 0;
+        app->wifi_list_empty_label = marauder_gui_text(app, "Geri ile durdur", "Back to stop");
+        marauder_gui_wifi_list_redraw(app);
+        return;
+    }
     app->pcap_live_refresh_tick++;
     if(app->pcap_live_refresh_tick >= PCAP_LIVE_REFRESH_TICKS) {
         app->pcap_live_refresh_tick = 0;
@@ -113,6 +149,8 @@ void marauder_gui_scene_pcap_sniff_on_enter(void* context) {
     marauder_uart_reset_capture(app->uart);
     marauder_pcap_live_parser_reset(&app->pcap_live_parser);
     app->pcap_live_ap_count = 0;
+    memset(&app->pcap_pair_tracker, 0, sizeof(app->pcap_pair_tracker));
+    app->pcap_write_error = false;
     app->pcap_live_dirty = false;
     app->pcap_live_refresh_tick = 0;
 
