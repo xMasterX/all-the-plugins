@@ -2,14 +2,22 @@
 
 #include <stdint.h>
 
+#define SAVE_DATA_SIZE 16
+
 class Platform {
 public:
     static uint8_t GetInput(void);
     static uint8_t* GetScreenBuffer();
 
+    static void ReadSaveData(uint8_t* data);
+    static void WriteSaveData(const uint8_t* data);
+
     static void PlaySound(const uint16_t* audioPattern);
     static bool IsAudioEnabled();
     static void SetAudioEnabled(bool isEnabled);
+
+    static bool IsBacklightEnabled();
+    static void SetBacklightEnabled(bool isEnabled);
 
     static void FillScreen(uint8_t col);
     static void PutPixel(uint8_t x, uint8_t y, uint8_t colour);

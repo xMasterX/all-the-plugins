@@ -13,7 +13,7 @@ Apps contains changes needed to compile them on latest firmware, fixes has been 
 
 The Flipper and its community wouldn't be as rich as it is without your contributions and support. Thank you for all you have done.
 
-### Apps checked & updated at `4 Sep 22:53 GMT +3`
+### Apps checked & updated at `13 Nov 03:29 GMT +3`
 
 
 # Default pack
@@ -69,10 +69,12 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | **NFC Maker** plugin | ![NFC Badge] | [by WillyJL](https://github.com/Flipper-XFW/Xtreme-Firmware/tree/dev/applications/external/nfc_maker) | make tags with URLs, Wifi and other things | ![None Badge] |
 | MIFARE Classic Editor | ![NFC Badge] | [by TollyH](https://github.com/TollyH/flipper-apps/tree/main/mfc-editor) | edit dumps on flipper | [![Author Badge]](https://lab.flipper.net/apps/mfc_editor) |
 | **Flipper Share NFC** | ![NFC Badge] | [by lomalkin](https://github.com/lomalkin/flipper-zero-apps/blob/-/flipper_share_nfc) | | [![Author Badge]](https://lab.flipper.net/apps/flipper_share_nfc) |
+| **Super Sniffer Card** | ![NFC Badge] | [by @mishamyte](https://github.com/DarkFlippers/super-sniffer-card) | Read the MIFARE Classic authentications a Super Sniffer card captured from a reader and hand them to MFKey as nonces, and set the card's UID | ![None Badge] |
 | **RFID Fuzzer** | ![RFID Badge] | [by @gid9798](https://github.com/DarkFlippers/Multi_Fuzzer) | original by Ganapati & xMasterX | [![UFW Badge]](https://lab.flipper.net/apps/fuzzer_rfid) |
+| **Varta** | ![RFID Badge] | [by @mishamyte](https://github.com/DarkFlippers/varta) | Read, identify and emulate Варта-М (Varta-M) intercom keys, rebuild a working key from the number on the fob, and check what a reader asks for | ![None Badge] |
 | **iButton Fuzzer** | ![iButton Badge] | [by @gid9798](https://github.com/DarkFlippers/Multi_Fuzzer) | original by xMasterX | [![UFW Badge]](https://lab.flipper.net/apps/fuzzer_ibtn) |
 | **iButton Converter** | ![iButton Badge] | [by @Leptopt1los](https://github.com/Leptopt1los/ibutton_converter) | | [![UFW Badge]](https://lab.flipper.net/apps/ibutton_converter) |
-| **Dallas Tester** | ![iButton Badge] | [by @mishamyte](https://github.com/mishamyte/flipper-dallas-tester) | Read-only tPDL & family-code bench meter for iButton / Dallas keys & blanks (DS1990A, RW1990, TM1990 …) | ![None Badge] |
+| **Dallas Tester** | ![iButton Badge] | [by @mishamyte](https://github.com/DarkFlippers/flipper-dallas-tester) | Read-only tPDL & family-code bench meter for iButton / Dallas keys & blanks (DS1990A, RW1990, TM1990 …) | ![None Badge] |
 | IR Scope | ![IR Badge] | [by kallanreed](https://github.com/DarkFlippers/unleashed-firmware/pull/407) |  | [![UFW Badge]](https://lab.flipper.net/apps/ir_scope) |
 | **Flipper Share IR** | ![IR Badge] | [by lomalkin](https://github.com/lomalkin/flipper-zero-apps/blob/-/flipper_share_ir) | | [![Author Badge]](https://lab.flipper.net/apps/flipper_share_ir) |
 | MultiConverter plugin | ![Tools Badge] | [by theisolinearchip](https://github.com/theisolinearchip/flipperzero_stuff) |  | [![UFW Badge]](https://lab.flipper.net/apps/multi_converter) |
@@ -196,6 +198,9 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Oregon Trail | ![Games Badge] | [by jlaughter](https://github.com/jlaughter/flipper_oregon_trail) |  | ![None Badge] |
 | Flipcraft | ![Games Badge] | [by apfxtech](https://github.com/apfxtech/Flipcraft) |  | ![None Badge] |
 | Morse Trainer | ![Games Badge] | [by barismert98](https://github.com/barismert98/flipper-morse-trainer) |  | [![Author Badge]](https://lab.flipper.net/apps/morse_trainer) |
+| Stack Attack | ![Games Badge] | [by Negenii](https://github.com/Negenii/flipper-stack-attack) | remake of the legendary Siemens mobile game | [![Author Badge]](https://lab.flipper.net/apps/stack_attack) |
+| Bounce | ![Games Badge] | [by tomxposed](https://github.com/tomxposed/flipper-bounce) | Nokia-style Bounce - roll, jump, collect every ring and reach the exit | [![Author Badge]](https://lab.flipper.net/apps/bounce) |
+| Stack | ![Games Badge] | [by bergr22](https://github.com/bergr22/Stack) | stack the falling blocks into the tallest tower - vibration, sound & LED effects | [![Author Badge]](https://lab.flipper.net/apps/stack_game) |
 | Air Mouse | ![GPIO Badge] | [by ginkage](https://github.com/ginkage/FlippAirMouse/) |  | [![Author Badge]](https://lab.flipper.net/apps/air_mouse) |
 | Plantower PMSx003 sensor reader | ![GPIO Badge] | [by 3cky](https://github.com/3cky/flipperzero-airmon) |  | [![UFW Badge]](https://lab.flipper.net/apps/airmon) |
 | Bar code scanner emulator via COM port | ![GPIO Badge] | [by polarikus](https://github.com/polarikus/flipper-zero_bc_scanner_emulator) |  | [![Author Badge]](https://lab.flipper.net/apps/bc_scanner) |
@@ -218,6 +223,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Logic analyzer | ![GPIO Badge] | [by g3gg0](https://github.com/g3gg0/flipper-logic_analyzer) | [How to use](https://github.com/g3gg0/flipper-logic_analyzer#readme) | [![UFW Badge]](https://lab.flipper.net/apps/logic_analyzer) |
 | LORA Terminal | ![GPIO Badge] | [by aafksab](https://github.com/aafksab/LORA-Term) |  | ![None Badge] |
 | MagSpoof (WIP) | ![GPIO Badge] | [by zacharyweiss](https://github.com/zacharyweiss/magspoof_flipper) | Read mode [by hummusec](https://github.com/hummusec/magspoof_flipper) - + GPIO & Power fixes | [![Author Badge]](https://lab.flipper.net/apps/magspoof) |
+| Marauder GUI | ![GPIO Badge] | [by mel4mi](https://github.com/mel4mi/Marauder-GUI-Flipper) | Menu driven ESP32 Marauder companion - PCAP capture to SD card with a saved .pcap viewer, PMKID options, GPS, Recon and Tools menus | ![None Badge] |
 | Mx2125 Dual-Axis Accelerometer | ![GPIO Badge] | [by jamisonderek](https://github.com/jamisonderek/flipper-zero-tutorials/tree/main/gpio) |  | ![None Badge] |
 | MH-Z19 - CO2 sensor | ![GPIO Badge] | [by meshchaninov](https://github.com/meshchaninov/flipper-zero-mh-z19) |  | [![Author Badge]](https://lab.flipper.net/apps/mh_z19) |
 | NRF24 Batch Read/Send (WIP) | ![GPIO Badge] | [by vad7](https://github.com/vad7/nRF24-Batch) |  | ![None Badge] |
@@ -256,12 +262,19 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Video Game Module Console | ![GPIO Badge] | [by jblanked](https://github.com/jblanked/Video-Game-Module-Console) | Flash VGM with this firmware [Link](https://github.com/jblanked/Flipper-GameBoy) | [![Author Badge]](https://lab.flipper.net/apps/video_game_module_console) |
 | W5500 LAN Tester | ![GPIO Badge] | [by dok2d](https://github.com/dok2d/fz-W5500-lan-analyse) |  | [![Author Badge]](https://lab.flipper.net/apps/lan_tester) |
 | 24Cxx Programmer | ![GPIO Badge] | [by kamylwnb](https://github.com/kamylwnb/24cxxprog) |  | [![Author Badge]](https://lab.flipper.net/apps/24cxxprog) |
-| SSD1306 Test | ![GPIO Badge] | [by martinbogo](https://github.com/martinbogo/ssd1306_test) |  | ![None Badge] |
+| SSD1306 Test | ![GPIO Badge] | [by martinbogo](https://github.com/martinbogo/ssd1306_test) |  | [![Author Badge]](https://lab.flipper.net/apps/ssd1306_test) |
 | GPS Track | ![GPIO Badge] | [by xumbax](https://github.com/xumbax/GPS-Track) |  | ![None Badge] |
 | BME280 Vario | ![GPIO Badge] | [by xumbax](https://github.com/xumbax/flipper-vario) |  | ![None Badge] |
 | ESP32 Hotspot Arcade | ![GPIO Badge] | [by tarikbc](https://github.com/tarikbc/hotspot-arcade) |  | [![Author Badge]](https://lab.flipper.net/apps/hotspot_arcade) |
 | Fake Chip Detector | ![GPIO Badge] | [by hleserg](https://github.com/hleserg/flipper-fake-chip-detector) | Reads an I2C sensor's factory ID register to tell whether it really is the chip it was sold as | ![None Badge] |
 | I2C BMS Reader | ![GPIO Badge] | [by gazirov](https://github.com/gazirov/battery_reader) | SBS battery reader/service tool for TI BQ30/BQ40 controllers (via I2C) | ![None Badge] |
+| YRM100X PRO UHF RFID | ![GPIO Badge] | [by AlexeySmirnov74](https://github.com/AlexeySmirnov74/YRM100X_PRO) | UHF RFID read, write, clone, lock and kill toolkit for the YRM100X module | [![Author Badge]](https://lab.flipper.net/apps/yrm100x_pro) |
+| UHF Expansion | ![GPIO Badge] | [by MTools Tec](https://github.com/mtoolstec/fz-uhf-expansion) | UHF RFID inventory, tag memory read/write, EPC filtering, region/frequency presets (FCC, ETSI, CHN, custom) and saved-tag library for the MTools UHF expansion board | [![Author Badge]](https://lab.flipper.net/apps/uhf_expansion) |
+| Telink SWS | ![GPIO Badge] | [by ngxson](https://github.com/ngxson/flipper-telink) | SWire (SWS) master for Telink TLSR chips - probe, read RAM/registers and dump SPI flash over bitbang, driven from the `sws` CLI command | [![Author Badge]](https://lab.flipper.net/apps/telink_sws) |
+| Pwnpal | ![GPIO Badge] | [by mrq1911](https://github.com/mrq1911/pwnpal) | A full pwnagotchi on Flipper + ESP32 - befriends other pwnagotchis over pwngrid, captures WPA/WPA2 handshakes & PMKIDs, de-cloaks hidden SSIDs and GPS wardrives | ![None Badge] |
+| SH1106 Test | ![GPIO Badge] | [by gbhobbytech](https://github.com/gbhobbytech/ssd1306_test/tree/sh1106-development) | SH1106 128x64 I2C OLED diagnostics - clock/status board, test patterns, I2C scanner, FPS benchmark and software scrolling (a port of SSD1306 Test by martin bogomolni) | [![Author Badge]](https://lab.flipper.net/apps/gbhobbytech_sh1106_test) |
+| FN Tester | ![GPIO Badge] | [by polarikus](https://github.com/polarikus/flipper-zero_fn_tester) | Bench tester for fiscal drives (FN/FN-M) of Russian cash registers over UART - identity, fiscal status, lifetime counters and an on-screen wiring diagram | [![Author Badge]](https://lab.flipper.net/apps/fn_test) |
+| SSH Runner | ![GPIO Badge] | [by SeanChangX](https://github.com/SeanChangX/flipper-ssh-runner) | SSH client over LAN or 2.4GHz WiFi through an ESP32-S3 + W5500 add-on board - saved hosts, key/password auth, host-key pinning and SD-card scripts | ![None Badge] |
 | IR Remote | ![IR Badge] | [by Hong5489](https://github.com/Hong5489/ir_remote) | improvements [by friebel](https://github.com/RogueMaster/flipperzero-firmware-wPlugins/pull/535) - Hold Option, RAW support [by d4ve10](https://github.com/d4ve10/ir_remote/tree/infrared_hold_option) | ![None Badge] |
 | IR Intervalometer | ![IR Badge] | [by Nitepone](https://github.com/Nitepone/flipper-intervalometer) |  | [![UFW Badge]](https://lab.flipper.net/apps/sony_intervalometer) |
 | IR Xbox Controller | ![IR Badge] | [by gebeto](https://github.com/gebeto/flipper-xbox-controller) |  | [![Author Badge]](https://lab.flipper.net/apps/xbox_controller) |
@@ -315,6 +328,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Flipper ATM | ![Media Badge] | [by apfxtech](https://github.com/apfxtech/FlipperATM) |  | ![None Badge] |
 | Morse Master | ![Media Badge] | [by w84death](https://github.com/w84death/morse-master) |  | [![Author Badge]](https://lab.flipper.net/apps/morse_master) |
 | MP3 Player | ![Media Badge] | [by coolshrimp](https://github.com/coolshrimp/flipperzero-mp3-player) |  | [![Author Badge]](https://lab.flipper.net/apps/mp3_player) |
+| AI Composer | ![Media Badge] | [by TheProductAgency](https://github.com/TheProductAgency/flipper-ai-composer) | A tiny neural net that writes new melodies on-device - eight styles with blending, live piano roll, saves as .fmf | [![Author Badge]](https://lab.flipper.net/apps/ai_composer) |
 | Mifare Fuzzer | ![NFC Badge] | [by spheeere98](https://github.com/spheeere98/mifare_fuzzer) | Fixed crash on exit. / Update!: Ported to new NFC API [by @Sil333033](https://github.com/Flipper-XFW/Xtreme-Firmware/commit/ac5744328a28b73fb5022ce7baaa4332a824a739) | [![UFW Badge]](https://lab.flipper.net/apps/mifare_fuzzer) |
 | Seader | ![NFC Badge] | [by bettse](https://github.com/bettse/seader/tree/main) | `Interface with a SAM from the Flipper Zero over UART` | [![Author Badge]](https://lab.flipper.net/apps/seader) |
 | VB Lab Migration Assistant | ![NFC Badge] | [by GMMan (cyanic)](https://github.com/GMMan/flipperzero-vb-migrate) |  | [![Author Badge]](https://lab.flipper.net/apps/vb_migrate) |
@@ -340,9 +354,10 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Xiaomi Filter Reset | ![NFC Badge] | [by khmm12](https://github.com/khmm12/flipper-xiaomi-filter-reset) |  | [![Author Badge]](https://lab.flipper.net/apps/xiaomi_filter_reset) |
 | NFC Canary | ![NFC Badge] | [by antitree](https://github.com/antitree/nfc_canary) | Passive NFC skim detector - alarms when a reader interrogates the device | ![None Badge] |
 | Specter | ![NFC Badge] | [by at0m-b0mb](https://github.com/at0m-b0mb/Specter-FlipperZero) |  | [![Author Badge]](https://lab.flipper.net/apps/specter) |
+| CFS Tag Writer+ | ![NFC Badge] | [by BaniMun](https://github.com/BaniMun/cfs-tag-writer) | Read, write, clone and erase CFS filament spool NFC tags - brand/material/colour/weight picker, saved-tag library and reusable spool templates | [![Author Badge]](https://lab.flipper.net/apps/cfs_tag_writer_plus) |
 | EM4100 universal keys generator (for RFID Fuzzer) | ![RFID Badge] | [by Milk-Cool](https://github.com/Milk-Cool/fz-em4100-generator) |  | [![Author Badge]](https://lab.flipper.net/apps/key_generator) |
 | (Q)M100 UHF RFID | ![RFID Badge] | [by frux-c](https://github.com/frux-c/uhf_rfid) | WIP -> (+Added icon by @xMasterX) | [![UFW Badge]](https://lab.flipper.net/apps/uhf_rfid) |
-| T5577 Multiwriter | ![RFID Badge] | [by Leptopt1los](https://github.com/Leptopt1los/t5577_multiwriter) | | [![UFW Badge]](https://lab.flipper.net/apps/t5577_multiwriter) |
+| T5577 MultiWriter | ![RFID Badge] | [by Leptopt1los](https://github.com/Leptopt1los/t5577_multiwriter) | Verified writes, tag check, reader test & password [by mishamyte](https://github.com/mishamyte) | [![UFW Badge]](https://lab.flipper.net/apps/t5577_multiwriter) |
 | T5577 Raw Writer | ![RFID Badge] | [by zinongli](https://github.com/zinongli/T5577_Raw_Writer) | | [![Author Badge]](https://lab.flipper.net/apps/t5577_writer) |
 | FDX-B Maker | ![RFID Badge] | [by snowsign](https://github.com/snowsign/fdxb-maker) | | [![Author Badge]](https://lab.flipper.net/apps/fdxb_maker) |
 | RFID Metal Detector | ![RFID Badge] | [by hnsvrdmn](https://github.com/hnsvrdmn/flipper-rfid-metal-detector)  |  | ![None Badge] |
@@ -364,6 +379,7 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Sub-GHz RAW Edit | ![SubGhz Badge] | [by Lechnio](https://github.com/Lechnio/SubGHz-RAW-Edit) |  | [![Author Badge]](https://lab.flipper.net/apps/subghz_raw_edit) |
 | FM TX | ![SubGhz Badge] | [by yo3gnd](https://github.com/yo3gnd/fmtx) | Experimental MP3 audio over CC1101 FM | [![Author Badge]](https://lab.flipper.net/apps/fmtx) |
 | TPMS Bridge | ![SubGhz Badge] | [by VishovVladimir](https://github.com/VishovVladimir/flipper-zero-tpms) | Reads TPMS tyre-pressure sensors | [![Author Badge]](https://lab.flipper.net/apps/tpms_bridge) |
+| Telecrane Control | ![SubGhz Badge] | [by nmatt0](https://github.com/nmatt0/telecrane-contol) | Telecrane-style 2FSK crane remotes - saved remotes, hold-to-send buttons and a channel sniffer. (+ ext CC1101 module support, memory fixes so it loads and sniffs, validated serial entry by @xMasterX) | ![None Badge] |
 | Analog Clock | ![Tools Badge] | [by scrolltex](https://github.com/scrolltex/flipper_analog_clock) |  | [![UFW Badge]](https://lab.flipper.net/apps/analog_clock) |
 | Brainfuck interpreter | ![Tools Badge] | [by nymda](https://github.com/nymda/FlipperZeroBrainfuck) |  | [![UFW Badge]](https://lab.flipper.net/apps/brainfuck) |
 | Ceasar Cipher | ![Tools Badge] | [by panki27](https://github.com/panki27/caesar-cipher) |  | [![UFW Badge]](https://lab.flipper.net/apps/caesar_cipher) |
@@ -403,6 +419,8 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Morse Flipper | ![Tools Badge] | [by yo3gnd](https://github.com/yo3gnd/morse-flipper/tree/market-flavour) |  | [![Author Badge]](https://lab.flipper.net/apps/morse_flipper) |
 | LetterBeacon | ![Tools Badge] | [by nmrr](https://github.com/nmrr/flipperzero-rfidbeacon)  | `A letter/number Morse beacon on 125 kHz / 13.56 MHz` | ![None Badge] |
 | Net Calculator | ![Tools Badge] | [by WolfRorDev](https://github.com/WolfRorDev/Net-Calculator-for-Flipper-Zero) | IP subnet / network calculator | [![Author Badge]](https://lab.flipper.net/apps/net_calculator) |
+| Pulse BPM | ![Tools Badge] | [by alaviation](https://github.com/alaviation/flipper-pulse) | tap along a pulse to measure heart rate, locks the reading after 20s | [![Author Badge]](https://lab.flipper.net/apps/pulse_bpm) |
+| Telemeter | ![Tools Badge] | [by alaviation](https://github.com/alaviation/flipper-telemeter) | distance to a storm or a cannon from the flash-to-bang delay | [![Author Badge]](https://lab.flipper.net/apps/telemetro) |
 | USB HID Autofire | ![USB Badge] | [by pbek](https://github.com/pbek/usb_hid_autofire) |  | [![UFW Badge]](https://lab.flipper.net/apps/usb_hid_autofire) |
 | USB Consumer Control | ![USB Badge] | [by WithSecureLabs](https://github.com/WithSecureLabs/usb-consumer-control/tree/main) |  | ![None Badge] |
 | HID File Transfer | ![USB Badge] | [by Kavakuo](https://github.com/Kavakuo/HID-File-Transfer) | Get client app in [original repo](https://github.com/Kavakuo/HID-File-Transfer) | ![None Badge] |
@@ -410,6 +428,8 @@ The Flipper and its community wouldn't be as rich as it is without your contribu
 | Lego Dimensions ToyPad Emu | ![USB Badge] | [by SegerEnd](https://github.com/SegerEnd/Flipper-Zero-LD-Toypad-Emulator) |  | [![Author Badge]](https://lab.flipper.net/apps/ldtoypad) |
 | CCID | ![USB Badge] | [by kidbomb](https://github.com/kidbomb/flipper-ccid-app) |  | [![Author Badge]](https://lab.flipper.net/apps/ccid_test) |
 | Better Mouse | ![USB Badge] | [by Timon-sys](https://github.com/Timon-sys/Bettermouse) | USB mouse remote with acceleration, diagonals, scroll & momentum | [![Author Badge]](https://lab.flipper.net/apps/bettermouse) |
+| USB Floppy | ![USB Badge] | [by piersroberts](https://github.com/piersroberts/flipperfloppy) | Emulates a USB floppy drive (UFI) from a 720K or 1.44M disk image on the SD card | ![None Badge] |
+| USB CD-ROM | ![USB Badge] | [by piersroberts](https://github.com/piersroberts/flippercd) | Emulates a USB CD/DVD-ROM drive from .iso images on the SD card | ![None Badge] |
 
 
 #### Catalog links checked at `17 Feb 2026 00:01 GMT +3`

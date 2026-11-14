@@ -5,7 +5,6 @@ App(
     entry_point="app_main",
     requires=["gui"],
     stack_size=8*1024,
-    order=50,
     fap_description="Ultimate Tic-Tac-Toe: play on a big board, where each square is a Tic-Tac-Toe board itself!",
     fap_category="Games",
     fap_version="1.1",

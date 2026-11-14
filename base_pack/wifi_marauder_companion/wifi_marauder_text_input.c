@@ -304,9 +304,18 @@ static void wifi_text_input_view_draw_callback(Canvas* canvas, void* _model) {
         needed_string_width -= 4;
         size_t len = strlen(str);
         while(len && canvas_string_width(canvas, str) > needed_string_width) {
-            str[len--] = '\0';
+            str[--len] = '\0';
         }
-        strcat(str, "...");
+        /* Mark the cut by overwriting the last three characters rather than strcat-ing "...".
+           buf is only text_buffer_size + 1 bytes and the inserted '|' cursor above can already
+           fill it exactly, so appending would run 3 bytes past the end - which is why upstream
+           commented the strcat out ("TODO - find replacement"). This is that replacement:
+           in-place, bounded, and needing no firmware-API helper. */
+        if(len >= 3) {
+            str[len - 3] = '.';
+            str[len - 2] = '.';
+            str[len - 1] = '.';
+        }
     }
 
     canvas_draw_str(canvas, start_pos, 22, str);

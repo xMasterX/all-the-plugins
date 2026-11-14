@@ -20,12 +20,22 @@ typedef enum {
     SurveyVerdictClean = 0, // nothing crossed the noise floor
     SurveyVerdictTrace, // brief or faint hits - worth a second pass
     SurveyVerdictActive, // a reader was up and emitting for real
+    SurveyVerdictTooShort, // not enough time to be allowed to say "clean"
 } SurveyVerdict;
+
+/* A survey shorter than this may not return CLEAN. Presence is proof, absence
+ * is not: finding something in one second is a real finding, but finding
+ * nothing in one second is not evidence about a room. Until v3.0 a survey
+ * always ran its full 30 s / 60 s / 2 min, so CLEAN always had at least half a
+ * minute behind it; letting OK end a run early made a one-second CLEAN
+ * reachable, and one duly turned up in a hardware screenshot. */
+#define SPECTER_SURVEY_MIN_CLEAN_MS 10000u
 
 typedef struct {
     uint32_t elapsed_ms; // survey wall time
     uint32_t in_field_ms; // of which, carrier present
-    uint8_t peak; // 0..100 strongest reading
+    uint8_t peak; // 0..100 strongest reading, as the user's meter showed it
+    uint8_t peak_ref; // the same peak on the canonical scale - judged against
     uint8_t average; // 0..100 mean reading
     uint32_t contacts; // distinct appearances
 } SurveySummary;

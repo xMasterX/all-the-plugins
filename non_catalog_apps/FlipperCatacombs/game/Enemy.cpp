@@ -12,7 +12,7 @@
 
 Enemy EnemyManager::enemies[maxEnemies];
 
-const EnemyArchetype Enemy::archetypes[(int)EnemyType::NumEnemyTypes] PROGMEM = {
+const EnemyArchetype Enemy::archetypes[(int)EnemyType::NumEnemyTypes] = {
     {
         // Skeleton
         skeletonSpriteData,

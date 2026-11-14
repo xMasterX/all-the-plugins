@@ -24,6 +24,7 @@
 #define SUBGHZ_LAST_SETTING_FIELD_AUTOSAVE          "Autosave"
 #define SUBGHZ_LAST_SETTING_FIELD_HOPPING_THRESHOLD "HoppingThreshold"
 #define SUBGHZ_LAST_SETTING_FIELD_TX_POWER          "TXPower"
+#define SUBGHZ_LAST_SETTING_FIELD_GPS_PINS          "GpsPins"
 
 SubGhzLastSettings* subghz_wardriving_last_settings_alloc(void) {
     SubGhzLastSettings* instance = malloc(sizeof(SubGhzLastSettings));
@@ -48,6 +49,7 @@ void subghz_wardriving_last_settings_load(SubGhzLastSettings* instance, size_t p
     instance->hopping_threshold = -90.0f;
     instance->gps_protocol = SubGhzGpsProtocolOff;
     instance->gps_baudrate = 0;
+    instance->gps_pins = SubGhzGpsPinsUsart;
 
     Storage* storage = furi_record_open(RECORD_STORAGE);
     FlipperFormat* fff_data_file = flipper_format_file_alloc(storage);
@@ -163,6 +165,10 @@ void subghz_wardriving_last_settings_load(SubGhzLastSettings* instance, size_t p
                 instance->gps_protocol = (instance->gps_baudrate != 0) ? SubGhzGpsProtocolNmea :
                                                                          SubGhzGpsProtocolOff;
             }
+            if(!flipper_format_read_uint32(
+                   fff_data_file, SUBGHZ_LAST_SETTING_FIELD_GPS_PINS, &instance->gps_pins, 1)) {
+                flipper_format_rewind(fff_data_file);
+            }
         } while(0);
     } else {
         FURI_LOG_E(TAG, "Error open file %s", SUBGHZ_LAST_SETTINGS_PATH);
@@ -176,6 +182,10 @@ void subghz_wardriving_last_settings_load(SubGhzLastSettings* instance, size_t p
 
     if(instance->frequency == 0 || !furi_hal_subghz_is_frequency_valid(instance->frequency)) {
         instance->frequency = SUBGHZ_LAST_SETTING_DEFAULT_FREQUENCY;
+    }
+
+    if(instance->gps_pins >= SubGhzGpsPinsCount) {
+        instance->gps_pins = SubGhzGpsPinsUsart;
     }
 
     if(instance->preset_index > (uint32_t)preset_count - 1) {
@@ -275,6 +285,10 @@ bool subghz_wardriving_last_settings_save(SubGhzLastSettings* instance) {
         // Appended last to keep older config files compatible.
         if(!flipper_format_write_uint32(
                file, SUBGHZ_LAST_SETTING_FIELD_GPS_PROTOCOL, &instance->gps_protocol, 1)) {
+            break;
+        }
+        if(!flipper_format_write_uint32(
+               file, SUBGHZ_LAST_SETTING_FIELD_GPS_PINS, &instance->gps_pins, 1)) {
             break;
         }
         saved = true;

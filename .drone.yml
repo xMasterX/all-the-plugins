@@ -6,20 +6,41 @@ platform:
   os: linux
   arch: amd64
 
+clone:
+  depth: 1
+
 steps:
   - name: "Update submodules"
     image: alpine/git
     commands: 
       - git submodule sync
-      - git -c protocol.version=2 submodule update --init --force --recursive --jobs 4
+      - git -c protocol.version=2 submodule update --init --force --recursive --depth 1 --jobs 4
       - git submodule foreach git config --local gc.auto 0
       - git log -1 --format='%H'
+
+  - name: "Provide ccache"
+    image: debian:bookworm-slim
+    volumes:
+      - name: fbt-toolchain
+        path: /fbt
+    commands:
+      - if [ -x /fbt/bin/ccache ]; then /fbt/bin/ccache -V | head -1; exit 0; fi
+      - apt-get update -qq
+      - apt-get install -y -qq --no-install-recommends ca-certificates wget xz-utils
+      - wget -qO /tmp/ccache.tar.xz https://github.com/ccache/ccache/releases/download/v4.10.2/ccache-4.10.2-linux-x86_64.tar.xz
+      - tar xJf /tmp/ccache.tar.xz -C /tmp
+      - mkdir -p /fbt/bin
+      - cp /tmp/ccache-4.10.2-linux-x86_64/ccache /fbt/bin/ccache
+      - chmod 755 /fbt/bin/ccache
+      - /fbt/bin/ccache -V | head -1
 
   - name: "Build base pack"
     image: hfdj/fztools
     pull: never
     commands:
-      - git clone --branch dev https://github.com/DarkFlippers/unleashed-firmware.git
+      - echo "T $(date -u +%T) clone start"
+      - git clone --depth 1 --branch dev --recurse-submodules --shallow-submodules --jobs 8 https://github.com/DarkFlippers/unleashed-firmware.git
+      - echo "T $(date -u +%T) clone done"
       - rm -rf unleashed-firmware/build/
       - rm -rf unleashed-firmware/dist/
       - rm -rf unleashed-firmware/.sconsign.dblite
@@ -28,11 +49,21 @@ steps:
       - ./parse_api_ver.sh
       - cd unleashed-firmware
       - export FBT_GIT_SUBMODULE_SHALLOW=1
-      - ./fbt COMPACT=1 DEBUG=0 updater_package
+      - mkdir -p /ccache "$HOME/.config/ccache" "$HOME/.ccache"
+      - printf 'cache_dir = /ccache\nmax_size = 10G\ncompression = true\n' | tee /ccache/ccache.conf "$HOME/.config/ccache/ccache.conf" > "$HOME/.ccache/ccache.conf"
+      - if /fbt/bin/ccache -V >/dev/null 2>&1; then export PATH=/fbt/bin:$PATH; ccache -V | head -1; else echo "WARNING ccache unusable - building without cache"; fi
+      - echo "cores - nproc $(nproc) / cgroup $(cat /sys/fs/cgroup/cpu.max 2>/dev/null || echo n/a)"
+      - ccache -p 2>/dev/null | grep -E "cache_dir|max_size" || true
+      - echo "--- ccache stats BEFORE ---"; ccache -s 2>/dev/null | head -6 || true
+      - echo "T $(date -u +%T) fbt start"
+      - rc=0; ./fbt -j "$(nproc)" COMPACT=1 DEBUG=0 updater_package > /tmp/fbt.log 2>&1 || rc=$?; grep -E "warning:|error:|Error [0-9]|\*\*\*|FAILED|StopError|undefined reference" /tmp/fbt.log || echo "no warnings or errors"; echo "fbt log lines $(wc -l < /tmp/fbt.log)"; [ $rc -eq 0 ] || { echo "BUILD FAILED"; tail -80 /tmp/fbt.log; exit $rc; }
+      - echo "T $(date -u +%T) fbt done"
+      - echo "--- ccache stats AFTER ---"; ccache -s 2>/dev/null | head -14 || true
+      - du -sh /ccache 2>/dev/null || true
       - mkdir artifacts-base
       - mkdir artifacts-totp
       - mkdir dist/f7-C/f7-update-local/resources
-      - toolchain/current/bin/python3 scripts/hs.py decompress dist/f7-C/f7-update-local/resources.ths -o dist/f7-C/f7-update-local/resources.tar
+      - /fbt/toolchain/current/bin/python3 scripts/hs.py decompress dist/f7-C/f7-update-local/resources.ths -o dist/f7-C/f7-update-local/resources.tar
       - tar xf dist/f7-C/f7-update-local/resources.tar -C dist/f7-C/f7-update-local/resources
       - mv dist/f7-C/f7-update-local/resources/apps/* artifacts-base/
       - mv dist/f7-C/f7-update-local/resources/apps_data/totp/* artifacts-totp/
@@ -44,7 +75,12 @@ steps:
       - rm -f artifacts-base/NFC/nfc.fap
       - rm -f artifacts-base/NFC/mfkey.fap
       - rm -f artifacts-base/RFID/lfrfid.fap
+      - rm -f artifacts-base/RFID/t5577.fap
       - rm -f artifacts-base/Sub-GHz/subghz_remote.fap
+      - rm -f artifacts-base/Sub-GHz/secplus_pin.fap
+      - rm -f artifacts-base/Sub-GHz/nice_o_code.fap
+      - rm -f artifacts-base/Sub-GHz/seed_capturer.fap
+      - rm -f artifacts-base/Sub-GHz/remote_analyzer.fap
       - rm -f artifacts-base/Tools/clock.fap
       - rm -f artifacts-base/USB/bad_usb.fap
       - rm -f artifacts-base/USB/u2f.fap
@@ -61,26 +97,42 @@ steps:
       - mv unleashed-firmware/artifacts-totp/* base_pack_build/apps_data/totp/
       - sh categorize_apps.sh base_pack_build/artifacts-base
     environment:
+      FBT_TOOLCHAIN_PATH: /fbt
+      FBT_NO_SYNC: 1
+      CCACHE_DIR: /ccache
       FBT_TOOLS_CUSTOM_LINK:
         from_secret: fbt_link
+    volumes:
+      - name: ccache
+        path: /ccache
+      - name: fbt-toolchain
+        path: /fbt
 
   - name: "Build extra apps"
     image: hfdj/fztools
     pull: never
     commands:
-      - rm -rf unleashed-firmware/build/
       - rm -rf unleashed-firmware/dist/
-      - rm -rf unleashed-firmware/.sconsign.dblite
       - rm -rf unleashed-firmware/applications_user/*
       - mv apps_source_code/* unleashed-firmware/applications_user/
       - mv non_catalog_apps/* unleashed-firmware/applications_user/
       - sh strip_name_tags.sh unleashed-firmware/applications_user
       - cd unleashed-firmware
       - export FBT_GIT_SUBMODULE_SHALLOW=1
-      - ./fbt COMPACT=1 DEBUG=0 updater_package
+      - mkdir -p /ccache "$HOME/.config/ccache" "$HOME/.ccache"
+      - printf 'cache_dir = /ccache\nmax_size = 10G\ncompression = true\n' | tee /ccache/ccache.conf "$HOME/.config/ccache/ccache.conf" > "$HOME/.ccache/ccache.conf"
+      - if /fbt/bin/ccache -V >/dev/null 2>&1; then export PATH=/fbt/bin:$PATH; ccache -V | head -1; else echo "WARNING ccache unusable - building without cache"; fi
+      - echo "cores - nproc $(nproc) / cgroup $(cat /sys/fs/cgroup/cpu.max 2>/dev/null || echo n/a)"
+      - ccache -p 2>/dev/null | grep -E "cache_dir|max_size" || true
+      - echo "--- ccache stats BEFORE ---"; ccache -s 2>/dev/null | head -6 || true
+      - echo "T $(date -u +%T) fbt start"
+      - rc=0; ./fbt -j "$(nproc)" COMPACT=1 DEBUG=0 updater_package > /tmp/fbt.log 2>&1 || rc=$?; grep -E "warning:|error:|Error [0-9]|\*\*\*|FAILED|StopError|undefined reference" /tmp/fbt.log || echo "no warnings or errors"; echo "fbt log lines $(wc -l < /tmp/fbt.log)"; [ $rc -eq 0 ] || { echo "BUILD FAILED"; tail -80 /tmp/fbt.log; exit $rc; }
+      - echo "T $(date -u +%T) fbt done"
+      - echo "--- ccache stats AFTER ---"; ccache -s 2>/dev/null | head -14 || true
+      - du -sh /ccache 2>/dev/null || true
       - mkdir artifacts-extra
       - mkdir dist/f7-C/f7-update-local/resources
-      - toolchain/current/bin/python3 scripts/hs.py decompress dist/f7-C/f7-update-local/resources.ths -o dist/f7-C/f7-update-local/resources.tar
+      - /fbt/toolchain/current/bin/python3 scripts/hs.py decompress dist/f7-C/f7-update-local/resources.ths -o dist/f7-C/f7-update-local/resources.tar
       - tar xf dist/f7-C/f7-update-local/resources.tar -C dist/f7-C/f7-update-local/resources
       - mv dist/f7-C/f7-update-local/resources/apps/* artifacts-extra/
       - ls -laS artifacts-extra
@@ -90,7 +142,12 @@ steps:
       - rm -f artifacts-extra/NFC/nfc.fap
       - rm -f artifacts-extra/NFC/mfkey.fap
       - rm -f artifacts-extra/RFID/lfrfid.fap
+      - rm -f artifacts-extra/RFID/t5577.fap
       - rm -f artifacts-extra/Sub-GHz/subghz_remote.fap
+      - rm -f artifacts-extra/Sub-GHz/secplus_pin.fap
+      - rm -f artifacts-extra/Sub-GHz/nice_o_code.fap
+      - rm -f artifacts-extra/Sub-GHz/seed_capturer.fap
+      - rm -f artifacts-extra/Sub-GHz/remote_analyzer.fap
       - rm -f artifacts-extra/Tools/clock.fap
       - rm -f artifacts-extra/USB/bad_usb.fap
       - rm -f artifacts-extra/USB/u2f.fap
@@ -105,8 +162,16 @@ steps:
       - mv unleashed-firmware/artifacts-extra/ extra_pack_build
       - sh categorize_apps.sh extra_pack_build/artifacts-extra
     environment:
+      FBT_TOOLCHAIN_PATH: /fbt
+      FBT_NO_SYNC: 1
+      CCACHE_DIR: /ccache
       FBT_TOOLS_CUSTOM_LINK:
         from_secret: fbt_link
+    volumes:
+      - name: ccache
+        path: /ccache
+      - name: fbt-toolchain
+        path: /fbt
 
   - name: "Build apps index"
     image: python:3-alpine
@@ -153,6 +218,14 @@ steps:
         - md5
         - sha1
         - crc32
+
+volumes:
+  - name: ccache
+    host:
+      path: /var/lib/drone/cache/unleashed-ccache
+  - name: fbt-toolchain
+    host:
+      path: /var/lib/drone/cache/fbt-toolchain
 
 trigger:
   event:

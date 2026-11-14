@@ -1,0 +1,18 @@
+App(
+    appid="usb_floppy",
+    name="USB Floppy",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="usb_floppy_app",
+    requires=[
+        "gui",
+        "dialogs",
+    ],
+    stack_size=2 * 1024,
+    fap_description="Emulates a USB floppy drive (UFI) from a 720K or 1.44M disk image",
+    fap_version="0.1.3",
+    fap_icon="assets/floppy_10px.png",
+    fap_icon_assets="assets",
+    fap_author="piersroberts",
+    fap_weburl="https://github.com/piersroberts/flipperfloppy",
+    fap_category="USB",
+)

@@ -1,45 +1,7 @@
 #pragma once
-#include <cstdint>
-#include <cstring>
 
-static inline const void* pgm_read_ptr_safe(const void* p) {
-    const void* out;
-    std::memcpy(&out, p, sizeof(out));
-    return out;
-}
-
-// Platform detection
-#if defined(_WIN32)
 #include <stdint.h>
 #include <string.h>
-#define PROGMEM
-#define PSTR(s)               (s)
-#define pgm_read_byte(x)      (*((uint8_t*)(x)))
-#define pgm_read_word(x)      (*((uint16_t*)(x)))
-#define pgm_read_ptr(x)       (*((uintptr_t*)(x)))
-#define strlen_P(x)           strlen(x)
-#define strcpy_P(dst, src)    strcpy(dst, src)
-#define memcpy_P(dst, src, n) memcpy(dst, src, n)
-#elif defined(__AVR__)
-// Arduino/Arduboy platform
-#include <avr/pgmspace.h>
-#else
-// Flipper Zero and other ARM platforms
-#include <stdint.h>
-#include <string.h>
-#define PROGMEM
-#define PSTR(s)               (s)
-#define pgm_read_byte(x)      (*((const uint8_t*)(x)))
-#define pgm_read_word(x)      (*((const uint16_t*)(x)))
-#define pgm_read_dword(x)     (*((const uint32_t*)(x)))
-#define strlen_P(x)           strlen(x)
-#define strcpy_P(dst, src)    strcpy(dst, src)
-#define strcmp_P(s1, s2)      strcmp(s1, s2)
-#define strncmp_P(s1, s2, n)  strncmp(s1, s2, n)
-#define memcpy_P(dst, src, n) memcpy(dst, src, n)
-#define sprintf_P             sprintf
-#define snprintf_P            snprintf
-#endif
 
 // Display configuration
 #define DISPLAY_WIDTH  128

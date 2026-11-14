@@ -2,18 +2,6 @@
 
 #include <string.h>
 
-const char FF_BIT[] = "Bit";
-const char FF_KEY[] = "Key";
-const char FF_SERIAL[] = "Serial";
-const char FF_BTN[] = "Btn";
-const char FF_CNT[] = "Cnt";
-const char FF_REPEAT[] = "Repeat";
-const char FF_PROTOCOL[] = "Protocol";
-const char FF_PRESET[] = "Preset";
-const char FF_FREQUENCY[] = "Frequency";
-const char FF_MANUFACTURE[] = "Manufacture";
-const char FF_TYPE[] = "Type";
-
 uint8_t pp_reverse_bits8(uint8_t value) {
     value = (uint8_t)(((value >> 4U) | (value << 4U)) & 0xFFU);
     value = (uint8_t)(((value & 0x33U) << 2U) | ((value >> 2U) & 0x33U));
@@ -196,17 +184,17 @@ SubGhzProtocolStatus pp_serialize_fields(
     uint32_t type) {
     if(!ff) return SubGhzProtocolStatusError;
 
-    if((field_mask & PP_FIELD_SERIAL) && !flipper_format_write_uint32(ff, FF_SERIAL, &serial, 1)) {
-        return SubGhzProtocolStatusErrorParserOthers;
+    if(field_mask & PP_FIELD_SERIAL) {
+        pp_flipper_update_or_insert_u32(ff, FF_SERIAL, serial);
     }
-    if((field_mask & PP_FIELD_BTN) && !flipper_format_write_uint32(ff, FF_BTN, &btn, 1)) {
-        return SubGhzProtocolStatusErrorParserOthers;
+    if(field_mask & PP_FIELD_BTN) {
+        pp_flipper_update_or_insert_u32(ff, FF_BTN, btn);
     }
-    if((field_mask & PP_FIELD_CNT) && !flipper_format_write_uint32(ff, FF_CNT, &cnt, 1)) {
-        return SubGhzProtocolStatusErrorParserOthers;
+    if(field_mask & PP_FIELD_CNT) {
+        pp_flipper_update_or_insert_u32(ff, FF_CNT, cnt);
     }
-    if((field_mask & PP_FIELD_TYPE) && !flipper_format_write_uint32(ff, FF_TYPE, &type, 1)) {
-        return SubGhzProtocolStatusErrorParserOthers;
+    if(field_mask & PP_FIELD_TYPE) {
+        pp_flipper_update_or_insert_u32(ff, FF_TYPE, type);
     }
     return SubGhzProtocolStatusOk;
 }
@@ -221,8 +209,9 @@ SubGhzProtocolStatus
         return SubGhzProtocolStatusError;
     }
     furi_string_printf(display, "%s - %s", protocol_name, suffix);
+    flipper_format_rewind(ff);
     SubGhzProtocolStatus status =
-        flipper_format_write_string_cstr(ff, "Disp", furi_string_get_cstr(display)) ?
+        flipper_format_insert_or_update_string_cstr(ff, "Disp", furi_string_get_cstr(display)) ?
             SubGhzProtocolStatusOk :
             SubGhzProtocolStatusErrorParserOthers;
     furi_string_free(display);
@@ -260,7 +249,6 @@ size_t
 #if PROTOPIRATE_WITH_ENCODER
 
 void pp_encoder_free(void* context) {
-    furi_check(context);
     ProtoPirateEncoderHeader* hdr = context;
     hdr->encoder.upload = NULL;
     hdr->encoder.size_upload = 0;
@@ -268,14 +256,12 @@ void pp_encoder_free(void* context) {
 }
 
 void pp_encoder_stop(void* context) {
-    furi_check(context);
     ProtoPirateEncoderHeader* hdr = context;
     hdr->encoder.is_running = false;
     hdr->encoder.front = 0;
 }
 
 LevelDuration pp_encoder_yield(void* context) {
-    furi_check(context);
     ProtoPirateEncoderHeader* hdr = context;
     if(hdr->encoder.repeat == 0 || !hdr->encoder.is_running || hdr->encoder.size_upload == 0) {
         hdr->encoder.is_running = false;
@@ -294,7 +280,6 @@ static LevelDuration* pp_shared_upload_buf = NULL;
 LevelDuration* pp_shared_upload_buffer(void) {
     if(pp_shared_upload_buf == NULL) {
         pp_shared_upload_buf = malloc(PP_SHARED_UPLOAD_CAPACITY * sizeof(LevelDuration));
-        furi_check(pp_shared_upload_buf);
     }
     return pp_shared_upload_buf;
 }
@@ -309,9 +294,7 @@ void pp_shared_upload_release(void) {
 }
 
 void pp_encoder_buffer_ensure(void* context, size_t capacity) {
-    furi_check(context);
     ProtoPirateEncoderHeader* hdr = context;
-    furi_check(capacity <= PP_SHARED_UPLOAD_CAPACITY);
     hdr->encoder.upload = pp_shared_upload_buffer();
     hdr->encoder.size_upload = capacity;
 }
@@ -319,14 +302,12 @@ void pp_encoder_buffer_ensure(void* context, size_t capacity) {
 #endif
 
 uint8_t pp_decoder_hash_blocks(void* context) {
-    furi_check(context);
     ProtoPirateDecoderHeader* hdr = context;
     return subghz_protocol_blocks_get_hash_data(
         &hdr->decoder, (hdr->decoder.decode_count_bit / 8U) + 1U);
 }
 
 void pp_decoder_free_default(void* context) {
-    furi_check(context);
     free(context);
 }
 

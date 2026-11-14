@@ -2,14 +2,16 @@
 #include "protocols_common.h"
 #include <string.h>
 
+#define KIA_V7_PREAMBLE_PAIRS      0x13FU
+#define KIA_V7_TAIL_PREAMBLE_PAIRS 0x0FU
+#define KIA_V7_PREAMBLE_MIN_PAIRS  16
+#define KIA_V7_HEADER              0x4C
+#define KIA_V7_TAIL_GAP_US         0x7D0
+#define KIA_V7_KEY_BITS            64U
+#define KIA_V7_DEFAULT_TX_REPEAT   3U
+#define KIA_V7_FRAME_SLOTS(pairs)  (((pairs) * 2U) + 1U + (KIA_V7_KEY_BITS * 2U) + 2U)
 #define KIA_V7_UPLOAD_CAPACITY \
-    (1U + (KIA_V7_PREAMBLE_PAIRS * 2U) + 1U + (KIA_V7_KEY_BITS * 2U) + 2U)
-#define KIA_V7_PREAMBLE_PAIRS     0x13F
-#define KIA_V7_PREAMBLE_MIN_PAIRS 16
-#define KIA_V7_HEADER             0x4C
-#define KIA_V7_TAIL_GAP_US        0x7D0
-#define KIA_V7_KEY_BITS           64U
-#define KIA_V7_DEFAULT_TX_REPEAT  10U
+    (KIA_V7_FRAME_SLOTS(KIA_V7_PREAMBLE_PAIRS) + KIA_V7_FRAME_SLOTS(KIA_V7_TAIL_PREAMBLE_PAIRS))
 _Static_assert(
     KIA_V7_UPLOAD_CAPACITY <= PP_SHARED_UPLOAD_CAPACITY,
     "KIA_V7_UPLOAD_CAPACITY exceeds shared upload slab");
@@ -166,58 +168,74 @@ static void kia_v7_decode_key_encoder(SubGhzProtocolEncoderKiaV7* instance) {
         &instance->crc_valid);
 }
 
-static bool kia_v7_encoder_get_upload(SubGhzProtocolEncoderKiaV7* instance) {
-    furi_check(instance);
-
+static bool kia_v7_encoder_append_frame(
+    LevelDuration* upload,
+    size_t* index,
+    size_t max_size,
+    uint64_t data,
+    uint8_t bit_count,
+    size_t preamble_pairs) {
     const LevelDuration high_short = level_duration_make(true, kia_protocol_v7_const.te_short);
     const LevelDuration low_short = level_duration_make(false, kia_protocol_v7_const.te_short);
     const LevelDuration low_tail = level_duration_make(false, KIA_V7_TAIL_GAP_US);
-    const size_t max_size = KIA_V7_UPLOAD_CAPACITY;
 
+    for(size_t i = 0; i < preamble_pairs; i++) {
+        if((*index + 2U) > max_size) {
+            return false;
+        }
+        upload[(*index)++] = high_short;
+        upload[(*index)++] = low_short;
+    }
+
+    if((*index + 1U) > max_size) {
+        return false;
+    }
+    upload[(*index)++] = high_short;
+
+    for(int32_t bit = (int32_t)bit_count - 1; bit >= 0; bit--) {
+        if((*index + 2U) > max_size) {
+            return false;
+        }
+        const bool value = ((data >> bit) & 1ULL) != 0ULL;
+        upload[(*index)++] = value ? high_short : low_short;
+        upload[(*index)++] = value ? low_short : high_short;
+    }
+
+    if((*index + 2U) > max_size) {
+        return false;
+    }
+    upload[(*index)++] = high_short;
+    upload[(*index)++] = low_tail;
+    return true;
+}
+
+static bool kia_v7_encoder_get_upload(SubGhzProtocolEncoderKiaV7* instance) {
     const uint8_t bit_count = (instance->tx_bit_count > 0U && instance->tx_bit_count <= 64U) ?
                                   instance->tx_bit_count :
                                   64U;
+    size_t index = 0;
 
-    size_t final_size = 0;
-
-    for(uint8_t pass = 0; pass < 2; pass++) {
-        size_t index = pass;
-
-        for(size_t i = 0; i < KIA_V7_PREAMBLE_PAIRS; i++) {
-            if((index + 2U) > max_size) {
-                return false;
-            }
-
-            instance->encoder.upload[index++] = high_short;
-            instance->encoder.upload[index++] = low_short;
-        }
-
-        if((index + 1U) > max_size) {
-            return false;
-        }
-        instance->encoder.upload[index++] = high_short;
-
-        for(int32_t bit = (int32_t)bit_count - 1; bit >= 0; bit--) {
-            if((index + 2U) > max_size) {
-                return false;
-            }
-
-            const bool value = ((instance->generic.data >> bit) & 1ULL) != 0ULL;
-            instance->encoder.upload[index++] = value ? high_short : low_short;
-            instance->encoder.upload[index++] = value ? low_short : high_short;
-        }
-
-        if((index + 2U) > max_size) {
-            return false;
-        }
-        instance->encoder.upload[index++] = high_short;
-        instance->encoder.upload[index++] = low_tail;
-
-        final_size = index;
+    if(!kia_v7_encoder_append_frame(
+           instance->encoder.upload,
+           &index,
+           KIA_V7_UPLOAD_CAPACITY,
+           instance->generic.data,
+           bit_count,
+           KIA_V7_PREAMBLE_PAIRS)) {
+        return false;
+    }
+    if(!kia_v7_encoder_append_frame(
+           instance->encoder.upload,
+           &index,
+           KIA_V7_UPLOAD_CAPACITY,
+           instance->generic.data,
+           bit_count,
+           KIA_V7_TAIL_PREAMBLE_PAIRS)) {
+        return false;
     }
 
     instance->encoder.front = 0;
-    instance->encoder.size_upload = final_size;
+    instance->encoder.size_upload = index;
     return true;
 }
 #endif
@@ -274,7 +292,6 @@ void* kia_protocol_encoder_v7_alloc(SubGhzEnvironment* environment) {
     UNUSED(environment);
 
     SubGhzProtocolEncoderKiaV7* instance = calloc(1, sizeof(SubGhzProtocolEncoderKiaV7));
-    furi_check(instance);
 
     instance->base.protocol = &kia_protocol_v7;
     instance->generic.protocol_name = instance->base.protocol->name;
@@ -286,8 +303,6 @@ void* kia_protocol_encoder_v7_alloc(SubGhzEnvironment* environment) {
 
 SubGhzProtocolStatus
     kia_protocol_encoder_v7_deserialize(void* context, FlipperFormat* flipper_format) {
-    furi_check(context);
-
     SubGhzProtocolEncoderKiaV7* instance = context;
     SubGhzProtocolStatus ret = SubGhzProtocolStatusError;
 
@@ -364,7 +379,6 @@ void* kia_protocol_decoder_v7_alloc(SubGhzEnvironment* environment) {
     UNUSED(environment);
 
     SubGhzProtocolDecoderKiaV7* instance = calloc(1, sizeof(SubGhzProtocolDecoderKiaV7));
-    furi_check(instance);
 
     instance->base.protocol = &kia_protocol_v7;
     instance->generic.protocol_name = instance->base.protocol->name;
@@ -373,8 +387,6 @@ void* kia_protocol_decoder_v7_alloc(SubGhzEnvironment* environment) {
 }
 
 void kia_protocol_decoder_v7_reset(void* context) {
-    furi_check(context);
-
     SubGhzProtocolDecoderKiaV7* instance = context;
     instance->decoder.parser_step = KiaV7DecoderStepReset;
     instance->decoder.te_last = 0;
@@ -386,8 +398,6 @@ void kia_protocol_decoder_v7_reset(void* context) {
 }
 
 void kia_protocol_decoder_v7_feed(void* context, bool level, uint32_t duration) {
-    furi_check(context);
-
     SubGhzProtocolDecoderKiaV7* instance = context;
     ManchesterEvent event = ManchesterEventReset;
     bool data = false;
@@ -509,8 +519,6 @@ void kia_protocol_decoder_v7_feed(void* context, bool level, uint32_t duration) 
 }
 
 void kia_protocol_decoder_v7_get_string(void* context, FuriString* output) {
-    furi_check(context);
-
     SubGhzProtocolDecoderKiaV7* instance = context;
     kia_v7_decode_key_decoder(instance);
 
@@ -535,8 +543,6 @@ SubGhzProtocolStatus kia_protocol_decoder_v7_serialize(
     void* context,
     FlipperFormat* flipper_format,
     SubGhzRadioPreset* preset) {
-    furi_check(context);
-
     SubGhzProtocolDecoderKiaV7* instance = context;
     kia_v7_decode_key_decoder(instance);
 
@@ -566,8 +572,6 @@ SubGhzProtocolStatus kia_protocol_decoder_v7_serialize(
 
 SubGhzProtocolStatus
     kia_protocol_decoder_v7_deserialize(void* context, FlipperFormat* flipper_format) {
-    furi_check(context);
-
     SubGhzProtocolDecoderKiaV7* instance = context;
     SubGhzProtocolStatus status = subghz_block_generic_deserialize_check_count_bit(
         &instance->generic, flipper_format, KIA_V7_KEY_BITS);

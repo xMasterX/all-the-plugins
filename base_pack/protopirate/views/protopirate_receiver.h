@@ -4,10 +4,15 @@
 #include <gui/view.h>
 #include "../helpers/protopirate_types.h"
 
+typedef void (*ProtoPirateReceiverCallback)(ProtoPirateCustomEvent event, void* context);
+struct ProtoPirateReceiver {
+    View* view;
+    ProtoPirateReceiverCallback callback;
+    void* context;
+};
+
 typedef struct ProtoPirateReceiver ProtoPirateReceiver;
 typedef struct ProtoPirateHistory ProtoPirateHistory;
-
-typedef void (*ProtoPirateReceiverCallback)(ProtoPirateCustomEvent event, void* context);
 
 void protopirate_view_receiver_set_callback(
     ProtoPirateReceiver* receiver,
@@ -21,8 +26,11 @@ View* protopirate_view_receiver_get_view(ProtoPirateReceiver* receiver);
 void protopirate_view_receiver_add_data_statusbar(
     ProtoPirateReceiver* receiver,
     const char* frequency_str,
+    size_t freqency_size,
     const char* preset_str,
+    size_t preset_size,
     const char* history_stat_str,
+    size_t history_stat_size,
     bool external_radio);
 
 uint16_t protopirate_view_receiver_get_idx_menu(ProtoPirateReceiver* receiver);

@@ -1,5 +1,112 @@
 # Changelog
 
+## 0.13 — beta
+
+- **Two drawing fixes from xMasterX**, found running the app on a Flipper with nothing wired to
+  the I2C pins and sent as a patch on the Apps Catalog pull request. The Right-key glyph on the
+  save log, details and find out bars spans seven rows around the y it is given, so the y it was
+  drawn at put its last row one below the bottom of a 64-row screen and cut the tip off the
+  arrow. And on the pad meter the title and the key hint were drawn at the same height from
+  opposite edges with nothing checking they fit, so **Pad reads FLOATING** ran straight through
+  **save**. The hint is drawn first now and the title fitted to the room left over, so no title
+  can overlap it again — and the titles are shorter, which means none of them has to be.
+
+## 0.12 — beta
+
+- **The QMC5883L has a live test now.** It is the die a GY-271 board most often carries, and the
+  one this app could identify and then say nothing more about. The test asks the field to move by
+  240 counts on two different axes while the board is turned, and that is its only claim. There is
+  no self-test half, because this part has no self-test: its second control register holds a soft
+  reset, a pointer-roll bit and an interrupt enable and nothing else, so there is no coil to fire
+  on command. The threshold is arithmetic off the datasheet's sensitivity figure — sixteen per
+  cent of what turning a board end over end reaches at the weakest place on earth, and forty times
+  the noise its own resolution figure implies — and it has never been compared against a still
+  part. No QMC5883L has been on the bench at all: the board that prompted the work carries a P.
+  Sixteen live tests now, thirteen of which have never met the chip they were written for.
+
+## 0.11 — beta
+
+- **The QMC5883P live test now waits for the part instead of racing it.** Its measurement loop
+  read and redrew as fast as the I2C bus would go. The part produces a new sample ten times a
+  second and no faster, so most of those reads returned the number already on the screen, and
+  every one of them was published again — which drove the display, and anything watching the
+  screen over USB, at a rate nothing needed. It now waits a sample period between reads.
+- **And it establishes the mode with Suspend rather than a soft reset.** 0.10 put a soft reset
+  in front of each configuration to stop the part carrying state from one run into the next.
+  That was the right idea and the wrong instruction: the datasheet gives no settling time for a
+  soft reset anywhere, so a configuration written straight after one is written into a part that
+  may still be resetting. Suspend Mode is what the datasheet actually asks for in the middle of a
+  mode shift, it is one write, and it needs no guess about timing.
+
+## 0.10 — beta
+
+- **A GY-271 board reading QMC5883P no longer looks like a contradiction.** The number
+  silkscreened on a module and the number burned into the die are different things, which is the
+  whole premise of this app, and the one screen that asks **Is this what you bought?** was the
+  one screen that never said so. The database already carried a note field for exactly this — the
+  MPU6500 has said **often sold as MPU9250** since the first release — but the note was only ever
+  drawn on the detail screen behind it. It is on the question screen now, above the verdict, for
+  every chip that has one.
+- **The QMC5883P carries that note: GY-271 board, not a 5883L.** GY-271 is the module name the
+  HMC5883L made famous and the number people still search for. The die inside one bought today is
+  usually a QST part, and a P is not register-compatible with either the HMC5883L or the
+  QMC5883L, so a driver written for the name on the silkscreen will not talk to it.
+- **The QMC5883P has a live test now.** It fires the part's internal self-test coil and checks
+  that all three channels deflect, then asks the field to move by 300 counts on two different
+  axes while the board is turned. The coil half is deliberately a floor rather than a
+  specification: QST's datasheet says to compare the deflection with a threshold value and then
+  publishes no threshold anywhere, so the test checks that a deflection happened at all, by a
+  margin three times the part's own documented noise. A GY-271 board passed it on 9 Sep 2026 —
+  1036 reads, the coil fired, the field followed the board — which makes the thresholds
+  reachable but not measured: the movement threshold is still arithmetic off the datasheet's
+  sensitivity figure, and the lesson from the AK09911 is that a threshold means nothing until
+  the still part's noise floor is measured under it. A second run on the same board exposed two
+  faults, both fixed here: the self-test was waiting on a data-ready flag the part stops
+  producing when the self-test ends, and the measurement was configured on top of whatever the
+  previous run had left rather than from a soft reset.
+- **The QMC5883P row has met a part.** It was added in 0.8 from its datasheet with nothing to
+  answer it. On 9 Sep 2026 a blue GY-271 board answered at 0x2C and read 0x80 at register 0x00,
+  which is that row and no other.
+
+## 0.9 — beta
+
+- **The AK09911 live test could not pass, and now it has.** It asked for the field to swing 100
+  counts on two axes. The earth puts about 50 counts into the whole vector, so no single axis
+  can swing that far however hard the board is waved — the threshold had been calibrated
+  against a bench capture with a magnet next to the sensor. Measured on a real part: two and a
+  half minutes of turning plateaued at 38/47/26 counts against a stationary noise floor of
+  4/5/7. The threshold is now 30, and the test passes in about ten seconds.
+- **The test screen said nothing about what to do.** It showed raw counts and a clock. The
+  instruction and the progress count were written to a third line that the screen has no room
+  to draw under a heading and progress boxes, so both were composed and silently dropped. The
+  first line is now the instruction, carrying its own feedback: **Turn it over - 1/2 axes**.
+- A saturated sensor used to freeze the display. The overflow branch skipped the screen update
+  and went round again, and the flag stays set for as long as the magnet is there, so the
+  advice to back off never appeared.
+- The passed screen lost its **not parked** warning to the same missing third line. That one
+  matters: it means the part was left in continuous mode.
+
+First release with an AK09911 on the bench. The identification, the reset guidance and the
+live test in 0.8 had all been written from datasheets alone.
+
+## 0.8 — beta
+
+- **The app no longer names a chip the bus never identified.** When more than one part fits
+  what was read — two chips with no ID register sharing an address, or two whose ID checks both
+  passed — the verdict is now **SEVERAL POSSIBLE** and every candidate is named, on the screen
+  and in the saved report. Previously the first row in the table won silently. This is not an
+  accusation: it says the tool cannot tell two real parts apart, which is a limit of two wires
+  and not a fault in the chip.
+- A silent device now keeps the failed reads that prove it went quiet. **NO ANSWER** used to
+  reach the detail screen with nothing on it.
+- **New chips: AK09911 and QMC5883P magnetometers.** 82 chips in the database now.
+- **New live test: AK09911.** It fires the part's built-in self-test coil, checks the answer
+  against the datasheet window after applying the fuse-ROM sensitivity correction, then asks
+  the field to move on two different axes. It has never been run on hardware.
+- The silent-bus screen now names **RST** alongside **XSHUT**, **RES** and **EN**, and the AK09911
+  carries a mode-pin row for it: that part answers nothing at all while its reset pad is low,
+  and the board it was reported on leaves that pad floating.
+
 ## 0.7 — beta
 
 - First public release, and deliberately not called 1.0. Everything here is built and reviewed,

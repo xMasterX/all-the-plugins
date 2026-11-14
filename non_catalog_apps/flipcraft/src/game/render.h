@@ -1,3 +1,4 @@
+// Copyright (c) 2026 ApertureFox Technology. MIT License.
 #pragma once
 #include "../flipcraft.h"
 #include <vector>
@@ -11,6 +12,11 @@ struct Vertex {
 // Visible faces of one resident chunk, packed one face per uint32_t:
 //   bits 0-2  local x        bits 3-5  local z      bits 6-9   y
 //   bits 10-14 quad id       bits 15-22 texture id  bits 23-26 settings
+//   bit 27 water: the next word holds the surface corner heights, one byte
+//   each in px 0..16, corner c = (x>>4) | (z>>4)<<1 of the quad template,
+//   bit 31 of it set; y==16 vertices are drawn at that height
+//   bit 31 submerged: a solid's face against water under more water; it is
+//   covered by the opaque surface, so it is drawn only with the eye in water
 // Rebuilt only when the chunk content changes (World::slotGen mismatch), so a
 // frame never scans voxels -- it just walks these lists.
 struct ChunkMesh {
@@ -38,11 +44,20 @@ public:
     // framebuffer. 2D UI code writes plain 0/1 bytes (depth 0) on top.
     uint8_t (*zbuf)[SCREEN_WIDTH] = nullptr;
 
+    // Per-world render setting, taken from the save header once at setup.
+    // Near only: every chunk but the one under the camera is dropped and its
+    // mesh freed, which is the cheap mode in both RAM and raster time.
+    void setNearOnly(bool on) {
+        nearOnly = on;
+    }
+    // A chunk left unbuilt because this frame ran out of rebuild budget.
+    bool meshPending = false;
+
     void setCamRot(uint8_t data);
     void clearBuffer();
     // Drop all cached chunk meshes; call when a different world is opened.
     void invalidateChunkMeshes();
-    float sinYaw() const, cosYaw() const;
+    int sinYaw() const, cosYaw() const; // floor(64*(-sin)), floor(64*cos) of the yaw
     float camDir(int axis) const;
 
     void renderScene(const World& w);
@@ -61,6 +76,7 @@ public:
 
 private:
     ChunkMesh chunkMesh[WINDOW_CHUNKS][WINDOW_CHUNKS];
+    bool nearOnly = false;
 
     void camRotToMatrix(int pitchIndex, int yawIndex);
     void renderBox(
@@ -75,9 +91,16 @@ private:
         uint8_t headDir);
     Vertex worldToCam(const Vertex& v) const;
     Vertex camToScreen(const Vertex& v) const;
-    void drawQuadCam(Vertex q[4]);
+    __attribute__((noclone)) void drawQuadCam(Vertex q[4]); // O3 cloned it per caller, +684 B
     void renderQuad(float x, float y, float z, int quadId, uint8_t texId, int texSettings);
-    void drawBlockQuad(int x, int y, int z, int quadId, uint8_t texId, int texSettings);
+    void drawBlockQuad(
+        int x,
+        int y,
+        int z,
+        int quadId,
+        uint8_t texId,
+        int texSettings,
+        uint32_t corners);
     void buildChunkMesh(const World& w, int sx, int sz);
     void rasterTri(const Vertex& a, const Vertex& b, const Vertex& c);
     bool isBackfacing(const Vertex& a, const Vertex& b, const Vertex& c) const;

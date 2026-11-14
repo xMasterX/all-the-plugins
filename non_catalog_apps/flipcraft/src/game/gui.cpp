@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 ApertureFox Technology. MIT License.
 #include "gui.h"
 
 namespace flipcraft {
@@ -113,6 +113,48 @@ const char* itemName(uint8_t type) {
         "Apple",
         nullptr};
     return mats[type >> 4];
+}
+
+// Names for the creative palette, which addresses blocks rather than items.
+const char* blockName(uint8_t blockId) {
+    switch(blockId) {
+    case BLOCK_GRASS:
+        return "Grass";
+    case BLOCK_DIRT:
+        return "Dirt";
+    case BLOCK_STONE:
+        return "Stone";
+    case BLOCK_COBBLE:
+        return "Cobblestone";
+    case BLOCK_LOG:
+        return "Wood Log";
+    case BLOCK_LEAVES:
+        return "Leaves";
+    case BLOCK_PLANK:
+        return "Planks";
+    case BLOCK_COALORE:
+        return "Coal Ore";
+    case BLOCK_IRONORE:
+        return "Iron Ore";
+    case BLOCK_SAND:
+        return "Sand";
+    case BLOCK_GLASS:
+        return "Glass";
+    case BLOCK_SAPLING:
+        return "Sapling";
+    case BLOCK_TABLE:
+        return "Crafting Table";
+    case BLOCK_FURNACE:
+        return "Furnace";
+    case BLOCK_CHEST:
+        return "Chest";
+    case BLOCK_DYNAMITE:
+        return "Dynamite";
+    case BLOCK_WATER:
+        return "Water";
+    default:
+        return nullptr;
+    }
 }
 
 static void sprite8(Screen2D& s, int x, int y, const uint8_t* t, bool texInv, int ink) {
@@ -230,6 +272,23 @@ void Screen2D::slotItem(int x, int y, int w, const ItemCell& it, bool onDark) {
     fillRect((n > 9 ? ux - 4 : ux) - 1, uy - 1, x + w - 1, y + w - 1, 0);
     if(n > 9) number(ux - 4, uy, n / 10);
     number(ux, uy, n % 10);
+}
+
+// The face the block shows the player: its front texture where the mesh has
+// one, the side face otherwise.
+void Screen2D::blockIcon(int x, int y, uint8_t blockId, bool onDark) {
+    const MeshEntry& e = meshBlock(blockId);
+    if(!e.exists) return;
+    const int ink = onDark ? 0 : 1;
+    const MeshTex& mt = e.textures[e.texCount > 3 ? 3 : 2];
+    sprite8(*this, x, y, texturePacked(mt.id), (mt.settings & TS_INVERTED) != 0, ink);
+}
+
+// icon centred in a w x w cell
+void Screen2D::blockSlot(int x, int y, int w, uint8_t blockId, bool onDark) {
+    if(!blockId) return;
+    int o = (w - 8) / 2;
+    blockIcon(x + o, y + o, blockId, onDark);
 }
 
 }

@@ -3,6 +3,7 @@
 #include "bit_buffer.h"
 #include "magic/protocols/gen4/gen4_poller.h"
 #include <nfc/protocols/iso14443_3a/iso14443_3a_poller.h>
+#include <string.h>
 
 #define GEN4_CMD_PREFIX (0xCF)
 
@@ -28,6 +29,30 @@ static Gen4PollerError gen4_poller_process_error(Iso14443_3aError error) {
     }
 
     return ret;
+}
+
+Gen4PollerError gen4_poller_parse_config_response(
+    const BitBuffer* rx_buffer,
+    Gen4Config* config,
+    size_t* config_size) {
+    furi_check(rx_buffer);
+    furi_check(config);
+    furi_check(config_size);
+
+    size_t rx_bytes = bit_buffer_get_size_bytes(rx_buffer);
+    if(!gen4_config_dump_size_is_valid(rx_bytes)) {
+        // Logged so an unknown length variant can be told apart from a card that
+        // is simply not a Gen4
+        FURI_LOG_W(TAG, "Unexpected config size: %zu bytes", rx_bytes);
+        return Gen4PollerErrorProtocol;
+    }
+
+    // Zero padded so the fields past a short dump still read deterministically
+    memset(config->data_raw, 0, GEN4_CONFIG_SIZE);
+    memcpy(config->data_raw, bit_buffer_get_data(rx_buffer), rx_bytes);
+    *config_size = rx_bytes;
+
+    return Gen4PollerErrorNone;
 }
 
 Gen4PollerError
@@ -98,8 +123,11 @@ Gen4PollerError gen4_poller_set_direct_write_block_0_mode(
     return ret;
 }
 
-Gen4PollerError
-    gen4_poller_get_config(Gen4Poller* instance, Gen4Password password, Gen4Config* config_result) {
+Gen4PollerError gen4_poller_get_config(
+    Gen4Poller* instance,
+    Gen4Password password,
+    Gen4Config* config_result,
+    size_t* config_size) {
     Gen4PollerError ret = Gen4PollerErrorNone;
     bit_buffer_reset(instance->tx_buffer);
 
@@ -116,13 +144,7 @@ Gen4PollerError
             break;
         }
 
-        size_t rx_bytes = bit_buffer_get_size_bytes(instance->rx_buffer);
-
-        if(rx_bytes != GEN4_CONFIG_SIZE) {
-            ret = Gen4PollerErrorProtocol;
-            break;
-        }
-        bit_buffer_write_bytes(instance->rx_buffer, config_result->data_raw, GEN4_CONFIG_SIZE);
+        ret = gen4_poller_parse_config_response(instance->rx_buffer, config_result, config_size);
     } while(false);
 
     return ret;
@@ -165,6 +187,10 @@ Gen4PollerError gen4_poller_set_config(
     const Gen4Config* config,
     size_t config_size,
     bool fuse) {
+    // Not gen4_config_dump_size_is_valid: the wipe and default-config paths
+    // legitimately send a shorter preset
+    furi_check(config_size <= GEN4_CONFIG_SIZE);
+
     Gen4PollerError ret = Gen4PollerErrorNone;
     bit_buffer_reset(instance->tx_buffer);
 

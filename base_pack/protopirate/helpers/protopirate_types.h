@@ -12,6 +12,7 @@ typedef enum {
     ProtoPirateViewAbout,
     ProtoPirateViewFileBrowser,
     ProtoPirateViewTextInput,
+    ProtoPirateViewRemoteAnalyzer,
 } ProtoPirateView;
 
 typedef enum {
@@ -21,6 +22,7 @@ typedef enum {
     ProtoPirateCustomEventViewReceiverBack,
     ProtoPirateCustomEventViewReceiverDeleteItem,
     ProtoPirateCustomEventViewReceiverUnlock,
+    ProtoPirateCustomEventViewReceiverHopperUpdate,
     // Custom events for scenes
     ProtoPirateCustomEventSceneReceiverUpdate,
     ProtoPirateCustomEventReceiverDeferredRxStart,
@@ -30,20 +32,20 @@ typedef enum {
     ProtoPirateCustomEventReceiverInfoSaveConfirm,
     ProtoPirateCustomEventReceiverInfoUpdate,
     ProtoPirateCustomEventReceiverInfoEmulate,
-    ProtoPirateCustomEventReceiverInfoBruteforceStart,
-    ProtoPirateCustomEventReceiverInfoBruteforceCancel,
     ProtoPirateCustomEventSavedInfoDelete,
+    //Bruteforcing PSA & Renault
+    ProtoPirateCustomEventBruteforceStart,
+    ProtoPirateCustomEventBruteforceComplete,
     // Emulator
-    ProtoPirateCustomEventSavedInfoEmulate,
     ProtoPirateCustomEventEmulateTransmit,
     ProtoPirateCustomEventEmulateStop,
     ProtoPirateCustomEventEmulateExit,
+    ProtoPirateCustomEventSavedInfoEmulate,
     // Sub decode
     ProtoPirateCustomEventSubDecodeUpdate,
     ProtoPirateCustomEventSubDecodeSave,
     ProtoPirateCustomEventSubDecodeEmulate,
-    ProtoPirateCustomEventSubDecodeBruteforceStart,
-    ProtoPirateCustomEventPsaBruteforceComplete,
+    ProtoPirateCustomEventSubDecodeSaveConfirm,
     // File Browser
     ProtoPirateCustomEventSavedFileSelected,
     // Need saving confirmation
@@ -51,6 +53,15 @@ typedef enum {
     ProtoPirateCustomEventSceneExit,
     // About scene
     ProtoPirateCustomEventAboutToggleEmulate,
+    //Plugin Scenes
+    ProtoPirateCustomEventPluginNavigateBack,
+    ProtoPirateCustomEventPluginNavigateReceiver,
+    ProtoPirateCustomEventPluginNavigateSwitchToReceiver,
+    ProtoPirateCustomEventPluginNavigateEmulate,
+    ProtoPirateCustomEventPluginNavigateConfig,
+    ProtoPirateCustomEventPluginNavigateStopApp,
+    //Frequency Analyzer
+
 } ProtoPirateCustomEvent;
 
 typedef enum {
@@ -67,9 +78,9 @@ typedef enum {
 
 typedef enum {
     ProtoPirateHopperStateOFF,
-    ProtoPirateHopperStateRunning,
     ProtoPirateHopperStatePause,
     ProtoPirateHopperStateRSSITimeOut,
+    ProtoPirateHopperStateRunning,
 } ProtoPirateHopperState;
 
 typedef enum {

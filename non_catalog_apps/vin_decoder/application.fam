@@ -7,7 +7,6 @@ App(
     requires=[
         "gui",
     ],
-    order=10,
     fap_icon="app.png",
     fap_category="Tools",
     fap_icon_assets="assets",

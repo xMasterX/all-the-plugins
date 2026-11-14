@@ -20,17 +20,19 @@
 #include "helpers/specter_settings.h"
 #include "helpers/survey_verdict.h"
 #include "views/fingerprint_view.h"
+#include "views/splash_view.h"
 #include "views/survey_view.h"
 #include "views/sweep_view.h"
 #include "views/watch_view.h"
 #include "scenes/specter_scene.h"
 
-#define SPECTER_VERSION "2.8"
+#define SPECTER_VERSION "3.1.1"
 
 /* How long the noise-floor calibration listens for, in milliseconds. */
 #define SPECTER_CALIBRATE_MS 3000u
 
 typedef enum {
+    SpecterViewSplash,
     SpecterViewSubmenu,
     SpecterViewSweep,
     SpecterViewFingerprint,
@@ -45,10 +47,14 @@ typedef enum {
     SpecterCustomEventReset = 100, // OK on the sweep screen clears peak/contacts
     SpecterCustomEventSweepLog, // long OK on the sweep screen logs the reading
     SpecterCustomEventCalibrate, // LEFT on the sweep screen samples the noise floor
+    SpecterCustomEventSweepSensUp, // UP on the sweep screen: one notch more sensitive
+    SpecterCustomEventSweepSensDown, // DOWN on the sweep screen: one notch less
     SpecterCustomEventFingerprintSave, // OK on the fingerprint screen logs the finding
     SpecterCustomEventFingerprintReset, // long OK restarts the measurement
-    SpecterCustomEventSurveyRestart, // OK re-runs the survey
+    SpecterCustomEventSurveyRestart, // OK on the verdict card re-runs the survey
+    SpecterCustomEventSurveyFinish, // OK mid-run ends it early and grades it
     SpecterCustomEventWatchReset, // OK re-arms the watch
+    SpecterCustomEventSplashDone, // the boot intro finished or was skipped
 } SpecterCustomEvent;
 
 typedef struct {
@@ -63,6 +69,7 @@ typedef struct {
     TextBox* text_box;
     FuriString* text_box_store;
 
+    SplashView* splash_view;
     SweepView* sweep_view;
     FingerprintView* fingerprint_view;
     SurveyView* survey_view;
@@ -76,6 +83,7 @@ typedef struct {
     uint32_t last_click_tick; // paces the geiger clicks
     uint32_t last_found_tick; // floor on how often the found alert may fire
     uint32_t last_wake_tick; // floor on how often we may wake the screen
+    uint32_t last_pegged_tick; // floor on how often the "meter pegged" pulse may fire
     bool stealth_engaged; // backlight currently forced dark
     bool settings_dirty; // settings changed while the radio is busy; save on exit
 } SpecterApp;
@@ -83,7 +91,10 @@ typedef struct {
 /* alert feedback (defined in specter.c) - each is a no-op when the matching
  * setting is off, and the light/screen ones also yield to stealth mode */
 void specter_notify_found(SpecterApp* app); // reader just appeared
-void specter_notify_gone(SpecterApp* app); // reader left
+void specter_notify_gone(SpecterApp* app);
+
+/* The meter just pegged: a single pulse meaning "you are on it, stop moving". */
+void specter_notify_pegged(SpecterApp* app); // reader left
 void specter_notify_click(SpecterApp* app); // single geiger tick
 void specter_notify_present_led(SpecterApp* app); // steady "locked" LED blink
 void specter_notify_saved(SpecterApp* app); // a logbook write landed

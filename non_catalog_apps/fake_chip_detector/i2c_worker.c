@@ -3,14 +3,41 @@
 #include <furi.h>
 #include <furi_hal_i2c.h>
 #include <furi_hal_gpio.h>
+#include <furi_hal_power.h>
 #include <furi_hal_resources.h>
 
 #define TAG "I2CWorker"
 
-#define WORKER_FLAG_SCAN  (1UL << 0)
-#define WORKER_FLAG_EXIT  (1UL << 1)
-#define WORKER_FLAG_WATCH (1UL << 3)
-#define WORKER_FLAG_ALL   (WORKER_FLAG_SCAN | WORKER_FLAG_EXIT | WORKER_FLAG_WATCH)
+#define WORKER_FLAG_SCAN     (1UL << 0)
+#define WORKER_FLAG_EXIT     (1UL << 1)
+#define WORKER_FLAG_WATCH    (1UL << 3)
+#define WORKER_FLAG_PAD      (1UL << 4)
+#define WORKER_FLAG_FIX      (1UL << 5)
+#define WORKER_FLAG_SELFTEST (1UL << 6)
+#define WORKER_FLAG_ALL                                                          \
+    (WORKER_FLAG_SCAN | WORKER_FLAG_EXIT | WORKER_FLAG_WATCH | WORKER_FLAG_PAD | \
+     WORKER_FLAG_FIX | WORKER_FLAG_SELFTEST)
+
+// How many agreeing reads it takes to move the pad meter. At 50ms a read that
+// is a fifth of a second of steadiness, which is short enough to feel live and
+// long enough that a hand near a floating pad does not make it flicker.
+#define PAD_SETTLE_READS 4
+
+// How long to spend trying to cut the rail from software before asking the
+// person to do it. Measured on a Flipper Zero running Unleashed 0.90 with the
+// bench on USB: furi_hal_power_disable_external_3_3v() does not de-power header
+// pin 9 at all. The module's pull-up survived a 800ms outage sampled every
+// 20ms, a 512-byte SD sector read succeeded 300ms in, and a VL6180X parked at a
+// non-default address by register 0x0212 -- a value that cannot survive a
+// power-on reset -- kept it. Re-issuing the call every 20ms changed nothing.
+// The attempt stays because that was one device on one firmware, but nothing
+// downstream may assume it worked: the lines have to be seen falling.
+#define RAIL_TRY_MS   300
+#define POWER_BOOT_MS 650
+
+// Agreeing reads before the strap is called applied or lost. The pull is weak
+// and the pad may be capacitive, so give it a moment before judging.
+#define STRAP_SETTLE_READS 3
 
 struct I2CWorker {
     FuriThread* thread;
@@ -19,9 +46,20 @@ struct I2CWorker {
     void* callback_context;
     volatile bool busy;
     volatile bool watch_stop;
+    volatile bool pad_stop;
+    volatile bool fix_stop;
     volatile bool scan_abort;
+    volatile uint8_t pad_level; // I2CPadLevel
+    volatile uint8_t fix_stage; // I2CFixStage
+    volatile uint32_t fix_gen; // bumped per run so an abandoned one cannot resume
+    volatile bool fix_want_high; // level the pad has to sit at for I2C
     volatile uint32_t probe_timeout_ms;
     volatile uint8_t progress_addr;
+    volatile bool listening; // the sweep is over and the serial line is being heard out
+    volatile uint8_t listen_outcome; // UartListenOutcome
+    UartListenResult listen;
+    volatile uint8_t selftest_state; // I2CSelftestState
+    char selftest_detail[I2C_SELFTEST_DETAIL_SIZE];
     I2CFoundDevice found[I2C_SCAN_MAX_FOUND];
     size_t found_count;
     I2CBusCheck bus;
@@ -114,12 +152,21 @@ void i2c_worker_check_bus(I2CBusCheck* out) {
     out->powered = out->scl_ok || out->sda_ok;
 
     if(scl_stuck || sda_stuck) {
+        // No short test on this branch: a line already held low follows the
+        // clock whatever the other line does, so the answer would be yes for a
+        // reason that has nothing to do with a short.
         out->health = I2CBusStuckLow;
     } else if(out->scl_ok && out->sda_ok) {
         out->health = I2CBusOk; // both lines are needed before I2C can work
         out->shorted = i2c_lines_shorted();
     } else {
         out->health = I2CBusFloating;
+        // Two bare wires touching each other have no pull-ups between them, so
+        // a plain SDA-to-SCL short lands here rather than on the branch above --
+        // and while this test only ran up there, the app could not see the
+        // easiest mistake to make with four loose wires. TESTING.md has been
+        // promising it since before it was true.
+        out->shorted = i2c_lines_shorted();
         // Any incomplete bus is worth checking, not just a completely dead
         // one: with SDA on the right pin and SCL on the wrong one, the old
         // "both lines dead" condition never fired and the user got no hint.
@@ -217,6 +264,20 @@ static void i2c_worker_notify(I2CWorker* worker, I2CWorkerEvent event) {
     if(worker->callback) worker->callback(event, worker->callback_context);
 }
 
+// Rates worth trying, commonest first. Not a guess between them: a wrong rate
+// turns real traffic into framing errors rather than into silence, so the
+// sweep can tell "wrong rate" from "nothing there" and picks its winner on
+// that evidence.
+static const uint32_t LISTEN_BAUDS[] = {9600, 115200, 38400, 57600};
+
+// Per rate, so about two seconds in all -- spent only on a sweep that has
+// already failed, and while the screen says what it is doing. Not longer,
+// because this sits between somebody and their answer. And not treated as
+// exhaustive either: a GPS module bursts once a second and can fall between
+// two windows this size, which is why nothing downstream is allowed to say
+// the part is silent, only that nothing was heard.
+#define LISTEN_WINDOW_MS 450
+
 static void i2c_worker_do_scan(I2CWorker* worker) {
     // Electrical state first: it explains an empty sweep far better than
     // "no devices found" on its own.
@@ -226,6 +287,11 @@ static void i2c_worker_do_scan(I2CWorker* worker) {
     furi_mutex_acquire(worker->mutex, FuriWaitForever);
     worker->found_count = 0;
     worker->bus = check;
+    // Cleared here, not after the listen: a result carried over from the
+    // previous scan would sit on screen beside a fresh sweep as though it had
+    // just been measured.
+    worker->listen_outcome = UartListenUnavailable;
+    memset(&worker->listen, 0, sizeof(worker->listen));
     furi_mutex_release(worker->mutex);
 
     for(uint8_t addr = I2C_SCAN_ADDR_FIRST; addr <= I2C_SCAN_ADDR_LAST; addr++) {
@@ -245,6 +311,38 @@ static void i2c_worker_do_scan(I2CWorker* worker) {
             furi_mutex_release(worker->mutex);
         }
         if((addr & 0x07) == 0) i2c_worker_notify(worker, I2CWorkerEventScanProgress);
+    }
+
+    furi_mutex_acquire(worker->mutex, FuriWaitForever);
+    bool empty = worker->found_count == 0;
+    furi_mutex_release(worker->mutex);
+
+    // Nothing answered, and the bus itself was fine: powered, both pull-ups
+    // there, both lines idle high. That is the shape of a part strapped off
+    // the I2C bus rather than a part that is dead, so before the screen says
+    // anything, listen on the same two wires. LPUART is on PC0 and PC1, which
+    // are pins 16 and 15 -- nothing has to be re-plugged.
+    //
+    // The health gate is not only about relevance, it is the noise guard.
+    // With the module's pull-ups present the receive pin idles high, so a
+    // framing error means real edges arrived. On a floating bus the pin drifts
+    // and drift alone can raise framing errors, which the sweep reports as
+    // "something was transmitting". Listening off a dead bus would invent
+    // traffic out of nothing, on the one screen where a user is least able to
+    // argue back.
+    if(!worker->scan_abort && empty && check.health == I2CBusOk) {
+        worker->listening = true;
+        i2c_worker_notify(worker, I2CWorkerEventScanProgress);
+
+        UartListenResult result;
+        UartListenOutcome outcome = uart_listen_sweep(
+            LISTEN_BAUDS, COUNT_OF(LISTEN_BAUDS), LISTEN_WINDOW_MS, &worker->scan_abort, &result);
+
+        furi_mutex_acquire(worker->mutex, FuriWaitForever);
+        worker->listen = result;
+        worker->listen_outcome = (uint8_t)outcome;
+        furi_mutex_release(worker->mutex);
+        worker->listening = false;
     }
 }
 
@@ -266,6 +364,216 @@ static void i2c_worker_do_watch(I2CWorker* worker) {
     }
 }
 
+// The pad meter. Deliberately the same measurement the bus check already
+// makes, pointed at whatever the user has walked the pin-15 wire onto: the
+// internal pulls are ~40k, so anything actually driving the pad or tying it to
+// a rail wins, and a pad connected to nothing shows as floating.
+static I2CPadLevel i2c_pad_read(void) {
+    bool stuck_low = false;
+    bool high_against_pulldown = i2c_line_probe(&gpio_ext_pc1, &stuck_low);
+    if(stuck_low) return I2CPadLow;
+    if(high_against_pulldown) return I2CPadHigh;
+    return I2CPadFloating;
+}
+
+static void i2c_worker_do_pad_watch(I2CWorker* worker) {
+    I2CPadLevel shown = (I2CPadLevel)worker->pad_level;
+    I2CPadLevel candidate = shown;
+    uint8_t agreed = 0;
+
+    while(!worker->pad_stop) {
+        I2CPadLevel now = i2c_pad_read();
+        if(now == candidate) {
+            if(agreed < PAD_SETTLE_READS) agreed++;
+        } else {
+            candidate = now;
+            agreed = 1;
+        }
+        if(agreed >= PAD_SETTLE_READS && candidate != shown) {
+            shown = candidate;
+            worker->pad_level = (uint8_t)shown;
+            i2c_worker_notify(worker, I2CWorkerEventPadUpdate);
+        }
+        furi_delay_ms(50);
+    }
+}
+
+/* ---- the fix run ---- */
+
+// Is the run that owns this generation still the one the screen is waiting on?
+//
+// fix_stop alone is not enough. Leaving the screen sets it, but starting a new
+// run clears it again, and a run can be up to POWER_BOOT_MS deep in a delay it
+// cannot check anything from. Back then OK inside that window would clear the
+// stop out from under the old run, which would wake up believing it was still
+// current and walk the user through the tail of a fix they had abandoned -
+// including the automatic rescan at the end of it. The generation only ever
+// moves forward, so an old run can never mistake itself for the new one.
+static bool fix_current(I2CWorker* worker, uint32_t gen) {
+    return !worker->fix_stop && worker->fix_gen == gen;
+}
+
+static void fix_set(I2CWorker* worker, uint32_t gen, I2CFixStage stage) {
+    // Silent once the screen has walked away. Several steps here cannot be
+    // interrupted mid-measurement, so a stop can arrive while one is still
+    // finishing; announcing the next stage afterwards would drag the user back
+    // into a screen they just left, and the last of those stages would kick off
+    // a rescan nobody asked for.
+    if(!fix_current(worker, gen)) return;
+    worker->fix_stage = (uint8_t)stage;
+    i2c_worker_notify(worker, I2CWorkerEventFixUpdate);
+}
+
+// The strap. Weak on purpose: the internal pull is ~40k, which is enough to
+// hold a high-impedance mode input but cannot fight a driver, so if the wire
+// turns out to be sitting on an output the two never argue. It also cannot
+// back-feed enough current through an unpowered chip's protection diode to keep
+// the part alive across the power cycle that follows, which a push-pull output
+// on the same pin could.
+static void fix_strap_apply(bool want_high) {
+    furi_hal_gpio_init(
+        &gpio_ext_pc1, GpioModeInput, want_high ? GpioPullUp : GpioPullDown, GpioSpeedLow);
+}
+
+static void fix_strap_release(void) {
+    furi_hal_gpio_init(&gpio_ext_pc1, GpioModeAnalog, GpioPullNo, GpioSpeedLow);
+}
+
+// Reading the pin back is the whole point. A pad tied the wrong way in copper
+// wins against the internal pull, and saying so is worth far more than a fix
+// that quietly does nothing: it tells the buyer the board decided this, not
+// them.
+static bool fix_strap_took(bool want_high) {
+    furi_delay_ms(20);
+    for(uint8_t i = 0; i < STRAP_SETTLE_READS; i++) {
+        if(furi_hal_gpio_read(&gpio_ext_pc1) != want_high) return false;
+        furi_delay_ms(10);
+    }
+    return true;
+}
+
+// SCL only. Pin 15 is holding the strap, so the module's other pull-up is the
+// one thing left that still reports whether it has power.
+static bool fix_module_powered(void) {
+    bool stuck = false;
+    return i2c_line_probe(&gpio_ext_pc0, &stuck);
+}
+
+// Waits for the module's power to go the way asked. Returns false if the view
+// went away, or was replaced by a newer run, while waiting.
+static bool fix_wait_power(I2CWorker* worker, uint32_t gen, bool want_powered) {
+    while(fix_current(worker, gen)) {
+        if(fix_module_powered() == want_powered) return true;
+        furi_delay_ms(50);
+    }
+    return false;
+}
+
+// Strap the pad, get the part restarted so the strap is actually sampled, then
+// get the wire back on the bus. Every step ends on a measurement rather than a
+// delay, and nothing here claims anything the app has not seen: if the rail
+// cannot be cut from software, the person is asked, and the app waits until the
+// pull-ups really do disappear.
+static void i2c_worker_do_fix(I2CWorker* worker) {
+    const uint32_t gen = worker->fix_gen;
+    bool want_high = worker->fix_want_high;
+
+    fix_set(worker, gen, I2CFixStrapping);
+    fix_strap_apply(want_high);
+    if(!fix_strap_took(want_high)) {
+        fix_strap_release();
+        fix_set(worker, gen, I2CFixPadHeld); // terminal: the screen offers the report
+        return;
+    }
+
+    // One quiet attempt at cutting the rail ourselves, so a device where that
+    // works never bothers its owner. Only counts if the module was powered to
+    // begin with and stopped being powered: a sensor that arrived here already
+    // dark would otherwise look like proof the cut worked, and the app would
+    // skip the one step that actually restarts the part.
+    bool powered_before = fix_module_powered();
+    bool fell = false;
+    if(powered_before) {
+        furi_hal_power_disable_external_3_3v();
+        for(uint32_t waited = 0; waited < RAIL_TRY_MS && fix_current(worker, gen); waited += 20) {
+            if(!fix_module_powered()) {
+                fell = true;
+                break;
+            }
+            furi_delay_ms(20);
+        }
+        furi_hal_power_enable_external_3_3v();
+    }
+
+    if(!fell) {
+        if(powered_before) {
+            fix_set(worker, gen, I2CFixWantPowerOff);
+            if(!fix_wait_power(worker, gen, false)) {
+                fix_strap_release();
+                return;
+            }
+        }
+        fix_set(worker, gen, I2CFixWantPowerOn);
+        if(!fix_wait_power(worker, gen, true)) {
+            fix_strap_release();
+            return;
+        }
+    }
+    furi_delay_ms(POWER_BOOT_MS);
+
+    // The strap has done its job the moment the part came up holding it: a mode
+    // pin is sampled at reset and kept. Let go before asking for the wire back,
+    // or the pull would fight the bus.
+    fix_strap_release();
+    fix_set(worker, gen, I2CFixWantWire);
+    while(fix_current(worker, gen)) {
+        I2CBusCheck bus;
+        i2c_worker_check_bus(&bus);
+        if(bus.health == I2CBusOk) {
+            fix_set(worker, gen, I2CFixDone);
+            return;
+        }
+        furi_delay_ms(100);
+    }
+}
+
+// The loopback proves the transport with one jumper and no sensor: expansion
+// service stood down, handle acquired, pinout as documented, framing, transmit,
+// the interrupt-context receive, clean release.
+static void i2c_worker_do_selftest(I2CWorker* worker) {
+    char detail[I2C_SELFTEST_DETAIL_SIZE];
+    uint8_t state;
+
+    // Anything at all on these two pins stops the run. A pull-up means a module
+    // is still wired up; a line held low means something is driving it, and
+    // this test drives pin 15 itself. Either way the fight would surface as a
+    // transport fault, which is the one wrong answer to give someone who came
+    // here to find out whether the transport works.
+    //
+    // The jumper alone does not trip this: i2c_line_probe leaves the other pin
+    // analog and unpulled while it reads, so the two float together rather than
+    // pulling against each other.
+    I2CBusCheck bus;
+    i2c_worker_check_bus(&bus);
+    if(bus.health == I2CBusStuckLow) {
+        state = I2CSelftestBlocked;
+        snprintf(detail, sizeof(detail), "A line is held low");
+    } else if(bus.powered) {
+        state = I2CSelftestBlocked;
+        snprintf(detail, sizeof(detail), "Pull-ups on pins 15/16");
+    } else {
+        // One rate is enough. What this proves is the path, and the path is the
+        // same at every rate; 115200 because the listen sweep leans on it.
+        bool ok = uart_selftest_loopback(115200, detail, sizeof(detail));
+        state = ok ? I2CSelftestPassed : I2CSelftestFailed;
+    }
+
+    furi_mutex_acquire(worker->mutex, FuriWaitForever);
+    snprintf(worker->selftest_detail, sizeof(worker->selftest_detail), "%s", detail);
+    worker->selftest_state = state;
+    furi_mutex_release(worker->mutex);
+}
+
 static int32_t i2c_worker_thread(void* context) {
     I2CWorker* worker = context;
     for(;;) {
@@ -282,7 +590,28 @@ static int32_t i2c_worker_thread(void* context) {
             i2c_worker_do_watch(worker);
             worker->busy = false;
         }
+        if(flags & WORKER_FLAG_PAD) {
+            worker->busy = true;
+            i2c_worker_do_pad_watch(worker);
+            worker->busy = false;
+        }
+        if(flags & WORKER_FLAG_FIX) {
+            worker->busy = true;
+            i2c_worker_do_fix(worker);
+            worker->busy = false;
+        }
+        if(flags & WORKER_FLAG_SELFTEST) {
+            worker->busy = true;
+            i2c_worker_do_selftest(worker);
+            worker->busy = false;
+            i2c_worker_notify(worker, I2CWorkerEventSelftestDone);
+        }
     }
+    // Never leave the bench dark, and never leave a pull hanging on the bus:
+    // whatever the app was doing, the sensor gets its rail and its line back
+    // before this thread stops answering.
+    fix_strap_release();
+    furi_hal_power_enable_external_3_3v();
     return 0;
 }
 
@@ -337,6 +666,34 @@ void i2c_worker_abort_scan(I2CWorker* worker) {
     worker->scan_abort = true;
 }
 
+UartListenOutcome i2c_worker_get_listen(I2CWorker* worker, UartListenResult* out) {
+    furi_mutex_acquire(worker->mutex, FuriWaitForever);
+    UartListenOutcome outcome = (UartListenOutcome)worker->listen_outcome;
+    if(out) *out = worker->listen;
+    furi_mutex_release(worker->mutex);
+    return outcome;
+}
+
+void i2c_worker_selftest_start(I2CWorker* worker) {
+    // Both of those own pins 15 and 16, and the serial handle needs them. The
+    // self-test screen is not reached from either, so this is belt and braces.
+    worker->watch_stop = true;
+    worker->pad_stop = true;
+    furi_thread_flags_set(furi_thread_get_id(worker->thread), WORKER_FLAG_SELFTEST);
+}
+
+I2CSelftestState i2c_worker_get_selftest(I2CWorker* worker, char* detail, size_t detail_size) {
+    furi_mutex_acquire(worker->mutex, FuriWaitForever);
+    I2CSelftestState state = (I2CSelftestState)worker->selftest_state;
+    if(detail && detail_size) snprintf(detail, detail_size, "%s", worker->selftest_detail);
+    furi_mutex_release(worker->mutex);
+    return state;
+}
+
+bool i2c_worker_is_listening(I2CWorker* worker) {
+    return worker->listening;
+}
+
 bool i2c_worker_is_busy(I2CWorker* worker) {
     return worker->busy;
 }
@@ -348,6 +705,45 @@ void i2c_worker_watch_start(I2CWorker* worker) {
 
 void i2c_worker_watch_stop(I2CWorker* worker) {
     worker->watch_stop = true;
+}
+
+void i2c_worker_pad_watch_start(I2CWorker* worker) {
+    worker->pad_stop = false;
+    // Start from nothing rather than from last time's answer. The wire has very
+    // likely been moved to a different pad since, and showing the old level
+    // while the new one settles is showing a measurement of the wrong pin.
+    worker->pad_level = I2CPadUnknown;
+    worker->watch_stop = true; // the bus watcher and the pad meter share pin 15
+    furi_thread_flags_set(furi_thread_get_id(worker->thread), WORKER_FLAG_PAD);
+}
+
+void i2c_worker_pad_watch_stop(I2CWorker* worker) {
+    worker->pad_stop = true;
+}
+
+I2CPadLevel i2c_worker_get_pad(I2CWorker* worker) {
+    return (I2CPadLevel)worker->pad_level;
+}
+
+void i2c_worker_fix_start(I2CWorker* worker, bool want_high) {
+    worker->watch_stop = true; // both of those own pin 15, and the strap needs it
+    worker->pad_stop = true;
+    // Bump the generation before clearing the stop, so a run still unwinding
+    // from the last stop is already out of date by the time the stop it was
+    // watching goes away.
+    worker->fix_gen++;
+    worker->fix_stop = false;
+    worker->fix_want_high = want_high;
+    worker->fix_stage = I2CFixStrapping;
+    furi_thread_flags_set(furi_thread_get_id(worker->thread), WORKER_FLAG_FIX);
+}
+
+void i2c_worker_fix_stop(I2CWorker* worker) {
+    worker->fix_stop = true;
+}
+
+I2CFixStage i2c_worker_get_fix_stage(I2CWorker* worker) {
+    return (I2CFixStage)worker->fix_stage;
 }
 
 void i2c_worker_get_bus(I2CWorker* worker, I2CBusCheck* out) {

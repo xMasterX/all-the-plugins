@@ -1,4 +1,5 @@
 #include "sweep_view.h"
+#include "view_chrome.h"
 #include <furi.h>
 #include <gui/gui.h>
 #include <math.h>
@@ -24,15 +25,19 @@ struct SweepView {
     void* log_ctx;
     SweepViewCallback left_cb;
     void* left_ctx;
+    SweepViewStepCallback sens_cb;
+    void* sens_ctx;
 };
 
 typedef struct {
     bool armed;
     bool error;
     bool present;
-    uint8_t strength; // 0..100
+    uint8_t strength; // 0..100, as displayed (honours the Meter setting)
+    uint8_t strength_ref; // 0..100, always canonical - proximity is judged here
     uint8_t peak; // 0..100
-    bool saturated; // meter pegged - closing in further will not move it
+    uint8_t threshold_shown; // 0..100, where "reader" begins on this dial
+    bool saturated_ref; // pegged on the canonical scale, not the displayed one
     uint32_t contacts;
     uint8_t history[SPECTER_HISTORY_LEN];
     uint8_t history_head;
@@ -67,21 +72,13 @@ static void draw_trend(Canvas* canvas, int x, int y, int dir) {
     canvas_draw_line(canvas, x + 2, barb, x, tip);
 }
 
-static void draw_error(Canvas* canvas) {
-    canvas_set_font(canvas, FontPrimary);
-    canvas_draw_str_aligned(canvas, 64, 22, AlignCenter, AlignCenter, "NFC unavailable");
-    canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str_aligned(canvas, 64, 38, AlignCenter, AlignCenter, "Close any other NFC app,");
-    canvas_draw_str_aligned(canvas, 64, 48, AlignCenter, AlignCenter, "then re-open the sweep.");
-}
-
 static void sweep_view_draw(Canvas* canvas, void* model) {
     SweepModel* m = model;
     char buf[24];
 
     /* ---------- header ---------- */
     canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str(canvas, 2, 9, "SPECTER");
+    canvas_draw_str(canvas, 2, 9, "SWEEP");
 
     if(m->flash) {
         /* a confirmation takes over the right of the header for a beat */
@@ -90,11 +87,8 @@ static void sweep_view_draw(Canvas* canvas, void* model) {
         canvas_draw_str_aligned(canvas, 125, 9, AlignRight, AlignBottom, m->flash_msg);
         canvas_set_color(canvas, ColorBlack);
     } else {
-        const char* state = m->error       ? "NFC BUSY" :
-                            m->calibrating ? "CALIBRATE" :
-                            !m->armed      ? "IDLE" :
-                            m->present     ? "READER" :
-                                             "SCANNING";
+        const char* state = m->calibrating ? "CALIBRATING" :
+                                             specter_chrome_state(m->error, m->armed, m->present);
         canvas_draw_str_aligned(canvas, 116, 9, AlignRight, AlignBottom, state);
         if(m->present) {
             canvas_draw_disc(canvas, 123, 5, 2);
@@ -102,10 +96,10 @@ static void sweep_view_draw(Canvas* canvas, void* model) {
             canvas_draw_circle(canvas, 123, 5, 2);
         }
     }
-    canvas_draw_line(canvas, 0, 11, 127, 11);
+    specter_chrome_rule(canvas);
 
     if(m->error) {
-        draw_error(canvas);
+        specter_chrome_nfc_error(canvas);
         return;
     }
 
@@ -119,15 +113,28 @@ static void sweep_view_draw(Canvas* canvas, void* model) {
         px = ax;
         py = ay;
     }
-    /* ticks (top third = danger zone, drawn bolder) */
+    /* Plain, evenly weighted ticks. The top three used to be drawn bolder as a
+     * "danger zone", which was decoration pretending to be information: the app
+     * does not call a reader at 80%, it calls one above the sensitivity
+     * threshold, which on the default setting lands nearer a quarter of the
+     * dial. The real line is drawn below, from the real number. */
     for(int i = 0; i <= 10; i++) {
-        uint8_t v = (uint8_t)(i * 10);
-        bool hot = i >= 8;
         int ox, oy, ix, iy;
-        gauge_point(v, R_OUT, &ox, &oy);
-        gauge_point(v, hot ? R_IN - 3 : R_IN, &ix, &iy);
+        gauge_point((uint8_t)(i * 10), R_OUT, &ox, &oy);
+        gauge_point((uint8_t)(i * 10), R_IN, &ix, &iy);
         canvas_draw_line(canvas, ix, iy, ox, oy);
-        if(hot) canvas_draw_line(canvas, ix + 1, iy, ox + 1, oy);
+    }
+
+    /* The threshold: everything past this mark is what the app will call a
+     * reader, at the sensitivity you actually have set. It moves when you
+     * change sensitivity or calibrate, so the dial finally answers "what counts
+     * as a hit?" instead of guessing at it with bold tick marks. */
+    {
+        int mx, my, mox, moy;
+        gauge_point(m->threshold_shown, R_IN, &mx, &my);
+        gauge_point(m->threshold_shown, R_OUT + 2, &mox, &moy);
+        canvas_draw_line(canvas, mx, my, mox, moy);
+        canvas_draw_line(canvas, mx + 1, my, mox + 1, moy);
     }
 
     /* scanner bug travelling the arc while idle-scanning */
@@ -151,13 +158,24 @@ static void sweep_view_draw(Canvas* canvas, void* model) {
     /* hub */
     canvas_draw_disc(canvas, PCX, PCY, 3);
 
-    /* throb ring when a reader is locked on */
-    if(m->present) {
+    /* Throb ring when a reader is locked on - but never while calibrating.
+     *
+     * This is a FULL circle, not the top semicircle the rest of the gauge is
+     * built from, so its lower arc reaches the bottom of the screen. In an
+     * ordinary alarm frame that is invisible: the inverted strip is painted
+     * over rows 53-63 afterwards. The calibrating branch paints no strip, so
+     * standing in a reader's field and pressing LEFT drew the arc straight
+     * through the "HOLD STILL" text for the whole 3 s.
+     *
+     * Gating it also settles a contradiction rather than just a collision: the
+     * header already reads CALIBRATING rather than READER, and the scene
+     * deliberately silences every other reader alert for the same window. */
+    if(m->present && !m->calibrating) {
         canvas_draw_circle(canvas, PCX, PCY, R_OUT + 1 + (m->anim % 3));
     }
 
     /* ---------- right: numeric readout ---------- */
-    canvas_draw_line(canvas, 64, 13, 64, 51);
+    canvas_draw_line(canvas, 64, 12, 64, 51);
     canvas_set_font(canvas, FontSecondary);
     canvas_draw_str(canvas, 68, 20, "FIELD");
 
@@ -175,53 +193,70 @@ static void sweep_view_draw(Canvas* canvas, void* model) {
     canvas_set_font(canvas, FontSecondary);
     canvas_draw_str(canvas, 114, 40, "%");
 
-    /* Contacts are clamped for width: past a few hundred the exact figure stops
-     * meaning anything, and the row must not run into the panel edge. */
-    unsigned long c = (unsigned long)m->contacts;
-    if(c > 999u) {
-        snprintf(buf, sizeof(buf), "PK%u C999+", (unsigned)m->peak);
-    } else {
-        snprintf(buf, sizeof(buf), "PK%u C%lu", (unsigned)m->peak, c);
-    }
+    /* This used to read "PK18 C7" - the peak and the contact count crammed
+     * together. Two problems: C was the only abbreviation in the app defined
+     * nowhere, and at "PK100 C999+" the row ran off the right edge of a 128px
+     * screen. The tally belongs on Survey and Watch, where a count is the whole
+     * point; the hunting screen wants the one number the needle is chasing, and
+     * it finally names the peak-hold marker already drawn on the arc. */
+    snprintf(buf, sizeof(buf), "PEAK %u%%", (unsigned)m->peak);
     canvas_draw_str(canvas, 68, 51, buf);
 
     /* ---------- bottom strip ---------- */
     canvas_draw_line(canvas, 0, 52, 127, 52);
     if(m->calibrating) {
-        /* Learning the room's own noise floor, right where you are standing. */
-        /* FontSecondary occupies rows [baseline-7 .. baseline], so a baseline of
-         * 59 put the glyph tops on row 52 - straight through the divider above.
-         * 60 clears it, and the progress bar drops to a plain 2px fill hugging
-         * the bottom edge rather than a framed box that would then clip the
-         * text from below. */
-        canvas_draw_str(canvas, 2, 60, "NOISE FLOOR");
-        canvas_draw_str_aligned(canvas, 126, 60, AlignRight, AlignBottom, "OK=cancel");
+        /* Learning the room's own noise floor, right where you are standing.
+         * The header carries what is happening (CALIBRATING); this strip
+         * carries what the user has to do about it.
+         *
+         * Baseline 62. FontSecondary's capitals ink rows [baseline-7 ..
+         * baseline-1] - the baseline row itself stays blank, measured off a 4x
+         * device capture - so the text lights rows 55..61, one clear row under
+         * the divider on 52 and one clear row above the progress fill on 63.
+         * (An earlier note here claimed baseline 60 and a 2px fill; both had
+         * moved and the comment had not.) */
+        canvas_draw_str(canvas, 2, 62, "HOLD STILL");
+        canvas_draw_str_aligned(canvas, 126, 62, AlignRight, AlignBottom, "OK=cancel");
         uint32_t fill = ((uint32_t)m->calib_progress * 128u) / 100u;
-        if(fill) canvas_draw_box(canvas, 0, 62, (int)fill, 2);
+        if(fill) canvas_draw_box(canvas, 0, 63, (int)fill, 1);
     } else if(m->present) {
         canvas_draw_box(canvas, 0, 53, 128, 11);
         canvas_set_color(canvas, ColorWhite);
         canvas_draw_disc(canvas, 4, 58, 1);
-        /* Baseline 61, not 62: the inner alarm frame below draws its bottom
-         * edge along row 62, which would erase the last pixel row of both of
-         * these strings. */
-        canvas_draw_str(canvas, 9, 61, "ACTIVE READER");
+        canvas_draw_str(canvas, 9, 62, "ACTIVE READER");
+        /* strength_ref, not strength: the word says how close you are, which
+         * cannot depend on which number the Meter setting chose to print. */
         canvas_draw_str_aligned(
             canvas,
             125,
-            61,
+            62,
             AlignRight,
             AlignBottom,
-            field_proximity_word(m->strength, m->saturated));
+            field_proximity_word(m->strength_ref, m->saturated_ref));
         canvas_set_color(canvas, ColorBlack);
-        /* alarm frame */
+        /* One 1px border, matching Site Survey's alarm. There used to be a
+         * second frame inset at (1,1,126,62); its bottom edge ran along row 62
+         * and was the only reason this strip sat a pixel higher than the other
+         * two states, so the text visibly hopped as you found a reader. */
         canvas_draw_frame(canvas, 0, 0, 128, 64);
-        canvas_draw_frame(canvas, 1, 1, 126, 62);
+    } else if(!m->contacts) {
+        /* Nothing has been FOUND yet, so the waveform below is a flat row of
+         * dots carrying no information. Spend the strip instead on the two
+         * bindings that cannot be discovered by pressing things: LEFT is the
+         * README's own first step, and hold-OK is how a finding gets saved.
+         *
+         * Gated on contacts, not peak: peak climbs off ordinary room noise
+         * within a second or two of arming (field_detector.c line 228 raises it
+         * from every sample, not just from detections), so a peak-based test
+         * would blink this hint away before anyone had read it. Contacts only
+         * moves when a real carrier was detected - so the training wheels come
+         * off exactly when the user has demonstrably found something. */
+        canvas_draw_str(canvas, 2, 62, "LEFT=cal hold OK=log");
     } else {
         /* Idle: the active sensitivity on the left, a live waveform of recent
          * field strength filling whatever space is left to the right of it. */
         char sbuf[16];
-        snprintf(sbuf, sizeof(sbuf), "S:%s", m->sens[0] ? m->sens : "?");
+        snprintf(sbuf, sizeof(sbuf), "SENS %s", m->sens[0] ? m->sens : "?");
         canvas_draw_str(canvas, 2, 62, sbuf);
         int wave_left = 2 + (int)canvas_string_width(canvas, sbuf) + 4;
 
@@ -262,6 +297,14 @@ static bool sweep_view_input(InputEvent* event, void* context) {
 
     if(event->key == InputKeyLeft && event->type == InputTypeShort) {
         if(v->left_cb) v->left_cb(v->left_ctx);
+        return true;
+    }
+
+    /* UP / DOWN step sensitivity without leaving the hunt. A noisy forecourt
+     * wants Low and a quiet corridor wants High, and reaching that through the
+     * menu meant taking the Flipper off the target for ten keypresses. */
+    if(event->type == InputTypeShort && (event->key == InputKeyUp || event->key == InputKeyDown)) {
+        if(v->sens_cb) v->sens_cb(v->sens_ctx, event->key == InputKeyUp);
         return true;
     }
     return false;
@@ -307,6 +350,27 @@ void sweep_view_set_left_callback(SweepView* v, SweepViewCallback cb, void* cont
     v->left_ctx = context;
 }
 
+void sweep_view_reset(SweepView* v) {
+    furi_assert(v);
+    with_view_model(
+        v->view,
+        SweepModel * m,
+        {
+            /* Sensitivity is configuration, not a reading - it survives. */
+            char sens[sizeof(m->sens)];
+            memcpy(sens, m->sens, sizeof(sens));
+            memset(m, 0, sizeof(SweepModel));
+            memcpy(m->sens, sens, sizeof(sens));
+        },
+        true);
+}
+
+void sweep_view_set_sens_callback(SweepView* v, SweepViewStepCallback cb, void* context) {
+    furi_assert(v);
+    v->sens_cb = cb;
+    v->sens_ctx = context;
+}
+
 void sweep_view_update(SweepView* v, const FieldStats* stats, const char* sens_label) {
     furi_assert(v);
     with_view_model(
@@ -317,8 +381,10 @@ void sweep_view_update(SweepView* v, const FieldStats* stats, const char* sens_l
             m->error = stats->error;
             m->present = stats->present;
             m->strength = stats->strength;
+            m->strength_ref = stats->strength_ref;
             m->peak = stats->peak;
-            m->saturated = stats->saturated;
+            m->saturated_ref = stats->saturated_ref;
+            m->threshold_shown = stats->threshold_shown;
             m->contacts = stats->contacts;
             memcpy(m->history, stats->history, sizeof(m->history));
             m->history_head = stats->history_head;

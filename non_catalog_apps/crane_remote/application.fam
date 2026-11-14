@@ -1,0 +1,14 @@
+App(
+    appid="crane_remote",
+    name="Telecrane Control",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="crane_remote_app",
+    requires=["gui"],
+    sources=["crane_remote.c", "radio_device_loader.c"],
+    fap_category="Sub-GHz",
+    fap_version=(1, 1),
+    fap_icon="crane_remote.png",
+    fap_author="nmatt0",
+    fap_weburl="https://github.com/nmatt0/telecrane-contol",
+    fap_description="Sends forged frames to Telecrane-style 2FSK crane remotes (848.93/850.92 MHz)",
+)

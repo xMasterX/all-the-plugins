@@ -2,7 +2,7 @@
 #include "../protopirate_app_i.h"
 #include "proto_pirate_icons.h"
 
-#define TAG "ProtoPirateNeedSaving"
+#define TAG "PPNeedSaving"
 
 static void
     protopirate_scene_need_saving_callback(GuiButtonType result, InputType type, void* context) {
@@ -17,7 +17,6 @@ static void
 }
 
 void protopirate_scene_need_saving_on_enter(void* context) {
-    furi_check(context);
     ProtoPirateApp* app = context;
 
     if(!protopirate_ensure_widget(app)) {
@@ -47,7 +46,6 @@ void protopirate_scene_need_saving_on_enter(void* context) {
 }
 
 bool protopirate_scene_need_saving_on_event(void* context, SceneManagerEvent event) {
-    furi_check(context);
     ProtoPirateApp* app = context;
 
     if(event.type == SceneManagerEventTypeBack) {
@@ -69,7 +67,6 @@ bool protopirate_scene_need_saving_on_event(void* context, SceneManagerEvent eve
 }
 
 void protopirate_scene_need_saving_on_exit(void* context) {
-    furi_check(context);
     ProtoPirateApp* app = context;
     widget_reset(app->widget);
 }

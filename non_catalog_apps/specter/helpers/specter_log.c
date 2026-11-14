@@ -1,4 +1,5 @@
 #include "specter_log.h"
+#include "log_wrap.h"
 
 #include <datetime/datetime.h>
 #include <furi_hal_rtc.h>
@@ -31,20 +32,36 @@ static void stamp_now(char* out, size_t n) {
         (unsigned)dt.second);
 }
 
-/* Append `text` to `path`, seeding it with `header` first if it is new/empty. */
-static bool append_to(Storage* storage, const char* path, const char* header, const char* text) {
+/* Append `text` to `path`, seeding it with `header` first if it is new/empty.
+ *
+ * Returns false either because the write failed or because the file has reached
+ * SPECTER_LOG_MAX_BYTES; `full` distinguishes the two so the caller can tell the
+ * user which it was instead of showing one vague failure for both. */
+static bool
+    append_to(Storage* storage, const char* path, const char* header, const char* text, bool* full) {
     File* file = storage_file_alloc(storage);
-    bool ok = storage_file_open(file, path, FSAM_WRITE, FSOM_OPEN_APPEND);
-    if(ok) {
-        if(header && storage_file_size(file) == 0) {
-            size_t hn = strlen(header);
-            ok = storage_file_write(file, header, hn) == hn;
-        }
-        if(ok) {
-            size_t tn = strlen(text);
-            ok = storage_file_write(file, text, tn) == tn;
+    bool ok = false;
+
+    if(storage_file_open(file, path, FSAM_WRITE, FSOM_OPEN_APPEND)) {
+        /* Read off the open handle rather than a separate stat - one fewer card
+         * round-trip on a path that runs from the UI thread. */
+        uint64_t size = storage_file_size(file);
+
+        if(size >= SPECTER_LOG_MAX_BYTES) {
+            if(full) *full = true;
+        } else {
+            ok = true;
+            if(header && size == 0) {
+                size_t hn = strlen(header);
+                ok = storage_file_write(file, header, hn) == hn;
+            }
+            if(ok) {
+                size_t tn = strlen(text);
+                ok = storage_file_write(file, text, tn) == tn;
+            }
         }
     }
+
     storage_file_close(file);
     storage_file_free(file);
     return ok;
@@ -70,9 +87,20 @@ bool specter_log_append(const char* type, const char* fmt, ...) {
     char stamp[STAMP_MAX];
     stamp_now(stamp, sizeof(stamp));
 
-    /* Grouped for the on-device viewer: timestamp, then an indented line. */
-    char txt[STAMP_MAX + DETAIL_MAX + 32u];
-    snprintf(txt, sizeof(txt), "%s\n  %-6s %s\n", stamp, type, detail);
+    /* Grouped for the on-device viewer: timestamp, then the detail on one or
+     * more indented lines. It used to be a single indented line on the
+     * assumption the TextBox would wrap it sensibly; it wraps by character, so
+     * a Watch contact came out with "field" split across a line break and the
+     * remainder un-indented. See log_wrap.h. */
+    char txt[STAMP_MAX + DETAIL_MAX + 64u];
+    int head = snprintf(txt, sizeof(txt), "%s\n", stamp);
+    if(head < 0 || (size_t)head >= sizeof(txt)) return false;
+    if(specter_log_wrap(txt + head, sizeof(txt) - (size_t)head, type, detail) == 0u) {
+        /* Should not happen - the buffer is sized for the worst case - but a
+         * finding is worth more than its formatting, so fall back to the old
+         * single long line rather than dropping the entry. */
+        snprintf(txt + head, sizeof(txt) - (size_t)head, "  %-6s %s\n", type, detail);
+    }
 
     /* One flat row for the spreadsheet. */
     char csv[STAMP_MAX + DETAIL_MAX + 32u];
@@ -81,10 +109,11 @@ bool specter_log_append(const char* type, const char* fmt, ...) {
     Storage* storage = furi_record_open(RECORD_STORAGE);
     storage_common_mkdir(storage, STORAGE_APP_DATA_PATH_PREFIX);
 
-    bool ok = append_to(storage, LOG_PATH, NULL, txt);
+    bool full = false;
+    bool ok = append_to(storage, LOG_PATH, NULL, txt, &full);
     /* The CSV is a convenience mirror; don't fail the whole write if only it
      * couldn't be updated, but do report a genuine .txt failure. */
-    append_to(storage, CSV_PATH, CSV_HEADER, csv);
+    append_to(storage, CSV_PATH, CSV_HEADER, csv, NULL);
 
     furi_record_close(RECORD_STORAGE);
     return ok;
@@ -114,11 +143,22 @@ bool specter_log_read_tail(FuriString* out) {
             size_t got = storage_file_read(file, buf, want);
             buf[got] = '\0';
 
-            /* If we cut into the middle of a line, drop the fragment. */
+            /* If we cut into the middle of the file, drop the fragment - and
+             * keep dropping until we are at the start of a whole ENTRY, not just
+             * the start of a line. Detail lines are indented, so landing on one
+             * means the timestamp it belongs to was cut off. */
             const char* text = buf;
             if(start > 0) {
                 const char* nl = strchr(buf, '\n');
-                if(nl) text = nl + 1;
+                text = nl ? nl + 1 : buf + got;
+                while(*text == ' ') {
+                    const char* next = strchr(text, '\n');
+                    if(!next) {
+                        text += strlen(text);
+                        break;
+                    }
+                    text = next + 1;
+                }
             }
 
             if(*text) {
@@ -151,6 +191,10 @@ bool specter_log_clear(void) {
     truncate_file(storage, CSV_PATH);
     furi_record_close(RECORD_STORAGE);
     return ok;
+}
+
+bool specter_log_is_full(void) {
+    return specter_log_size() >= SPECTER_LOG_MAX_BYTES;
 }
 
 uint32_t specter_log_size(void) {

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 ApertureFox Technology. MIT License.
 #include "game.h"
 #include "../plugin_api.h"
 
@@ -67,6 +68,7 @@ struct AppState {
     uint32_t dirNextRepeat[4] = {};
 
     bool ev_exit = false;
+    bool presentHardcore = false;
 };
 
 // Pack the framebuffer into the Flipper canvas buffer: 8 vertical pixels per
@@ -100,9 +102,13 @@ static void presentFrame(AppState* st) {
     int lx = 0, ly = 0;
     if(g->screenId == SCR_PLAY) {
         if(g->hudItemTicks) {
-            const char* n = itemName(g->pl.inventory[g->pl.invSlot].type);
+            const char* n = g->creative() ? blockName(BLOCK_PALETTE[g->pl.sel]) :
+                                            itemName(g->pl.inventory[g->pl.invSlot].type);
             if(n) snprintf(label, sizeof(label), "%s", n);
         }
+    } else if(g->screenId == SCR_PICKER) {
+        const char* n = blockName(g->pickerCursorBlock(&lx, &ly));
+        if(n) snprintf(label, sizeof(label), "%s", n);
     } else if(g->screenId != SCR_GAMEOVER) {
         ItemCell c = g->guiCursorItem(&lx, &ly);
         const char* n = itemName(c.type);
@@ -116,6 +122,7 @@ static void presentFrame(AppState* st) {
     furi_mutex_acquire(st->mutex, FuriWaitForever);
     packFramebuffer(g->fb, st->present);
     st->presentScreen = g->screenId;
+    st->presentHardcore = g->hardcore();
     memcpy(st->presentLabel, label, sizeof(label));
     st->presentLX = lx;
     st->presentLY = ly;
@@ -133,6 +140,7 @@ static void drawCb(Canvas* canvas, void* ctx) {
     uint8_t* buf = canvas_get_buffer(canvas);
     if(buf) memcpy(buf, st->present, sizeof(st->present));
     ScreenId screen = st->presentScreen;
+    const bool hardcore = st->presentHardcore;
     char label[sizeof(st->presentLabel)];
     memcpy(label, st->presentLabel, sizeof(label));
     int lx = st->presentLX, ly = st->presentLY;
@@ -143,7 +151,13 @@ static void drawCb(Canvas* canvas, void* ctx) {
         canvas_set_font(canvas, FontPrimary);
         canvas_draw_str_aligned(canvas, 64, 30, AlignCenter, AlignBottom, "You died!");
         canvas_set_font(canvas, FontSecondary);
-        canvas_draw_str_aligned(canvas, 64, 44, AlignCenter, AlignBottom, "Press OK to respawn");
+        canvas_draw_str_aligned(
+            canvas,
+            64,
+            44,
+            AlignCenter,
+            AlignBottom,
+            hardcore ? "OK: this world is gone" : "Press OK to respawn");
     }
 
     if(label[0]) {
@@ -342,9 +356,11 @@ static Input pollInput(AppState* st) {
     return in;
 }
 
-static void runGame(Game& game, Gui* gui, const char* path) {
+// Returns a FlipcraftGameResult: Delete when a hardmode run ended in death,
+// which only the host can act on.
+static int32_t runGame(Game& game, Gui* gui, const char* path) {
     AppState* st = new(std::nothrow) AppState();
-    if(!st) return;
+    if(!st) return FlipcraftGameResultError;
 
     st->game = &game;
     st->mutex = furi_mutex_alloc(FuriMutexTypeNormal);
@@ -353,7 +369,7 @@ static void runGame(Game& game, Gui* gui, const char* path) {
         if(st->mutex) furi_mutex_free(st->mutex);
         if(st->inputMutex) furi_mutex_free(st->inputMutex);
         delete st;
-        return;
+        return FlipcraftGameResultError;
     }
 
     GameConfig config = {path};
@@ -361,7 +377,7 @@ static void runGame(Game& game, Gui* gui, const char* path) {
         furi_mutex_free(st->mutex);
         furi_mutex_free(st->inputMutex);
         delete st;
-        return;
+        return FlipcraftGameResultError;
     }
 
     // First frame is presented before the viewport exists, so drawCb always
@@ -394,8 +410,9 @@ static void runGame(Game& game, Gui* gui, const char* path) {
             game.simulate(in);
             acc -= TICK_MS;
             stepped = true;
+            if(game.exitDelete) break;
         }
-        if(st->ev_exit) break;
+        if(st->ev_exit || game.exitDelete) break;
 
         if(stepped && game.render()) {
             presentFrame(st);
@@ -413,7 +430,9 @@ static void runGame(Game& game, Gui* gui, const char* path) {
     view_port_free(st->view_port);
     furi_mutex_free(st->mutex);
     furi_mutex_free(st->inputMutex);
+    const bool doomed = game.exitDelete;
     delete st;
+    return doomed ? FlipcraftGameResultDelete : FlipcraftGameResultOk;
 }
 
 }
@@ -430,11 +449,11 @@ static int32_t flipcraft_game_run(const char* world_path) {
     if(!game) return -1;
 
     Gui* gui = reinterpret_cast<Gui*>(furi_record_open(RECORD_GUI));
-    device::runGame(*game, gui, world_path);
+    const int32_t outcome = device::runGame(*game, gui, world_path);
     furi_record_close(RECORD_GUI);
 
     delete game;
-    return 0;
+    return outcome;
 }
 
 static const FlipcraftGameApi flipcraft_game_api = {

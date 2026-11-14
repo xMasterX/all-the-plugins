@@ -8,7 +8,6 @@ App(
     requires=[
         "gui",
     ],
-    order=60,
     fap_version="0.5",
     fap_icon="ldtoypad.png",  # 10x10 1-bit PNG
     fap_description="USB Toy Pad emulator for Lego Dimensions",

@@ -7,9 +7,9 @@
 #include <toolbox/stream/stream.h>
 #include <string.h>
 
-#define TAG "ProtoPirateStorage"
+#define TAG "PPStorage"
 
-bool protopirate_storage_init(void) {
+static bool protopirate_storage_init(void) {
     Storage* storage = furi_record_open(RECORD_STORAGE);
     bool result = storage_simply_mkdir(storage, PROTOPIRATE_APP_FOLDER);
     furi_record_close(RECORD_STORAGE);
@@ -20,10 +20,6 @@ bool protopirate_storage_commit_temp_file(
     Storage* storage,
     const char* tmp_path,
     const char* final_path) {
-    furi_check(storage);
-    furi_check(tmp_path);
-    furi_check(final_path);
-
     FuriString* backup_path = furi_string_alloc();
     furi_string_printf(backup_path, "%s.bak", final_path);
     const char* backup_cstr = furi_string_get_cstr(backup_path);
@@ -79,7 +75,7 @@ void protopirate_storage_purge_temp_history_at_startup(void) {
     protopirate_storage_remove_history_folder();
 }
 
-bool protopirate_storage_ensure_history_folder(void) {
+static bool protopirate_storage_ensure_history_folder(void) {
     if(!protopirate_storage_init()) {
         return false;
     }
@@ -91,7 +87,6 @@ bool protopirate_storage_ensure_history_folder(void) {
 }
 
 void protopirate_storage_build_history_path(uint32_t seq, FuriString* out) {
-    furi_check(out);
     furi_string_printf(
         out,
         "%s/hist_%08lu%s",
@@ -104,9 +99,6 @@ bool protopirate_storage_save_history_capture(
     FlipperFormat* flipper_format,
     uint32_t seq,
     FuriString* out_path) {
-    furi_check(flipper_format);
-    furi_check(out_path);
-
     if(!protopirate_storage_ensure_history_folder()) {
         FURI_LOG_E(TAG, "History folder missing");
         return false;
@@ -140,24 +132,32 @@ static void sanitize_filename(const char* input, char* output, size_t output_siz
     output[j] = '\0';
 }
 
-bool protopirate_storage_get_next_filename(const char* protocol_name, FuriString* out_filename) {
+bool protopirate_storage_get_next_filename(
+    const char* protocol_name,
+    FuriString* out_filename,
+    bool dont_add_zero) {
     if(!protocol_name || !out_filename) return false;
     Storage* storage = furi_record_open(RECORD_STORAGE);
     FuriString* temp_path = furi_string_alloc();
     uint32_t index = 0;
     bool found = false;
 
-    char safe_name[64];
+    char safe_name[100];
     sanitize_filename(protocol_name, safe_name, sizeof(safe_name));
 
     while(!found && index <= 999) {
-        furi_string_printf(
-            temp_path,
-            "%s/%s_%03lu%s",
-            PROTOPIRATE_APP_FOLDER,
-            safe_name,
-            (unsigned long)index,
-            PROTOPIRATE_APP_EXTENSION);
+        if(index == 0 && dont_add_zero) {
+            furi_string_printf(
+                temp_path, "%s/%s%s", PROTOPIRATE_APP_FOLDER, safe_name, PROTOPIRATE_APP_EXTENSION);
+        } else {
+            furi_string_printf(
+                temp_path,
+                "%s/%s_%03lu%s",
+                PROTOPIRATE_APP_FOLDER,
+                safe_name,
+                (unsigned long)index,
+                PROTOPIRATE_APP_EXTENSION);
+        }
 
         if(!storage_file_exists(storage, furi_string_get_cstr(temp_path))) {
             furi_string_set(out_filename, temp_path);
@@ -175,9 +175,6 @@ bool protopirate_storage_get_next_filename(const char* protocol_name, FuriString
 bool protopirate_storage_get_capture_display_protocol(
     FlipperFormat* flipper_format,
     FuriString* protocol_name) {
-    furi_check(flipper_format);
-    furi_check(protocol_name);
-
     FuriString* raw_protocol = furi_string_alloc();
     bool have_protocol = false;
     uint32_t protocol_type = 0U;
@@ -222,7 +219,6 @@ static const char* const protopirate_storage_tail_u32_fields[] = {
     "Encrypted",
     "Decrypted",
     "KIAVersion",
-    "Checksum",
 };
 
 static bool protopirate_storage_fail(const char* action, const char* key) {
@@ -390,7 +386,7 @@ static bool protopirate_storage_copy_hex_fixed(
     size_t len,
     bool* copied) {
     uint8_t data[8];
-    furi_check(len <= sizeof(data));
+
     if(copied) {
         *copied = false;
     }
@@ -529,9 +525,6 @@ static bool
 static bool protopirate_storage_write_capture_data(
     FlipperFormat* save_file,
     FlipperFormat* flipper_format) {
-    furi_check(save_file);
-    furi_check(flipper_format);
-
     FuriString* string_value = furi_string_alloc();
     if(!string_value) {
         FURI_LOG_E(TAG, "Failed to alloc string_value");
@@ -632,7 +625,6 @@ static bool protopirate_storage_save_capture_atomic(
     FlipperFormat* flipper_format,
     const char* full_path) {
     FuriString* tmp_path = furi_string_alloc();
-    furi_check(tmp_path);
     furi_string_printf(tmp_path, "%s.tmp", full_path);
     const char* tmp_cstr = furi_string_get_cstr(tmp_path);
     bool ok = false;
@@ -664,9 +656,6 @@ static bool protopirate_storage_save_capture_atomic(
 }
 
 bool protopirate_storage_save_capture_to_path(FlipperFormat* flipper_format, const char* full_path) {
-    furi_check(flipper_format);
-    furi_check(full_path);
-
     if(!protopirate_storage_init()) {
         FURI_LOG_E(TAG, "Failed to create app folder");
         return false;
@@ -694,11 +683,8 @@ void protopirate_storage_delete_temp(void) {
 bool protopirate_storage_save_capture(
     FlipperFormat* flipper_format,
     const char* protocol_name,
-    FuriString* out_path) {
-    furi_check(flipper_format);
-    furi_check(protocol_name);
-    furi_check(out_path);
-
+    FuriString* out_path,
+    bool datetime_filenames) {
     if(!protopirate_storage_init()) {
         FURI_LOG_E(TAG, "Failed to create app folder");
         return false;
@@ -706,7 +692,7 @@ bool protopirate_storage_save_capture(
 
     FuriString* file_path = furi_string_alloc();
 
-    if(!protopirate_storage_get_next_filename(protocol_name, file_path)) {
+    if(!protopirate_storage_get_next_filename(protocol_name, file_path, datetime_filenames)) {
         FURI_LOG_E(TAG, "Failed to get next filename");
         furi_string_free(file_path);
         return false;

@@ -1,0 +1,19 @@
+App(
+    appid="ai_composer",
+    name="AI Composer",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="ai_composer_main",
+    stack_size=8 * 1024,
+    sources=[
+        "ai_composer.c",
+        "composer_model.c",
+        "composer_music.c",
+        "composer_weights.c",
+    ],
+    fap_icon="icon.png",
+    fap_category="Media",
+    fap_version="1.0",
+    fap_author="TheProductAgency",
+    fap_weburl="https://github.com/TheProductAgency/flipper-ai-composer",
+    fap_description="A tiny neural network that writes new melodies on the Flipper",
+)

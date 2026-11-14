@@ -5,27 +5,24 @@
 #include <furi_hal.h>
 #include "helpers/protopirate_settings.h"
 #include "helpers/protopirate_storage.h"
-#include "helpers/protopirate_psa_bf_host.h"
+#include "helpers/protopirate_bruteforce_host.h"
 #include "helpers/protopirate_views.h"
 #include "helpers/protopirate_radio.h"
 #include <string.h>
 
-#define TAG "ProtoPirateApp"
+#define TAG "PPApp"
 
 static bool protopirate_app_custom_event_callback(void* context, uint32_t event) {
-    furi_check(context);
     ProtoPirateApp* app = context;
     return scene_manager_handle_custom_event(app->scene_manager, event);
 }
 
 static bool protopirate_app_back_event_callback(void* context) {
-    furi_check(context);
     ProtoPirateApp* app = context;
     return scene_manager_handle_back_event(app->scene_manager);
 }
 
 static void protopirate_app_tick_event_callback(void* context) {
-    furi_check(context);
     ProtoPirateApp* app = context;
     scene_manager_handle_tick_event(app->scene_manager);
 }
@@ -38,6 +35,17 @@ ProtoPirateApp* protopirate_app_alloc() {
         return NULL;
     }
     memset(app, 0, sizeof(ProtoPirateApp));
+
+    // Null out plugin pointers just in case. (Should be done my memset above.)
+    /*app->running_plugin_flipper_application = NULL;
+    app->running_plugin.plugin_pointer = NULL;
+    app->running_bruteforce_plugin.plugin_pointer = NULL;
+    app->variable_item_list = NULL;
+    app->text_input = NULL;
+    app->save_history_idx = 0;
+    app->emulate_disabled_for_loaded = false;
+    app->save_filename = NULL;
+    */
 
     FURI_LOG_I(TAG, "Allocating ProtoPirate Decoder App");
 
@@ -72,24 +80,31 @@ ProtoPirateApp* protopirate_app_alloc() {
     view_dispatcher_add_view(
         app->view_dispatcher, ProtoPirateViewSubmenu, submenu_get_view(app->submenu));
 
-    app->save_protocol = NULL;
-    app->save_from_saved_info = false;
-    app->save_history_idx = 0;
-    app->emulate_disabled_for_loaded = false;
-    memset(app->save_filename, 0, sizeof(app->save_filename));
-
     // File Browser path
-    app->file_path = furi_string_alloc();
-    furi_string_set(app->file_path, PROTOPIRATE_APP_FOLDER);
+    app->file_path = malloc(strlen(PROTOPIRATE_APP_FOLDER) + 1);
+    snprintf(app->file_path, strlen(PROTOPIRATE_APP_FOLDER) + 1, PROTOPIRATE_APP_FOLDER);
 
     // Load saved settings
     ProtoPirateSettings settings;
-    protopirate_settings_load(&settings);
+    //Load settings from plugin, keep it open for models below.
+    if(shared_plugin_load(
+           &app->running_plugin_flipper_application,
+           &app->running_plugin,
+           ProtoPirateSharedPluginsConfig,
+           NULL) &&
+       app->running_plugin.config_plugin) {
+        //Call the function in the plugin.
+        app->running_plugin.config_plugin->protopirate_settings_load(&settings);
+    } else {
+        notification_message(app->notifications, &sequence_error);
+    }
 
     // Apply auto-save setting
     app->auto_save = settings.auto_save;
+    app->sound = settings.sound;
     app->check_saved = settings.check_saved;
     app->tx_power = settings.tx_power;
+    app->datetime_filenames = settings.datetime_filenames;
 #ifdef ENABLE_EMULATE_FEATURE
     app->emulate_feature_enabled = settings.emulate_feature_enabled;
 #else
@@ -100,6 +115,7 @@ ProtoPirateApp* protopirate_app_alloc() {
     app->setting = subghz_setting_alloc();
     app->loaded_file_path = NULL;
     app->start_tx_time = 0;
+    app->deferred_storage_timer = NULL;
     subghz_setting_load(app->setting, EXT_PATH("subghz/assets/setting_user"));
 
     // Apply loaded frequency and preset, with validation
@@ -128,13 +144,10 @@ ProtoPirateApp* protopirate_app_alloc() {
     // Initialize TxRx structure with minimal setup
     app->lock = ProtoPirateLockOff;
     app->txrx = malloc(sizeof(ProtoPirateTxRx));
-    furi_check(app->txrx);
     memset(app->txrx, 0, sizeof(ProtoPirateTxRx));
-
+    //app->txrx->running_plugin.plugin_pointer = NULL; //memset shoulnt need it,
     app->txrx->preset = malloc(sizeof(SubGhzRadioPreset));
-    furi_check(app->txrx->preset);
     app->txrx->preset->name = furi_string_alloc();
-    furi_check(app->txrx->preset->name);
     app->txrx->txrx_state = ProtoPirateTxRxStateIDLE;
     app->txrx->rx_key_state = ProtoPirateRxKeyStateIDLE;
     app->txrx->protocol_registry_route = ProtoPirateProtocolRegistryRouteAMDefault;
@@ -143,20 +156,66 @@ ProtoPirateApp* protopirate_app_alloc() {
     const char* preset_name = subghz_setting_get_preset_name(app->setting, preset_index);
     uint8_t* preset_data = subghz_setting_get_preset_data(app->setting, preset_index);
     size_t preset_data_size = subghz_setting_get_preset_data_size(app->setting, preset_index);
+    protopirate_preset_init(app, preset_name, frequency, preset_data, preset_data_size);
 
     FURI_LOG_I(
         TAG,
-        "Settings: freq=%lu, preset=%s, auto_save=%d, hopping=%d",
+        "Settings: freq=%lu, preset=%s, auto_save=%d, hopping=%lu",
         frequency,
         preset_name,
         settings.auto_save,
-        settings.hopping_enabled);
+        settings.hopper_state);
 
-    protopirate_preset_init(app, preset_name, frequency, preset_data, preset_data_size);
+    //Load the models database, get the count of the models for the list.
+#ifdef ENABLE_MODELS_DATABASE
+    app->selected_model = malloc(sizeof(ProtoPirateCarModel));
+    app->selected_model->name = NULL;
+    app->selected_model->preset = NULL; // important initialization
+    app->selected_model->index = 0; // optional but clean
+
+    //Grab selected car model.
+    if(app->running_plugin.config_plugin) {
+        FURI_LOG_D(TAG, "Getting Models count");
+        app->car_models_count = app->running_plugin.config_plugin->car_model_get_count();
+        FURI_LOG_D(TAG, "Got Models count");
+
+        if(settings.car_model_index) {
+            FURI_LOG_D(TAG, "Restoring Selected Model.");
+
+            //Get the selected car model.
+            app->running_plugin.config_plugin->car_model_get_by_index(
+                app->selected_model, settings.car_model_index, app->car_models_count, app->setting);
+            app->selected_model->last_preset_index = settings.preset_index;
+
+            //Preset for the selected model...
+            protopirate_preset_init(
+                app,
+                furi_string_get_cstr(app->selected_model->preset->name),
+                app->selected_model->preset->frequency,
+                app->selected_model->preset->data,
+                app->selected_model->preset->data_size);
+
+        } else {
+            //This will return Select a model or No Models in Database
+            app->running_plugin.config_plugin->car_model_get_by_index(
+                app->selected_model, 0, app->car_models_count, app->setting);
+        }
+    } else {
+        app->car_models_count = 0;
+    }
+#endif
+
+    //Kill the config plugin now.
+    shared_plugin_unload(&app->running_plugin_flipper_application, &app->running_plugin);
 
     // Apply hopping state from settings
-    app->txrx->hopper_state = settings.hopping_enabled ? ProtoPirateHopperStateRunning :
-                                                         ProtoPirateHopperStateOFF;
+    if(settings.hopper_state) {
+        app->txrx->hopper_state = ProtoPirateHopperStateRunning;
+        app->txrx->hopper_rssi = settings.hopper_state;
+    } else {
+        app->txrx->hopper_state = ProtoPirateHopperStateOFF;
+        app->txrx->hopper_rssi = 0;
+    }
     app->txrx->hopper_idx_frequency = 0;
     app->txrx->hopper_timeout = 0;
     app->txrx->idx_menu_chosen = 0;
@@ -167,8 +226,6 @@ ProtoPirateApp* protopirate_app_alloc() {
 }
 
 void protopirate_app_free(ProtoPirateApp* app) {
-    furi_check(app);
-
     FURI_LOG_I(TAG, "=== protopirate_app_free called ===");
     FURI_LOG_D(TAG, "State: radio_initialized=%d", app->radio_initialized);
 
@@ -176,64 +233,97 @@ void protopirate_app_free(ProtoPirateApp* app) {
     ProtoPirateSettings settings;
     settings.frequency = app->txrx->preset->frequency;
     settings.auto_save = app->auto_save;
+    settings.sound = app->sound;
     settings.check_saved = app->check_saved;
     settings.tx_power = app->tx_power;
-    settings.hopping_enabled = (app->txrx->hopper_state != ProtoPirateHopperStateOFF);
+    settings.datetime_filenames = app->datetime_filenames;
 #ifdef ENABLE_EMULATE_FEATURE
     settings.emulate_feature_enabled = app->emulate_feature_enabled;
 #else
     settings.emulate_feature_enabled = false;
 #endif
+    settings.hopper_state = (app->txrx->hopper_state == ProtoPirateHopperStateOFF) ?
+                                ProtoPirateHopperStateOFF :
+                                app->txrx->hopper_rssi;
 
-    // Find current preset index
-    settings.preset_index = 0;
-    const char* current_preset = furi_string_get_cstr(app->txrx->preset->name);
-    for(uint8_t i = 0; i < subghz_setting_get_preset_count(app->setting); i++) {
-        if(strcmp(subghz_setting_get_preset_name(app->setting, i), current_preset) == 0) {
-            settings.preset_index = i;
-            break;
+    //Get the selected Model, and get the preset to save.
+#ifdef ENABLE_MODELS_DATABASE
+    if(app->selected_model && app->selected_model->index) {
+        //Get Preset Index before model was selected.
+        settings.car_model_index = app->selected_model->index;
+        settings.preset_index = app->selected_model->last_preset_index;
+    } else {
+        // Find current preset index
+        settings.car_model_index = 0; //Clear the selected model.
+        settings.preset_index = 0;
+        const char* current_preset = furi_string_get_cstr(app->txrx->preset->name);
+        for(uint8_t i = 0; i < subghz_setting_get_preset_count(app->setting); i++) {
+            if(strcmp(subghz_setting_get_preset_name(app->setting, i), current_preset) == 0) {
+                settings.preset_index = i;
+                break;
+            }
         }
     }
 
+    //Free the Model Name
+    if(app->selected_model->name) free(app->selected_model->name);
+    app->selected_model->index = 0;
+
+    //Free the preset information.
+    if(app->selected_model->preset) {
+        //Free the preset data
+        if((app->selected_model)->preset->data) {
+            free(app->selected_model->preset->data);
+            app->selected_model->preset->data = NULL;
+        }
+
+        //Free the Preset name
+        furi_string_free(app->selected_model->preset->name);
+
+        //Free the preset.
+        free(app->selected_model->preset);
+        app->selected_model->preset = NULL;
+    }
+
+    //Free the Model.
+    free(app->selected_model);
+    app->selected_model = NULL;
+#endif
+
     FURI_LOG_I(
         TAG,
-        "Saving settings: freq=%lu, preset=%u, auto_save=%d, hopping=%d, emulate=%d",
+        "Saving settings: freq=%lu, preset=%u, auto_save=%d, hopping=%lu, emulate=%d",
         settings.frequency,
         settings.preset_index,
         settings.auto_save,
-        settings.hopping_enabled,
+        settings.hopper_state,
         settings.emulate_feature_enabled);
 
-    protopirate_settings_save(&settings);
-
-    protopirate_tool_scene_plugin_release(app);
-#ifdef ENABLE_EMULATE_FEATURE
-    protopirate_emulate_context_release(app);
-#endif
+    protopirate_settings_save_from_plugin(&settings);
 
     FURI_LOG_D(TAG, "Calling radio_deinit");
     protopirate_radio_deinit(app);
 
     if(app->loaded_file_path) {
         FURI_LOG_D(TAG, "Freeing loaded_file_path");
-        furi_string_free(app->loaded_file_path);
+        free(app->loaded_file_path);
         app->loaded_file_path = NULL;
     }
 
     protopirate_views_free(app);
 
+    if(app->save_filename) {
+        free(app->save_filename);
+        app->save_filename = NULL;
+    }
+
     if(app->file_path) {
         FURI_LOG_D(TAG, "Freeing file_path");
-        furi_string_free(app->file_path);
+        free(app->file_path);
         app->file_path = NULL;
     }
 
-    if(app->save_protocol) {
-        furi_string_free(app->save_protocol);
-        app->save_protocol = NULL;
-    }
-
-    protopirate_psa_bf_context_release(app);
+    protopirate_bruteforce_context_release(app);
 
     FURI_LOG_D(TAG, "Freeing subghz_setting");
     subghz_setting_free(app->setting);
@@ -264,42 +354,45 @@ void protopirate_app_free(ProtoPirateApp* app) {
 }
 
 int32_t protopirate_app(char* p) {
-    furi_hal_power_suppress_charge_enter();
-
     ProtoPirateApp* protopirate_app = protopirate_app_alloc();
     if(!protopirate_app) {
-        furi_hal_power_suppress_charge_exit();
         return -1;
     }
 
+    //Stop charging while running the app.
+    furi_hal_power_suppress_charge_enter();
+
     // Handle Command line PSF that may have been passed to us
     bool load_saved = (p && strlen(p));
-    if(load_saved) protopirate_app->loaded_file_path = furi_string_alloc_set(p);
+    if(load_saved) {
+        protopirate_app->loaded_file_path = malloc(strlen(p) + 1);
+        snprintf(protopirate_app->loaded_file_path, strlen(p) + 1, p);
+    }
+
+//We now jump straight to emulate scene from Browser.
+#ifdef ENABLE_EMULATE_FEATURE
+    scene_manager_next_scene(
+        protopirate_app->scene_manager,
+        (load_saved) ? ((protopirate_app->emulate_feature_enabled) ? ProtoPirateSceneEmulate :
+                                                                     ProtoPirateSceneSavedInfo) :
+                       ProtoPirateSceneStart);
+#else
     scene_manager_next_scene(
         protopirate_app->scene_manager,
         (load_saved) ? ProtoPirateSceneSavedInfo : ProtoPirateSceneStart);
-
-    //We now jump straight to emulate scene from Browser. If the user wanted the key to look at, just click back.
-    if(load_saved) {
-#ifdef ENABLE_EMULATE_FEATURE
-        if(protopirate_app->emulate_feature_enabled) {
-            view_dispatcher_send_custom_event(
-                protopirate_app->view_dispatcher, ProtoPirateCustomEventSavedInfoEmulate);
-            notification_message(protopirate_app->notifications, &sequence_success);
-        } else {
 #endif
-            view_dispatcher_send_custom_event(
-                protopirate_app->view_dispatcher, ProtoPirateCustomEventReceiverInfoSave);
-#ifdef ENABLE_EMULATE_FEATURE
-        }
-#endif
+    //Pop up the beep if we are startng emulate.
+    if(load_saved && protopirate_app->emulate_feature_enabled) {
+        notification_message(protopirate_app->notifications, &sequence_success);
     }
 
+    //Run the App
     view_dispatcher_run(protopirate_app->view_dispatcher);
 
+    //Free the App and allow chargin again.
     protopirate_app_free(protopirate_app);
 
+    //Restore Charging State
     furi_hal_power_suppress_charge_exit();
-
     return 0;
 }

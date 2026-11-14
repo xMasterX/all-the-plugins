@@ -5,7 +5,6 @@ App(
     targets=["f7"],
     entry_point="ibutton_converter_app",
     stack_size=2 * 1024,
-    order=1,
     requires=[
         "storage",
         "gui",

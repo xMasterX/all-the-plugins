@@ -5,7 +5,6 @@ App(
     targets=["f7"],
     entry_point="nfc_eink",
     stack_size=5 * 1024,
-    order=30,
     sources=["*.c*"],
     fap_icon="icon.png",
     fap_icon_assets="assets",

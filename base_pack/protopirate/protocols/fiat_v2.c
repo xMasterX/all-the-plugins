@@ -273,7 +273,6 @@ static bool
 void* subghz_protocol_decoder_fiat_v2_alloc(SubGhzEnvironment* environment) {
     UNUSED(environment);
     SubGhzProtocolDecoderFiatV2* instance = calloc(1, sizeof(SubGhzProtocolDecoderFiatV2));
-    furi_check(instance);
     instance->base.protocol = &fiat_v2_protocol;
     instance->generic.protocol_name = instance->base.protocol->name;
     subghz_protocol_decoder_fiat_v2_reset(instance);
@@ -281,7 +280,6 @@ void* subghz_protocol_decoder_fiat_v2_alloc(SubGhzEnvironment* environment) {
 }
 
 void subghz_protocol_decoder_fiat_v2_reset(void* context) {
-    furi_check(context);
     SubGhzProtocolDecoderFiatV2* instance = context;
 
     memset(instance->raw_data, 0, sizeof(instance->raw_data));
@@ -302,7 +300,6 @@ void subghz_protocol_decoder_fiat_v2_reset(void* context) {
 }
 
 void subghz_protocol_decoder_fiat_v2_feed(void* context, bool level, uint32_t duration) {
-    furi_check(context);
     SubGhzProtocolDecoderFiatV2* instance = context;
 
     switch(instance->decoder.parser_step) {
@@ -323,7 +320,6 @@ void subghz_protocol_decoder_fiat_v2_feed(void* context, bool level, uint32_t du
 }
 
 uint8_t subghz_protocol_decoder_fiat_v2_get_hash_data(void* context) {
-    furi_check(context);
     SubGhzProtocolDecoderFiatV2* instance = context;
     SubGhzBlockDecoder decoder = {
         .decode_data = instance->generic.data,
@@ -337,7 +333,6 @@ SubGhzProtocolStatus subghz_protocol_decoder_fiat_v2_serialize(
     void* context,
     FlipperFormat* flipper_format,
     SubGhzRadioPreset* preset) {
-    furi_check(context);
     SubGhzProtocolDecoderFiatV2* instance = context;
 
     SubGhzProtocolStatus ret =
@@ -347,25 +342,23 @@ SubGhzProtocolStatus subghz_protocol_decoder_fiat_v2_serialize(
     }
 
     flipper_format_rewind(flipper_format);
-    flipper_format_insert_or_update_hex(
-        flipper_format, FIAT_V2_RAW_FIELD, instance->raw_data, FIAT_V2_WIRE_BYTES);
-
-    uint32_t hop = instance->hop;
-    uint32_t button = instance->button;
-    if(!flipper_format_write_uint32(flipper_format, FIAT_V2_HOP_FIELD, &hop, 1) ||
-       !flipper_format_write_uint32(flipper_format, FIAT_V2_BTN_FIELD, &button, 1)) {
-        return SubGhzProtocolStatusErrorParserOthers;
-    }
+    flipper_format_delete_key(flipper_format, FIAT_V2_RAW_FIELD);
 
     pp_flipper_update_or_insert_u32(flipper_format, FF_SERIAL, instance->generic.serial);
     pp_flipper_update_or_insert_u32(flipper_format, FF_BTN, instance->generic.btn);
     pp_flipper_update_or_insert_u32(flipper_format, FF_CNT, instance->generic.cnt);
+    pp_flipper_update_or_insert_u32(flipper_format, FIAT_V2_HOP_FIELD, instance->hop);
+    pp_flipper_update_or_insert_u32(flipper_format, FIAT_V2_BTN_FIELD, instance->button);
+
+    if(!flipper_format_insert_or_update_hex(
+           flipper_format, FIAT_V2_RAW_FIELD, instance->raw_data, FIAT_V2_WIRE_BYTES)) {
+        return SubGhzProtocolStatusErrorParserOthers;
+    }
     return SubGhzProtocolStatusOk;
 }
 
 SubGhzProtocolStatus
     subghz_protocol_decoder_fiat_v2_deserialize(void* context, FlipperFormat* flipper_format) {
-    furi_check(context);
     SubGhzProtocolDecoderFiatV2* instance = context;
 
     SubGhzProtocolStatus ret = subghz_block_generic_deserialize_check_count_bit(
@@ -391,7 +384,6 @@ SubGhzProtocolStatus
 }
 
 void subghz_protocol_decoder_fiat_v2_get_string(void* context, FuriString* output) {
-    furi_check(context);
     SubGhzProtocolDecoderFiatV2* instance = context;
 
     furi_string_cat_printf(

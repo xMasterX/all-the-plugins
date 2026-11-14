@@ -17,7 +17,6 @@ App(
         "gui", "storage", "nfc",
     ],
     stack_size=3 * 1024,
-    order=20,
     sources=[
       "*.c",
       "aeabi_uldivmod.sx",

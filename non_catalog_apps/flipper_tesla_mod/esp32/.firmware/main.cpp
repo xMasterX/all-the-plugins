@@ -1,5 +1,5 @@
 /*
- * main.cpp — Tesla FSD Unlock for ESP32
+ * main.cpp — Tesla Mod for ESP32
  *
  * Port of hypery11/flipper-tesla-fsd to M5Stack ATOM Lite + ATOMIC CAN Base.
  *
@@ -22,6 +22,7 @@
 #include "can_signals.h"
 #include "fsd_handler.h"
 #include "can_driver.h"
+#include "can_capture_filter.h"
 #include "led.h"
 #include "wifi_manager.h"
 #include "web_dashboard.h"
@@ -31,10 +32,23 @@
 #include "capability.h"
 #include "profile_match.h"
 #include "../../fsd_logic/fsd_events.h"
+#include "../../fsd_logic/fsd_can_ops.h"  // tesla_can_rx_accept
 #include "prefs.h"
+#include "ota_verify.h"
 #if defined(BOARD_TTGO_DISPLAY)
 #include "display.h"
 #endif
+#if defined(BOARD_LILYGO)
+#include <driver/gpio.h>   // CAN TX pad hold across deep sleep
+#endif
+
+// Loop task stack. The Arduino default is 8 KB, and the dashboard's deepest
+// path (WebSocket connect -> state JSON -> printf) ran past it once loop()'s
+// own frame had grown: the board rebooted whenever a browser connected.
+// NOINLINE keeps the per-frame and tick helpers out of loop()'s frame, so
+// their locals are only on the stack while they run.
+SET_LOOP_TASK_STACK_SIZE(16 * 1024);
+#define NOINLINE __attribute__((noinline))
 
 // ── Globals ───────────────────────────────────────────────────────────────────
 #if defined(CAN_DRIVER_T2CAN_DUAL)
@@ -109,7 +123,7 @@ static bool serial_cmd_equals(const char *cmd, const char *expected) {
     return *cmd == '\0' && *expected == '\0';
 }
 
-static void serial_command_tick() {
+static NOINLINE void serial_command_tick() {
     static char buf[24];
     static uint8_t len = 0;
 
@@ -369,6 +383,23 @@ static const char *hw_to_str(TeslaHWVersion hw) {
     }
 }
 
+static void sync_http_can_stream_filter_if_needed() {
+    static CanCaptureFilterSync sync;
+    uint32_t ids[CAN_CAPTURE_MAX_IDS] = {};
+    uint8_t count = 0;
+    bool active = http_can_stream_filter_snapshot(ids, CAN_CAPTURE_MAX_IDS, &count);
+    CanBusId bus = CAN_BUS_PRIMARY;
+    bool scoped = http_can_stream_bus_filter(&bus);
+    sync.update(g_can, g_can_ok, CAN_ACTIVE_BUS_COUNT, state_snapshot().op_mode,
+                active, ids, count, scoped, bus);
+    // Report actual driver state after programming, including failed changes.
+    const char *modes[CAN_BUS_COUNT] = {"down", "down"};
+    for (uint8_t i = 0; i < CAN_ACTIVE_BUS_COUNT; i++) {
+        if (g_can_ok[i] && g_can[i]) modes[i] = g_can[i]->acceptanceFilterMode();
+    }
+    http_can_stream_note_filters(CAN_ACTIVE_BUS_COUNT, modes);
+}
+
 static uint8_t epas_hands_on_level(const CanFrame &frame) {
     return (frame.data[SIG_EPAS_HANDS_ON_BYTE] >> SIG_EPAS_HANDS_ON_SHIFT) &
            SIG_EPAS_HANDS_ON_MASK;
@@ -562,6 +593,13 @@ static void debug_log_nag_decision(CanBusId bus,
 static void apply_detected_hw(TeslaHWVersion hw, const char *reason) {
     if (hw == TeslaHW_Unknown) return;
     state_enter();
+    // Manual HW selection wins (#110): once the owner has pinned a version,
+    // auto-detection must never move it — detection can only guess on taps that
+    // carry no 0x398, and overriding a deliberate choice is what breaks setups.
+    if (g_state.hw_override != TeslaHW_Unknown) {
+        state_exit();
+        return;
+    }
     if (g_state.hw_version == hw) {
         state_exit();
         return;
@@ -851,7 +889,7 @@ static void continuous_ap_tick_hw4(uint32_t now,
     }
 }
 
-static void continuous_ap_tick(uint32_t now) {
+static NOINLINE void continuous_ap_tick(uint32_t now) {
     FSDState s = state_snapshot();
     bool ap_disabled_now = g_cont_ap_last_ap_active && !s.ap_active;
     g_cont_ap_last_ap_active = s.ap_active;
@@ -939,7 +977,7 @@ static void dispatch_clicks(int n) {
     }
 }
 
-static void button_tick() {
+static NOINLINE void button_tick() {
     bool pressed = (digitalRead(PIN_BUTTON) == LOW);
     uint32_t now = millis();
 
@@ -992,6 +1030,8 @@ static void button_tick() {
         if (g_factory_reset_armed) {
             Serial.println("[BTN] Factory reset confirmed — clearing NVS");
             prefs_clear();
+            ota_verify_confirm("factory reset");
+            can_shutdown_all(g_can, CAN_ACTIVE_BUS_COUNT);
             delay(200);
             ESP.restart();
         }
@@ -1051,13 +1091,17 @@ static void update_led() {
 }
 
 // ── CAN frame dispatcher ──────────────────────────────────────────────────────
-static void process_frame(CanBusId bus, const CanFrame &frame) {
+static NOINLINE void process_frame(CanBusId bus, const CanFrame &frame) {
     uint32_t now = millis();
+    // Every id the handlers act on is an 11-bit data frame. Extended frames can
+    // alias a target id and remote frames carry no payload, so they are only
+    // recorded (captures stay complete), never parsed, modified or re-sent.
+    bool usable = tesla_can_rx_accept(frame.id, frame.ext != 0u, frame.req != 0u, frame.dlc);
     state_enter();
     g_state.rx_count++;
     // Configurable signal mapping (#122): when set, read DAS/steering from the
     // user-configured positions and disable the auto-parsers for those signals.
-    fsd_apply_signal_config(&g_state, &frame, millis());
+    if (usable) fsd_apply_signal_config(&g_state, &frame, millis());
     bool das_cfg   = (g_state.cfg_das_id != 0);
     bool steer_cfg = (g_state.cfg_steer_id != 0);
     // AP-First stability debounce: stamp the last time AP was not engaged, so
@@ -1071,19 +1115,36 @@ static void process_frame(CanBusId bus, const CanFrame &frame) {
         g_state.ap_inject_count = 0;          // re-arm Minimal Inject burst next engage (#108)
     }
     fsd_abort_guard_update(&g_state);  // latch off injection if the car aborts (#108)
+    // In-car Autopark TX pause (#180): maintain the episode + block from the
+    // last-parsed DAS/speed (same vantage as abort_guard above). Capture the
+    // block edge so the start/end can be logged outside the lock.
+    bool autopark_block_before = g_state.autopark_tx_block;
+    fsd_autopark_update(&g_state, now);
+    bool autopark_block_after = g_state.autopark_tx_block;
     // Black-box event-core poll (#124): once per frame, reading das_ap_state as
     // of the last DAS parse (same vantage as abort_guard above). Detects the
     // abort transition; the snapshot carries the toggles for the .json summary.
     blackbox_note_ap_state(g_state.das_ap_state, now);
     FSDEventType bb_evt = fsd_events_poll(&g_state, now);
     FSDState bb_snap = g_state;
-    if (frame.id == CAN_ID_GTW_CAR_STATE)  g_state.seen_gtw_car_state++;
-    if (frame.id == CAN_ID_GTW_CAR_CONFIG) g_state.seen_gtw_car_config++;
-    if (frame.id == CAN_ID_AP_CONTROL)     g_state.seen_ap_control++;
-    if (frame.id == CAN_ID_BMS_HV_BUS)     g_state.seen_bms_hv++;
-    if (frame.id == CAN_ID_BMS_SOC)        g_state.seen_bms_soc++;
-    if (frame.id == CAN_ID_BMS_THERMAL)    g_state.seen_bms_thermal++;
+    if (usable) {
+        if (frame.id == CAN_ID_GTW_CAR_STATE)  g_state.seen_gtw_car_state++;
+        if (frame.id == CAN_ID_GTW_CAR_CONFIG) g_state.seen_gtw_car_config++;
+        if (frame.id == CAN_ID_AP_CONTROL)     g_state.seen_ap_control++;
+        if (frame.id == CAN_ID_BMS_HV_BUS)     g_state.seen_bms_hv++;
+        if (frame.id == CAN_ID_BMS_SOC)        g_state.seen_bms_soc++;
+        if (frame.id == CAN_ID_BMS_THERMAL)    g_state.seen_bms_thermal++;
+    }
     state_exit();
+
+    // Autopark block edge (#180): log start/end like the OTA start/finish lines.
+    if (!autopark_block_before && autopark_block_after) {
+        Serial.println("[AUTOPARK] in-car Autopark detected (DAS state 6) - TX paused");
+        can_dump_log("AUTOPARK in-car Autopark - TX paused");
+    } else if (autopark_block_before && !autopark_block_after) {
+        Serial.println("[AUTOPARK] episode ended - TX resumed");
+        can_dump_log("AUTOPARK episode ended - TX resumed");
+    }
 
     // Black-box: record key diagnostic ids (all buses, both modes; the filter
     // in blackbox_record keeps the window intact on a busy bus) and arm a
@@ -1094,7 +1155,7 @@ static void process_frame(CanBusId bus, const CanFrame &frame) {
 
     // Tap capability checker (#125): count capability-relevant ids per bus during
     // an active listen window. Pure RX — no-op when no check is running.
-    capability_record(bus, frame, now);
+    if (usable) capability_record(bus, frame, now);
 
     can_dump_record(bus, frame);
     // Record to the web stream in BOTH modes so a capture can run *through* an
@@ -1107,6 +1168,8 @@ static void process_frame(CanBusId bus, const CanFrame &frame) {
     g_last_can_rx_ms = millis();
     g_sleep_warned   = false;
 #endif
+
+    if (!usable) return;
 
     // DLC sanity: skip zero-length frames
     if (frame.dlc == 0) return;
@@ -1181,6 +1244,35 @@ static void process_frame(CanBusId bus, const CanFrame &frame) {
 
     // ── Continuous AP HW3/Legacy state parsers (read-only, always) ──────────
     if (frame.id == CAN_ID_SCCM_RSTALK) {
+        // Safety guard (#160): auto-disable Summon EU Unlock when the driver
+        // shifts into drive (0x229 gear lever full-down / D detent), so a
+        // leftover Summon override can't interfere with normal AP. Runs before
+        // the HW3/Legacy Continuous-AP gate below because Summon EU Unlock
+        // applies on HW3 + HW4, and that gate returns early on HW4. Edge-
+        // triggered by the summon_unlock==true guard: NVS is written only on the
+        // true→false flip, so repeated full-down 0x229 frames can't thrash NVS.
+        if (frame.dlc > SIG_GEAR_LEVER_POS_BYTE) {
+            uint8_t detent =
+                (frame.data[SIG_GEAR_LEVER_POS_BYTE] >> SIG_GEAR_LEVER_POS_SHIFT) &
+                SIG_GEAR_LEVER_POS_MASK;
+            if (detent == SIG_GEAR_LEVER_FULL_DOWN) {
+                FSDState saved;
+                bool disabled = false;
+                state_enter();
+                if (g_state.summon_unlock) {
+                    g_state.summon_unlock = false;
+                    saved = g_state;
+                    disabled = true;
+                }
+                state_exit();
+                if (disabled) {
+                    Serial.println("[SAFETY] Summon EU Unlock auto-disabled on drive-gear (0x229)");
+                    can_dump_log("[SAFETY] Summon EU Unlock auto-disabled on drive-gear (0x229)");
+                    prefs_save(&saved);
+                }
+            }
+        }
+
         FSDState s = state_snapshot();
         if (s.hw_version != TeslaHW_HW3 && s.hw_version != TeslaHW_Legacy) return;
         uint32_t now_ms = millis();
@@ -1229,6 +1321,51 @@ static void process_frame(CanBusId bus, const CanFrame &frame) {
         state_exit();
         return;
     }
+    // Vehicle speed (0x257) — read-only; feeds the Autopark release gate (#180).
+    if (frame.id == CAN_ID_DI_SPEED) {
+        uint32_t now_ms = millis();
+        FSDState saved;
+        bool disabled = false;
+        float disabled_kph = 0.0f;
+        state_enter();
+        fsd_handle_di_speed(&g_state, &frame);
+        g_state.last_speed_tick_ms = now_ms;   // freshness for fsd_autopark_update
+        // Read-only performance read-out: accel/brake timers + est. G from the
+        // speed we just parsed (transmits nothing; dashboard "Performance" card).
+        fsd_perf_update(&g_state.perf, g_state.vehicle_speed_kph, now_ms);
+        // Safety guard (#193): Palladium S/X don't broadcast 0x229 on Party, so
+        // the gear-lever Summon disable can't fire there. Auto-disable Summon EU
+        // Unlock on clear vehicle motion instead — platform-independent. Fresh,
+        // valid speed only (same window fsd_autopark_update uses); SNA/invalid
+        // readings exceed FSD_DI_SPEED_MAX_VALID_KPH and are excluded. Edge-
+        // triggered on the true→false flip so NVS is written once.
+        if (g_state.summon_unlock &&
+            (uint32_t)(now_ms - g_state.last_speed_tick_ms) <= FSD_AUTOPARK_SPEED_FRESH_MS &&
+            g_state.vehicle_speed_kph <= FSD_DI_SPEED_MAX_VALID_KPH &&
+            g_state.vehicle_speed_kph > SUMMON_DISABLE_SPEED_KPH) {
+            g_state.summon_unlock = false;
+            saved = g_state;
+            disabled = true;
+            disabled_kph = g_state.vehicle_speed_kph;
+        }
+        state_exit();
+        if (disabled) {
+            Serial.printf("[SAFETY] Summon EU Unlock auto-disabled on vehicle motion "
+                          "(0x257, %.1f km/h)\n", disabled_kph);
+            can_dump_log("[SAFETY] Summon EU Unlock auto-disabled on vehicle motion "
+                         "(0x257, %.1f km/h)", disabled_kph);
+            prefs_save(&saved);
+        }
+        return;
+    }
+    // DI_systemStatus (0x118) — read-only DI_gear, standstill fallback for the
+    // Acceleration Mode override when 0x257 isn't usable (#211).
+    if (frame.id == CAN_ID_DI_SYS_STATUS) {
+        state_enter();
+        fsd_handle_di_gear(&g_state, &frame, millis());
+        state_exit();
+        return;
+    }
     if (frame.id == CAN_ID_VCFRONT_LIGHT) {
         state_enter();
         fsd_handle_vcfront_lighting(&g_state, &frame);
@@ -1240,6 +1377,13 @@ static void process_frame(CanBusId bus, const CanFrame &frame) {
         state_enter();
         fsd_handle_esp_status(&g_state, &frame);
         if (g_state.driver_brake_applied) g_cont_ap_last_brake_ms = now_ms;
+        state_exit();
+        return;
+    }
+    // Wheel speeds (0x175) — read-only, feeds the dashboard wheel-slip read-out.
+    if (frame.id == CAN_ID_ESP_WHEELSPD) {
+        state_enter();
+        fsd_handle_wheel_speeds(&g_state, &frame);
         state_exit();
         return;
     }
@@ -1317,6 +1461,12 @@ static void process_frame(CanBusId bus, const CanFrame &frame) {
     // samples so 0x399 can be parsed for AP/NAG gating.
     static uint32_t hw_fallback_3fd_count = 0;
     static uint32_t hw_fallback_399_count = 0;
+    // NOTE (#110/#122): beta.20 upgraded a locked-in HW3 guess to HW4 whenever a
+    // valid 0x39B appeared, to fix HW4 cars whose tap carries no 0x398. That
+    // regressed cars where the HW3 path was already working: switching to the HW4
+    // DAS parser left AP-state unread ("Waiting") and HW4-style injection produced
+    // TX errors. Reverted — detecting HW4 must not change a DAS-read/injection
+    // path that already works. See #110 for the reworked approach.
     if (state_snapshot().hw_version == TeslaHW_Unknown) {
         if (frame.id == CAN_ID_AP_LEGACY) {
             apply_detected_hw(TeslaHW_Legacy, "fallback:0x3EE");
@@ -1346,11 +1496,15 @@ static void process_frame(CanBusId bus, const CanFrame &frame) {
         return;
     }
 
-    // Follow distance → speed_profile (0x3F8), no TX
+    // Follow distance → speed_profile (0x3F8). Parse is read-only; the RHD
+    // driving-side override (#66) may modify a copy and re-TX when enabled.
     if (frame.id == CAN_ID_FOLLOW_DIST) {
+        CanFrame f = frame;
         state_enter();
         fsd_handle_follow_distance(&g_state, &frame);
+        bool modified = fsd_handle_driver_assist_override(&g_state, &f);
         state_exit();
+        if (modified && tx) send_on_bus(bus, f);
         return;
     }
 
@@ -1360,6 +1514,36 @@ static void process_frame(CanBusId bus, const CanFrame &frame) {
         state_enter();
         bool modified = fsd_handle_tlssc_restore(&g_state, &f);
         state_exit();
+        if (modified && tx) send_on_bus(bus, f);
+        return;
+    }
+
+    // Track Mode inject (0x313) — adjustable balance/stability/cooling on the
+    // car's own UI_trackModeSettings broadcast (master opt-in inside the handler).
+    if (frame.id == CAN_ID_TRACK_MODE_SET) {
+        CanFrame f = frame;
+        state_enter();
+        bool modified = fsd_handle_track_mode_inject(&g_state, &f);
+        state_exit();
+        if (modified && tx) send_on_bus(bus, f);
+        return;
+    }
+
+    // Acceleration Mode override (0x334) — pedal map on the car's own
+    // UI_powertrainControl, re-sent on the bus it arrived on (#211). The handler
+    // also runs when Off, so the dashboard shows the car's own map.
+    if (frame.id == CAN_ID_UI_POWERTRAIN) {
+        CanFrame f = frame;
+        state_enter();
+        uint8_t before = g_state.accel_mode_applied;
+        bool modified = fsd_handle_accel_mode(&g_state, &f, millis());
+        uint8_t after = g_state.accel_mode_applied;
+        state_exit();
+        if (before != after) {
+            Serial.printf("[ACCEL] 0x334 override %u -> %u (0=pass-through 1=CHILL 2=SPORT 3=PERFORMANCE)\n",
+                          (unsigned)before, (unsigned)after);
+            can_dump_log("ACCEL 0x334 override %u -> %u", (unsigned)before, (unsigned)after);
+        }
         if (modified && tx) send_on_bus(bus, f);
         return;
     }
@@ -1382,7 +1566,7 @@ static void process_frame(CanBusId bus, const CanFrame &frame) {
 
 #if defined(BOARD_LILYGO)
 // ── Deep-sleep watchdog (Lilygo only) ────────────────────────────────────────
-static void sleep_tick(uint32_t now) {
+static NOINLINE void sleep_tick(uint32_t now) {
     if (now < g_last_can_rx_ms) return;
     uint32_t idle_ms = now - g_last_can_rx_ms;
     FSDState s = state_snapshot();
@@ -1390,9 +1574,19 @@ static void sleep_tick(uint32_t now) {
     if (idle_ms >= s.sleep_idle_ms) {
         Serial.printf("[SLEEP] Entering deep sleep after %lu ms CAN silence\n",
                       (unsigned long)idle_ms);
+        ota_verify_confirm("deep sleep");  // wake is a reset: don't roll back a running image
         can_dump_stop();
         sd_syslog_close();
         led_set(LED_SLEEP);
+        // Leave the bus quiesced: TWAI stopped + uninstalled, TX driven
+        // recessive (same path as the pre-reboot quiesce, #180). Pads lose their
+        // driven level once the digital domain powers down, so latch TX. GPIO 27
+        // is an RTC pad: gpio_hold_en() takes the RTC hold, which persists through
+        // deep sleep and the wake reset. setup() releases it before TWAI starts.
+        can_shutdown_all(g_can, CAN_ACTIVE_BUS_COUNT);
+        bool tx_held = gpio_hold_en((gpio_num_t)PIN_CAN_TX) == ESP_OK;
+        Serial.printf("[SLEEP] CAN TX (GPIO %d) %s recessive\n",
+                      PIN_CAN_TX, tx_held ? "held" : "NOT held");
         esp_sleep_enable_ext0_wakeup((gpio_num_t)PIN_CAN_RX, 0);
         esp_deep_sleep_start();
         // never returns
@@ -1414,28 +1608,18 @@ void setup() {
     delay(300);
 
     Serial.println("\n============================");
-    Serial.println(" Tesla FSD Unlock — ESP32   ");
+    Serial.println(" Tesla Mod — ESP32          ");
     Serial.println("============================");
+    Serial.printf("[FSD] Version: %s\n", FW_VERSION);
+    Serial.printf("[FSD] Board: %s\n", BOARD_NAME);
     Serial.printf("[FSD] Build: %s %s\n", __DATE__, __TIME__);
+    Serial.printf("[FSD] Loop stack: %u bytes\n", (unsigned)getArduinoLoopTaskStackSize());
 
-    const esp_partition_t *running = esp_ota_get_running_partition();
-    if (running) {
-        Serial.printf("[OTA] Running from: %s\n", running->label);
-
-        esp_ota_img_states_t ota_state;
-        if (esp_ota_get_state_partition(running, &ota_state) == ESP_OK) {
-            if (ota_state == ESP_OTA_IMG_PENDING_VERIFY) {
-                Serial.println("[OTA] First boot after update - marking as valid...");
-                if (esp_ota_mark_app_valid_cancel_rollback() == ESP_OK) {
-                    Serial.println("[OTA] Firmware marked valid");
-                } else {
-                    Serial.println("[OTA] WARNING: Could not mark firmware valid");
-                }
-            } else if (ota_state == ESP_OTA_IMG_VALID) {
-                Serial.println("[OTA] Running verified firmware");
-            }
-        }
+    {
+        const esp_partition_t *running = esp_ota_get_running_partition();
+        if (running) Serial.printf("[OTA] Running from: %s\n", running->label);
     }
+    ota_verify_begin();  // a fresh OTA image stays rollback-able until it has run
 
 #if defined(CAN_DRIVER_T2CAN_DUAL)
     Serial.println("[CAN] Driver: LilyGO T-2CAN dual CAN (TWAI can0 + MCP2515 can1)");
@@ -1445,13 +1629,24 @@ void setup() {
   #elif defined(BOARD_LILYGO)
     Serial.println("[CAN] Driver: ESP32 TWAI (LilyGO T-CAN485)");
   #else
-    Serial.println("[CAN] Driver: ESP32 TWAI (M5Stack ATOM Lite + ATOMIC CAN Base)");
+    Serial.println("[CAN] Driver: ESP32 TWAI (" BOARD_NAME ")");
   #endif
 #elif defined(CAN_DRIVER_MCP2515)
     Serial.println("[CAN] Driver: MCP2515 via SPI");
 #endif
 
 #if defined(BOARD_LILYGO)
+    // Release the deep-sleep TX hold (sleep_tick) before anything starts TWAI:
+    // the hold survives the wake reset (IDF only auto-releases ext1 wake pads)
+    // and a held pad ignores the controller, so TX would stay dead. Program the
+    // held state (output, recessive) first so the release can't blip dominant.
+    // Runs every boot, ahead of the 5V rail and Rs; the release is a no-op
+    // after a cold boot.
+    digitalWrite(PIN_CAN_TX, HIGH);
+    pinMode(PIN_CAN_TX, OUTPUT);
+    digitalWrite(PIN_CAN_TX, HIGH);
+    gpio_hold_dis((gpio_num_t)PIN_CAN_TX);
+
     pinMode(ME2107_EN, OUTPUT);
     digitalWrite(ME2107_EN, HIGH);
     delay(100); // Wait for 5V rail to stabilize (SD power)
@@ -1501,6 +1696,14 @@ void setup() {
     g_state.blackbox_enabled      = BLACKBOX_DEFAULT_ENABLED;  // ON on LittleFS/SD, OFF on volatile RAM (#124)
 
     prefs_load(&g_state);
+    // Apply a saved manual HW selection immediately (#110) so the correct
+    // handlers are live from the first frame, without waiting on detection.
+    if (g_state.hw_override != TeslaHW_Unknown) {
+        fsd_apply_hw_version(&g_state, g_state.hw_override);
+        Serial.printf("[HW] Manual override: %s\n",
+                      (g_state.hw_override == TeslaHW_HW4)    ? "HW4" :
+                      (g_state.hw_override == TeslaHW_HW3)    ? "HW3" : "Legacy");
+    }
 #if defined(BOARD_TTGO_DISPLAY)
     display_set_enabled(g_state.display_enabled);
 #endif
@@ -1584,6 +1787,15 @@ void setup() {
     }
 }
 
+static NOINLINE void drain_can_bus_index(uint8_t index) {
+    if (index >= CAN_ACTIVE_BUS_COUNT || !g_can_ok[index] || !g_can[index]) return;
+    CanBusId bus = bus_id_from_index(index);
+    CanFrame frame;
+    while (g_can[index]->receive(frame)) {
+        process_frame(bus, frame);
+    }
+}
+
 // ── loop ──────────────────────────────────────────────────────────────────────
 void loop() {
     uint32_t now = millis();
@@ -1595,20 +1807,27 @@ void loop() {
 
     button_tick();
     serial_command_tick();
+    ota_verify_tick(now);
 
-    // Drain all available CAN frames in one shot
+    // Drain all available CAN frames in one shot. On LilyGO T-2CAN, can1 is the
+    // MCP2515 side with only two RX buffers, so poll it before and after can0.
+#if defined(CAN_DRIVER_T2CAN_DUAL) && defined(BOARD_LILYGO_T2CAN)
+    drain_can_bus_index(1);
+    drain_can_bus_index(0);
+    drain_can_bus_index(1);
+#else
+    for (uint8_t i = 0; i < CAN_ACTIVE_BUS_COUNT; i++) drain_can_bus_index(i);
+#endif
+    uint32_t rx_missed_total = 0;
     for (uint8_t i = 0; i < CAN_ACTIVE_BUS_COUNT; i++) {
         if (!g_can_ok[i] || !g_can[i]) continue;
-        CanBusId bus = bus_id_from_index(i);
-        CanFrame frame;
-        while (g_can[i]->receive(frame)) {
-            process_frame(bus, frame);
-        }
-        // Recover a bus-off controller so RX resumes without a manual toggle (#108).
         g_can[i]->serviceHealth();
-        // Bus-off just fired → arm a black-box capture via the event-core (#124).
         if (g_can[i]->busOffEvent()) blackbox_busoff(now);
+        rx_missed_total += g_can[i]->rxMissedCount();
     }
+    // Feed the summed controller RX-missed total to the web stream so a capture
+    // can self-report how many frames the hardware dropped while it ran.
+    http_can_stream_note_rx_missed(rx_missed_total);
 
     // ── Periodic error counter refresh (~every 250 ms) ────────────────────────
     static uint32_t last_err_ms = 0;
@@ -1658,9 +1877,16 @@ void loop() {
             (s.hw_version == TeslaHW_HW4)    ? "HW4"    :
             (s.hw_version == TeslaHW_HW3)    ? "HW3"    :
             (s.hw_version == TeslaHW_Legacy)  ? "Legacy" : "?";
+        // CANErr is the combined count; mostly controller RX-queue drops on a
+        // busy bus, so print the per-cause split beside it.
+        CanErrorSplit err = can_error_split(g_can, CAN_ACTIVE_BUS_COUNT);
+        // HW3 pass-through (#209): the car's own profile is what goes out.
+        int profile = s.speed_profile;
+        if (s.hw_version == TeslaHW_HW3 && !s.hw3_speed_override && s.hw3_profile_seen)
+            profile = s.hw3_car_profile;
         Serial.printf(
             "[STA] HW:%-6s AP:%-4s FSD_UI:%-4s Unlock:%-3s NAG:%-3s Echo:%lu OTA:%-3s "
-            "Profile:%d  RX:%lu TX:%lu Mod:%lu Err:%lu\n",
+            "Profile:%d  RX:%lu TX:%lu Mod:%lu CANErr:%lu (RXmissed:%lu Bus:%lu TXfail:%lu)\n",
             hw_str,
             s.ap_active       ? "ON"         : "wait",
             s.fsd_enabled     ? "ON"         : "wait",
@@ -1668,12 +1894,39 @@ void loop() {
             s.nag_killer      ? "ON"         : "off",
             (unsigned long)s.nag_echo_count,
             s.tesla_ota_in_progress ? "YES"  : "no",
-            s.speed_profile,
+            profile,
             (unsigned long)s.rx_count,
             (unsigned long)s.tx_count,
             (unsigned long)s.frames_modified,
-            (unsigned long)s.crc_err_count);
+            (unsigned long)s.crc_err_count,
+            (unsigned long)err.rx_missed_count,
+            (unsigned long)err.bus_error_count,
+            (unsigned long)err.tx_failed_count);
         last_status_ms = now;
+    }
+
+    // ── Signal Map watchdog (#100) ────────────────────────────────────────────
+    // A configured Signal Map DAS id that never appears on the tapped bus skips
+    // the standard parsers and silently pauses the nag killer (fsd_das_ctx_fresh
+    // fails closed). Surface it as a status flag + one-shot Serial line so the
+    // user knows to fix the mapping or set DAS id 0 for auto.
+    {
+        static bool sigmap_warned = false;
+        FSDState sm = state_snapshot();
+        bool missing = fsd_signal_map_das_missing(&sm, now);
+        if (missing != sm.signal_map_das_missing) {
+            state_enter();
+            g_state.signal_map_das_missing = missing;
+            state_exit();
+        }
+        if (missing && !sigmap_warned) {
+            Serial.printf("[SIGMAP] DAS id 0x%X not seen on this bus: nag killer paused. "
+                          "Set DAS id 0 for auto.\n", sm.cfg_das_id);
+            can_dump_log("SIGMAP DAS id not seen: nag killer paused (set DAS id 0 for auto)");
+            sigmap_warned = true;
+        } else if (!missing) {
+            sigmap_warned = false;
+        }
     }
 
     // ── Periodic re-init when a CAN driver failed at boot ────────────────────
@@ -1722,48 +1975,7 @@ void loop() {
     // ── Web dashboard (after CAN to preserve CAN frame latency) ──────────────
     web_dashboard_update();
 
-    // ── Full-rate single-ID capture: drive the hardware acceptance filter ─────
-    // When a /stream is opened with exactly one ?ids= value, restrict the CAN
-    // controller to that id so its RX queue never overflows and every frame is
-    // captured at true full rate. If ?bus=can0/can1 is present, scope the
-    // hardware filter to that controller only. Restore accept-all when the
-    // stream ends. Only ever single in Listen-Only (stream is disabled in Active).
-    {
-        static bool     s_hw_filter_single[CAN_ACTIVE_BUS_COUNT] = {};
-        static uint32_t s_hw_filter_id[CAN_ACTIVE_BUS_COUNT] = {};
-        static bool     s_hw_filter_initialized = false;
-        if (!s_hw_filter_initialized) {
-            for (uint8_t i = 0; i < CAN_ACTIVE_BUS_COUNT; i++) {
-                s_hw_filter_id[i] = 0xFFFFFFFFu;
-            }
-            s_hw_filter_initialized = true;
-        }
-
-        uint32_t want_id = 0;
-        bool want_single = http_can_stream_single_filter(&want_id);
-        CanBusId want_bus = CAN_BUS_PRIMARY;
-        bool want_bus_filter = http_can_stream_bus_filter(&want_bus);
-
-        // Never install the single-ID hardware filter in Active mode — it would
-        // restrict the controller to one id and starve injection's RX path. A
-        // single-ID capture during Active silently falls back to software
-        // filtering (lower rate, but injection stays intact). Multi-ID captures
-        // are software-filtered anyway and run at full effect in both modes.
-        bool allow_hw_filter = (state_snapshot().op_mode == OpMode_ListenOnly);
-        for (uint8_t i = 0; i < CAN_ACTIVE_BUS_COUNT; i++) {
-            CanBusId bus = bus_id_from_index(i);
-            bool bus_want_single = want_single && allow_hw_filter && (!want_bus_filter || bus == want_bus);
-            uint32_t bus_want_id = bus_want_single ? want_id : 0u;
-            if (bus_want_single != s_hw_filter_single[i] ||
-                (bus_want_single && bus_want_id != s_hw_filter_id[i])) {
-                if (g_can_ok[i] && g_can[i]) {
-                    g_can[i]->setAcceptanceFilter(bus_want_single, bus_want_id);
-                    s_hw_filter_single[i] = bus_want_single;
-                    s_hw_filter_id[i] = bus_want_id;
-                }
-            }
-        }
-    }
+    sync_http_can_stream_filter_if_needed();
 
 #if defined(BOARD_TTGO_DISPLAY)
     s = state_snapshot();

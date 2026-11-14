@@ -3,6 +3,7 @@
 
 Gen4* gen4_alloc() {
     Gen4* instance = malloc(sizeof(Gen4));
+    gen4_reset(instance);
 
     return instance;
 }
@@ -16,8 +17,7 @@ void gen4_free(Gen4* instance) {
 void gen4_reset(Gen4* instance) {
     furi_check(instance);
 
-    memset(&instance->config, 0, sizeof(Gen4Config));
-    memset(&instance->revision, 0, sizeof(Gen4Revision));
+    memset(instance, 0, sizeof(Gen4));
 }
 
 void gen4_copy(Gen4* dest, const Gen4* source) {
@@ -25,6 +25,22 @@ void gen4_copy(Gen4* dest, const Gen4* source) {
     furi_check(source);
 
     memcpy(dest, source, sizeof(Gen4));
+}
+
+bool gen4_config_dump_size_is_valid(size_t config_size) {
+    return (config_size >= GEN4_CONFIG_SIZE_MIN) && (config_size <= GEN4_CONFIG_SIZE_MAX);
+}
+
+bool gen4_config_size_is_known(const Gen4* instance) {
+    furi_check(instance);
+
+    return gen4_config_dump_size_is_valid(instance->config_size);
+}
+
+size_t gen4_get_config_size_or_max(const Gen4* instance) {
+    furi_check(instance);
+
+    return gen4_config_size_is_known(instance) ? instance->config_size : GEN4_CONFIG_SIZE_MAX;
 }
 
 bool gen4_password_is_set(const Gen4Password* instance) {

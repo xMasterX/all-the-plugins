@@ -1,4 +1,5 @@
 #include "app_state.h"
+#include "settings.h"
 #include "ui.h"
 #include <furi.h>
 #include <gui/gui.h>
@@ -7,12 +8,18 @@
 
 static SubDupFinderApp* app_alloc(void) {
     SubDupFinderApp* app = malloc(sizeof(SubDupFinderApp));
+    // furi's malloc crashes on exhaustion rather than returning NULL, so this only
+    // documents the invariant — but pass the pointer bare: cppcheck's value-flow
+    // keeps the null alive through `furi_check(app != NULL)`.
+    furi_check(app);
     memset(app, 0, sizeof(SubDupFinderApp));
     app->view_dispatcher = view_dispatcher_alloc();
     app->main_submenu = submenu_alloc();
     app->groups_submenu = submenu_alloc();
     app->files_in_group_submenu = submenu_alloc();
+    app->browser_submenu = submenu_alloc();
     app->confirm_dialog = dialog_ex_alloc();
+    app->summary_dialog = dialog_ex_alloc();
     app->credits_widget = widget_alloc();
     app->popup = popup_alloc();
     return app;
@@ -25,10 +32,14 @@ static void app_free(SubDupFinderApp* app) {
     view_dispatcher_remove_view(app->view_dispatcher, SubDupFinderViewConfirm);
     view_dispatcher_remove_view(app->view_dispatcher, SubDupFinderViewCredits);
     view_dispatcher_remove_view(app->view_dispatcher, SubDupFinderViewPopup);
+    view_dispatcher_remove_view(app->view_dispatcher, SubDupFinderViewSummary);
+    view_dispatcher_remove_view(app->view_dispatcher, SubDupFinderViewBrowser);
     submenu_free(app->main_submenu);
     submenu_free(app->groups_submenu);
     submenu_free(app->files_in_group_submenu);
+    submenu_free(app->browser_submenu);
     dialog_ex_free(app->confirm_dialog);
+    dialog_ex_free(app->summary_dialog);
     widget_free(app->credits_widget);
     popup_free(app->popup);
     view_dispatcher_free(app->view_dispatcher);
@@ -39,6 +50,7 @@ int32_t sub_dup_finder_app(void* p) {
     UNUSED(p);
 
     SubDupFinderApp* app = app_alloc();
+    settings_load(app->scan_dir, sizeof(app->scan_dir));
     ui_setup_views(app);
 
     Gui* gui = furi_record_open(RECORD_GUI);

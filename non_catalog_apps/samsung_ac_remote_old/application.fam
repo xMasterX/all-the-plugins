@@ -11,7 +11,6 @@ App(
         "infrared",
     ],
     stack_size=1 * 2048,
-    order=90,
     fap_description="Samsung Electric Air Conditioner remote control",
     fap_version="1.0",
     fap_icon="ac_remote.png",

@@ -5,8 +5,12 @@
 #include <stdint.h>
 
 #include <core/string.h>
+#include <lib/subghz/subghz_setting.h>
 
 typedef struct ProtoPirateApp ProtoPirateApp;
+
+typedef struct ProtoPirateApp ProtoPirateApp;
+typedef struct ProtoPirateTxRx ProtoPirateTxRx;
 
 void protopirate_rx_stack_teardown_for_registry_switch(ProtoPirateApp* app);
 
@@ -17,10 +21,6 @@ void protopirate_preset_init(
     uint8_t* preset_data,
     size_t preset_data_size);
 
-void protopirate_get_frequency_modulation(
-    ProtoPirateApp* app,
-    FuriString* frequency,
-    FuriString* modulation);
 void protopirate_get_frequency_modulation_str(
     ProtoPirateApp* app,
     char* frequency,

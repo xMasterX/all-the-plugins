@@ -4,7 +4,7 @@
 #include "Font.h"
 #include "Strings.h"
 
-const uint8_t TileImageData[] PROGMEM = {
+const uint8_t TileImageData[] = {
 #include "TileData.h"
 };
 
@@ -17,10 +17,9 @@ uint8_t AnimationFrame = 0;
 
 // A map of which tiles should be on fire when a building is on fire
 #define FIREMAP_SIZE 16
-const uint8_t FireMap[FIREMAP_SIZE] PROGMEM = {1, 2, 3, 1, 2, 3, 1, 3, 1, 2, 3, 2, 2, 1, 3, 1};
+const uint8_t FireMap[FIREMAP_SIZE] = {1, 2, 3, 1, 2, 3, 1, 3, 1, 2, 3, 2, 2, 1, 3, 1};
 
-const uint8_t BuildingPopulaceMap[] PROGMEM =
-    {1, 0xd, 5, 0xb, 7, 0xe, 3, 4, 1, 6, 0xc, 2, 0xa, 9, 0xb, 8};
+const uint8_t BuildingPopulaceMap[] = {1, 0xd, 5, 0xb, 7, 0xe, 3, 4, 1, 6, 0xc, 2, 0xa, 9, 0xb, 8};
 
 const uint8_t* GetTileData(uint8_t tile) {
     return TileImageData + (tile * 8);
@@ -38,8 +37,8 @@ bool HasHighTraffic(int x, int y) {
         if(building->type && building->heavyTraffic) {
             if(x < building->x - 1 || y < building->y - 1) continue;
             const BuildingInfo* info = GetBuildingInfo(building->type);
-            uint8_t width = pgm_read_byte(&info->width);
-            uint8_t height = pgm_read_byte(&info->height);
+            uint8_t width = info->width;
+            uint8_t height = info->height;
             if(x > building->x + width || y > building->y + height) continue;
 
             return true;
@@ -51,15 +50,15 @@ bool HasHighTraffic(int x, int y) {
 
 uint8_t CalculateBuildingTile(Building* building, uint8_t x, uint8_t y) {
     const BuildingInfo* info = GetBuildingInfo(building->type);
-    uint8_t height = pgm_read_byte(&info->height);
-    uint8_t tile = pgm_read_byte(&info->drawTile);
+    uint8_t height = info->height;
+    uint8_t tile = info->drawTile;
 
     if(building->onFire) {
         if(!((building->type == Industrial || building->type == Commercial ||
               building->type == Residential) &&
              x == 1 && y == 1)) {
             int index = y * height + x + GetProcAtTile(building->x, building->y);
-            bool onFire = building->onFire >= pgm_read_byte(&FireMap[index & (FIREMAP_SIZE - 1)]);
+            bool onFire = building->onFire >= FireMap[index & (FIREMAP_SIZE - 1)];
 
             if(onFire) {
                 uint8_t procVal = GetProcAtTile(building->x + x, building->y + y);
@@ -77,8 +76,7 @@ uint8_t CalculateBuildingTile(Building* building, uint8_t x, uint8_t y) {
             tile += 48;
         } else if(x != 1 || y != 1) {
             int index = y * height + x + GetProcAtTile(building->x, building->y);
-            bool hasBuilding = building->populationDensity >=
-                               pgm_read_byte(&BuildingPopulaceMap[index & 0xf]);
+            bool hasBuilding = building->populationDensity >= BuildingPopulaceMap[index & 0xf];
 
             if(hasBuilding) {
                 uint8_t procVal = GetProcAtTile(x, y);
@@ -104,8 +102,8 @@ uint8_t CalculateTile(int x, int y) {
         if(building->type) {
             if(x < building->x || y < building->y) continue;
             const BuildingInfo* info = GetBuildingInfo(building->type);
-            uint8_t width = pgm_read_byte(&info->width);
-            uint8_t height = pgm_read_byte(&info->height);
+            uint8_t width = info->width;
+            uint8_t height = info->height;
             if(x < building->x + width && y < building->y + height) {
                 return CalculateBuildingTile(building, x - building->x, y - building->y);
             }
@@ -192,7 +190,7 @@ void DrawTiles() {
         int tileY = 0;
         int offsetY = UIState.scrollY & (TILE_SIZE - 1);
         uint8_t currentTile = GetCachedTile(tileX, tileY);
-        uint8_t readBuf = pgm_read_byte(&GetTileData(currentTile)[offsetX]);
+        uint8_t readBuf = GetTileData(currentTile)[offsetX];
         readBuf >>= offsetY;
 
         for(int row = 0; row < DISPLAY_HEIGHT; row++) {
@@ -204,7 +202,7 @@ void DrawTiles() {
             if(!offsetY) {
                 tileY++;
                 currentTile = GetCachedTile(tileX, tileY);
-                readBuf = pgm_read_byte(&GetTileData(currentTile)[offsetX]);
+                readBuf = GetTileData(currentTile)[offsetX];
             }
         }
 
@@ -325,8 +323,8 @@ void DrawCursor() {
         BuildingType buildingType = (BuildingType)(UIState.brush - FirstBuildingBrush + 1);
         GetBuildingBrushLocation(buildingType, &cursorX, &cursorY);
         const BuildingInfo* buildingInfo = GetBuildingInfo(buildingType);
-        cursorWidth *= pgm_read_byte(&buildingInfo->width);
-        cursorHeight *= pgm_read_byte(&buildingInfo->height);
+        cursorWidth *= buildingInfo->width;
+        cursorHeight *= buildingInfo->height;
     } else {
         cursorX = UIState.selectX;
         cursorY = UIState.selectY;
@@ -394,8 +392,8 @@ void RefreshTileAndConnectedNeighbours(uint8_t x, uint8_t y) {
 
 void RefreshBuildingTiles(Building* building) {
     const BuildingInfo* info = GetBuildingInfo(building->type);
-    uint8_t width = pgm_read_byte(&info->width);
-    uint8_t height = pgm_read_byte(&info->height);
+    uint8_t width = info->width;
+    uint8_t height = info->height;
 
     for(int j = 0; j < height; j++) {
         uint8_t y = building->y + j;
@@ -430,7 +428,7 @@ void RefreshBuildingTiles(Building* building) {
 
 void DrawTileAt(uint8_t tile, int x, int y) {
     for(int col = 0; col < TILE_SIZE; col++) {
-        uint8_t readBuf = pgm_read_byte(&GetTileData(tile)[col]);
+        uint8_t readBuf = GetTileData(tile)[col];
 
         for(int row = 0; row < TILE_SIZE; row++) {
             uint8_t colour = readBuf & 1;
@@ -460,7 +458,7 @@ void DrawRect(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t colour) {
     }
 }
 
-const char FireReportedStr[] PROGMEM = "Fire reported!";
+const char FireReportedStr[] = "Fire reported!";
 
 void DrawUI() {
     if(UIState.state == ShowingToolbar) {
@@ -508,7 +506,7 @@ void DrawUI() {
             int buildingIndex = 1 + UIState.selection - FirstBuildingBrush;
             if(buildingIndex < Num_BuildingTypes) {
                 const BuildingInfo* buildingInfo = GetBuildingInfo(buildingIndex);
-                cost = pgm_read_word(&buildingInfo->cost);
+                cost = buildingInfo->cost;
             }
         } break;
         }
@@ -516,12 +514,12 @@ void DrawUI() {
             DrawCurrency(cost, DISPLAY_WIDTH / 2, DISPLAY_HEIGHT - FONT_HEIGHT - TILE_SIZE - 2);
         }
     } else if(UIState.state == InGameDisaster) {
-        int strLen = strlen_P(FireReportedStr);
+        int strLen = strlen(FireReportedStr);
         int x = DISPLAY_WIDTH / 2 - strLen * (FONT_WIDTH / 2);
         DrawFilledRect(
             x - 1,
             DISPLAY_HEIGHT - TILE_SIZE - 2,
-            2 + strlen_P(FireReportedStr) * FONT_WIDTH + 2,
+            2 + strlen(FireReportedStr) * FONT_WIDTH + 2,
             TILE_SIZE + 2,
             1);
 
@@ -534,7 +532,7 @@ void DrawUI() {
         DrawFilledRect(
             0,
             DISPLAY_HEIGHT - TILE_SIZE - 2,
-            TILE_SIZE + 2 + strlen_P(currentSelection) * FONT_WIDTH + 2,
+            TILE_SIZE + 2 + strlen(currentSelection) * FONT_WIDTH + 2,
             TILE_SIZE + 2,
             1);
         DrawTileAt(FIRST_BRUSH_TILE + UIState.brush, 1, DISPLAY_HEIGHT - TILE_SIZE - 1);
@@ -602,13 +600,13 @@ void DrawInGame() {
     DrawUI();
 }
 
-const char SaveCityStr[] PROGMEM = "Save City";
-const char LoadCityStr[] PROGMEM = "Load City";
-const char NewCityStr[] PROGMEM = "New City";
-const char AutoBudgetStr[] PROGMEM = "Auto Budget:";
-const char OnStr[] PROGMEM = "On";
-const char OffStr[] PROGMEM = "Off";
-const char TwitterStr[] PROGMEM = "by @jameshhoward";
+const char SaveCityStr[] = "Save City";
+const char LoadCityStr[] = "Load City";
+const char NewCityStr[] = "New City";
+const char AutoBudgetStr[] = "Auto Budget:";
+const char OnStr[] = "On";
+const char OffStr[] = "Off";
+const char TwitterStr[] = "by @jameshhoward";
 
 void DrawSaveLoadMenu() {
     const int menuWidth = 68;
@@ -673,8 +671,8 @@ void DrawStartScreen() {
     DrawString(TwitterStr, x - FONT_WIDTH * 3, y);
 }
 
-const char LeftArrowStr[] PROGMEM = "<";
-const char RightArrowStr[] PROGMEM = ">";
+const char LeftArrowStr[] = "<";
+const char RightArrowStr[] = ">";
 
 void DrawNewCityMenu() {
     const uint8_t mapY = DISPLAY_HEIGHT / 2 - MAP_HEIGHT / 2 - 4;
@@ -703,13 +701,13 @@ void DrawNewCityMenu() {
         DISPLAY_HEIGHT / 2 - FONT_HEIGHT / 2);
 }
 
-const char BudgetHeaderStr[] PROGMEM = "Budget report for";
-const char TaxRateStr[] PROGMEM = "Tax rate         <   % >";
-const char TaxesCollectedStr[] PROGMEM = "Taxes collected";
-const char PoliceBudgetStr[] PROGMEM = "Police budget";
-const char FireBudgetStr[] PROGMEM = "Fire budget";
-const char RoadBudgetStr[] PROGMEM = "Road budget";
-const char CashFlowStr[] PROGMEM = "Cash flow";
+const char BudgetHeaderStr[] = "Budget report for";
+const char TaxRateStr[] = "Tax rate         <   % >";
+const char TaxesCollectedStr[] = "Taxes collected";
+const char PoliceBudgetStr[] = "Police budget";
+const char FireBudgetStr[] = "Fire budget";
+const char RoadBudgetStr[] = "Road budget";
+const char CashFlowStr[] = "Cash flow";
 
 void DrawBudgetMenu() {
     const int menuWidth = 100;

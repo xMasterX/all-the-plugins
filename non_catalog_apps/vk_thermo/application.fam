@@ -10,7 +10,6 @@ App(
         "nfc",
     ],
     stack_size=4 * 1024,
-    order=10,
     fap_icon="icons/vk_thermo_10px.png",
     fap_icon_assets="icons",
     fap_category="NFC",

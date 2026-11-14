@@ -5,7 +5,7 @@
 #include <lib/subghz/receiver.h>
 #include <lib/subghz/protocols/base.h>
 
-#define PROTOPIRATE_HISTORY_MAX 20
+#define PROTOPIRATE_HISTORY_MAX 100
 
 typedef struct SubGhzEnvironment SubGhzEnvironment;
 typedef struct ProtoPirateHistory ProtoPirateHistory;
@@ -19,7 +19,6 @@ void protopirate_history_format_status_text(
     ProtoPirateHistory* instance,
     char* output,
     size_t output_size);
-void protopirate_history_get_status_text(ProtoPirateHistory* instance, FuriString* output);
 
 bool protopirate_history_get_capture_path(
     ProtoPirateHistory* instance,

@@ -13,7 +13,6 @@ App(
         "i2c_24c02.cpp",
     ],
     stack_size=2 * 1024,
-    order=21,
     fap_icon="icons/ikon.png",
     fap_category="GPIO",
     fap_author="@Dr.Mosfet",

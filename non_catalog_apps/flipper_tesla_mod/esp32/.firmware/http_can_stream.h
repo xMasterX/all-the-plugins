@@ -22,11 +22,29 @@ bool     http_can_stream_active();
  *  caller can install a hardware acceptance filter for full-rate single-ID
  *  capture. Returns false (and leaves *id_out untouched) otherwise. */
 bool     http_can_stream_single_filter(uint32_t *id_out);
+bool     http_can_stream_filter_snapshot(uint32_t *ids_out,
+                                         uint8_t ids_max,
+                                         uint8_t *count_out);
 
 /** When a stream is active with a ?bus=can0/can1 filter, report the selected
  *  bus so the caller can scope hardware filtering to that CAN controller. */
 bool     http_can_stream_bus_filter(CanBusId *bus_out);
+/** Called after filter synchronization. With meta=1, emit actual controller
+ *  filter modes at capture start and whenever they change during a capture. */
+void     http_can_stream_note_filters(uint8_t buses, const char *const *modes);
 uint32_t http_can_stream_frames_sent();
 uint32_t http_can_stream_frames_dropped();
 uint32_t http_can_stream_frames_filtered();
 uint16_t http_can_stream_buffered_frames();
+
+/** Feed the module the running SUM of every installed controller's
+ *  rxMissedCount() (frames the CAN controller silently dropped on a full RX
+ *  queue). Call once per main-loop iteration; the stream snapshots this at
+ *  capture start so it can report a per-capture delta without holding driver
+ *  pointers. */
+void     http_can_stream_note_rx_missed(uint32_t total_rx_missed);
+
+/** Controller-level frames missed since the current capture began (delta of the
+ *  fed-in total against the value snapshotted at stream start). Returns 0 when a
+ *  counter reset would otherwise underflow the unsigned subtraction. */
+uint32_t http_can_stream_rx_missed(void);

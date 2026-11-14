@@ -1,4 +1,5 @@
 #include "fingerprint_view.h"
+#include "view_chrome.h"
 #include <furi.h>
 #include <gui/gui.h>
 #include <stdio.h>
@@ -10,17 +11,30 @@
 #define ROW_CLASS_BASE 22 // FontPrimary baseline for the class name
 #define ROW_BLURB_BASE 31
 #define ROW_STAT1_BASE 40
-#define ROW_STAT2_BASE 48
+/* 49, not 48. At 48 the two stat rows sat on an 8px pitch where every other
+ * stacked pair in the app uses 10 (survey 35/45 and 50/60, watch 50/60), which
+ * left a single blank row between them - measured off a 4x device capture,
+ * PER/BST ink ends on row 39 and JIT/UP begins on 41. Legible, but visibly
+ * denser than the rest of the app, and one bad constant away from the fused
+ * look that Site Survey's progress bar actually shipped with. */
+#define ROW_STAT2_BASE 49
 #define COL_RIGHT      66 // second column of the stat rows
 
 #define CONF_X 88
-#define CONF_Y 15
+/* 14, not 15: the bar is a solid block and its bottom edge sat one row above
+ * the "CONF n%" capitals. Two clear rows now, matching the gap it keeps from
+ * the header rule on row 11. */
+#define CONF_Y 14
 #define CONF_W 38
 #define CONF_H 8
 
-#define DIVIDER_Y 50
-#define TRACE_HI  53 // carrier up
-#define TRACE_LO  61 // carrier down
+#define DIVIDER_Y 51
+/* Shifted down one with the divider, into rows 62-63 which nothing else uses,
+ * so the pulse train keeps its full 9-row swing AND two clear rows under the
+ * divider. Moving the stat rows apart without this would simply have relocated
+ * the tight gap rather than removed it. */
+#define TRACE_HI  54 // carrier up
+#define TRACE_LO  62 // carrier down
 
 #define FLASH_TICKS 10 // ~1 s at the 100 ms UI tick
 
@@ -40,17 +54,9 @@ typedef struct {
     EmitterVerdict verdict;
     uint8_t trace[SPECTER_TRACE_LEN];
     uint8_t trace_head;
-    uint8_t anim;
     uint8_t flash; // ticks left to show flash_msg
     char flash_msg[12];
 } FingerprintModel;
-
-static void draw_error(Canvas* canvas) {
-    canvas_set_font(canvas, FontPrimary);
-    canvas_draw_str_aligned(canvas, 64, 26, AlignCenter, AlignCenter, "NFC unavailable");
-    canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str_aligned(canvas, 64, 42, AlignCenter, AlignCenter, "Close any other NFC app.");
-}
 
 /* The pulse train: one screen column per trace slice, drawn as a logic-analyser
  * waveform with real vertical edges. This is the raw carrier - not the smoothed
@@ -86,12 +92,12 @@ static void fingerprint_view_draw(Canvas* canvas, void* model) {
 
     if(m->flash) {
         /* a confirmation takes over the right of the header for a beat */
-        canvas_draw_box(canvas, 78, 0, 50, 11);
+        canvas_draw_box(canvas, 74, 0, 54, 11);
         canvas_set_color(canvas, ColorWhite);
         canvas_draw_str_aligned(canvas, 125, 9, AlignRight, AlignBottom, m->flash_msg);
         canvas_set_color(canvas, ColorBlack);
     } else {
-        const char* state = m->error ? "NFC BUSY" : !m->armed ? "IDLE" : "LISTENING";
+        const char* state = specter_chrome_state(m->error, m->armed, m->present);
         canvas_draw_str_aligned(canvas, 116, 9, AlignRight, AlignBottom, state);
         if(m->present) {
             canvas_draw_disc(canvas, 123, 5, 2);
@@ -99,26 +105,58 @@ static void fingerprint_view_draw(Canvas* canvas, void* model) {
             canvas_draw_circle(canvas, 123, 5, 2);
         }
     }
-    canvas_draw_line(canvas, 0, 11, 127, 11);
+    specter_chrome_rule(canvas);
 
     if(m->error) {
-        draw_error(canvas);
+        specter_chrome_nfc_error(canvas);
         return;
     }
 
     /* ---------- the call ---------- */
     canvas_set_font(canvas, FontPrimary);
     canvas_draw_str(canvas, 2, ROW_CLASS_BASE, emitter_class_name(m->verdict.klass));
-    draw_confidence(canvas, m->verdict.confidence);
+
+    /* CONF belongs to a CADENCE CALL, and NO FIELD is not one.
+     *
+     * emitter_classify() is right to return 100 for silence - within the noise
+     * floor, "there is no carrier" is the one thing it can be certain of. But
+     * drawing that certainty with the same full bar and the same "CONF 100%"
+     * used for a nailed-on POLLING reader made the two states look identical
+     * at a glance: a solid black block and a three-digit percentage, sitting
+     * where the eye goes first. The screen's loudest element was saying
+     * "strong finding" on the screen that means "nothing here".
+     *
+     * So the bar and the readout are simply absent when there is no field.
+     * "NO FIELD" over "No carrier" already says it, and an empty right-hand
+     * side reads - correctly - as nothing to report. The classifier is left
+     * honest; only the display stops overclaiming. */
+    bool has_call = m->verdict.klass != EmitterClassNoField;
+    if(has_call) {
+        draw_confidence(canvas, m->verdict.confidence);
+    }
 
     canvas_set_font(canvas, FontSecondary);
     canvas_draw_str(canvas, 2, ROW_BLURB_BASE, emitter_class_blurb(m->verdict.klass));
-    snprintf(buf, sizeof(buf), "%u%%", (unsigned)m->verdict.confidence);
-    canvas_draw_str_aligned(canvas, 126, ROW_BLURB_BASE, AlignRight, AlignBottom, buf);
+    /* Labelled: this screen shows two percentages and an unlabelled one next
+     * to the blurb was indistinguishable from the duty figure four rows down.
+     * CONF is the app's own word - the logbook already writes "conf 88%". */
+    if(has_call) {
+        snprintf(buf, sizeof(buf), "CONF %u%%", (unsigned)m->verdict.confidence);
+        canvas_draw_str_aligned(canvas, 126, ROW_BLURB_BASE, AlignRight, AlignBottom, buf);
+    }
 
     /* ---------- the numbers behind it ---------- */
     const CadenceStats* c = &m->cadence;
-    bool has_cadence = c->bursts > 0 && m->verdict.klass != EmitterClassNoField;
+    /* CONTINUOUS is excluded deliberately, not by oversight. An unbroken
+     * carrier has no period, burst or jitter - that is what "Always on" means -
+     * but cadence stats are RETAINED from before the transition, so a reader
+     * that stops polling and holds its field up printed a full set of timings
+     * underneath a verdict denying they exist. Worse, emitter_classify forces
+     * timing_reliable = true for that class ("nothing to time; the duty figure
+     * carries it"), so the "~" that marks an unresolved number was suppressed
+     * too: stale timings, stated at full confidence. UP still prints below -
+     * duty is the one figure that does mean something here. */
+    bool has_cadence = c->bursts > 0 && has_call && m->verdict.klass != EmitterClassContinuous;
 
     /* A tilde is the whole honesty story in one character: we resolved the shape
      * but the durations are down at the sampler's own granularity. */
@@ -138,7 +176,7 @@ static void fingerprint_view_draw(Canvas* canvas, void* model) {
         canvas_draw_str(canvas, 2, ROW_STAT2_BASE, "JIT --");
     }
 
-    snprintf(buf, sizeof(buf), "DUTY %u%%", (unsigned)c->duty);
+    snprintf(buf, sizeof(buf), "UP %u%%", (unsigned)c->duty);
     canvas_draw_str(canvas, COL_RIGHT, ROW_STAT2_BASE, buf);
 
     /* ---------- raw carrier ---------- */
@@ -197,6 +235,12 @@ void fingerprint_view_set_reset_callback(FingerprintView* v, FingerprintViewCall
     v->reset_ctx = ctx;
 }
 
+void fingerprint_view_reset(FingerprintView* v) {
+    furi_assert(v);
+    with_view_model(
+        v->view, FingerprintModel * m, { memset(m, 0, sizeof(FingerprintModel)); }, true);
+}
+
 void fingerprint_view_update(FingerprintView* v, const FieldStats* stats) {
     furi_assert(v);
     furi_assert(stats);
@@ -234,7 +278,6 @@ void fingerprint_view_tick(FingerprintView* v) {
         v->view,
         FingerprintModel * m,
         {
-            m->anim++;
             if(m->flash) m->flash--;
         },
         true);

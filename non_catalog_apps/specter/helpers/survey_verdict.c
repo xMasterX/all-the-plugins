@@ -26,10 +26,25 @@ SurveyVerdict survey_verdict(const SurveySummary* s) {
 
     /* No contact at all is the only route to CLEAN. Note this is "clean at the
      * sensitivity you chose" - the caller's threshold defines the floor, and a
-     * dormant or shielded reader stays invisible to any of them. */
-    if(s->contacts == 0) return SurveyVerdictClean;
+     * dormant or shielded reader stays invisible to any of them.
+     *
+     * ...and only if the survey ran long enough for "nothing" to mean anything.
+     * A run cut short before SPECTER_SURVEY_MIN_CLEAN_MS says TOO SHORT rather
+     * than CLEAN. The asymmetry is deliberate and is the same rule the rest of
+     * the app follows: a positive finding stands on its own evidence however
+     * brief, while a negative one is a claim about the whole room and has to be
+     * earned with time. TRACE and ACTIVE are therefore never downgraded. */
+    if(s->contacts == 0) {
+        return s->elapsed_ms < SPECTER_SURVEY_MIN_CLEAN_MS ? SurveyVerdictTooShort :
+                                                             SurveyVerdictClean;
+    }
 
-    if(survey_in_field_pct(s) >= ACTIVE_IN_FIELD_PCT || s->peak >= ACTIVE_PEAK) {
+    /* peak_ref, not peak: the Meter setting is a display preference. Judged on
+     * the displayed peak, switching Meter to Raw put this threshold back out of
+     * reach for a polling reader - exactly the bug the comment above says was
+     * fixed - so a brief close pass over a skimmer was filed as TRACE while the
+     * identical survey on Boost reported ACTIVE. */
+    if(survey_in_field_pct(s) >= ACTIVE_IN_FIELD_PCT || s->peak_ref >= ACTIVE_PEAK) {
         return SurveyVerdictActive;
     }
 
@@ -42,6 +57,8 @@ const char* survey_verdict_name(SurveyVerdict v) {
         return "ACTIVE READER";
     case SurveyVerdictTrace:
         return "TRACE";
+    case SurveyVerdictTooShort:
+        return "TOO SHORT";
     case SurveyVerdictClean:
     default:
         return "CLEAN";
@@ -54,8 +71,17 @@ const char* survey_verdict_advice(SurveyVerdict v) {
         return "Fingerprint it";
     case SurveyVerdictTrace:
         return "Sweep again, slower";
+    case SurveyVerdictTooShort:
+        return "Let it run longer";
     case SurveyVerdictClean:
     default:
-        return "Nothing emitting here";
+        /* Not "No field detected". CLEAN means nothing crossed the sensitivity
+         * threshold - but PEAK and AVG are raised from every sample, gated by
+         * nothing, so an ordinary room's noise prints a few percent right
+         * above this line. A card reading "PEAK 9% / No field detected" is a
+         * screen arguing with itself, and the number is the honest half: a
+         * field WAS measured, it just was not a reader. Say what was actually
+         * decided. */
+        return "Nothing above floor";
     }
 }

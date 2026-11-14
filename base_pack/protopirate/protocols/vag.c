@@ -1,8 +1,15 @@
+#include "../defines.h"
 #include "vag.h"
 #include "aut64.h"
 #include "protocols_common.h"
 #include <string.h>
 #include <lib/subghz/subghz_keystore.h>
+
+#ifdef ENABLE_MODELS_DATABASE
+#define PROTOPIRATE_VAG_KEYS_FILE_NAME APP_ASSETS_PATH("keystore/vag")
+#else
+#define PROTOPIRATE_VAG_KEYS_FILE_NAME APP_ASSETS_PATH("vag")
+#endif
 
 #define TAG "VAGProtocol"
 
@@ -250,8 +257,6 @@ static bool vag_aut64_decrypt(uint8_t* block, int key_index) {
 }
 
 static void vag_parse_data(SubGhzProtocolDecoderVAG* instance) {
-    furi_check(instance);
-
     instance->decrypted = false;
     instance->serial = 0;
     instance->cnt = 0;
@@ -542,19 +547,17 @@ const SubGhzProtocol vag_protocol = {
 void* subghz_protocol_decoder_vag_alloc(SubGhzEnvironment* environment) {
     UNUSED(environment);
     SubGhzProtocolDecoderVAG* instance = calloc(1, sizeof(SubGhzProtocolDecoderVAG));
-    furi_check(instance);
     instance->base.protocol = &vag_protocol;
     instance->generic.protocol_name = instance->base.protocol->name;
     instance->decrypted = false;
     instance->key_idx = 0xFF;
 
-    protocol_vag_load_keys(APP_ASSETS_PATH("vag"));
+    protocol_vag_load_keys(PROTOPIRATE_VAG_KEYS_FILE_NAME);
 
     return instance;
 }
 
 void subghz_protocol_decoder_vag_reset(void* context) {
-    furi_check(context);
     SubGhzProtocolDecoderVAG* instance = context;
     instance->decoder.parser_step = VAGDecoderStepReset;
     instance->decrypted = false;
@@ -578,7 +581,6 @@ void subghz_protocol_decoder_vag_reset(void* context) {
 }
 
 void subghz_protocol_decoder_vag_feed(void* context, bool level, uint32_t duration) {
-    furi_check(context);
     SubGhzProtocolDecoderVAG* instance = context;
 
     switch(instance->decoder.parser_step) {
@@ -813,7 +815,6 @@ void subghz_protocol_decoder_vag_feed(void* context, bool level, uint32_t durati
 }
 
 uint8_t subghz_protocol_decoder_vag_get_hash_data(void* context) {
-    furi_check(context);
     SubGhzProtocolDecoderVAG* instance = context;
     uint8_t hash = 0;
     hash ^= (instance->key1_low & 0xFF);
@@ -831,7 +832,6 @@ SubGhzProtocolStatus subghz_protocol_decoder_vag_serialize(
     void* context,
     FlipperFormat* flipper_format,
     SubGhzRadioPreset* preset) {
-    furi_check(context);
     SubGhzProtocolDecoderVAG* instance = context;
 
     FURI_LOG_I(TAG, "=== VAG SERIALIZE START ===");
@@ -918,7 +918,6 @@ SubGhzProtocolStatus subghz_protocol_decoder_vag_serialize(
 
 SubGhzProtocolStatus
     subghz_protocol_decoder_vag_deserialize(void* context, FlipperFormat* flipper_format) {
-    furi_check(context);
     SubGhzProtocolDecoderVAG* instance = context;
 
     SubGhzProtocolStatus ret = subghz_block_generic_deserialize_check_count_bit(
@@ -1466,7 +1465,6 @@ static void vag_encoder_build_type3_4(SubGhzProtocolEncoderVAG* instance) {
 #endif
 
 void subghz_protocol_decoder_vag_get_string(void* context, FuriString* output) {
-    furi_check(context);
     SubGhzProtocolDecoderVAG* instance = context;
 
     if(!instance->decrypted && instance->data_count_bit >= 80) {
@@ -1535,7 +1533,6 @@ void* subghz_protocol_encoder_vag_alloc(SubGhzEnvironment* environment) {
     FURI_LOG_I(TAG, "VAG encoder alloc");
 
     SubGhzProtocolEncoderVAG* instance = calloc(1, sizeof(SubGhzProtocolEncoderVAG));
-    furi_check(instance);
     instance->base.protocol = &vag_protocol;
     instance->generic.protocol_name = instance->base.protocol->name;
 
@@ -1544,7 +1541,7 @@ void* subghz_protocol_encoder_vag_alloc(SubGhzEnvironment* environment) {
     instance->is_running = false;
     instance->key_idx = 0xFF;
 
-    protocol_vag_load_keys(APP_ASSETS_PATH("vag"));
+    protocol_vag_load_keys(APP_ASSETS_PATH("keystore/vag"));
 
     FURI_LOG_I(TAG, "VAG encoder alloc complete, keys loaded: %d", protocol_vag_keys_loaded);
 
@@ -1552,21 +1549,18 @@ void* subghz_protocol_encoder_vag_alloc(SubGhzEnvironment* environment) {
 }
 
 void subghz_protocol_encoder_vag_free(void* context) {
-    furi_check(context);
     SubGhzProtocolEncoderVAG* instance = context;
     instance->upload = NULL;
     free(instance);
 }
 
 void subghz_protocol_encoder_vag_stop(void* context) {
-    furi_check(context);
     SubGhzProtocolEncoderVAG* instance = context;
     FURI_LOG_I(TAG, "VAG encoder stop (was_running=%d)", instance->is_running);
     instance->is_running = false;
 }
 
 LevelDuration subghz_protocol_encoder_vag_yield(void* context) {
-    furi_check(context);
     SubGhzProtocolEncoderVAG* instance = context;
 
     if(!instance->is_running || instance->repeat == 0) {
@@ -1591,7 +1585,6 @@ LevelDuration subghz_protocol_encoder_vag_yield(void* context) {
 
 SubGhzProtocolStatus
     subghz_protocol_encoder_vag_deserialize(void* context, FlipperFormat* flipper_format) {
-    furi_check(context);
     SubGhzProtocolEncoderVAG* instance = context;
 
     FURI_LOG_I(TAG, "=== VAG ENCODER DESERIALIZE START ===");
