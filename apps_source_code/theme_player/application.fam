@@ -1,0 +1,10 @@
+App(
+	appid="theme_player",
+	name="Theme Player",
+	apptype=FlipperAppType.EXTERNAL,
+	entry_point="theme_player_app",
+	requires=["gui", "storage"],
+	stack_size=4 * 1024,
+	fap_category="Media",
+fap_icon="theme_player.png",
+)
