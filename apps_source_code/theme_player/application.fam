@@ -6,5 +6,8 @@ App(
 	requires=["gui", "storage"],
 	stack_size=4 * 1024,
 	fap_category="Media",
-fap_icon="theme_player.png",
+	fap_icon="theme_player.png",
+	fap_version="1.0",
+	fap_author="AzureSky",
+	fap_description="Plays RTTTL-based theme tunes through the Flipper's speaker",
 )
