@@ -236,6 +236,11 @@ void marauder_pcap_live_parser_feed(
             if(p->hdr_len >= PCAP_RECORD_HEADER_SIZE) {
                 uint32_t incl_len = (uint32_t)p->hdr[8] | ((uint32_t)p->hdr[9] << 8) |
                                     ((uint32_t)p->hdr[10] << 16) | ((uint32_t)p->hdr[11] << 24);
+                uint32_t seconds = (uint32_t)p->hdr[0] | ((uint32_t)p->hdr[1] << 8) |
+                                   ((uint32_t)p->hdr[2] << 16) | ((uint32_t)p->hdr[3] << 24);
+                uint32_t micros = (uint32_t)p->hdr[4] | ((uint32_t)p->hdr[5] << 8) |
+                                  ((uint32_t)p->hdr[6] << 16) | ((uint32_t)p->hdr[7] << 24);
+                p->time_us = (uint64_t)seconds * 1000000 + micros;
                 p->hdr_len = 0;
                 p->peek_len = 0;
                 p->body_consumed = 0;
@@ -262,7 +267,7 @@ void marauder_pcap_live_parser_feed(
             p->body_consumed += take;
             i += take;
             if(p->body_consumed >= p->body_incl_len) {
-                if(on_frame) on_frame(ctx, p->peek, p->peek_len);
+                if(on_frame) on_frame(ctx, p->peek, p->peek_len, p->body_incl_len, p->time_us);
                 p->state = MarauderPcapLiveWaitRecordHeader;
             }
             break;

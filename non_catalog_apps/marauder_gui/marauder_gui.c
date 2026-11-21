@@ -61,7 +61,8 @@ static bool marauder_gui_navigation_event_callback(void* context) {
    depends on which of ToDS/FromDS is set (station->AP: addr1, AP->station: addr2, IBSS: addr3);
    the rare ToDS+FromDS (WDS, 4-address) case has no single BSSID field and is left unattributed,
    same as marauder_pcap_classify_frame() already does for it. */
-static void marauder_gui_pcap_live_frame_callback(void* ctx, const uint8_t* data, size_t len) {
+static void marauder_gui_pcap_live_frame_callback(
+    void* ctx, const uint8_t* data, size_t len, size_t frame_len, uint64_t time_us) {
     MarauderGuiApp* app = ctx;
     if(len < 24) return; /* no full MAC header - nothing to resolve an address out of */
 
@@ -101,6 +102,7 @@ static void marauder_gui_pcap_live_frame_callback(void* ctx, const uint8_t* data
         memcpy(app->pcap_live_aps[row].bssid, bssid, 6);
         app->pcap_live_aps[row].ssid[0] = '\0';
         memset(app->pcap_live_aps[row].counts, 0, sizeof(app->pcap_live_aps[row].counts));
+        app->pcap_live_aps[row].has_m1_m2 = false;
         app->pcap_live_ap_count++;
     }
     if(ssid[0]) {
@@ -108,6 +110,12 @@ static void marauder_gui_pcap_live_frame_callback(void* ctx, const uint8_t* data
         app->pcap_live_aps[row].ssid[sizeof(app->pcap_live_aps[row].ssid) - 1] = '\0';
     }
     app->pcap_live_aps[row].counts[type]++;
+    uint8_t pair_ap[6];
+    if(marauder_pcap_pair_feed(
+           &app->pcap_pair_tracker, data, len, frame_len, time_us, pair_ap) &&
+       memcmp(pair_ap, bssid, 6) == 0) {
+        app->pcap_live_aps[row].has_m1_m2 = true;
+    }
     app->pcap_live_dirty = true;
 }
 
@@ -145,7 +153,13 @@ static void marauder_gui_tick_event_callback(void* context) {
     size_t pcap_len;
     while((pcap_len = marauder_uart_receive_pcap(app->uart, pcap_buf, sizeof(pcap_buf))) > 0) {
         if(app->is_writing_pcap && app->capture_file) {
-            storage_file_write(app->capture_file, pcap_buf, pcap_len);
+            if(app->pcap_write_error) continue;
+            if(storage_file_write(app->capture_file, pcap_buf, pcap_len) != pcap_len) {
+                /* Never report a candidate based on bytes missing from the file. */
+                app->pcap_write_error = true;
+                app->pcap_live_dirty = true;
+                continue;
+            }
             app->pcap_bytes += pcap_len;
             marauder_pcap_live_parser_feed(
                 &app->pcap_live_parser,
