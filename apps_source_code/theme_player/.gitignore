@@ -1,0 +1,4 @@
+dist/
+*.rtttl
+*.fmf
+.vscode/
